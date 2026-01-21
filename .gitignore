@@ -1,0 +1,22 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+
+# Test/artifact caches
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+
+# Node/Electron
+node_modules/
+app/frontend/dist/
+app/electron/dist/
+
+# Runtime artifacts
+app/backend/__pycache__/
+.run/
