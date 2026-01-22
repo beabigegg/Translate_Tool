@@ -57,14 +57,16 @@ LANGUAGE_FONT_MAP = {
         "NotoSansCJK-Regular.ttc",
     ]),
     "ja": ("NotoSansJP", [
-        "NotoSansJP-Regular.otf",  # OpenType (project local)
+        "NotoSansJP-Variable.ttf",  # Variable TTF (works with ReportLab)
         "NotoSansJP-Regular.ttf",
+        "NotoSansJP-Regular.otf",  # OpenType CFF (PyMuPDF only)
         "NotoSansJP[wght].ttf",
         "NotoSansCJK-Regular.ttc",
     ]),
     "ko": ("NotoSansKR", [
-        "NotoSansKR-Regular.otf",  # OpenType (project local)
+        "NotoSansKR-Variable.ttf",  # Variable TTF (works with ReportLab)
         "NotoSansKR-Regular.ttf",
+        "NotoSansKR-Regular.otf",  # OpenType CFF (PyMuPDF only)
         "NotoSansKR[wght].ttf",
         "NotoSansCJK-Regular.ttc",
     ]),

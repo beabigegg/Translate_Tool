@@ -256,12 +256,12 @@ class PDFGenerator:
         from app.backend.utils.font_utils import find_font_file
 
         # Map language codes to font file patterns
-        # Supports TTF and OTF formats
+        # Supports TTF and OTF formats (prefer Variable TTF for consistency)
         font_file_map = {
             "zh-tw": ["NotoSansTC-Regular.ttf"],
             "zh-cn": ["NotoSansSC-Regular.ttf"],
-            "ja": ["NotoSansJP-Regular.otf", "NotoSansJP-Regular.ttf"],
-            "ko": ["NotoSansKR-Regular.otf", "NotoSansKR-Regular.ttf"],
+            "ja": ["NotoSansJP-Variable.ttf", "NotoSansJP-Regular.otf"],
+            "ko": ["NotoSansKR-Variable.ttf", "NotoSansKR-Regular.otf"],
             "th": ["NotoSansThai-Regular.ttf"],
             "ar": ["NotoSansArabic-Regular.ttf"],
             "he": ["NotoSansHebrew-Regular.ttf"],
