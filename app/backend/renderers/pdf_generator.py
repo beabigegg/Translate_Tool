@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Callable, Dict, List, Optional
 from reportlab.lib.colors import white
 from reportlab.pdfgen.canvas import Canvas
 
+from app.backend.config import LANG_CODE_MAP
 from app.backend.renderers.base import RenderMode
 from app.backend.renderers.text_region_renderer import (
     TextRegion,
@@ -30,6 +31,33 @@ logger = logging.getLogger(__name__)
 
 # Lazy import for fitz (PyMuPDF)
 fitz = None
+
+
+def _get_lang_code(lang: str) -> str:
+    """Convert language name to ISO code.
+
+    Args:
+        lang: Language name (e.g., "Traditional Chinese") or code (e.g., "zh-TW").
+
+    Returns:
+        ISO language code (e.g., "zh-TW").
+    """
+    # If already a code (contains hyphen or is short), return as-is
+    if "-" in lang or len(lang) <= 3:
+        return lang.lower()
+
+    # Look up in LANG_CODE_MAP
+    if lang in LANG_CODE_MAP:
+        return LANG_CODE_MAP[lang][1]
+
+    # Case-insensitive lookup
+    lang_lower = lang.lower()
+    for name, (_, code) in LANG_CODE_MAP.items():
+        if name.lower() == lang_lower:
+            return code
+
+    # Fallback: return as-is
+    return lang
 
 
 def _ensure_fitz():
@@ -219,6 +247,38 @@ class PDFGenerator:
 
         self.log(f"[PDF] Saved overlay PDF: {Path(output_path).name}")
 
+    def _get_font_file(self) -> Optional[str]:
+        """Get the font file path for the target language.
+
+        Returns:
+            Path to font file or None if not found.
+        """
+        from app.backend.utils.font_utils import find_font_file
+
+        # Map language codes to font file patterns
+        # Supports TTF and OTF formats
+        font_file_map = {
+            "zh-tw": ["NotoSansTC-Regular.ttf"],
+            "zh-cn": ["NotoSansSC-Regular.ttf"],
+            "ja": ["NotoSansJP-Regular.otf", "NotoSansJP-Regular.ttf"],
+            "ko": ["NotoSansKR-Regular.otf", "NotoSansKR-Regular.ttf"],
+            "th": ["NotoSansThai-Regular.ttf"],
+            "ar": ["NotoSansArabic-Regular.ttf"],
+            "he": ["NotoSansHebrew-Regular.ttf"],
+        }
+
+        lang_code = _get_lang_code(self.target_lang).lower()
+        patterns = font_file_map.get(lang_code, [])
+
+        if patterns:
+            font_path = find_font_file(patterns)
+            if font_path:
+                self.log(f"[PDF] Using font file: {font_path}")
+                return str(font_path)
+
+        self.log(f"[PDF] No font file found for {self.target_lang} (code: {lang_code})")
+        return None
+
     def _insert_text_in_rect(
         self,
         page,
@@ -232,19 +292,25 @@ class PDFGenerator:
             rect: Target fitz.Rect.
             text: Text to insert.
         """
-        # Select appropriate font based on target language
-        # PyMuPDF built-in CJK fonts:
-        # 'china-ss' = Simplified Chinese (SimSun)
-        # 'china-ts' = Traditional Chinese
-        # 'japan' = Japanese
-        # 'korea' = Korean
+        # Convert language name to code (e.g., "Traditional Chinese" -> "zh-TW")
+        lang_code = _get_lang_code(self.target_lang).lower()
+
+        # Try to get actual font file first (more reliable for CJK)
+        font_file = self._get_font_file()
+
+        # Fallback to PyMuPDF built-in fonts if no file found
         font_map = {
-            "zh-TW": "china-ts",
-            "zh-CN": "china-ss",
+            "zh-tw": "china-ts",
+            "zh-cn": "china-ss",
             "ja": "japan",
             "ko": "korea",
         }
-        fontname = font_map.get(self.target_lang, "helv")
+        fontname = font_map.get(lang_code, "helv")
+
+        logger.debug(
+            f"Font selection: target_lang={self.target_lang}, "
+            f"lang_code={lang_code}, fontname={fontname}, font_file={font_file}"
+        )
 
         # Estimate initial font size based on rect height and line count
         lines = text.split("\n")
@@ -259,29 +325,51 @@ class PDFGenerator:
                 break
             try:
                 # insert_textbox returns remaining text length if it doesn't fit
-                result = page.insert_textbox(
-                    rect,
-                    text,
-                    fontsize=font_size,
-                    fontname=fontname,
-                    align=0,  # Left align
-                )
+                # Use font_file if available for better CJK support
+                if font_file:
+                    result = page.insert_textbox(
+                        rect,
+                        text,
+                        fontsize=font_size,
+                        fontfile=font_file,
+                        fontname="F0",  # PyMuPDF requires a name when using fontfile
+                        align=0,  # Left align
+                    )
+                else:
+                    result = page.insert_textbox(
+                        rect,
+                        text,
+                        fontsize=font_size,
+                        fontname=fontname,
+                        align=0,  # Left align
+                    )
                 if result >= 0:  # Success (all text fits)
                     return
                 # Text didn't fit, try smaller size
                 font_size *= 0.88
-            except Exception:
+            except Exception as e:
+                logger.debug(f"insert_textbox failed: {e}")
                 font_size *= 0.88
 
         # Final attempt with minimum size
         try:
-            page.insert_textbox(
-                rect,
-                text,
-                fontsize=max(font_size, 4),
-                fontname=fontname,
-                align=0,
-            )
+            if font_file:
+                page.insert_textbox(
+                    rect,
+                    text,
+                    fontsize=max(font_size, 4),
+                    fontfile=font_file,
+                    fontname="F0",
+                    align=0,
+                )
+            else:
+                page.insert_textbox(
+                    rect,
+                    text,
+                    fontsize=max(font_size, 4),
+                    fontname=fontname,
+                    align=0,
+                )
         except Exception as e:
             logger.warning(f"Failed to insert text: {e}")
 

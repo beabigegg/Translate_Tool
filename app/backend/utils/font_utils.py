@@ -17,6 +17,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from app.backend.config import (
     DEFAULT_FONT_FAMILY,
     FONT_SIZE_SHRINK_FACTOR,
+    LANG_CODE_MAP,
     MAX_FONT_SIZE_PT,
     MIN_FONT_SIZE_PT,
 )
@@ -26,8 +27,10 @@ logger = logging.getLogger(__name__)
 # Font registration status
 _fonts_registered = False
 
-# System font paths to search
+# System font paths to search (project local fonts first for priority)
 SYSTEM_FONT_PATHS = [
+    # Project local fonts (highest priority)
+    Path(__file__).parent.parent / "fonts",
     # Linux
     Path("/usr/share/fonts/opentype/noto"),
     Path("/usr/share/fonts/truetype/noto"),
@@ -37,8 +40,6 @@ SYSTEM_FONT_PATHS = [
     Path.home() / "Library/Fonts",
     # Windows
     Path("C:/Windows/Fonts"),
-    # Project local fonts
-    Path(__file__).parent.parent / "fonts",
 ]
 
 # Font mapping: language code -> (font name, font file patterns)
@@ -56,11 +57,13 @@ LANGUAGE_FONT_MAP = {
         "NotoSansCJK-Regular.ttc",
     ]),
     "ja": ("NotoSansJP", [
+        "NotoSansJP-Regular.otf",  # OpenType (project local)
         "NotoSansJP-Regular.ttf",
         "NotoSansJP[wght].ttf",
         "NotoSansCJK-Regular.ttc",
     ]),
     "ko": ("NotoSansKR", [
+        "NotoSansKR-Regular.otf",  # OpenType (project local)
         "NotoSansKR-Regular.ttf",
         "NotoSansKR[wght].ttf",
         "NotoSansCJK-Regular.ttc",
@@ -156,24 +159,75 @@ def register_fonts() -> bool:
                 continue
 
         if not registered:
-            logger.warning(f"Font not found or failed for {lang_code}: {patterns}")
+            # For CJK languages that failed (e.g., OTF with CFF outlines),
+            # register an alias to Traditional Chinese font as fallback
+            if lang_code in ("ja", "ko"):
+                try:
+                    # Check if NotoSansTC is registered, use it as fallback
+                    pdfmetrics.getFont("NotoSansTC")
+                    # Create an alias
+                    pdfmetrics.registerFontFamily(
+                        font_name,
+                        normal="NotoSansTC",
+                    )
+                    logger.info(
+                        f"Using NotoSansTC as fallback for {lang_code} ({font_name})"
+                    )
+                except KeyError:
+                    logger.warning(
+                        f"Font not found or failed for {lang_code}: {patterns}"
+                    )
+            else:
+                logger.warning(
+                    f"Font not found or failed for {lang_code}: {patterns}"
+                )
 
     _fonts_registered = True
     logger.info(f"Registered {registered_count} fonts for PDF rendering")
     return registered_count > 0
 
 
-def get_font_for_language(lang_code: str) -> str:
+def _normalize_lang_code(lang: str) -> str:
+    """Convert language name or code to normalized code.
+
+    Args:
+        lang: Language name (e.g., "Traditional Chinese") or code (e.g., "zh-TW").
+
+    Returns:
+        Normalized ISO language code (e.g., "zh-TW").
+    """
+    # If already a code (contains hyphen or is short), return as-is
+    if "-" in lang or len(lang) <= 3:
+        return lang
+
+    # Look up in LANG_CODE_MAP (language name -> code)
+    if lang in LANG_CODE_MAP:
+        return LANG_CODE_MAP[lang][1]
+
+    # Case-insensitive lookup
+    lang_lower = lang.lower()
+    for name, (_, code) in LANG_CODE_MAP.items():
+        if name.lower() == lang_lower:
+            return code
+
+    # Fallback: return as-is
+    return lang
+
+
+def get_font_for_language(lang: str) -> str:
     """Get the appropriate font name for a language.
 
     Args:
-        lang_code: ISO language code (e.g., 'zh-TW', 'ja', 'ko').
+        lang: Language name (e.g., 'Traditional Chinese') or code (e.g., 'zh-TW').
 
     Returns:
         Font name to use for the language.
     """
     # Ensure fonts are registered
     register_fonts()
+
+    # Convert language name to code if needed
+    lang_code = _normalize_lang_code(lang)
 
     # Direct match
     if lang_code in LANGUAGE_FONT_MAP:
@@ -194,6 +248,16 @@ def get_font_for_language(lang_code: str) -> str:
                 return font_name
             except KeyError:
                 continue
+
+    # CJK fallback: use Traditional Chinese font for Japanese/Korean
+    # (shares many glyphs, better than Helvetica for CJK text)
+    if lang_code in ("ja", "ko") or lang_family in ("ja", "ko"):
+        try:
+            pdfmetrics.getFont("NotoSansTC")
+            logger.debug(f"Using NotoSansTC as CJK fallback for {lang_code}")
+            return "NotoSansTC"
+        except KeyError:
+            pass
 
     # Fallback to default
     return LANGUAGE_FONT_MAP["default"][0]

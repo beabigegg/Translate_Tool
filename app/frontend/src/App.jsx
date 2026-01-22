@@ -872,6 +872,13 @@ export default function App() {
                         </span>
                       </label>
                     </div>
+                    {/* Warning for multi-language PDF output */}
+                    {selectedTargets.length > 1 && (
+                      <div className="setting-warning" role="alert">
+                        <Icons.Error />
+                        <span>PDF 輸出只支援單一目標語言。將只使用第一個語言：<strong>{selectedTargets[0]}</strong></span>
+                      </div>
+                    )}
                   </div>
                 )}
 
