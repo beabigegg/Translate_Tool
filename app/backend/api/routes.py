@@ -41,6 +41,8 @@ async def create_job(
     src_lang: Optional[str] = Form(None),
     include_headers: bool = Form(False),
     model: Optional[str] = Form(None),
+    pdf_output_format: str = Form("docx"),  # "docx" or "pdf"
+    pdf_layout_mode: str = Form("overlay"),  # "overlay" or "side_by_side"
 ) -> JobCreateResponse:
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded")
@@ -65,6 +67,8 @@ async def create_job(
             src_lang=src_lang,
             include_headers=include_headers,
             model=model or "",
+            pdf_output_format=pdf_output_format,
+            pdf_layout_mode=pdf_layout_mode,
         )
         return JobCreateResponse(job_id=job.job_id)
     finally:

@@ -385,6 +385,8 @@ export default function App() {
   const [srcLang, setSrcLang] = useState("English");
   const model = "translategemma:12b";  // Hardcoded - single model
   const [includeHeaders, setIncludeHeaders] = useState(false);
+  const [pdfOutputFormat, setPdfOutputFormat] = useState("pdf");  // "docx" or "pdf"
+  const [pdfLayoutMode, setPdfLayoutMode] = useState("overlay");  // "overlay" or "side_by_side"
   const [jobId, setJobId] = useState(null);
   const [jobStatus, setJobStatus] = useState(null);
   const [logs, setLogs] = useState([]);
@@ -552,6 +554,8 @@ export default function App() {
       form.append("src_lang", srcLang);
       form.append("model", model);
       form.append("include_headers", String(includeHeaders));
+      form.append("pdf_output_format", pdfOutputFormat);
+      form.append("pdf_layout_mode", pdfLayoutMode);
       const response = await createJob(form);
       setJobId(response.job_id);
     } catch (err) {
@@ -803,6 +807,74 @@ export default function App() {
 
             {showSettings && (
               <div className="settings-content" id="settings-content">
+                {/* PDF Output Format */}
+                <div className="setting-group">
+                  <label className="setting-label">PDF 輸出格式</label>
+                  <div className="radio-group">
+                    <label className={`radio-option ${pdfOutputFormat === 'pdf' ? 'selected' : ''}`}>
+                      <input
+                        type="radio"
+                        name="pdfOutputFormat"
+                        value="pdf"
+                        checked={pdfOutputFormat === 'pdf'}
+                        onChange={(e) => setPdfOutputFormat(e.target.value)}
+                      />
+                      <span className="radio-label">
+                        <strong>PDF（保留版面）</strong>
+                        <small>輸出 PDF，在原位置覆蓋譯文</small>
+                      </span>
+                    </label>
+                    <label className={`radio-option ${pdfOutputFormat === 'docx' ? 'selected' : ''}`}>
+                      <input
+                        type="radio"
+                        name="pdfOutputFormat"
+                        value="docx"
+                        checked={pdfOutputFormat === 'docx'}
+                        onChange={(e) => setPdfOutputFormat(e.target.value)}
+                      />
+                      <span className="radio-label">
+                        <strong>DOCX（雙語對照）</strong>
+                        <small>輸出 Word，原文+譯文並列</small>
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* PDF Layout Mode - only show when PDF output is selected */}
+                {pdfOutputFormat === 'pdf' && (
+                  <div className="setting-group">
+                    <label className="setting-label">PDF 版面模式</label>
+                    <div className="radio-group">
+                      <label className={`radio-option ${pdfLayoutMode === 'overlay' ? 'selected' : ''}`}>
+                        <input
+                          type="radio"
+                          name="pdfLayoutMode"
+                          value="overlay"
+                          checked={pdfLayoutMode === 'overlay'}
+                          onChange={(e) => setPdfLayoutMode(e.target.value)}
+                        />
+                        <span className="radio-label">
+                          <strong>覆蓋模式</strong>
+                          <small>直接在原文位置放置譯文</small>
+                        </span>
+                      </label>
+                      <label className={`radio-option ${pdfLayoutMode === 'side_by_side' ? 'selected' : ''}`}>
+                        <input
+                          type="radio"
+                          name="pdfLayoutMode"
+                          value="side_by_side"
+                          checked={pdfLayoutMode === 'side_by_side'}
+                          onChange={(e) => setPdfLayoutMode(e.target.value)}
+                        />
+                        <span className="radio-label">
+                          <strong>並排模式</strong>
+                          <small>每頁顯示原文與譯文對照</small>
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
                 <label className="toggle-setting">
                   <div className="toggle-switch">
                     <input

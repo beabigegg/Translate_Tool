@@ -166,6 +166,7 @@ def process_files(
                     max_batch_chars=max_batch_chars,
                 )
             elif ext == ".pdf":
+                log(f"[PDF] Using output_format={output_format}, layout_mode={layout_mode}")
                 stopped = translate_pdf(
                     str(src),
                     str(out_path),

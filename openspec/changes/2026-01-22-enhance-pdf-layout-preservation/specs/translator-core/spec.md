@@ -20,23 +20,24 @@ The system SHALL extract PDF text blocks with bounding box coordinates normalize
 #### Scenario: Reading order sorting
 - **GIVEN** a PDF with multi-column layout
 - **WHEN** text blocks are ordered for translation
-- **THEN** blocks SHALL be sorted by (page_number, y0, x0) ascending
+- **THEN** blocks SHALL be sorted by (page_number, y0_rounded, x0) ascending
+- **AND** y0_rounded SHALL group elements on the same logical line (default: round to nearest 10 points)
 
 ### Requirement: Header/Footer Classification and Filtering
 The system SHALL classify header/footer elements using page margins and allow optional filtering from translation.
 
 #### Scenario: Header detection
-- **GIVEN** a page height and HEADER_FOOTER_MARGIN_PT setting
+- **GIVEN** a page height and PDF_HEADER_FOOTER_MARGIN_PT setting
 - **WHEN** a block has y0 less than or equal to the top margin
 - **THEN** the block SHALL be classified as `header`
 
 #### Scenario: Footer detection
-- **GIVEN** a page height and HEADER_FOOTER_MARGIN_PT setting
+- **GIVEN** a page height and PDF_HEADER_FOOTER_MARGIN_PT setting
 - **WHEN** a block has y1 greater than or equal to (page_height - margin)
 - **THEN** the block SHALL be classified as `footer`
 
 #### Scenario: Skip header/footer translation
-- **GIVEN** SKIP_HEADER_FOOTER is set to True
+- **GIVEN** PDF_SKIP_HEADER_FOOTER is set to True
 - **WHEN** a block is classified as header or footer
 - **THEN** the block SHALL be marked as non-translatable
 - **AND** the original content SHALL be preserved in output
@@ -196,8 +197,8 @@ The system SHALL optionally support OCR processing for scanned PDF documents.
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | PDF_PARSER_ENGINE | str | "pymupdf" | PDF parsing library (pymupdf or pypdf2) |
-| SKIP_HEADER_FOOTER | bool | True | Skip header/footer translation |
-| HEADER_FOOTER_MARGIN_PT | int | 50 | Margin for header/footer detection (points) |
+| PDF_SKIP_HEADER_FOOTER | bool | False | Skip header/footer translation |
+| PDF_HEADER_FOOTER_MARGIN_PT | int | 50 | Margin for header/footer detection (points) |
 | LAYOUT_PRESERVATION_MODE | str | "inline" | Output mode (inline, overlay, side_by_side) |
 | DEFAULT_FONT_FAMILY | str | "NotoSansSC" | Default font for PDF rendering |
 | MIN_FONT_SIZE_PT | int | 6 | Minimum font size for scaling |
@@ -217,7 +218,7 @@ The system SHALL optionally support OCR processing for scanned PDF documents.
 ```python
 def parse_pdf_with_bbox(
     file_path: str,
-    skip_header_footer: bool = True,
+    skip_header_footer: bool = False,
     header_footer_margin: int = 50
 ) -> TranslatableDocument:
     """
@@ -269,9 +270,10 @@ def translate_pdf(
     client: OllamaClient,
     stop_flag: Optional[threading.Event] = None,
     log: Callable[[str], None] = lambda s: None,
-    # New parameters
-    use_pymupdf: bool = True,
-    skip_header_footer: bool = True,
+    # New parameters (Phase 1)
+    use_pymupdf: Optional[bool] = None,  # None uses PDF_PARSER_ENGINE config
+    skip_header_footer: Optional[bool] = None,  # None uses PDF_SKIP_HEADER_FOOTER config
+    # Future parameters (Phase 2-3)
     output_format: str = "docx",
     layout_mode: str = "inline",
     use_ocr: bool = False

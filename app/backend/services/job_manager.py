@@ -165,6 +165,8 @@ class JobManager:
         src_lang: Optional[str],
         include_headers: bool,
         model: str,
+        pdf_output_format: str = "docx",
+        pdf_layout_mode: str = "overlay",
     ) -> JobRecord:
         # Cleanup by capacity before creating new job
         self._cleanup_by_capacity()
@@ -187,6 +189,7 @@ class JobManager:
         self.jobs[job_id] = job
 
         log = JobLogger(job).log
+        log(f"[CONFIG] PDF output_format={pdf_output_format}, layout_mode={pdf_layout_mode}")
 
         def _run_job() -> None:
             cache = TranslationCache(output_dir / "translation_cache.db")
@@ -208,6 +211,8 @@ class JobManager:
                     stop_flag=job.stop_flag,
                     log=log,
                     max_batch_chars=DEFAULT_MAX_BATCH_CHARS,
+                    layout_mode=pdf_layout_mode,
+                    output_format=pdf_output_format,
                 )
 
                 # Archive outputs and update state atomically
