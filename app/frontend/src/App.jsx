@@ -246,7 +246,7 @@ function FileCard({ file, onRemove }) {
 }
 
 // Language selector with search and groups
-function LanguageSelector({ selected, onChange, multiple = false, excludeAuto = false }) {
+function LanguageSelector({ selected, onChange, multiple = false }) {
   const [search, setSearch] = useState("");
   const [expandedGroups, setExpandedGroups] = useState(new Set(["East Asian"]));
 
@@ -298,21 +298,6 @@ function LanguageSelector({ selected, onChange, multiple = false, excludeAuto = 
           </button>
         )}
       </div>
-
-      {!excludeAuto && !multiple && (
-        <div
-          className={`language-item auto ${selected === "Auto" ? "selected" : ""}`}
-          onClick={() => handleSelect("Auto")}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && handleSelect("Auto")}
-          aria-pressed={selected === "Auto"}
-        >
-          <span className="auto-icon">A</span>
-          <span>Auto Detect</span>
-          {selected === "Auto" && <Icons.Check />}
-        </div>
-      )}
 
       <div className="language-groups">
         {Object.entries(filteredGroups).map(([group, langs]) => (
@@ -397,7 +382,7 @@ export default function App() {
   const [files, setFiles] = useState([]);
   const [selectedTargets, setSelectedTargets] = useState(["English", "Vietnamese"]);
   const [activeTarget, setActiveTarget] = useState(0);
-  const [srcLang, setSrcLang] = useState("Auto");
+  const [srcLang, setSrcLang] = useState("English");
   const model = "translategemma:12b";  // Hardcoded - single model
   const [includeHeaders, setIncludeHeaders] = useState(false);
   const [jobId, setJobId] = useState(null);
@@ -728,7 +713,6 @@ export default function App() {
                   selected={selectedTargets}
                   onChange={toggleTarget}
                   multiple
-                  excludeAuto
                 />
               </div>
 

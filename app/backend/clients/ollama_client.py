@@ -96,10 +96,9 @@ class OllamaClient:
     @staticmethod
     def _build_translategemma_prompt(text: str, target_language: str, source_language: Optional[str]) -> str:
         tgt_name, tgt_code = LANG_CODE_MAP.get(target_language, (target_language, target_language.lower()[:2]))
-        if source_language and source_language.lower() not in ("auto", "auto-detect", "auto detect"):
-            src_name, src_code = LANG_CODE_MAP.get(source_language, (source_language, source_language.lower()[:2]))
-        else:
-            src_name, src_code = "Auto-detect", "auto"
+        # Source language is required - default to English if not provided
+        src_lang = source_language if source_language else "English"
+        src_name, src_code = LANG_CODE_MAP.get(src_lang, (src_lang, src_lang.lower()[:2]))
         return (
             f"You are a professional {src_name} ({src_code}) to {tgt_name} ({tgt_code}) translator. "
             f"Your goal is to accurately convey the meaning and nuances of the original {src_name} text "
@@ -110,7 +109,8 @@ class OllamaClient:
 
     @staticmethod
     def _build_generic_prompt(text: str, target_language: str, source_language: Optional[str]) -> str:
-        source = source_language if (source_language and source_language.lower() not in ("auto", "auto-detect", "auto detect")) else "Auto"
+        # Source language is required - default to English if not provided
+        source = source_language if source_language else "English"
         return (
             f"Task: Translate ONLY into {target_language} from {source}.\n"
             f"Rules:\n"
@@ -145,10 +145,9 @@ class OllamaClient:
     @staticmethod
     def _build_batch_translategemma_prompt(texts: List[str], target_language: str, source_language: Optional[str]) -> str:
         tgt_name, tgt_code = LANG_CODE_MAP.get(target_language, (target_language, target_language.lower()[:2]))
-        if source_language and source_language.lower() not in ("auto", "auto-detect", "auto detect"):
-            src_name, src_code = LANG_CODE_MAP.get(source_language, (source_language, source_language.lower()[:2]))
-        else:
-            src_name, src_code = "Auto-detect", "auto"
+        # Source language is required - default to English if not provided
+        src_lang = source_language if source_language else "English"
+        src_name, src_code = LANG_CODE_MAP.get(src_lang, (src_lang, src_lang.lower()[:2]))
         combined_text = BATCH_SEPARATOR.join(texts)
         separator = BATCH_SEPARATOR.strip()
         return (
@@ -172,8 +171,10 @@ class OllamaClient:
             prompt = self._build_batch_translategemma_prompt(texts, tgt, src_lang)
         else:
             combined_text = BATCH_SEPARATOR.join(texts)
+            # Source language is required - default to English if not provided
+            source = src_lang if src_lang else "English"
             prompt = (
-                f"Translate the following text from {src_lang or 'auto-detect'} to {tgt}.\n\n"
+                f"Translate the following text from {source} to {tgt}.\n\n"
                 f"Rules:\n"
                 f"1) Output translation text ONLY (no source text, no notes, no questions, no language-detection remarks).\n"
                 f"2) Preserve original line breaks within each segment.\n"

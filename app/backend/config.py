@@ -33,6 +33,19 @@ MAX_MAX_BATCH_CHARS = 100000      # Maximum 100K chars
 EXCEL_FORMULA_MODE = "skip"
 MAX_SHAPE_CHARS = 1200
 
+# PDF parsing configuration
+PDF_PARSER_ENGINE = "pymupdf"  # pymupdf | pypdf2 (fallback)
+PDF_SKIP_HEADER_FOOTER = False  # Skip header/footer translation
+PDF_HEADER_FOOTER_MARGIN_PT = 50  # Margin for header/footer detection (points)
+
+# Layout preservation configuration
+LAYOUT_PRESERVATION_MODE = "inline"  # inline | overlay | side_by_side
+DEFAULT_FONT_FAMILY = "NotoSansSC"  # Default font for PDF rendering
+MIN_FONT_SIZE_PT = 6  # Minimum font size for scaling
+MAX_FONT_SIZE_PT = 72  # Maximum font size
+FONT_SIZE_SHRINK_FACTOR = 0.9  # Shrink factor for font scaling
+PDF_DRAW_MASK = True  # Draw white mask over original text in overlay mode (set False for transparent background)
+
 MAX_SEGMENTS = 10000
 MAX_TEXT_LENGTH = 100000
 
@@ -127,8 +140,6 @@ LANG_CODE_MAP = {
     "Hausa": ("Hausa", "ha"),
     "Yoruba": ("Yoruba", "yo"),
     "Zulu": ("Zulu", "zu"),
-    # Auto-detect
-    "Auto": ("Auto-detect", "auto"),
 }
 
 DATA_DIR = Path(os.environ.get("TRANSLATE_TOOL_DATA_DIR", Path.home() / ".translate_tool"))

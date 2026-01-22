@@ -13,7 +13,15 @@ from app.backend.config import (
     MIN_MAX_BATCH_CHARS,
 )
 from app.backend.utils.logging_utils import logger
-from app.backend.utils.text_utils import split_sentences
+from app.backend.utils.text_utils import is_cjk_language, split_sentences
+
+
+def _get_sentence_joiner(target_lang: str) -> str:
+    """Get the appropriate sentence joiner based on target language.
+
+    CJK languages don't use spaces between sentences.
+    """
+    return "" if is_cjk_language(target_lang) else " "
 
 
 def translate_block_sentencewise(
@@ -51,7 +59,8 @@ def translate_block_sentencewise(
             else:
                 cache.put(src_key, tgt, sentence, ans)
             parts.append(ans)
-        out_lines.append(" ".join(parts))
+        joiner = _get_sentence_joiner(tgt)
+        out_lines.append(joiner.join(parts))
 
     final = "\n".join(out_lines)
     if all_ok:
@@ -212,6 +221,7 @@ def translate_blocks_batch(
                 continue
         out_lines: List[str] = []
         all_ok = True
+        joiner = _get_sentence_joiner(tgt)
         for line_sentences in struct:
             if line_sentences == [""]:
                 out_lines.append("")
@@ -226,7 +236,7 @@ def translate_blocks_batch(
                     parts.append(sent)
                 else:
                     parts.append(sent)
-            out_lines.append(" ".join(parts))
+            out_lines.append(joiner.join(parts))
         final = "\n".join(out_lines)
         if all_ok:
             cache.put(src_key, tgt, text, final)
