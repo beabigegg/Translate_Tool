@@ -409,10 +409,11 @@ def _translate_pdf_to_pdf(
     """Translate PDF to PDF with layout preservation.
 
     Uses PDFGenerator to create overlay or side-by-side output.
+    Supports multiple target languages by generating separate PDF files.
 
     Args:
         in_path: Input PDF path.
-        out_path: Output PDF path.
+        out_path: Output PDF path (base path for multiple languages).
         targets: Target languages.
         src_lang: Source language.
         cache: Translation cache.
@@ -467,54 +468,66 @@ def _translate_pdf_to_pdf(
         unique_texts = list(set(e.content.strip() for e in translatable))
         log(f"[PDF] Translating {len(unique_texts)} unique text blocks")
 
-        # Warn if multiple target languages (PDF-to-PDF only supports first target)
-        if len(targets) > 1:
-            log(f"[PDF] Warning: PDF output only supports single target language. Using '{targets[0]}', ignoring: {targets[1:]}")
-
-        # Translate all texts using batch translation (same as Excel)
-        # This preserves context and improves translation quality
-        translations = {}
-        stopped = False
-        tgt = targets[0] if targets else "en"
-
-        # Check for stop before starting translation
-        if stop_flag and stop_flag.is_set():
-            log(f"[STOP] PDF stopped before translation")
-            stopped = True
-        else:
-            # Use batch translation for better context (like Excel processor)
-            log(f"[PDF] Using batch translation for {len(unique_texts)} texts to {tgt}")
-            results = translate_blocks_batch(
-                unique_texts, tgt, src_lang, cache, client
-            )
-
-            for text, (ok, translated) in zip(unique_texts, results):
-                if ok:
-                    translations[text] = translated
-                else:
-                    translations[text] = f"[Translation failed] {text[:50]}..."
-
-        if stopped:
-            log(f"[PDF] Translation stopped, generating partial output")
-
-        # Generate PDF with translations
+        # Determine render mode
         mode_enum = RenderMode.OVERLAY if layout_mode == "overlay" else RenderMode.SIDE_BY_SIDE
-        tgt_lang = targets[0] if targets else "en"
 
         # Use draw_mask parameter or fall back to config default
         should_draw_mask = draw_mask if draw_mask is not None else PDF_DRAW_MASK
 
-        generator = PDFGenerator(
-            target_lang=tgt_lang,
-            draw_mask=should_draw_mask,
-            log=log,
-        )
-        generator.generate(doc, translations, out_path, mode_enum)
+        stopped = False
+        output_files = []
+
+        # Generate PDF for each target language
+        if len(targets) > 1:
+            log(f"[PDF] Generating {len(targets)} PDF files for languages: {', '.join(targets)}")
+
+        for tgt_idx, tgt in enumerate(targets):
+            if stop_flag and stop_flag.is_set():
+                log(f"[STOP] PDF stopped before translating to {tgt}")
+                stopped = True
+                break
+
+            # Generate language-specific output path
+            if len(targets) > 1:
+                out_stem = Path(out_path).stem
+                out_dir = Path(out_path).parent
+                lang_suffix = f"_{tgt.replace(' ', '_').replace('-', '_')}"
+                lang_out_path = str(out_dir / f"{out_stem}{lang_suffix}.pdf")
+            else:
+                lang_out_path = out_path
+
+            # Translate texts for this language
+            log(f"[PDF] [{tgt_idx + 1}/{len(targets)}] Translating to {tgt}...")
+            results = translate_blocks_batch(
+                unique_texts, tgt, src_lang, cache, client
+            )
+
+            translations = {}
+            missing_count = 0
+            for text, (ok, translated) in zip(unique_texts, results):
+                if ok:
+                    translations[text] = translated
+                else:
+                    translations[text] = f"[翻譯失敗] {text[:30]}..."
+                    missing_count += 1
+
+            if missing_count > 0:
+                log(f"[PDF] Warning: {missing_count} texts failed to translate to {tgt}")
+
+            # Generate PDF for this language
+            generator = PDFGenerator(
+                target_lang=tgt,
+                draw_mask=should_draw_mask,
+                log=log,
+            )
+            generator.generate(doc, translations, lang_out_path, mode_enum)
+            output_files.append(lang_out_path)
+            log(f"[PDF] Generated: {Path(lang_out_path).name}")
 
         if stopped:
-            log(f"[PDF] Partial output: {os.path.basename(out_path)}")
+            log(f"[PDF] Partial output: {len(output_files)} of {len(targets)} files generated")
         else:
-            log(f"[PDF] Output: {os.path.basename(out_path)}")
+            log(f"[PDF] Completed: {len(output_files)} PDF file(s) generated")
 
         return stopped
 

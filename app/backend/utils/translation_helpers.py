@@ -10,7 +10,9 @@ from app.backend.config import (
     BATCH_SEPARATOR,
     DEFAULT_MAX_BATCH_CHARS,
     MAX_MAX_BATCH_CHARS,
+    MAX_PARAGRAPH_CHARS,
     MIN_MAX_BATCH_CHARS,
+    TRANSLATION_GRANULARITY,
 )
 from app.backend.utils.logging_utils import logger
 from app.backend.utils.text_utils import is_cjk_language, split_sentences
@@ -22,6 +24,94 @@ def _get_sentence_joiner(target_lang: str) -> str:
     CJK languages don't use spaces between sentences.
     """
     return "" if is_cjk_language(target_lang) else " "
+
+
+def translate_block_as_paragraph(
+    text: str,
+    tgt: str,
+    src_lang: Optional[str],
+    cache: TranslationCache,
+    client: OllamaClient,
+) -> Tuple[bool, str]:
+    """Translate entire text block as a single unit, preserving context.
+
+    This is the recommended approach for better translation quality.
+    Falls back to chunked translation for very long texts.
+
+    Args:
+        text: Text to translate.
+        tgt: Target language.
+        src_lang: Source language (or None for auto-detect).
+        cache: Translation cache.
+        client: Ollama client.
+
+    Returns:
+        Tuple of (success, translated_text).
+    """
+    if not text or not text.strip():
+        return True, ""
+
+    src_key = (src_lang or "auto").lower()
+
+    # Check cache first
+    cached = cache.get(src_key, tgt, text)
+    if cached is not None:
+        return True, cached
+
+    # If text is within reasonable length, translate as whole
+    if len(text) <= MAX_PARAGRAPH_CHARS:
+        ok, result = client.translate_once(text, tgt, src_lang)
+        if ok:
+            cache.put(src_key, tgt, text, result)
+        return ok, result
+
+    # For very long texts, split by paragraphs (double newlines) or sentences
+    logger.debug(f"Text too long ({len(text)} chars), splitting for translation")
+
+    # Try splitting by double newlines first (paragraph boundaries)
+    if "\n\n" in text:
+        chunks = [chunk.strip() for chunk in text.split("\n\n") if chunk.strip()]
+    else:
+        # Fall back to splitting by newlines
+        chunks = [chunk.strip() for chunk in text.split("\n") if chunk.strip()]
+
+    # If chunks are still too long, use sentence splitting
+    final_chunks = []
+    for chunk in chunks:
+        if len(chunk) <= MAX_PARAGRAPH_CHARS:
+            final_chunks.append(chunk)
+        else:
+            # Split by sentences for very long chunks
+            sentences = split_sentences(chunk, src_lang) or [chunk]
+            final_chunks.extend(sentences)
+
+    # Translate each chunk
+    translated_chunks = []
+    all_ok = True
+    for chunk in final_chunks:
+        # Check cache for chunk
+        cached_chunk = cache.get(src_key, tgt, chunk)
+        if cached_chunk is not None:
+            translated_chunks.append(cached_chunk)
+            continue
+
+        ok, result = client.translate_once(chunk, tgt, src_lang)
+        if ok:
+            cache.put(src_key, tgt, chunk, result)
+            translated_chunks.append(result)
+        else:
+            all_ok = False
+            translated_chunks.append(f"[翻譯失敗] {chunk[:30]}...")
+
+    # Join with appropriate separator
+    joiner = "\n\n" if "\n\n" in text else "\n"
+    final_result = joiner.join(translated_chunks)
+
+    # Cache the full result if all chunks succeeded
+    if all_ok:
+        cache.put(src_key, tgt, text, final_result)
+
+    return all_ok, final_result
 
 
 def translate_block_sentencewise(
@@ -162,11 +252,45 @@ def translate_blocks_batch(
     cache: TranslationCache,
     client: OllamaClient,
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
+    granularity: Optional[str] = None,
 ) -> List[Tuple[bool, str]]:
+    """Batch translate multiple text blocks.
+
+    Args:
+        texts: List of texts to translate.
+        tgt: Target language.
+        src_lang: Source language.
+        cache: Translation cache.
+        client: Ollama client.
+        max_batch_chars: Maximum characters per batch.
+        granularity: Translation granularity ("sentence" or "paragraph").
+                    None uses config default (TRANSLATION_GRANULARITY).
+
+    Returns:
+        List of (success, translated_text) tuples.
+    """
     if not texts:
         return []
+
+    # Determine granularity
+    use_granularity = granularity if granularity is not None else TRANSLATION_GRANULARITY
+
+    # For single text, use appropriate method based on granularity
     if len(texts) == 1:
-        return [translate_block_sentencewise(texts[0], tgt, src_lang, cache, client)]
+        if use_granularity == "paragraph":
+            return [translate_block_as_paragraph(texts[0], tgt, src_lang, cache, client)]
+        else:
+            return [translate_block_sentencewise(texts[0], tgt, src_lang, cache, client)]
+
+    # For paragraph granularity, translate each block as a whole
+    if use_granularity == "paragraph":
+        results = []
+        for text in texts:
+            ok, result = translate_block_as_paragraph(text, tgt, src_lang, cache, client)
+            results.append((ok, result))
+        return results
+
+    # Legacy sentence-level batch translation follows
 
     src_key = (src_lang or "auto").lower()
     results: List[Tuple[bool, str]] = []

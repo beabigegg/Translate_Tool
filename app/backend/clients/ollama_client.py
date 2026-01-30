@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import threading
 import time
 from typing import Callable, ClassVar, List, Optional, Tuple
@@ -140,24 +141,169 @@ class OllamaClient:
             except requests.exceptions.RequestException as exc:
                 last = f"Request error: {exc}"
             time.sleep(API_BACKOFF_BASE * attempt)
-        return False, str(last)
+
+        # Smart retry: detect error type and apply appropriate strategy
+        return self._smart_retry(text, tgt, src_lang, str(last))
+
+    def _smart_retry(self, text: str, tgt: str, src_lang: Optional[str], error_msg: str) -> Tuple[bool, str]:
+        """Apply smart retry strategies based on error type.
+
+        Strategies:
+        1. Text too long -> Split into chunks and translate separately
+        2. Timeout/busy -> Wait longer and retry
+        3. Other errors -> Return failure
+
+        Args:
+            text: Original text to translate.
+            tgt: Target language.
+            src_lang: Source language.
+            error_msg: Error message from initial attempts.
+
+        Returns:
+            Tuple of (success, result_or_error).
+        """
+        error_lower = error_msg.lower()
+
+        # Strategy 1: Text too long (context length, memory issues)
+        if any(kw in error_lower for kw in ["context", "length", "memory", "too long", "exceeded"]):
+            logger.info(f"Text too long ({len(text)} chars), attempting chunked translation")
+            return self._translate_chunked(text, tgt, src_lang)
+
+        # Strategy 2: Temporary issues (timeout, busy, connection)
+        if any(kw in error_lower for kw in ["timeout", "busy", "connection", "reset", "refused"]):
+            logger.info("Temporary error detected, attempting extended retry")
+            return self._translate_with_extended_retry(text, tgt, src_lang)
+
+        # Strategy 3: No applicable strategy, return original error
+        return False, error_msg
+
+    def _translate_chunked(self, text: str, tgt: str, src_lang: Optional[str], max_chunk_chars: int = 1500) -> Tuple[bool, str]:
+        """Translate long text by splitting into smaller chunks.
+
+        Args:
+            text: Long text to translate.
+            tgt: Target language.
+            src_lang: Source language.
+            max_chunk_chars: Maximum characters per chunk.
+
+        Returns:
+            Tuple of (success, translated_text).
+        """
+        # Try splitting by paragraphs first
+        if "\n\n" in text:
+            chunks = [chunk.strip() for chunk in text.split("\n\n") if chunk.strip()]
+            joiner = "\n\n"
+        elif "\n" in text:
+            chunks = [chunk.strip() for chunk in text.split("\n") if chunk.strip()]
+            joiner = "\n"
+        else:
+            # Split by sentences (rough approximation)
+            sentences = re.split(r'(?<=[.!?。！？])\s+', text)
+            chunks = [s.strip() for s in sentences if s.strip()]
+            joiner = " "
+
+        # Further split chunks that are still too long
+        final_chunks = []
+        for chunk in chunks:
+            if len(chunk) <= max_chunk_chars:
+                final_chunks.append(chunk)
+            else:
+                # Force split by character limit
+                for i in range(0, len(chunk), max_chunk_chars):
+                    final_chunks.append(chunk[i:i + max_chunk_chars])
+
+        if not final_chunks:
+            return False, "[Chunked translation failed: no valid chunks]"
+
+        # Translate each chunk
+        translated_chunks = []
+        for chunk in final_chunks:
+            if "translategemma" in self.model.lower():
+                prompt = self._build_translategemma_prompt(chunk, tgt, src_lang)
+            else:
+                prompt = self._build_generic_prompt(chunk, tgt, src_lang)
+
+            payload = {"model": self.model, "prompt": prompt, "stream": False}
+            session = self._get_session()
+
+            try:
+                resp = session.post(
+                    self._gen_url("/api/generate"),
+                    json=payload,
+                    timeout=self.timeout.get_timeout_tuple()
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    translated_chunks.append(data.get("response", "").strip())
+                else:
+                    return False, f"[Chunk translation failed] HTTP {resp.status_code}"
+            except requests.exceptions.RequestException as exc:
+                return False, f"[Chunk translation failed] {exc}"
+
+        return True, joiner.join(translated_chunks)
+
+    def _translate_with_extended_retry(self, text: str, tgt: str, src_lang: Optional[str]) -> Tuple[bool, str]:
+        """Retry translation with extended wait times for temporary issues.
+
+        Args:
+            text: Text to translate.
+            tgt: Target language.
+            src_lang: Source language.
+
+        Returns:
+            Tuple of (success, result_or_error).
+        """
+        if "translategemma" in self.model.lower():
+            prompt = self._build_translategemma_prompt(text, tgt, src_lang)
+        else:
+            prompt = self._build_generic_prompt(text, tgt, src_lang)
+
+        payload = {"model": self.model, "prompt": prompt, "stream": False}
+        session = self._get_session()
+
+        # Extended retry with longer waits
+        wait_times = [5, 10, 20]  # seconds
+        for wait_time in wait_times:
+            logger.debug(f"Extended retry: waiting {wait_time}s before attempt")
+            time.sleep(wait_time)
+
+            try:
+                resp = session.post(
+                    self._gen_url("/api/generate"),
+                    json=payload,
+                    timeout=(self.timeout.connect_timeout, self.timeout.read_timeout * 1.5)
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return True, data.get("response", "").strip()
+            except requests.exceptions.RequestException:
+                continue
+
+        return False, "[Extended retry failed after multiple attempts]"
 
     @staticmethod
     def _build_batch_translategemma_prompt(texts: List[str], target_language: str, source_language: Optional[str]) -> str:
+        """Build batch translation prompt with numbered segment markers for better parsing."""
         tgt_name, tgt_code = LANG_CODE_MAP.get(target_language, (target_language, target_language.lower()[:2]))
         # Source language is required - default to English if not provided
         src_lang = source_language if source_language else "English"
         src_name, src_code = LANG_CODE_MAP.get(src_lang, (src_lang, src_lang.lower()[:2]))
-        combined_text = BATCH_SEPARATOR.join(texts)
-        separator = BATCH_SEPARATOR.strip()
+
+        # Build segments with numbered markers
+        segments = []
+        for i, text in enumerate(texts):
+            segments.append(f"<<<SEG_{i}>>>\n{text}")
+        combined_text = "\n".join(segments)
+
         return (
             f"You are a professional {src_name} ({src_code}) to {tgt_name} ({tgt_code}) translator. "
             f"Your goal is to accurately convey the meaning and nuances of the original {src_name} text "
-            f"while adhering to {tgt_name} grammar, vocabulary, and cultural sensitivities. "
-            f"IMPORTANT: The following text contains multiple segments separated by '{separator}'. "
-            f"Translate each segment separately and output them in the same order, separated by the same separator '{separator}'. "
-            f"Do NOT add any explanations, numbering, or commentary. Just output the translations separated by the separator.\n\n"
-            f"{combined_text}"
+            f"while adhering to {tgt_name} grammar, vocabulary, and cultural sensitivities.\n\n"
+            f"IMPORTANT: Translate each numbered segment below. Keep the <<<SEG_N>>> markers in your output.\n\n"
+            f"{combined_text}\n\n"
+            f"Output format (keep all markers):\n"
+            f"<<<SEG_0>>>\n[translation of segment 0]\n"
+            f"<<<SEG_1>>>\n[translation of segment 1]\n..."
         )
 
     def translate_batch(self, texts: List[str], tgt: str, src_lang: Optional[str]) -> Tuple[bool, List[str]]:
@@ -170,18 +316,24 @@ class OllamaClient:
         if "translategemma" in self.model.lower():
             prompt = self._build_batch_translategemma_prompt(texts, tgt, src_lang)
         else:
-            combined_text = BATCH_SEPARATOR.join(texts)
+            # Build segments with numbered markers for reliable parsing
+            segments = []
+            for i, text in enumerate(texts):
+                segments.append(f"<<<SEG_{i}>>>\n{text}")
+            combined_text = "\n".join(segments)
+
             # Source language is required - default to English if not provided
             source = src_lang if src_lang else "English"
             prompt = (
                 f"Translate the following text from {source} to {tgt}.\n\n"
                 f"Rules:\n"
-                f"1) Output translation text ONLY (no source text, no notes, no questions, no language-detection remarks).\n"
+                f"1) Output translation text ONLY (no source text, no notes, no questions).\n"
                 f"2) Preserve original line breaks within each segment.\n"
                 f"3) Do NOT wrap in quotes or code blocks.\n"
-                f"4) IMPORTANT: The text contains multiple segments separated by '{BATCH_SEPARATOR.strip()}'. "
-                f"Translate each segment separately and output them in the same order, separated by the same separator.\n\n"
-                f"{combined_text}"
+                f"4) IMPORTANT: Keep the <<<SEG_N>>> markers in your output.\n\n"
+                f"{combined_text}\n\n"
+                f"Output format (keep all markers):\n"
+                f"<<<SEG_0>>>\n[translation]\n<<<SEG_1>>>\n[translation]..."
             )
 
         payload = {"model": self.model, "prompt": prompt, "stream": False}
@@ -212,19 +364,66 @@ class OllamaClient:
         return False, [str(last)] * len(texts)
 
     def _parse_batch_response(self, response: str, expected_count: int) -> List[str]:
+        """Parse batch response using numbered segment markers.
+
+        Tries multiple parsing strategies:
+        1. Numbered markers (<<<SEG_N>>>)
+        2. Legacy separator
+        3. Alternative separators
+        """
+        # Strategy 1: Try numbered segment markers (most reliable)
+        results = [""] * expected_count
+        pattern = r'<<<SEG_(\d+)>>>\s*(.*?)(?=<<<SEG_|\Z)'
+        matches = re.findall(pattern, response, re.DOTALL)
+
+        if matches:
+            parsed_count = 0
+            for idx_str, content in matches:
+                try:
+                    idx = int(idx_str)
+                    if 0 <= idx < expected_count:
+                        results[idx] = content.strip()
+                        parsed_count += 1
+                except ValueError:
+                    continue
+
+            # If we got all segments, return
+            if parsed_count == expected_count and all(r for r in results):
+                return results
+
+            # If we got most segments, fill in missing ones and return
+            if parsed_count >= expected_count * 0.8:
+                logger.debug(f"Parsed {parsed_count}/{expected_count} segments with numbered markers")
+                return results
+
+        # Strategy 2: Try legacy separator
         separator = BATCH_SEPARATOR.strip()
         parts = response.split(separator)
-        results = [p.strip() for p in parts if p.strip()]
-        if len(results) == expected_count:
-            return results
-        alternative_separators = ["---SEGMENT_SEPARATOR---", "---", "\n\n---\n\n", "\n---\n"]
+        parts = [p.strip() for p in parts if p.strip()]
+        if len(parts) == expected_count:
+            return parts
+
+        # Strategy 3: Try alternative separators
+        alternative_separators = [
+            "---SEGMENT_SEPARATOR---",
+            "\n---\n",
+            "\n\n---\n\n",
+            "---",
+        ]
         for alt_sep in alternative_separators:
             if alt_sep in response:
                 parts = response.split(alt_sep)
-                results = [p.strip() for p in parts if p.strip()]
-                if len(results) == expected_count:
-                    return results
-        return results
+                parts = [p.strip() for p in parts if p.strip()]
+                if len(parts) == expected_count:
+                    return parts
+
+        # Strategy 4: If numbered markers got partial results, use them
+        if matches and any(r for r in results):
+            logger.debug(f"Using partial numbered marker results: {sum(1 for r in results if r)}/{expected_count}")
+            return results
+
+        # Return whatever we got from legacy parsing
+        return parts if parts else results
 
     def unload_model(self) -> Tuple[bool, str]:
         try:

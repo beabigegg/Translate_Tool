@@ -30,6 +30,10 @@ BATCH_SEPARATOR = "\n---SEGMENT_SEPARATOR---\n"
 DEFAULT_MAX_BATCH_CHARS = 80000   # ~80K chars per batch
 MIN_MAX_BATCH_CHARS = 10000       # Minimum 10K chars
 MAX_MAX_BATCH_CHARS = 100000      # Maximum 100K chars
+
+# Translation granularity: "sentence" (legacy) | "paragraph" (recommended for quality)
+TRANSLATION_GRANULARITY = "paragraph"
+MAX_PARAGRAPH_CHARS = 2000  # Split paragraphs longer than this
 EXCEL_FORMULA_MODE = "skip"
 MAX_SHAPE_CHARS = 1200
 
@@ -45,6 +49,22 @@ MIN_FONT_SIZE_PT = 6  # Minimum font size for scaling
 MAX_FONT_SIZE_PT = 72  # Maximum font size
 FONT_SIZE_SHRINK_FACTOR = 0.9  # Shrink factor for font scaling
 PDF_DRAW_MASK = True  # Draw white mask over original text in overlay mode (set False for transparent background)
+PDF_MASK_MARGIN_PT = 0.5  # Margin for white mask to preserve table borders (points)
+PDF_SHOW_MISSING_PLACEHOLDER = True  # Show placeholder text for missing translations
+
+# Language-aware font size configuration
+# Each language can have different max/min font sizes and height ratio
+FONT_SIZE_CONFIG = {
+    "default": {"max": 11, "min": 4, "height_ratio": 0.75, "shrink_factor": 0.88},
+    "zh-tw": {"max": 12, "min": 6, "height_ratio": 0.70, "shrink_factor": 0.85},
+    "zh-cn": {"max": 12, "min": 6, "height_ratio": 0.70, "shrink_factor": 0.85},
+    "ja": {"max": 12, "min": 6, "height_ratio": 0.70, "shrink_factor": 0.85},
+    "ko": {"max": 12, "min": 6, "height_ratio": 0.70, "shrink_factor": 0.85},
+    "th": {"max": 11, "min": 5, "height_ratio": 0.72, "shrink_factor": 0.88},
+    "ar": {"max": 13, "min": 6, "height_ratio": 0.65, "shrink_factor": 0.88},
+    "he": {"max": 13, "min": 6, "height_ratio": 0.65, "shrink_factor": 0.88},
+    "vi": {"max": 11, "min": 5, "height_ratio": 0.73, "shrink_factor": 0.88},
+}
 
 MAX_SEGMENTS = 10000
 MAX_TEXT_LENGTH = 100000

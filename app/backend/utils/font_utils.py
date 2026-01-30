@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from reportlab.lib.fonts import addMapping
 from reportlab.pdfbase import pdfmetrics
@@ -411,3 +411,121 @@ def detect_text_direction(text: str) -> str:
     if total_count > 0 and rtl_count / total_count > 0.5:
         return "rtl"
     return "ltr"
+
+
+# Required fonts for full CJK support
+REQUIRED_FONTS = {
+    "zh-TW": {
+        "name": "Traditional Chinese",
+        "patterns": ["NotoSansTC-Regular.ttf", "NotoSansTC[wght].ttf"],
+        "download_url": "https://fonts.google.com/noto/specimen/Noto+Sans+TC",
+    },
+    "zh-CN": {
+        "name": "Simplified Chinese",
+        "patterns": ["NotoSansSC-Regular.ttf", "NotoSansSC[wght].ttf"],
+        "download_url": "https://fonts.google.com/noto/specimen/Noto+Sans+SC",
+    },
+    "ja": {
+        "name": "Japanese",
+        "patterns": ["NotoSansJP-Variable.ttf", "NotoSansJP-Regular.ttf", "NotoSansJP-Regular.otf"],
+        "download_url": "https://fonts.google.com/noto/specimen/Noto+Sans+JP",
+    },
+    "ko": {
+        "name": "Korean",
+        "patterns": ["NotoSansKR-Variable.ttf", "NotoSansKR-Regular.ttf", "NotoSansKR-Regular.otf"],
+        "download_url": "https://fonts.google.com/noto/specimen/Noto+Sans+KR",
+    },
+    "th": {
+        "name": "Thai",
+        "patterns": ["NotoSansThai-Regular.ttf"],
+        "download_url": "https://fonts.google.com/noto/specimen/Noto+Sans+Thai",
+    },
+    "ar": {
+        "name": "Arabic",
+        "patterns": ["NotoSansArabic-Regular.ttf"],
+        "download_url": "https://fonts.google.com/noto/specimen/Noto+Sans+Arabic",
+    },
+    "he": {
+        "name": "Hebrew",
+        "patterns": ["NotoSansHebrew-Regular.ttf"],
+        "download_url": "https://fonts.google.com/noto/specimen/Noto+Sans+Hebrew",
+    },
+}
+
+
+def check_required_fonts(languages: Optional[List[str]] = None) -> dict:
+    """Check if required fonts are available for specified languages.
+
+    Args:
+        languages: List of language codes to check. If None, checks all CJK languages.
+
+    Returns:
+        Dict with 'available' and 'missing' lists of language info.
+    """
+    if languages is None:
+        # Default to checking CJK languages
+        languages = ["zh-TW", "zh-CN", "ja", "ko"]
+
+    available = []
+    missing = []
+
+    for lang_code in languages:
+        lang_lower = lang_code.lower()
+
+        # Find the font info
+        font_info = REQUIRED_FONTS.get(lang_lower)
+        if font_info is None:
+            # Try to find by full code
+            for key, info in REQUIRED_FONTS.items():
+                if key == lang_lower:
+                    font_info = info
+                    break
+
+        if font_info is None:
+            continue  # Not a font-requiring language
+
+        # Check if font exists
+        font_path = find_font_file(font_info["patterns"])
+        if font_path:
+            available.append({
+                "code": lang_code,
+                "name": font_info["name"],
+                "path": str(font_path),
+            })
+        else:
+            missing.append({
+                "code": lang_code,
+                "name": font_info["name"],
+                "patterns": font_info["patterns"],
+                "download_url": font_info["download_url"],
+            })
+
+    return {"available": available, "missing": missing}
+
+
+def get_font_check_message(languages: Optional[list[str]] = None) -> Optional[str]:
+    """Get a user-friendly message about missing fonts.
+
+    Args:
+        languages: List of language codes to check.
+
+    Returns:
+        Warning message if fonts are missing, None if all fonts are available.
+    """
+    result = check_required_fonts(languages)
+    if not result["missing"]:
+        return None
+
+    lines = ["⚠️ 缺少部分語言的字型檔案，PDF 輸出可能無法正確顯示："]
+    lines.append("")
+
+    for font in result["missing"]:
+        lines.append(f"  • {font['name']} ({font['code']})")
+        lines.append(f"    下載: {font['download_url']}")
+
+    lines.append("")
+    lines.append("請將字型檔案放置於以下任一位置：")
+    lines.append(f"  • {Path(__file__).parent.parent / 'fonts'}")
+    lines.append("  • 系統字型資料夾")
+
+    return "\n".join(lines)

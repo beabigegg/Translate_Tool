@@ -15,7 +15,12 @@ from typing import TYPE_CHECKING, Callable, Dict, List, Optional
 from reportlab.lib.colors import white
 from reportlab.pdfgen.canvas import Canvas
 
-from app.backend.config import LANG_CODE_MAP
+from app.backend.config import (
+    FONT_SIZE_CONFIG,
+    LANG_CODE_MAP,
+    PDF_MASK_MARGIN_PT,
+    PDF_SHOW_MISSING_PLACEHOLDER,
+)
 from app.backend.renderers.base import RenderMode
 from app.backend.renderers.text_region_renderer import (
     TextRegion,
@@ -102,6 +107,34 @@ class PDFGenerator:
         self.target_lang = target_lang
         self.draw_mask = draw_mask
         self.log = log
+        self._font_config = self._get_font_config()
+        self._missing_translations: List[str] = []  # Track missing translations
+
+    @property
+    def missing_translation_count(self) -> int:
+        """Get the number of missing translations after generation."""
+        return len(self._missing_translations)
+
+    @property
+    def missing_translations(self) -> List[str]:
+        """Get the list of texts that had no translation."""
+        return self._missing_translations.copy()
+
+    def _get_font_config(self) -> dict:
+        """Get language-aware font configuration.
+
+        Returns:
+            Dict with max, min, height_ratio, shrink_factor keys.
+        """
+        lang_code = _get_lang_code(self.target_lang).lower()
+        config = FONT_SIZE_CONFIG.get(lang_code, FONT_SIZE_CONFIG.get("default", {}))
+        # Ensure all required keys exist with defaults
+        return {
+            "max": config.get("max", 11),
+            "min": config.get("min", 4),
+            "height_ratio": config.get("height_ratio", 0.75),
+            "shrink_factor": config.get("shrink_factor", 0.88),
+        }
 
     def generate(
         self,
@@ -123,6 +156,9 @@ class PDFGenerator:
             FileNotFoundError: If source PDF not found.
         """
         _ensure_fitz()
+
+        # Reset missing translations tracking for new generation
+        self._missing_translations = []
 
         if mode == RenderMode.INLINE:
             raise ValueError(
@@ -183,7 +219,12 @@ class PDFGenerator:
                 original_text = element.content.strip()
                 translated_text = translations.get(original_text)
                 if translated_text is None:
-                    continue
+                    # Track missing translation
+                    self._missing_translations.append(original_text[:50])
+                    if PDF_SHOW_MISSING_PLACEHOLDER:
+                        translated_text = f"[未翻譯] {original_text[:20]}..."
+                    else:
+                        continue
 
                 # Search for exact text position to get precise quads
                 text_quads = page.search_for(original_text, quads=True)
@@ -205,21 +246,23 @@ class PDFGenerator:
 
                 if matched_quad:
                     # Use the precise quad rect for white rectangle
-                    # Shrink slightly to preserve adjacent table lines
+                    # Shrink by configurable margin to preserve adjacent table lines
                     rect = matched_quad.rect
+                    margin = PDF_MASK_MARGIN_PT
                     cover_rect = fitz.Rect(
-                        rect.x0 + 0.2,
-                        rect.y0 + 0.2,
-                        rect.x1 - 0.2,
-                        rect.y1 - 0.2,
+                        rect.x0 + margin,
+                        rect.y0 + margin,
+                        rect.x1 - margin,
+                        rect.y1 - margin,
                     )
                 else:
-                    # Fallback: use element bbox with margin
+                    # Fallback: use element bbox with larger margin
+                    margin = PDF_MASK_MARGIN_PT * 2
                     cover_rect = fitz.Rect(
-                        element.bbox.x0 + 0.5,
-                        element.bbox.y0 + 0.5,
-                        element.bbox.x1 - 0.5,
-                        element.bbox.y1 - 0.5,
+                        element.bbox.x0 + margin,
+                        element.bbox.y0 + margin,
+                        element.bbox.x1 - margin,
+                        element.bbox.y1 - margin,
                     )
 
                 # Skip invalid rectangles
@@ -244,6 +287,13 @@ class PDFGenerator:
         # Save output
         src_doc.save(output_path, garbage=4, deflate=True)
         src_doc.close()
+
+        # Report missing translations
+        if self._missing_translations:
+            self.log(f"[PDF] Warning: {len(self._missing_translations)} text(s) without translation")
+            if len(self._missing_translations) <= 5:
+                for text in self._missing_translations:
+                    self.log(f"[PDF]   - {text}...")
 
         self.log(f"[PDF] Saved overlay PDF: {Path(output_path).name}")
 
@@ -312,16 +362,19 @@ class PDFGenerator:
             f"lang_code={lang_code}, fontname={fontname}, font_file={font_file}"
         )
 
+        # Get language-aware font configuration
+        fc = self._font_config
+
         # Estimate initial font size based on rect height and line count
         lines = text.split("\n")
         line_count = max(len(lines), 1)
-        max_font_size = rect.height / line_count * 0.75
-        font_size = min(max_font_size, 11)  # Cap at 11pt
+        max_font_size = rect.height / line_count * fc["height_ratio"]
+        font_size = min(max_font_size, fc["max"])
 
         # Try inserting with decreasing font sizes until it fits
-        for _ in range(15):
-            if font_size < 4:
-                font_size = 4
+        for _ in range(20):  # More iterations for better fit
+            if font_size < fc["min"]:
+                font_size = fc["min"]
                 break
             try:
                 # insert_textbox returns remaining text length if it doesn't fit
@@ -346,18 +399,19 @@ class PDFGenerator:
                 if result >= 0:  # Success (all text fits)
                     return
                 # Text didn't fit, try smaller size
-                font_size *= 0.88
+                font_size *= fc["shrink_factor"]
             except Exception as e:
                 logger.debug(f"insert_textbox failed: {e}")
-                font_size *= 0.88
+                font_size *= fc["shrink_factor"]
 
         # Final attempt with minimum size
         try:
+            final_size = max(font_size, fc["min"])
             if font_file:
                 page.insert_textbox(
                     rect,
                     text,
-                    fontsize=max(font_size, 4),
+                    fontsize=final_size,
                     fontfile=font_file,
                     fontname="F0",
                     align=0,
@@ -366,7 +420,7 @@ class PDFGenerator:
                 page.insert_textbox(
                     rect,
                     text,
-                    fontsize=max(font_size, 4),
+                    fontsize=final_size,
                     fontname=fontname,
                     align=0,
                 )
