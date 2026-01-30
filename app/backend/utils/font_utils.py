@@ -76,6 +76,8 @@ LANGUAGE_FONT_MAP = {
     "ar": ("NotoSansArabic", ["NotoSansArabic-Regular.ttf"]),
     # Hebrew (RTL)
     "he": ("NotoSansHebrew", ["NotoSansHebrew-Regular.ttf"]),
+    # Vietnamese (Latin with diacritics)
+    "vi": ("NotoSans", ["NotoSans-Regular.ttf", "NotoSans[wght].ttf", "DejaVuSans.ttf"]),
     # Default/Latin
     "default": ("Helvetica", []),  # Built-in, no file needed
 }
@@ -413,7 +415,7 @@ def detect_text_direction(text: str) -> str:
     return "ltr"
 
 
-# Required fonts for full CJK support
+# Required fonts for full language support
 REQUIRED_FONTS = {
     "zh-TW": {
         "name": "Traditional Chinese",
@@ -449,6 +451,11 @@ REQUIRED_FONTS = {
         "name": "Hebrew",
         "patterns": ["NotoSansHebrew-Regular.ttf"],
         "download_url": "https://fonts.google.com/noto/specimen/Noto+Sans+Hebrew",
+    },
+    "vi": {
+        "name": "Vietnamese",
+        "patterns": ["NotoSans-Regular.ttf", "NotoSans[wght].ttf", "DejaVuSans.ttf"],
+        "download_url": "https://fonts.google.com/noto/specimen/Noto+Sans",
     },
 }
 

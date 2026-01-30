@@ -33,8 +33,10 @@ from app.backend.utils.translation_helpers import translate_blocks_batch
 
 if TYPE_CHECKING:
     from app.backend.models.translatable_document import TranslatableDocument
+    from app.backend.models.translatable_document import TranslatableDocument
 
 logger = logging.getLogger(__name__)
+
 
 # Lazy import for PyMuPDF parser
 _pymupdf_parser = None
@@ -227,7 +229,7 @@ def _translate_pdf_with_pymupdf(
             document_type="PDF document",
         )
 
-        # Collect unique texts for batch translation (like Excel processor)
+        # Collect unique texts for batch translation
         unique_texts = list(set(e.content.strip() for e in translatable if e.content.strip()))
         log(f"[PDF] Translating {len(unique_texts)} unique texts")
 
@@ -465,6 +467,8 @@ def _translate_pdf_to_pdf(
         )
 
         # Collect unique texts for translation
+        # Note: For PDF overlay mode, we translate lines individually to preserve layout
+        # The translation quality is improved by using paragraph-level granularity in translate_blocks_batch
         unique_texts = list(set(e.content.strip() for e in translatable))
         log(f"[PDF] Translating {len(unique_texts)} unique text blocks")
 
@@ -502,6 +506,7 @@ def _translate_pdf_to_pdf(
                 unique_texts, tgt, src_lang, cache, client
             )
 
+            # Build text -> translation mapping
             translations = {}
             missing_count = 0
             for text, (ok, translated) in zip(unique_texts, results):

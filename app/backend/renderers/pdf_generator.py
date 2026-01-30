@@ -183,10 +183,11 @@ class PDFGenerator:
     ) -> None:
         """Generate overlay mode PDF.
 
-        Uses a hybrid approach:
+        Uses redaction to remove original text and insert translations:
         1. Search for exact text positions using page.search_for()
-        2. Draw white rectangles only over found text quads (preserves table borders)
-        3. Insert translated text at the original bbox position
+        2. Add redaction annotations to remove original text (preserves table borders)
+        3. Apply all redactions at once per page
+        4. Insert translated text at the original bbox position
 
         Args:
             document: Source document.
@@ -210,6 +211,9 @@ class PDFGenerator:
             elements = elements_by_page.get(page_num + 1, [])
             if not elements:
                 continue
+
+            # Collect redaction areas and translations for this page
+            redaction_items = []  # List of (redact_rect, text_rect, translated_text)
 
             # Process each element
             for element in elements:
@@ -245,11 +249,11 @@ class PDFGenerator:
                         break
 
                 if matched_quad:
-                    # Use the precise quad rect for white rectangle
+                    # Use the precise quad rect for redaction
                     # Shrink by configurable margin to preserve adjacent table lines
                     rect = matched_quad.rect
                     margin = PDF_MASK_MARGIN_PT
-                    cover_rect = fitz.Rect(
+                    redact_rect = fitz.Rect(
                         rect.x0 + margin,
                         rect.y0 + margin,
                         rect.x1 - margin,
@@ -258,7 +262,7 @@ class PDFGenerator:
                 else:
                     # Fallback: use element bbox with larger margin
                     margin = PDF_MASK_MARGIN_PT * 2
-                    cover_rect = fitz.Rect(
+                    redact_rect = fitz.Rect(
                         element.bbox.x0 + margin,
                         element.bbox.y0 + margin,
                         element.bbox.x1 - margin,
@@ -266,23 +270,38 @@ class PDFGenerator:
                     )
 
                 # Skip invalid rectangles
-                if cover_rect.width < 1 or cover_rect.height < 1:
+                if redact_rect.width < 1 or redact_rect.height < 1:
                     continue
 
-                # Draw white rectangle to cover original text
-                shape = page.new_shape()
-                shape.draw_rect(cover_rect)
-                shape.finish(color=None, fill=(1, 1, 1))  # White fill, no border
-                shape.commit()
-
-                # Insert translated text at original bbox position
+                # Text insertion rect (use full element bbox)
                 text_rect = fitz.Rect(
                     element.bbox.x0,
                     element.bbox.y0,
                     element.bbox.x1,
                     element.bbox.y1,
                 )
+
+                redaction_items.append((redact_rect, text_rect, translated_text))
+
+            # Apply redactions if mask is enabled
+            if self.draw_mask and redaction_items:
+                # Add all redaction annotations first
+                for redact_rect, _, _ in redaction_items:
+                    # Add redaction annotation with white fill
+                    page.add_redact_annot(redact_rect, fill=(1, 1, 1))
+
+                # Apply all redactions at once (removes text from PDF)
+                page.apply_redactions()
+
+            # Now insert all translated text
+            for _, text_rect, translated_text in redaction_items:
                 self._insert_text_in_rect(page, text_rect, translated_text)
+
+        # Subset fonts to embed only used glyphs (important for CJK fonts)
+        try:
+            src_doc.subset_fonts()
+        except Exception as e:
+            logger.debug(f"Font subsetting warning: {e}")
 
         # Save output
         src_doc.save(output_path, garbage=4, deflate=True)
@@ -307,6 +326,7 @@ class PDFGenerator:
 
         # Map language codes to font file patterns
         # Supports TTF and OTF formats (prefer Variable TTF for consistency)
+        # Vietnamese uses Latin script with diacritics - NotoSans covers it
         font_file_map = {
             "zh-tw": ["NotoSansTC-Regular.ttf"],
             "zh-cn": ["NotoSansSC-Regular.ttf"],
@@ -315,6 +335,7 @@ class PDFGenerator:
             "th": ["NotoSansThai-Regular.ttf"],
             "ar": ["NotoSansArabic-Regular.ttf"],
             "he": ["NotoSansHebrew-Regular.ttf"],
+            "vi": ["NotoSans-Regular.ttf", "NotoSans[wght].ttf", "DejaVuSans.ttf"],
         }
 
         lang_code = _get_lang_code(self.target_lang).lower()
@@ -329,101 +350,155 @@ class PDFGenerator:
         self.log(f"[PDF] No font file found for {self.target_lang} (code: {lang_code})")
         return None
 
+    def _wrap_text(self, text: str, font, fontsize: float, max_width: float) -> List[str]:
+        """Wrap text to fit within max_width.
+
+        Args:
+            text: Text to wrap.
+            font: PyMuPDF font object.
+            fontsize: Font size in points.
+            max_width: Maximum width in points.
+
+        Returns:
+            List of wrapped lines.
+        """
+        if not text:
+            return [""]
+
+        wrapped_lines = []
+        for line in text.split("\n"):
+            if not line:
+                wrapped_lines.append("")
+                continue
+
+            # Check if line fits
+            if font.text_length(line, fontsize=fontsize) <= max_width:
+                wrapped_lines.append(line)
+                continue
+
+            # Need to wrap this line
+            current_line = ""
+            for char in line:
+                test_line = current_line + char
+                if font.text_length(test_line, fontsize=fontsize) <= max_width:
+                    current_line = test_line
+                else:
+                    if current_line:
+                        wrapped_lines.append(current_line)
+                    current_line = char
+
+            if current_line:
+                wrapped_lines.append(current_line)
+
+        return wrapped_lines if wrapped_lines else [""]
+
     def _insert_text_in_rect(
         self,
         page,
         rect,
         text: str,
     ) -> None:
-        """Insert text into a rectangle with automatic font sizing.
+        """Insert text into a rectangle with automatic font sizing and text wrapping.
+
+        Uses TextWriter for proper Unicode support (especially Vietnamese diacritics).
+        Wraps long text lines to fit within the rectangle width.
 
         Args:
             page: PyMuPDF page object.
             rect: Target fitz.Rect.
             text: Text to insert.
         """
-        # Convert language name to code (e.g., "Traditional Chinese" -> "zh-TW")
-        lang_code = _get_lang_code(self.target_lang).lower()
+        import fitz
 
-        # Try to get actual font file first (more reliable for CJK)
+        # Try to get actual font file first (required for proper Unicode support)
         font_file = self._get_font_file()
-
-        # Fallback to PyMuPDF built-in fonts if no file found
-        font_map = {
-            "zh-tw": "china-ts",
-            "zh-cn": "china-ss",
-            "ja": "japan",
-            "ko": "korea",
-        }
-        fontname = font_map.get(lang_code, "helv")
-
-        logger.debug(
-            f"Font selection: target_lang={self.target_lang}, "
-            f"lang_code={lang_code}, fontname={fontname}, font_file={font_file}"
-        )
 
         # Get language-aware font configuration
         fc = self._font_config
 
-        # Estimate initial font size based on rect height and line count
-        lines = text.split("\n")
-        line_count = max(len(lines), 1)
-        max_font_size = rect.height / line_count * fc["height_ratio"]
-        font_size = min(max_font_size, fc["max"])
+        # Create font object using fontbuffer for proper embedding
+        # Note: Using fontbuffer instead of fontfile ensures CJK fonts are embedded in the PDF
+        try:
+            if font_file:
+                # Read font file into buffer for proper embedding
+                with open(font_file, "rb") as f:
+                    font_buffer = f.read()
+                font = fitz.Font(fontbuffer=font_buffer)
+            else:
+                # Fallback to built-in font
+                lang_code = _get_lang_code(self.target_lang).lower()
+                font_map = {
+                    "zh-tw": "china-ts",
+                    "zh-cn": "china-ss",
+                    "ja": "japan",
+                    "ko": "korea",
+                }
+                fontname = font_map.get(lang_code, "helv")
+                font = fitz.Font(fontname)
+        except Exception as e:
+            logger.warning(f"Failed to create font: {e}, using default")
+            font = fitz.Font("helv")
+
+        # Start with max font size and decrease until text fits
+        font_size = fc["max"]
+        line_spacing = 1.15
 
         # Try inserting with decreasing font sizes until it fits
-        for _ in range(20):  # More iterations for better fit
+        for _ in range(25):
             if font_size < fc["min"]:
                 font_size = fc["min"]
                 break
+
             try:
-                # insert_textbox returns remaining text length if it doesn't fit
-                # Use font_file if available for better CJK support
-                if font_file:
-                    result = page.insert_textbox(
-                        rect,
-                        text,
-                        fontsize=font_size,
-                        fontfile=font_file,
-                        fontname="F0",  # PyMuPDF requires a name when using fontfile
-                        align=0,  # Left align
-                    )
-                else:
-                    result = page.insert_textbox(
-                        rect,
-                        text,
-                        fontsize=font_size,
-                        fontname=fontname,
-                        align=0,  # Left align
-                    )
-                if result >= 0:  # Success (all text fits)
+                # Wrap text to fit within rect width
+                wrapped_lines = self._wrap_text(text, font, font_size, rect.width)
+
+                # Calculate total height needed
+                total_height = len(wrapped_lines) * font_size * line_spacing
+
+                # Check if wrapped text fits vertically
+                if total_height <= rect.height:
+                    # Text fits! Insert it
+                    tw = fitz.TextWriter(page.rect)
+                    x = rect.x0
+                    y = rect.y0 + font_size  # Baseline offset
+
+                    for line in wrapped_lines:
+                        if y > rect.y1:
+                            break
+                        tw.append((x, y), line, font=font, fontsize=font_size)
+                        y += font_size * line_spacing
+
+                    tw.write_text(page)
                     return
-                # Text didn't fit, try smaller size
-                font_size *= fc["shrink_factor"]
-            except Exception as e:
-                logger.debug(f"insert_textbox failed: {e}")
+
+                # Text didn't fit vertically, try smaller size
                 font_size *= fc["shrink_factor"]
 
-        # Final attempt with minimum size
+            except Exception as e:
+                logger.debug(f"TextWriter failed: {e}")
+                font_size *= fc["shrink_factor"]
+
+        # Final attempt with minimum size - truncate if needed
         try:
             final_size = max(font_size, fc["min"])
-            if font_file:
-                page.insert_textbox(
-                    rect,
-                    text,
-                    fontsize=final_size,
-                    fontfile=font_file,
-                    fontname="F0",
-                    align=0,
-                )
-            else:
-                page.insert_textbox(
-                    rect,
-                    text,
-                    fontsize=final_size,
-                    fontname=fontname,
-                    align=0,
-                )
+            wrapped_lines = self._wrap_text(text, font, final_size, rect.width)
+
+            tw = fitz.TextWriter(page.rect)
+            y = rect.y0 + final_size
+
+            for line in wrapped_lines:
+                if y > rect.y1:
+                    # Log overflow warning
+                    logger.debug(
+                        f"Text does not fit in bbox even at minimum font size {final_size}pt: "
+                        f"text='{text[:50]}...', bbox=({rect.width:.1f}, {rect.height:.1f})"
+                    )
+                    break
+                tw.append((rect.x0, y), line, font=font, fontsize=final_size)
+                y += final_size * line_spacing
+
+            tw.write_text(page)
         except Exception as e:
             logger.warning(f"Failed to insert text: {e}")
 

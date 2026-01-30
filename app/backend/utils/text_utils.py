@@ -61,8 +61,9 @@ def should_translate(text: Any, source_lang: str) -> bool:
 
     Note:
         - Empty or whitespace-only text: skip
-        - Pure digits: skip
+        - Pure digits or numbers with punctuation (e.g., "5.", "1.4", "-10"): skip
         - Pure punctuation/symbols: skip
+        - Very short text with insufficient meaningful content: skip
         - All other text: translate (regardless of source language setting)
 
     The source_lang parameter is kept for API compatibility but no longer
@@ -82,6 +83,24 @@ def should_translate(text: Any, source_lang: str) -> bool:
 
     # Pure digits don't need translation
     if filtered.isdigit():
+        return False
+
+    # Check if text is a number with punctuation (e.g., "5.", "1.4", "-10", "3,900")
+    # Pattern: optional minus, digits, optional decimal/comma with more digits
+    number_pattern = re.compile(r'^[-+]?\d+([.,]\d+)*[.]?$')
+    if number_pattern.match(text_str):
+        return False
+
+    # Extract only letters (alphabetic characters)
+    letters_only = "".join(ch for ch in text_str if ch.isalpha())
+
+    # Skip if no letters at all
+    if not letters_only:
+        return False
+
+    # Skip very short text that likely lacks meaningful context
+    # At least 3 letters required for translation
+    if len(letters_only) < 3:
         return False
 
     # All other text should be translated
