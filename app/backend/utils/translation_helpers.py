@@ -5,10 +5,8 @@ from __future__ import annotations
 import re
 from typing import Dict, List, Optional, Tuple
 
-from app.backend.cache.translation_cache import TranslationCache
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import (
-    BATCH_SEPARATOR,
     DEFAULT_MAX_BATCH_CHARS,
     MAX_MAX_BATCH_CHARS,
     MAX_PARAGRAPH_CHARS,
@@ -129,7 +127,6 @@ def translate_merged_paragraphs(
     texts: List[str],
     tgt: str,
     src_lang: Optional[str],
-    cache: TranslationCache,
     client: OllamaClient,
     max_chars: int = MAX_PARAGRAPH_CHARS,
 ) -> List[Tuple[bool, str]]:
@@ -142,7 +139,6 @@ def translate_merged_paragraphs(
         texts: List of texts to translate.
         tgt: Target language.
         src_lang: Source language.
-        cache: Translation cache.
         client: Ollama client.
         max_chars: Maximum characters per merged batch.
 
@@ -152,37 +148,31 @@ def translate_merged_paragraphs(
     if not texts:
         return []
 
-    src_key = (src_lang or "auto").lower()
     results: List[Tuple[bool, str]] = [(False, "")] * len(texts)
 
-    # Check cache for all texts first
-    uncached_indices: List[int] = []
-    uncached_texts: List[str] = []
+    # Collect non-empty texts with their indices
+    valid_indices: List[int] = []
+    valid_texts: List[str] = []
 
     for i, text in enumerate(texts):
         if not text or not text.strip():
             results[i] = (True, "")
-            continue
-
-        cached = cache.get(src_key, tgt, text)
-        if cached is not None:
-            results[i] = (True, cached)
         else:
-            uncached_indices.append(i)
-            uncached_texts.append(text)
+            valid_indices.append(i)
+            valid_texts.append(text)
 
-    if not uncached_texts:
+    if not valid_texts:
         return results
 
-    # Merge uncached texts into batches
-    merged_batches = _merge_texts_with_markers(uncached_texts, max_chars)
+    # Merge texts into batches
+    merged_batches = _merge_texts_with_markers(valid_texts, max_chars)
     logger.debug(
         "Merged %d texts into %d batches for context-aware translation",
-        len(uncached_texts), len(merged_batches)
+        len(valid_texts), len(merged_batches)
     )
 
-    # Track which uncached index we're at
-    uncached_offset = 0
+    # Track which valid index we're at
+    valid_offset = 0
 
     # Translate each merged batch
     for merged_text, local_indices in merged_batches:
@@ -202,34 +192,31 @@ def translate_merged_paragraphs(
             translated_parts = _parse_merged_response(response, batch_size)
 
             for local_idx, translation in enumerate(translated_parts):
-                original_idx = uncached_indices[uncached_offset + local_idx]
+                original_idx = valid_indices[valid_offset + local_idx]
                 original_text = texts[original_idx]
 
                 if translation:
                     results[original_idx] = (True, translation)
-                    cache.put(src_key, tgt, original_text, translation)
                 else:
                     # Fallback: translate individually
                     fallback_ok, fallback_result = client.translate_once(original_text, tgt, src_lang)
                     if fallback_ok:
                         results[original_idx] = (True, fallback_result)
-                        cache.put(src_key, tgt, original_text, fallback_result)
                     else:
                         results[original_idx] = (False, f"[翻譯失敗] {original_text[:30]}...")
         else:
             # Batch failed, fallback to individual translation
             logger.warning("Merged translation failed, falling back to individual")
             for local_idx in range(batch_size):
-                original_idx = uncached_indices[uncached_offset + local_idx]
+                original_idx = valid_indices[valid_offset + local_idx]
                 original_text = texts[original_idx]
                 fallback_ok, fallback_result = client.translate_once(original_text, tgt, src_lang)
                 if fallback_ok:
                     results[original_idx] = (True, fallback_result)
-                    cache.put(src_key, tgt, original_text, fallback_result)
                 else:
                     results[original_idx] = (False, f"[翻譯失敗] {original_text[:30]}...")
 
-        uncached_offset += batch_size
+        valid_offset += batch_size
 
     return results
 
@@ -238,7 +225,6 @@ def translate_block_as_paragraph(
     text: str,
     tgt: str,
     src_lang: Optional[str],
-    cache: TranslationCache,
     client: OllamaClient,
 ) -> Tuple[bool, str]:
     """Translate entire text block as a single unit, preserving context.
@@ -250,7 +236,6 @@ def translate_block_as_paragraph(
         text: Text to translate.
         tgt: Target language.
         src_lang: Source language (or None for auto-detect).
-        cache: Translation cache.
         client: Ollama client.
 
     Returns:
@@ -259,19 +244,9 @@ def translate_block_as_paragraph(
     if not text or not text.strip():
         return True, ""
 
-    src_key = (src_lang or "auto").lower()
-
-    # Check cache first
-    cached = cache.get(src_key, tgt, text)
-    if cached is not None:
-        return True, cached
-
     # If text is within reasonable length, translate as whole
     if len(text) <= MAX_PARAGRAPH_CHARS:
-        ok, result = client.translate_once(text, tgt, src_lang)
-        if ok:
-            cache.put(src_key, tgt, text, result)
-        return ok, result
+        return client.translate_once(text, tgt, src_lang)
 
     # For very long texts, split by paragraphs (double newlines) or sentences
     logger.debug(f"Text too long ({len(text)} chars), splitting for translation")
@@ -297,15 +272,8 @@ def translate_block_as_paragraph(
     translated_chunks = []
     all_ok = True
     for chunk in final_chunks:
-        # Check cache for chunk
-        cached_chunk = cache.get(src_key, tgt, chunk)
-        if cached_chunk is not None:
-            translated_chunks.append(cached_chunk)
-            continue
-
         ok, result = client.translate_once(chunk, tgt, src_lang)
         if ok:
-            cache.put(src_key, tgt, chunk, result)
             translated_chunks.append(result)
         else:
             all_ok = False
@@ -315,10 +283,6 @@ def translate_block_as_paragraph(
     joiner = "\n\n" if "\n\n" in text else "\n"
     final_result = joiner.join(translated_chunks)
 
-    # Cache the full result if all chunks succeeded
-    if all_ok:
-        cache.put(src_key, tgt, text, final_result)
-
     return all_ok, final_result
 
 
@@ -326,15 +290,11 @@ def translate_block_sentencewise(
     text: str,
     tgt: str,
     src_lang: Optional[str],
-    cache: TranslationCache,
     client: OllamaClient,
 ) -> Tuple[bool, str]:
+    """Translate text sentence by sentence."""
     if not text or not text.strip():
         return True, ""
-    src_key = (src_lang or "auto").lower()
-    cached_whole = cache.get(src_key, tgt, text)
-    if cached_whole is not None:
-        return True, cached_whole
 
     out_lines: List[str] = []
     all_ok = True
@@ -346,23 +306,15 @@ def translate_block_sentencewise(
         sentences = split_sentences(raw_line, src_lang) or [raw_line]
         parts = []
         for sentence in sentences:
-            cached = cache.get(src_key, tgt, sentence)
-            if cached is not None:
-                parts.append(cached)
-                continue
             ok, ans = client.translate_once(sentence, tgt, src_lang)
             if not ok:
                 all_ok = False
                 ans = f"[Translation failed|{tgt}] {sentence}"
-            else:
-                cache.put(src_key, tgt, sentence, ans)
             parts.append(ans)
         joiner = _get_sentence_joiner(tgt)
         out_lines.append(joiner.join(parts))
 
     final = "\n".join(out_lines)
-    if all_ok:
-        cache.put(src_key, tgt, text, final)
     return all_ok, final
 
 
@@ -375,13 +327,11 @@ class BatchTranslator:
     def __init__(
         self,
         client: OllamaClient,
-        cache: TranslationCache,
         max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
         tgt: str = "",
         src_lang: Optional[str] = None,
     ) -> None:
         self.client = client
-        self.cache = cache
         self.max_batch_chars = max(MIN_MAX_BATCH_CHARS, min(max_batch_chars, MAX_MAX_BATCH_CHARS))
         self.tgt = tgt
         self.src_lang = src_lang
@@ -390,18 +340,11 @@ class BatchTranslator:
         self._results: Dict[int, Tuple[bool, str]] = {}
         self._next_index = 0
 
-    def _get_src_key(self) -> str:
-        return (self.src_lang or "auto").lower()
-
     def add(self, text: str) -> int:
         idx = self._next_index
         self._next_index += 1
         if not text or not text.strip():
             self._results[idx] = (True, "")
-            return idx
-        cached = self.cache.get(self._get_src_key(), self.tgt, text)
-        if cached is not None:
-            self._results[idx] = (True, cached)
             return idx
 
         text_chars = len(text)
@@ -423,7 +366,6 @@ class BatchTranslator:
             if ok and len(results) == len(texts):
                 for i, (text, idx) in enumerate(self._pending):
                     self._results[idx] = (True, results[i])
-                    self.cache.put(self._get_src_key(), self.tgt, text, results[i])
                 logger.debug("Batch translation succeeded: %s segments, %s chars", len(texts), total_chars)
             else:
                 logger.warning("Batch translation failed, falling back: %s segments, %s chars", len(texts), total_chars)
@@ -438,8 +380,6 @@ class BatchTranslator:
             ok, ans = self.client.translate_once(text, self.tgt, self.src_lang)
             if not ok:
                 ans = f"[Translation failed|{self.tgt}] {text}"
-            else:
-                self.cache.put(self._get_src_key(), self.tgt, text, ans)
             self._results[idx] = (ok, ans)
 
     def get(self, idx: int) -> Tuple[bool, str]:
@@ -457,7 +397,6 @@ def translate_blocks_batch(
     texts: List[str],
     tgt: str,
     src_lang: Optional[str],
-    cache: TranslationCache,
     client: OllamaClient,
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
     granularity: Optional[str] = None,
@@ -469,7 +408,6 @@ def translate_blocks_batch(
         texts: List of texts to translate.
         tgt: Target language.
         src_lang: Source language.
-        cache: Translation cache.
         client: Ollama client.
         max_batch_chars: Maximum characters per batch.
         granularity: Translation granularity ("sentence" or "paragraph").
@@ -490,26 +428,24 @@ def translate_blocks_batch(
     # For single text, use appropriate method based on granularity
     if len(texts) == 1:
         if use_granularity == "paragraph":
-            return [translate_block_as_paragraph(texts[0], tgt, src_lang, cache, client)]
+            return [translate_block_as_paragraph(texts[0], tgt, src_lang, client)]
         else:
-            return [translate_block_sentencewise(texts[0], tgt, src_lang, cache, client)]
+            return [translate_block_sentencewise(texts[0], tgt, src_lang, client)]
 
     # For paragraph granularity with merged context (recommended for quality)
     if use_granularity == "paragraph" and enable_merged:
         logger.debug("Using merged paragraph translation for %d texts", len(texts))
-        return translate_merged_paragraphs(texts, tgt, src_lang, cache, client, MAX_PARAGRAPH_CHARS)
+        return translate_merged_paragraphs(texts, tgt, src_lang, client, MAX_PARAGRAPH_CHARS)
 
     # For paragraph granularity without merged context, translate each block individually
     if use_granularity == "paragraph":
         results = []
         for text in texts:
-            ok, result = translate_block_as_paragraph(text, tgt, src_lang, cache, client)
+            ok, result = translate_block_as_paragraph(text, tgt, src_lang, client)
             results.append((ok, result))
         return results
 
-    # Legacy sentence-level batch translation follows
-
-    src_key = (src_lang or "auto").lower()
+    # Legacy sentence-level batch translation
     results: List[Tuple[bool, str]] = []
     sentences_to_translate: List[Tuple[int, int, int, str]] = []
     text_structures: List[List[List[Optional[str]]]] = []
@@ -518,29 +454,21 @@ def translate_blocks_batch(
         if not text or not text.strip():
             text_structures.append([])
             continue
-        cached_whole = cache.get(src_key, tgt, text)
-        if cached_whole is not None:
-            text_structures.append([[cached_whole]])
-            continue
         lines_structure: List[List[Optional[str]]] = []
         for raw_line in text.split("\n"):
             if not raw_line.strip():
                 lines_structure.append([""])
                 continue
             sentences = split_sentences(raw_line, src_lang) or [raw_line]
-            sentence_cache: List[Optional[str]] = []
+            sentence_results: List[Optional[str]] = []
             for s in sentences:
-                cached = cache.get(src_key, tgt, s)
-                if cached is not None:
-                    sentence_cache.append(cached)
-                else:
-                    sentence_cache.append(None)
-                    sentences_to_translate.append((text_idx, len(lines_structure), len(sentence_cache) - 1, s))
-            lines_structure.append(sentence_cache)
+                sentence_results.append(None)
+                sentences_to_translate.append((text_idx, len(lines_structure), len(sentence_results) - 1, s))
+            lines_structure.append(sentence_results)
         text_structures.append(lines_structure)
 
     if sentences_to_translate:
-        batch_translator = BatchTranslator(client, cache, max_batch_chars, tgt, src_lang)
+        batch_translator = BatchTranslator(client, max_batch_chars, tgt, src_lang)
         sentence_texts = [s for _, _, _, s in sentences_to_translate]
         batch_results = batch_translator.translate_all(sentence_texts)
         for i, (text_idx, line_idx, sent_idx, _) in enumerate(sentences_to_translate):
@@ -555,11 +483,6 @@ def translate_blocks_batch(
         if not struct:
             results.append((True, ""))
             continue
-        if len(struct) == 1 and len(struct[0]) == 1 and struct[0][0]:
-            cached_whole = cache.get(src_key, tgt, text)
-            if cached_whole is not None:
-                results.append((True, cached_whole))
-                continue
         out_lines: List[str] = []
         all_ok = True
         joiner = _get_sentence_joiner(tgt)
@@ -579,7 +502,5 @@ def translate_blocks_batch(
                     parts.append(sent)
             out_lines.append(joiner.join(parts))
         final = "\n".join(out_lines)
-        if all_ok:
-            cache.put(src_key, tgt, text, final)
         results.append((all_ok, final))
     return results

@@ -7,7 +7,6 @@ import threading
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
-from app.backend.cache.translation_cache import TranslationCache
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import (
     DEFAULT_MAX_BATCH_CHARS,
@@ -52,7 +51,6 @@ def process_files(
     output_dir: Path,
     targets: List[str],
     src_lang: Optional[str],
-    cache: TranslationCache,
     include_headers_shapes_via_com: bool,
     ollama_model: str,
     timeout_config: Optional[TimeoutConfig] = None,
@@ -69,7 +67,6 @@ def process_files(
         output_dir: Output directory for translated files.
         targets: Target languages.
         src_lang: Source language (or None for auto-detect).
-        cache: Translation cache instance.
         include_headers_shapes_via_com: Use COM for headers/shapes (Windows).
         ollama_model: Ollama model name.
         timeout_config: Optional timeout configuration.
@@ -112,7 +109,6 @@ def process_files(
                     str(out_path),
                     targets,
                     src_lang,
-                    cache,
                     client,
                     include_headers_shapes_via_com=include_headers_shapes_via_com,
                     stop_flag=stop_flag,
@@ -130,7 +126,6 @@ def process_files(
                     str(out_path),
                     targets,
                     src_lang,
-                    cache,
                     client,
                     include_headers_shapes_via_com=include_headers_shapes_via_com,
                     stop_flag=stop_flag,
@@ -147,7 +142,6 @@ def process_files(
                     str(out_path),
                     targets,
                     src_lang,
-                    cache,
                     client,
                     stop_flag=stop_flag,
                     log=log,
@@ -159,7 +153,6 @@ def process_files(
                     str(out_path),
                     targets,
                     src_lang,
-                    cache,
                     client,
                     stop_flag=stop_flag,
                     log=log,
@@ -172,7 +165,6 @@ def process_files(
                     str(out_path),
                     targets,
                     src_lang,
-                    cache,
                     client,
                     stop_flag=stop_flag,
                     log=log,

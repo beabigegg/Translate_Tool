@@ -11,7 +11,6 @@ import openpyxl
 from openpyxl.comments import Comment
 from openpyxl.styles import Alignment
 
-from app.backend.cache.translation_cache import TranslationCache
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import DEFAULT_MAX_BATCH_CHARS, EXCEL_FORMULA_MODE, MAX_SEGMENTS, MAX_TEXT_LENGTH
 from app.backend.processors.com_helpers import excel_convert, is_win32com_available
@@ -42,7 +41,6 @@ def translate_xlsx_xls(
     out_path: str,
     targets: List[str],
     src_lang: Optional[str],
-    cache: TranslationCache,
     client: OllamaClient,
     excel_formula_mode: str = EXCEL_FORMULA_MODE,
     stop_flag: Optional[threading.Event] = None,
@@ -63,7 +61,6 @@ def translate_xlsx_xls(
                 out_path,
                 targets,
                 src_lang,
-                cache,
                 client,
                 excel_formula_mode=excel_formula_mode,
                 stop_flag=stop_flag,
@@ -118,7 +115,6 @@ def translate_xlsx_xls(
         uniq,
         targets,
         src_lang,
-        cache,
         client,
         max_batch_chars=max_batch_chars,
         stop_flag=stop_flag,

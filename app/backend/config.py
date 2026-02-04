@@ -77,10 +77,6 @@ MAX_JOBS_IN_MEMORY = int(os.environ.get("MAX_JOBS_IN_MEMORY", "100"))
 JOB_TTL_HOURS = int(os.environ.get("JOB_TTL_HOURS", "24"))
 CLEANUP_INTERVAL_MINUTES = int(os.environ.get("CLEANUP_INTERVAL_MINUTES", "30"))
 
-# Performance: Cache management
-CACHE_MAX_ENTRIES = int(os.environ.get("CACHE_MAX_ENTRIES", "50000"))
-CACHE_CLEANUP_BATCH = int(os.environ.get("CACHE_CLEANUP_BATCH", "5000"))
-
 # Performance: SSE stream management
 SSE_IDLE_TIMEOUT_SECONDS = int(os.environ.get("SSE_IDLE_TIMEOUT_SECONDS", "60"))
 

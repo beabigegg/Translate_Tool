@@ -13,7 +13,6 @@ import pptx
 from pptx.table import _Cell
 from pptx.util import Pt as PPTPt
 
-from app.backend.cache.translation_cache import TranslationCache
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import DEFAULT_MAX_BATCH_CHARS, MAX_SEGMENTS, MAX_TEXT_LENGTH
 from app.backend.services.translation_service import translate_texts
@@ -185,7 +184,6 @@ def translate_pptx(
     out_path: str,
     targets: List[str],
     src_lang: Optional[str],
-    cache: TranslationCache,
     client: OllamaClient,
     stop_flag: Optional[threading.Event] = None,
     log: Callable[[str], None] = lambda s: None,
@@ -255,7 +253,6 @@ def translate_pptx(
         uniq,
         targets,
         src_lang,
-        cache,
         client,
         max_batch_chars=max_batch_chars,
         stop_flag=stop_flag,

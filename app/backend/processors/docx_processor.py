@@ -14,7 +14,6 @@ from docx.shared import Pt
 from docx.table import Table, _Cell
 from docx.text.paragraph import Paragraph
 
-from app.backend.cache.translation_cache import TranslationCache
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import (
     DEFAULT_MAX_BATCH_CHARS,
@@ -475,7 +474,6 @@ def translate_docx(
     out_path: str,
     targets: List[str],
     src_lang: Optional[str],
-    cache: TranslationCache,
     client: OllamaClient,
     include_headers_shapes_via_com: bool,
     stop_flag: Optional[threading.Event] = None,
@@ -500,7 +498,6 @@ def translate_docx(
         uniq_texts,
         targets,
         src_lang,
-        cache,
         client,
         max_batch_chars=max_batch_chars,
         stop_flag=stop_flag,
@@ -520,6 +517,6 @@ def translate_docx(
         log(f"[DOCX] output: {os.path.basename(out_path)}")
 
     if not stopped and include_headers_shapes_via_com and is_win32com_available():
-        postprocess_docx_shapes_with_word(out_path, targets, src_lang, cache, client, include_headers=True, log=log)
+        postprocess_docx_shapes_with_word(out_path, targets, src_lang, client, include_headers=True, log=log)
 
     return stopped

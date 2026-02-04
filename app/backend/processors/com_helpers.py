@@ -8,7 +8,6 @@ from typing import Any, Callable, Iterator, List, Optional
 from app.backend.config import MAX_SHAPE_CHARS
 from app.backend.utils.logging_utils import logger
 from app.backend.utils.translation_helpers import translate_block_sentencewise
-from app.backend.cache.translation_cache import TranslationCache
 from app.backend.clients.ollama_client import OllamaClient
 
 try:
@@ -71,7 +70,6 @@ def postprocess_docx_shapes_with_word(
     docx_path: str,
     targets: List[str],
     src_lang: Optional[str],
-    cache: TranslationCache,
     client: OllamaClient,
     include_headers: bool = False,
     log: Callable[[str], None] = lambda s: None,
@@ -105,7 +103,7 @@ def postprocess_docx_shapes_with_word(
                             continue
                         blocks = []
                         for tgt in targets:
-                            ok, translated = translate_block_sentencewise(src, tgt, src_lang, cache, client)
+                            ok, translated = translate_block_sentencewise(src, tgt, src_lang, client)
                             if not ok:
                                 translated = f"[Translation failed|{tgt}] {src}"
                             blocks.append(translated)

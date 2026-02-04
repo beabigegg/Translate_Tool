@@ -5,10 +5,9 @@ from __future__ import annotations
 import logging
 from typing import Callable, Dict, List, Optional, Tuple
 
-from app.backend.cache.translation_cache import TranslationCache
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import DEFAULT_MAX_BATCH_CHARS, SENTENCE_MODE
-from app.backend.utils.translation_helpers import translate_block_sentencewise, translate_blocks_batch
+from app.backend.utils.translation_helpers import translate_blocks_batch
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +54,6 @@ def translate_texts(
     texts: List[str],
     targets: List[str],
     src_lang: Optional[str],
-    cache: TranslationCache,
     client: OllamaClient,
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
     stop_flag=None,
@@ -83,7 +81,7 @@ def translate_texts(
 
         if SENTENCE_MODE:
             # Use character-based batching - translate_blocks_batch handles batching internally
-            results = translate_blocks_batch(texts, tgt, src_lang, cache, client, max_batch_chars=max_batch_chars)
+            results = translate_blocks_batch(texts, tgt, src_lang, client, max_batch_chars=max_batch_chars)
             for text, (ok, res) in zip(texts, results):
                 done += 1
                 if not ok:

@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING, Callable, List, Optional
 import docx
 from PyPDF2 import PdfReader
 
-from app.backend.cache.translation_cache import TranslationCache
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import (
     MAX_SEGMENTS,
@@ -64,7 +63,6 @@ def translate_pdf(
     out_path: str,
     targets: List[str],
     src_lang: Optional[str],
-    cache: TranslationCache,
     client: OllamaClient,
     stop_flag: Optional[threading.Event] = None,
     log: Callable[[str], None] = lambda s: None,
@@ -112,7 +110,6 @@ def translate_pdf(
             out_path,
             targets,
             src_lang,
-            cache,
             client,
             stop_flag,
             log,
@@ -131,7 +128,6 @@ def translate_pdf(
                 out_path,
                 targets,
                 src_lang,
-                cache,
                 client,
                 include_headers_shapes_via_com=False,
                 stop_flag=stop_flag,
@@ -155,7 +151,6 @@ def translate_pdf(
             out_path,
             targets,
             src_lang,
-            cache,
             client,
             stop_flag,
             log,
@@ -167,7 +162,6 @@ def translate_pdf(
             out_path,
             targets,
             src_lang,
-            cache,
             client,
             stop_flag,
             log,
@@ -179,7 +173,6 @@ def _translate_pdf_with_pymupdf(
     out_path: str,
     targets: List[str],
     src_lang: Optional[str],
-    cache: TranslationCache,
     client: OllamaClient,
     stop_flag: Optional[threading.Event],
     log: Callable[[str], None],
@@ -245,7 +238,7 @@ def _translate_pdf_with_pymupdf(
 
             log(f"[PDF] Batch translating to {tgt}...")
             results = translate_blocks_batch(
-                unique_texts, tgt, src_lang, cache, client
+                unique_texts, tgt, src_lang, client
             )
             translations_by_target[tgt] = {
                 text: (translated if ok else f"[Translation failed|{tgt}] {text}")
@@ -302,7 +295,7 @@ def _translate_pdf_with_pymupdf(
     except Exception as exc:
         log(f"[PDF] PyMuPDF parsing failed, falling back to PyPDF2: {exc}")
         return _translate_pdf_with_pypdf2(
-            in_path, out_path, targets, src_lang, cache, client, stop_flag, log
+            in_path, out_path, targets, src_lang, client, stop_flag, log
         )
 
 
@@ -311,7 +304,6 @@ def _translate_pdf_with_pypdf2(
     out_path: str,
     targets: List[str],
     src_lang: Optional[str],
-    cache: TranslationCache,
     client: OllamaClient,
     stop_flag: Optional[threading.Event],
     log: Callable[[str], None],
@@ -360,7 +352,7 @@ def _translate_pdf_with_pypdf2(
 
             log(f"[PDF] Batch translating to {tgt}...")
             results = translate_blocks_batch(
-                unique_texts, tgt, src_lang, cache, client
+                unique_texts, tgt, src_lang, client
             )
             translations_by_target[tgt] = {
                 text: (translated if ok else f"[Translation failed|{tgt}] {text}")
@@ -400,7 +392,6 @@ def _translate_pdf_to_pdf(
     out_path: str,
     targets: List[str],
     src_lang: Optional[str],
-    cache: TranslationCache,
     client: OllamaClient,
     stop_flag: Optional[threading.Event],
     log: Callable[[str], None],
@@ -503,7 +494,7 @@ def _translate_pdf_to_pdf(
             # Translate texts for this language
             log(f"[PDF] [{tgt_idx + 1}/{len(targets)}] Translating to {tgt}...")
             results = translate_blocks_batch(
-                unique_texts, tgt, src_lang, cache, client
+                unique_texts, tgt, src_lang, client
             )
 
             # Build text -> translation mapping
@@ -542,7 +533,7 @@ def _translate_pdf_to_pdf(
         log("[PDF] Falling back to DOCX output")
         docx_out = str(Path(out_path).with_suffix(".docx"))
         return _translate_pdf_with_pymupdf(
-            in_path, docx_out, targets, src_lang, cache, client, stop_flag, log, skip_header_footer
+            in_path, docx_out, targets, src_lang, client, stop_flag, log, skip_header_footer
         )
 
 

@@ -12,7 +12,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from app.backend.cache.translation_cache import TranslationCache
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import (
     CLEANUP_INTERVAL_MINUTES,
@@ -192,7 +191,6 @@ class JobManager:
         log(f"[CONFIG] PDF output_format={pdf_output_format}, layout_mode={pdf_layout_mode}")
 
         def _run_job() -> None:
-            cache = TranslationCache(output_dir / "translation_cache.db")
             client: Optional[OllamaClient] = None
             with job.lock:
                 job.status = "running"
@@ -204,7 +202,6 @@ class JobManager:
                     output_dir,
                     targets,
                     src_lang,
-                    cache,
                     include_headers_shapes_via_com=include_headers,
                     ollama_model=model or DEFAULT_MODEL,
                     timeout_config=timeout_config,
@@ -231,7 +228,6 @@ class JobManager:
                     job.updated_at = time.time()
                 log(f"[ERROR] {exc}")
             finally:
-                cache.close()
                 release_resources(client, log=log)
 
         job.thread = threading.Thread(target=_run_job, daemon=True)
