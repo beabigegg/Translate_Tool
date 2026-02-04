@@ -397,6 +397,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
 
   const fileInputRef = useRef(null);
+  const folderInputRef = useRef(null);
   const logBoxRef = useRef(null);
   const dropZoneRef = useRef(null);
 
@@ -469,8 +470,34 @@ export default function App() {
 
   const handleFileChange = (event) => {
     const incoming = Array.from(event.target.files || []);
-    setFiles(prev => [...prev, ...incoming]);
+    const supportedExts = ['docx', 'pptx', 'xlsx', 'pdf'];
+    const filtered = incoming.filter(file => {
+      const ext = file.name.split('.').pop().toLowerCase();
+      return supportedExts.includes(ext);
+    });
+    setFiles(prev => [...prev, ...filtered]);
     // Reset input value to allow selecting the same file again
+    if (event.target) {
+      event.target.value = '';
+    }
+  };
+
+  const handleFolderChange = (event) => {
+    const incoming = Array.from(event.target.files || []);
+    const supportedExts = ['docx', 'pptx', 'xlsx', 'pdf'];
+    // Filter and preserve relative paths from webkitRelativePath
+    const filtered = incoming
+      .filter(file => {
+        const ext = file.name.split('.').pop().toLowerCase();
+        return supportedExts.includes(ext);
+      })
+      .map(file => {
+        // Use webkitRelativePath as the display name
+        const relativePath = file.webkitRelativePath || file.name;
+        return new File([file], relativePath, { type: file.type });
+      });
+    setFiles(prev => [...prev, ...filtered]);
+    // Reset input value
     if (event.target) {
       event.target.value = '';
     }
@@ -527,20 +554,78 @@ export default function App() {
     }
   }, []);
 
-  const handleDrop = useCallback((e) => {
+  // Helper function to recursively read directory entries
+  const readDirectoryEntries = useCallback(async (entry, basePath = '') => {
+    const files = [];
+    const supportedExts = ['docx', 'pptx', 'xlsx', 'pdf'];
+
+    if (entry.isFile) {
+      const file = await new Promise((resolve) => entry.file(resolve));
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (supportedExts.includes(ext)) {
+        // Preserve relative path for display
+        const relativePath = basePath ? `${basePath}/${file.name}` : file.name;
+        // Create a new File object with the relative path as name
+        const fileWithPath = new File([file], relativePath, { type: file.type });
+        files.push(fileWithPath);
+      }
+    } else if (entry.isDirectory) {
+      const dirReader = entry.createReader();
+      const entries = await new Promise((resolve) => {
+        const allEntries = [];
+        const readEntries = () => {
+          dirReader.readEntries((results) => {
+            if (results.length === 0) {
+              resolve(allEntries);
+            } else {
+              allEntries.push(...results);
+              readEntries();
+            }
+          });
+        };
+        readEntries();
+      });
+
+      const subPath = basePath ? `${basePath}/${entry.name}` : entry.name;
+      for (const subEntry of entries) {
+        const subFiles = await readDirectoryEntries(subEntry, subPath);
+        files.push(...subFiles);
+      }
+    }
+
+    return files;
+  }, []);
+
+  const handleDrop = useCallback(async (e) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
 
-    const droppedFiles = Array.from(e.dataTransfer.files).filter(file => {
-      const ext = file.name.split('.').pop().toLowerCase();
-      return ['docx', 'pptx', 'xlsx', 'pdf'].includes(ext);
-    });
+    const items = e.dataTransfer.items;
+    const supportedExts = ['docx', 'pptx', 'xlsx', 'pdf'];
+    let allFiles = [];
 
-    if (droppedFiles.length > 0) {
-      setFiles(prev => [...prev, ...droppedFiles]);
+    // Check if webkitGetAsEntry is supported (for folder support)
+    if (items && items.length > 0 && items[0].webkitGetAsEntry) {
+      for (const item of items) {
+        const entry = item.webkitGetAsEntry();
+        if (entry) {
+          const files = await readDirectoryEntries(entry);
+          allFiles.push(...files);
+        }
+      }
+    } else {
+      // Fallback to simple file handling
+      allFiles = Array.from(e.dataTransfer.files).filter(file => {
+        const ext = file.name.split('.').pop().toLowerCase();
+        return supportedExts.includes(ext);
+      });
     }
-  }, []);
+
+    if (allFiles.length > 0) {
+      setFiles(prev => [...prev, ...allFiles]);
+    }
+  }, [readDirectoryEntries]);
 
   const handleStart = async () => {
     setError(null);
@@ -630,11 +715,8 @@ export default function App() {
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
-              aria-label="Upload files by clicking or dropping"
+              role="region"
+              aria-label="File upload area"
             >
               <input
                 ref={fileInputRef}
@@ -645,14 +727,40 @@ export default function App() {
                 style={{ display: 'none' }}
                 aria-hidden="true"
               />
+              <input
+                ref={folderInputRef}
+                type="file"
+                webkitdirectory=""
+                directory=""
+                multiple
+                onChange={handleFolderChange}
+                style={{ display: 'none' }}
+                aria-hidden="true"
+              />
               <div className="drop-zone-content">
                 <div className="drop-icon">
                   <Icons.Cloud />
                 </div>
                 <p className="drop-text">
-                  <strong>Drop files here</strong> or <span className="link">browse</span>
+                  <strong>Drop files or folders here</strong>
                 </p>
-                <p className="drop-hint">Support for DOCX, PPTX, XLSX, and PDF files</p>
+                <div className="drop-buttons">
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                  >
+                    Select Files
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={(e) => { e.stopPropagation(); folderInputRef.current?.click(); }}
+                  >
+                    Select Folder
+                  </button>
+                </div>
+                <p className="drop-hint">Support for DOCX, PPTX, XLSX, PDF files and folders with subfolders</p>
               </div>
             </div>
 

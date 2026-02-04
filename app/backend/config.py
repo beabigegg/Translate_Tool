@@ -34,6 +34,8 @@ MAX_MAX_BATCH_CHARS = 100000      # Maximum 100K chars
 # Translation granularity: "sentence" (legacy) | "paragraph" (recommended for quality)
 TRANSLATION_GRANULARITY = "paragraph"
 MAX_PARAGRAPH_CHARS = 2000  # Split paragraphs longer than this
+# Merge multiple paragraphs for context-aware translation (within MAX_PARAGRAPH_CHARS)
+USE_MERGED_CONTEXT = True
 EXCEL_FORMULA_MODE = "skip"
 MAX_SHAPE_CHARS = 1200
 
@@ -66,8 +68,9 @@ FONT_SIZE_CONFIG = {
     "vi": {"max": 11, "min": 5, "height_ratio": 0.73, "shrink_factor": 0.88},
 }
 
-MAX_SEGMENTS = 10000
-MAX_TEXT_LENGTH = 100000
+# Document size limits (set to very high values to effectively disable limits)
+MAX_SEGMENTS = 10_000_000  # 10 million segments
+MAX_TEXT_LENGTH = 1_000_000_000  # 1 billion characters (effectively unlimited)
 
 # Performance: Job management
 MAX_JOBS_IN_MEMORY = int(os.environ.get("MAX_JOBS_IN_MEMORY", "100"))

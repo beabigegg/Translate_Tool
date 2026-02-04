@@ -9,6 +9,7 @@ LOG_DIR="$PID_DIR/logs"
 BACKEND_HOST="${TRANSLATE_TOOL_HOST:-127.0.0.1}"
 BACKEND_PORT="${TRANSLATE_TOOL_PORT:-8765}"
 FRONTEND_PORT="5173"
+OLLAMA_URL="${OLLAMA_BASE_URL:-http://localhost:11434}"
 
 usage() {
   cat <<'EOF'
@@ -63,6 +64,61 @@ ensure_deps() {
   if [[ ! -d "$ROOT_DIR/app/frontend/node_modules" ]]; then
     echo "Missing frontend dependencies. Run: (cd app/frontend && npm install)" >&2
     exit 1
+  fi
+}
+
+# Check if port is in use and kill the process if needed
+ensure_port_free() {
+  local port="$1"
+  local service_name="$2"
+
+  # Find PIDs using the port
+  local pids
+  pids=$(lsof -t -i :"$port" 2>/dev/null || true)
+
+  if [[ -n "$pids" ]]; then
+    echo "Port $port is occupied. Checking processes..."
+
+    for pid in $pids; do
+      # Get process info
+      local proc_info
+      proc_info=$(ps -p "$pid" -o pid=,cmd= 2>/dev/null || true)
+
+      if [[ -n "$proc_info" ]]; then
+        # Check if it's our own service (from Translate_Tool)
+        if echo "$proc_info" | grep -q "Translate_Tool"; then
+          echo "  Found existing Translate_Tool process (PID $pid), stopping it..."
+        else
+          echo "  Found foreign process occupying port $port:"
+          echo "    PID $pid: $proc_info"
+          echo "  Terminating process..."
+        fi
+
+        # Kill the process and its children
+        kill -- -"$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+
+        # Wait for process to exit
+        local timeout=5
+        while kill -0 "$pid" 2>/dev/null && [[ $timeout -gt 0 ]]; do
+          sleep 1
+          timeout=$((timeout - 1))
+        done
+
+        # Force kill if still running
+        if kill -0 "$pid" 2>/dev/null; then
+          echo "  Force killing PID $pid..."
+          kill -9 -- -"$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null || true
+        fi
+      fi
+    done
+
+    # Verify port is now free
+    sleep 1
+    if lsof -i :"$port" >/dev/null 2>&1; then
+      echo "Warning: Port $port may still be in use. Service may fail to start." >&2
+    else
+      echo "Port $port is now free."
+    fi
   fi
 }
 
@@ -162,6 +218,123 @@ wait_for_backend() {
   return 1
 }
 
+# Unload Ollama models to release GPU/VRAM
+unload_ollama_models() {
+  echo "Checking for loaded Ollama models..."
+
+  # Check if Ollama is running
+  if ! curl -s "$OLLAMA_URL/api/tags" >/dev/null 2>&1; then
+    echo "  Ollama is not running, skipping model unload."
+    return 0
+  fi
+
+  # Get list of currently loaded models via /api/ps
+  local loaded_models
+  loaded_models=$(curl -s "$OLLAMA_URL/api/ps" 2>/dev/null | grep -oP '"name"\s*:\s*"\K[^"]+' || true)
+
+  if [[ -z "$loaded_models" ]]; then
+    echo "  No models currently loaded in VRAM."
+    return 0
+  fi
+
+  echo "  Found loaded models: $loaded_models"
+
+  # Unload each model by setting keep_alive to 0
+  for model in $loaded_models; do
+    echo "  Unloading model: $model"
+    local response
+    response=$(curl -s -X POST "$OLLAMA_URL/api/generate" \
+      -H "Content-Type: application/json" \
+      -d "{\"model\": \"$model\", \"prompt\": \"\", \"keep_alive\": 0}" 2>&1)
+
+    if echo "$response" | grep -q '"done"'; then
+      echo "    Model $model unloaded successfully (VRAM released)"
+    else
+      echo "    Warning: Could not confirm unload for $model"
+    fi
+  done
+
+  echo "  Ollama models unloaded."
+}
+
+# Release occupied resources
+release_resources() {
+  echo "Releasing resources..."
+
+  # 0. Unload Ollama models to release GPU/VRAM
+  unload_ollama_models
+
+  # 1. Clean up stale PID files
+  if [[ -d "$PID_DIR" ]]; then
+    for pid_file in "$PID_DIR"/*.pid; do
+      [[ -f "$pid_file" ]] || continue
+      local pid
+      pid="$(cat "$pid_file" 2>/dev/null || true)"
+      if [[ -n "$pid" ]] && ! kill -0 "$pid" 2>/dev/null; then
+        echo "  Removing stale PID file: $(basename "$pid_file")"
+        rm -f "$pid_file"
+      fi
+    done
+  fi
+
+  # 2. Kill orphan processes related to this project
+  local orphans
+  orphans=$(pgrep -f "Translate_Tool.*(python|node|npm|vite)" 2>/dev/null || true)
+  if [[ -n "$orphans" ]]; then
+    echo "  Found orphan processes, terminating..."
+    for pid in $orphans; do
+      local proc_info
+      proc_info=$(ps -p "$pid" -o pid=,cmd= 2>/dev/null || true)
+      if [[ -n "$proc_info" ]]; then
+        echo "    Killing PID $pid"
+        kill "$pid" 2>/dev/null || true
+      fi
+    done
+    sleep 1
+    # Force kill if still running
+    for pid in $orphans; do
+      if kill -0 "$pid" 2>/dev/null; then
+        kill -9 "$pid" 2>/dev/null || true
+      fi
+    done
+  fi
+
+  # 3. Ensure ports are free
+  ensure_port_free "$BACKEND_PORT" "backend"
+  ensure_port_free "$FRONTEND_PORT" "frontend"
+
+  # 4. Clean up temporary files (older than 1 day)
+  local temp_dirs=(
+    "$ROOT_DIR/temp"
+    "$ROOT_DIR/.tmp"
+    "/tmp/translate_tool_*"
+  )
+  for temp_dir in "${temp_dirs[@]}"; do
+    if [[ -d "$temp_dir" ]]; then
+      local old_files
+      old_files=$(find "$temp_dir" -type f -mtime +1 2>/dev/null | wc -l)
+      if [[ "$old_files" -gt 0 ]]; then
+        echo "  Cleaning $old_files old temp files in $temp_dir"
+        find "$temp_dir" -type f -mtime +1 -delete 2>/dev/null || true
+      fi
+    fi
+  done
+
+  # 5. Clean up old log files (keep last 5)
+  if [[ -d "$LOG_DIR" ]]; then
+    for log_pattern in backend frontend; do
+      local log_count
+      log_count=$(ls -1 "$LOG_DIR/${log_pattern}"*.log 2>/dev/null | wc -l)
+      if [[ "$log_count" -gt 5 ]]; then
+        echo "  Rotating old $log_pattern logs"
+        ls -1t "$LOG_DIR/${log_pattern}"*.log 2>/dev/null | tail -n +6 | xargs -r rm -f
+      fi
+    done
+  fi
+
+  echo "Resources released."
+}
+
 show_urls() {
   echo ""
   echo "========================================"
@@ -180,6 +353,9 @@ case "$command" in
     ensure_node
     ensure_deps
 
+    # Release any occupied resources before starting
+    release_resources
+
     # Start backend with conda python
     start_process "backend" python -m app.backend.main
 
@@ -193,6 +369,7 @@ case "$command" in
   stop)
     stop_process "frontend"
     stop_process "backend"
+    release_resources
     ;;
   status)
     status_process "backend"
