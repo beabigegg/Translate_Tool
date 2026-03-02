@@ -20,3 +20,14 @@ app/electron/dist/
 # Runtime artifacts
 app/backend/__pycache__/
 .run/
+
+# IDE / local tool config
+.claude/
+.vscode/
+CLAUDE.md
+
+# Test documents
+test_document/
+
+# Unused / staging fonts
+app/backend/fonts/NotoSansTC-Regular-NEW.ttf
