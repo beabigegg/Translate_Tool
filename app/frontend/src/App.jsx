@@ -21,8 +21,10 @@ const LANG_GROUPS = {
 
 // File type icons and colors
 const FILE_TYPES = {
+  doc: { icon: "W", color: "#2b579a", label: "Word Document (Legacy)" },
   docx: { icon: "W", color: "#2b579a", label: "Word Document" },
   pptx: { icon: "P", color: "#d24726", label: "PowerPoint" },
+  xls: { icon: "X", color: "#217346", label: "Excel Spreadsheet (Legacy)" },
   xlsx: { icon: "X", color: "#217346", label: "Excel Spreadsheet" },
   pdf: { icon: "PDF", color: "#f40f02", label: "PDF Document" }
 };
@@ -470,7 +472,7 @@ export default function App() {
 
   const handleFileChange = (event) => {
     const incoming = Array.from(event.target.files || []);
-    const supportedExts = ['docx', 'pptx', 'xlsx', 'pdf'];
+    const supportedExts = ['doc', 'docx', 'pptx', 'xls', 'xlsx', 'pdf'];
     const filtered = incoming.filter(file => {
       const ext = file.name.split('.').pop().toLowerCase();
       return supportedExts.includes(ext);
@@ -484,7 +486,7 @@ export default function App() {
 
   const handleFolderChange = (event) => {
     const incoming = Array.from(event.target.files || []);
-    const supportedExts = ['docx', 'pptx', 'xlsx', 'pdf'];
+    const supportedExts = ['doc', 'docx', 'pptx', 'xls', 'xlsx', 'pdf'];
     // Filter and preserve relative paths from webkitRelativePath
     const filtered = incoming
       .filter(file => {
@@ -557,7 +559,7 @@ export default function App() {
   // Helper function to recursively read directory entries
   const readDirectoryEntries = useCallback(async (entry, basePath = '') => {
     const files = [];
-    const supportedExts = ['docx', 'pptx', 'xlsx', 'pdf'];
+    const supportedExts = ['doc', 'docx', 'pptx', 'xls', 'xlsx', 'pdf'];
 
     if (entry.isFile) {
       const file = await new Promise((resolve) => entry.file(resolve));
@@ -602,7 +604,7 @@ export default function App() {
     setIsDragging(false);
 
     const items = e.dataTransfer.items;
-    const supportedExts = ['docx', 'pptx', 'xlsx', 'pdf'];
+    const supportedExts = ['doc', 'docx', 'pptx', 'xls', 'xlsx', 'pdf'];
     let allFiles = [];
 
     // Check if webkitGetAsEntry is supported (for folder support)
@@ -706,7 +708,7 @@ export default function App() {
                 <Icons.Upload />
                 Upload Documents
               </h2>
-              <span className="supported-formats">DOCX, PPTX, XLSX, PDF</span>
+              <span className="supported-formats">DOC, DOCX, PPTX, XLS, XLSX, PDF</span>
             </div>
 
             <div
@@ -722,7 +724,7 @@ export default function App() {
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept=".docx,.pptx,.xlsx,.pdf"
+                accept=".doc,.docx,.pptx,.xls,.xlsx,.pdf"
                 onChange={handleFileChange}
                 style={{ display: 'none' }}
                 aria-hidden="true"
@@ -760,7 +762,7 @@ export default function App() {
                     Select Folder
                   </button>
                 </div>
-                <p className="drop-hint">Support for DOCX, PPTX, XLSX, PDF files and folders with subfolders</p>
+                <p className="drop-hint">Support for DOC, DOCX, PPTX, XLS, XLSX, PDF files and folders with subfolders</p>
               </div>
             </div>
 
