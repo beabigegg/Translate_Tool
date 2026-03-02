@@ -15,11 +15,14 @@ from app.backend.config import (
     API_ATTEMPTS,
     API_BACKOFF_BASE,
     BATCH_SEPARATOR,
+    DEFAULT_MAX_BATCH_CHARS,
     DEFAULT_MODEL,
     HTTP_POOL_CONNECTIONS,
     HTTP_POOL_MAXSIZE,
     LANG_CODE_MAP,
     OLLAMA_BASE_URL,
+    OLLAMA_NUM_CTX,
+    OLLAMA_NUM_GPU,
     TimeoutConfig,
 )
 from app.backend.utils.logging_utils import logger
@@ -42,6 +45,12 @@ class OllamaClient:
         self.model = model
         self.timeout = timeout or TimeoutConfig()
         self.log = log
+        logger.info(
+            "[CONFIG] Ollama options: num_ctx=%d, num_gpu=%d, max_batch_chars=%d",
+            OLLAMA_NUM_CTX,
+            OLLAMA_NUM_GPU,
+            DEFAULT_MAX_BATCH_CHARS,
+        )
 
     @classmethod
     def _get_session(cls) -> requests.Session:
@@ -81,6 +90,10 @@ class OllamaClient:
 
     def _gen_url(self, path: str) -> str:
         return f"{self.base_url}{path}"
+
+    @staticmethod
+    def _build_options() -> dict:
+        return {"num_ctx": OLLAMA_NUM_CTX, "num_gpu": OLLAMA_NUM_GPU}
 
     def health_check(self) -> Tuple[bool, str]:
         try:
@@ -127,7 +140,7 @@ class OllamaClient:
         else:
             prompt = self._build_generic_prompt(text, tgt, src_lang)
 
-        payload = {"model": self.model, "prompt": prompt, "stream": False}
+        payload = {"model": self.model, "prompt": prompt, "stream": False, "options": self._build_options()}
         session = self._get_session()
         last = None
         for attempt in range(1, API_ATTEMPTS + 1):
@@ -223,7 +236,7 @@ class OllamaClient:
             else:
                 prompt = self._build_generic_prompt(chunk, tgt, src_lang)
 
-            payload = {"model": self.model, "prompt": prompt, "stream": False}
+            payload = {"model": self.model, "prompt": prompt, "stream": False, "options": self._build_options()}
             session = self._get_session()
 
             try:
@@ -258,7 +271,7 @@ class OllamaClient:
         else:
             prompt = self._build_generic_prompt(text, tgt, src_lang)
 
-        payload = {"model": self.model, "prompt": prompt, "stream": False}
+        payload = {"model": self.model, "prompt": prompt, "stream": False, "options": self._build_options()}
         session = self._get_session()
 
         # Extended retry with longer waits
@@ -336,7 +349,7 @@ class OllamaClient:
                 f"<<<SEG_0>>>\n[translation]\n<<<SEG_1>>>\n[translation]..."
             )
 
-        payload = {"model": self.model, "prompt": prompt, "stream": False}
+        payload = {"model": self.model, "prompt": prompt, "stream": False, "options": self._build_options()}
         session = self._get_session()
         last = None
         for attempt in range(1, API_ATTEMPTS + 1):
@@ -428,7 +441,7 @@ class OllamaClient:
     def unload_model(self) -> Tuple[bool, str]:
         try:
             session = self._get_session()
-            payload = {"model": self.model, "prompt": "", "keep_alive": 0}
+            payload = {"model": self.model, "prompt": "", "keep_alive": 0, "options": {"num_gpu": OLLAMA_NUM_GPU}}
             resp = session.post(
                 self._gen_url("/api/generate"),
                 json=payload,

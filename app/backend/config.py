@@ -12,6 +12,8 @@ from typing import Optional, Tuple
 APP_NAME = "Translate Tool"
 DEFAULT_MODEL = "translategemma:12b"
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_NUM_CTX = int(os.environ.get("OLLAMA_NUM_CTX", "4096"))
+OLLAMA_NUM_GPU = int(os.environ.get("OLLAMA_NUM_GPU", "99"))
 
 DEFAULT_CONNECT_TIMEOUT_S = 10.0
 DEFAULT_READ_TIMEOUT_S = 180.0
@@ -26,10 +28,12 @@ MIN_BATCH_SIZE = 1
 MAX_BATCH_SIZE = 50
 BATCH_SEPARATOR = "\n---SEGMENT_SEPARATOR---\n"
 
-# Character-based batching (optimized for 128K context window)
-DEFAULT_MAX_BATCH_CHARS = 80000   # ~80K chars per batch
-MIN_MAX_BATCH_CHARS = 10000       # Minimum 10K chars
+# Character-based batching (derived from OLLAMA_NUM_CTX)
 MAX_MAX_BATCH_CHARS = 100000      # Maximum 100K chars
+# Estimate: num_ctx ÷ 2 (reserve output space) × 3 (chars/token conservative) - 1000 (prompt template)
+# Floor at 2000 to ensure at least one paragraph can fit
+MIN_MAX_BATCH_CHARS = 2000
+DEFAULT_MAX_BATCH_CHARS = max(MIN_MAX_BATCH_CHARS, min((OLLAMA_NUM_CTX // 2) * 3 - 1000, MAX_MAX_BATCH_CHARS))
 
 # Translation granularity: "sentence" (legacy) | "paragraph" (recommended for quality)
 TRANSLATION_GRANULARITY = "paragraph"
