@@ -244,6 +244,9 @@ def _translate_pdf_with_pymupdf(
                 text: (translated if ok else f"[Translation failed|{tgt}] {text}")
                 for text, (ok, translated) in zip(unique_texts, results)
             }
+            if not (stop_flag and stop_flag.is_set()):
+                from app.backend.utils.translation_verification import verify_and_fill_dict
+                verify_and_fill_dict(translations_by_target[tgt], tgt, client, src_lang, stop_flag=stop_flag, log=log)
 
         # Create output document
         output_doc = docx.Document()
@@ -358,6 +361,9 @@ def _translate_pdf_with_pypdf2(
                 text: (translated if ok else f"[Translation failed|{tgt}] {text}")
                 for text, (ok, translated) in zip(unique_texts, results)
             }
+            if not (stop_flag and stop_flag.is_set()):
+                from app.backend.utils.translation_verification import verify_and_fill_dict
+                verify_and_fill_dict(translations_by_target[tgt], tgt, client, src_lang, stop_flag=stop_flag, log=log)
 
         # Build output document
         for page_num, text in page_texts:
@@ -509,6 +515,9 @@ def _translate_pdf_to_pdf(
 
             if missing_count > 0:
                 log(f"[PDF] Warning: {missing_count} texts failed to translate to {tgt}")
+                if not (stop_flag and stop_flag.is_set()):
+                    from app.backend.utils.translation_verification import verify_and_fill_dict
+                    verify_and_fill_dict(translations, tgt, client, src_lang, stop_flag=stop_flag, log=log)
 
             # Generate PDF for this language
             generator = PDFGenerator(

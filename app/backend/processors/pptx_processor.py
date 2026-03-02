@@ -249,7 +249,7 @@ def translate_pptx(
     all_texts = [s for _, _, s in segs] + [s for _, _, s in smartart_segs]
     uniq = [s for s in sorted(set(all_texts)) if should_translate(s, (src_lang or "auto"))]
 
-    tmap, _, _, stopped = translate_texts(
+    tmap, _, fail_cnt, stopped = translate_texts(
         uniq,
         targets,
         src_lang,
@@ -258,6 +258,10 @@ def translate_pptx(
         stop_flag=stop_flag,
         log=log,
     )
+
+    if fail_cnt and not stopped:
+        from app.backend.utils.translation_verification import verify_and_fill_tmap
+        verify_and_fill_tmap(tmap, client, src_lang, stop_flag=stop_flag, log=log)
 
     # Apply translations to text frames and table cells
     ok_cnt = skip_cnt = 0

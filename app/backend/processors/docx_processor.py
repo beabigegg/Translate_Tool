@@ -507,6 +507,10 @@ def translate_docx(
     if fail_cnt:
         log(f"[DOCX] failed translations: {fail_cnt}")
 
+    if fail_cnt and not stopped:
+        from app.backend.utils.translation_verification import verify_and_fill_tmap
+        verify_and_fill_tmap(tmap, client, src_lang, stop_flag=stop_flag, log=log)
+
     if tmap:
         _insert_docx_translations(doc, segs, tmap, targets, log=log)
 

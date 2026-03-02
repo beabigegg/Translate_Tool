@@ -123,7 +123,7 @@ def translate_xlsx_xls(
 
     log(f"[Excel] cells: {len(segs)}")
     uniq = sorted(set(s[3] for s in segs))
-    tmap, _, _, stopped = translate_texts(
+    tmap, _, fail_cnt, stopped = translate_texts(
         uniq,
         targets,
         src_lang,
@@ -132,6 +132,10 @@ def translate_xlsx_xls(
         stop_flag=stop_flag,
         log=log,
     )
+
+    if fail_cnt and not stopped:
+        from app.backend.utils.translation_verification import verify_and_fill_tmap
+        verify_and_fill_tmap(tmap, client, src_lang, stop_flag=stop_flag, log=log)
 
     for sheet_name, r, c, src_text, is_formula in segs:
         if not all((tgt, src_text) in tmap for tgt in targets):

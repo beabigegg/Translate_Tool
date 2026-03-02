@@ -91,6 +91,8 @@ ENV_READ_TIMEOUT = "TRANSLATE_READ_TIMEOUT"
 LIBREOFFICE_PATH = os.environ.get("LIBREOFFICE_PATH", "")  # Empty = auto-detect
 LIBREOFFICE_TIMEOUT = int(os.environ.get("LIBREOFFICE_TIMEOUT", "120"))
 
+VERIFY_MAX_RETRIES = 2  # Retries per failed segment during post-translation verification
+
 SUPPORTED_EXTENSIONS = {".docx", ".doc", ".pptx", ".xlsx", ".xls", ".pdf"}
 
 LANG_CODE_MAP = {
