@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import shutil
 import tempfile
+import time
 from pathlib import Path
 from typing import List, Optional
 
@@ -81,15 +82,40 @@ def job_status(job_id: str) -> JobStatus:
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    # Read output_ready within lock to ensure consistency
+    # Read all fields within lock to ensure consistency
     with job.lock:
         output_zip = job.output_zip
         status = job.status
         processed = job.processed_files
         total = job.total_files
         error = job.error
+        current_file = job.current_file
+        segments_done = job.segments_done
+        segments_total = job.segments_total
+        file_seg_done = job.file_segments_done
+        file_seg_total = job.file_segments_total
+        started_at = job.started_at
 
     output_ready = output_zip is not None and output_zip.exists()
+
+    # Compute derived progress values
+    now = time.time()
+    elapsed = (now - started_at) if started_at else 0.0
+
+    if status in ("completed", "stopped", "failed"):
+        overall_progress = 1.0 if status == "completed" else 0.0
+        if total > 0:
+            overall_progress = processed / total if status != "completed" else 1.0
+    elif total > 0:
+        file_frac = (file_seg_done / file_seg_total) if file_seg_total > 0 else 0.0
+        overall_progress = (processed + file_frac) / total
+    else:
+        overall_progress = 0.0
+
+    speed = (segments_done / elapsed) if elapsed > 1.0 else 0.0
+    eta = None
+    if overall_progress > 0.01 and status == "running":
+        eta = elapsed * (1.0 - overall_progress) / overall_progress
 
     return JobStatus(
         job_id=job.job_id,
@@ -98,6 +124,15 @@ def job_status(job_id: str) -> JobStatus:
         total_files=total,
         error=error,
         output_ready=output_ready,
+        current_file=current_file,
+        segments_done=segments_done,
+        segments_total=segments_total,
+        file_segments_done=file_seg_done,
+        file_segments_total=file_seg_total,
+        elapsed_seconds=round(elapsed, 1),
+        overall_progress=round(overall_progress, 4),
+        segments_per_second=round(speed, 2),
+        eta_seconds=round(eta, 1) if eta is not None else None,
     )
 
 

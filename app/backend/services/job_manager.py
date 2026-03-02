@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import atexit
+import re
 import shutil
 import threading
 import time
@@ -39,6 +40,12 @@ class JobRecord:
     total_files: int = 0
     error: Optional[str] = None
     logs: List[str] = field(default_factory=list)
+    current_file: str = ""
+    segments_done: int = 0
+    segments_total: int = 0
+    file_segments_done: int = 0
+    file_segments_total: int = 0
+    started_at: Optional[float] = None
     lock: threading.Lock = field(default_factory=threading.Lock)
     stop_flag: threading.Event = field(default_factory=threading.Event)
     thread: Optional[threading.Thread] = None
@@ -46,8 +53,13 @@ class JobRecord:
 
 
 class JobLogger:
+    _RE_PROCESSING = re.compile(r"^Processing:\s+(.+?)\s+\((\d+)/(\d+)\)$")
+    _RE_TR = re.compile(r"^\[TR\]\s+(\d+)/(\d+)\s+")
+    _RE_DONE = re.compile(r"^Done:\s+(.+?)\s+->")
+
     def __init__(self, job: JobRecord) -> None:
         self.job = job
+        self._file_seg_offset: int = 0
 
     def log(self, message: str) -> None:
         timestamp = time.strftime("%H:%M:%S")
@@ -55,7 +67,43 @@ class JobLogger:
         with self.job.lock:
             self.job.logs.append(line)
             self.job.updated_at = time.time()
+            self._parse_progress(message)
         logger.info("[%s] %s", self.job.job_id, message)
+
+    def _parse_progress(self, message: str) -> None:
+        """Parse known log patterns to update progress fields (called within lock)."""
+        job = self.job
+
+        m = self._RE_PROCESSING.match(message)
+        if m:
+            job.current_file = m.group(1)
+            index = int(m.group(2))
+            job.total_files = int(m.group(3))
+            job.processed_files = index - 1
+            # Save cumulative offset before resetting per-file counters
+            self._file_seg_offset = job.segments_done
+            job.file_segments_done = 0
+            job.file_segments_total = 0
+            return
+
+        m = self._RE_TR.match(message)
+        if m:
+            done = int(m.group(1))
+            total = int(m.group(2))
+            job.file_segments_done = done
+            job.file_segments_total = total
+            job.segments_done = self._file_seg_offset + done
+            job.segments_total = self._file_seg_offset + total
+            return
+
+        m = self._RE_DONE.match(message)
+        if m:
+            # Mark per-file segments as fully complete
+            if job.file_segments_total > 0:
+                job.file_segments_done = job.file_segments_total
+                job.segments_done = self._file_seg_offset + job.file_segments_total
+            job.processed_files += 1
+            return
 
 
 class JobManager:
@@ -194,6 +242,7 @@ class JobManager:
             client: Optional[OllamaClient] = None
             with job.lock:
                 job.status = "running"
+                job.started_at = time.time()
             log(f"Job started with {len(stored_files)} files")
             try:
                 timeout_config = TimeoutConfig()

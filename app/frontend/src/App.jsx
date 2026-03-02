@@ -182,6 +182,28 @@ function StepIndicator({ currentStep, steps }) {
   );
 }
 
+// Format seconds into human-readable ETA string
+function formatEta(seconds) {
+  if (seconds == null || seconds <= 0) return "--";
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  if (m < 60) return `${m}m ${s}s`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m`;
+}
+
+// Format elapsed seconds
+function formatElapsed(seconds) {
+  if (!seconds || seconds <= 0) return "0s";
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  if (m < 60) return `${m}m ${s}s`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m`;
+}
+
 // Progress bar component with enhanced visuals
 function ProgressBar({ progress, status }) {
   return (
@@ -466,8 +488,8 @@ export default function App() {
   const outputReady = jobStatus?.output_ready;
 
   const progress = useMemo(() => {
-    if (!jobStatus || jobStatus.total_files === 0) return 0;
-    return (jobStatus.processed_files / jobStatus.total_files) * 100;
+    if (!jobStatus) return 0;
+    return (jobStatus.overall_progress || 0) * 100;
   }, [jobStatus]);
 
   const handleFileChange = (event) => {
@@ -1022,11 +1044,50 @@ export default function App() {
               {jobId ? (
                 <>
                   <ProgressBar progress={progress} status={jobStatus?.status || "idle"} />
+
+                  {jobStatus?.current_file && jobStatus?.status === "running" && (
+                    <div className="current-file-indicator">
+                      <span className="current-file-label">Translating</span>
+                      <span className="current-file-name">{jobStatus.current_file}</span>
+                      {jobStatus.file_segments_total > 0 && (
+                        <span className="current-file-segments">
+                          {jobStatus.file_segments_done}/{jobStatus.file_segments_total} segments
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   <div className="status-details">
                     <div className="status-item">
-                      <span className="status-label">Files Processed</span>
+                      <span className="status-label">Files</span>
                       <span className="status-value">
                         {jobStatus?.processed_files || 0} / {jobStatus?.total_files || 0}
+                      </span>
+                    </div>
+                    <div className="status-item">
+                      <span className="status-label">Segments</span>
+                      <span className="status-value">
+                        {jobStatus?.segments_done || 0} / {jobStatus?.segments_total || 0}
+                      </span>
+                    </div>
+                    <div className="status-item">
+                      <span className="status-label">Speed</span>
+                      <span className="status-value">
+                        {jobStatus?.segments_per_second > 0
+                          ? `${jobStatus.segments_per_second} seg/s`
+                          : "--"}
+                      </span>
+                    </div>
+                    <div className="status-item">
+                      <span className="status-label">ETA</span>
+                      <span className="status-value">
+                        {formatEta(jobStatus?.eta_seconds)}
+                      </span>
+                    </div>
+                    <div className="status-item">
+                      <span className="status-label">Elapsed</span>
+                      <span className="status-value">
+                        {formatElapsed(jobStatus?.elapsed_seconds)}
                       </span>
                     </div>
                     <div className="status-item">
