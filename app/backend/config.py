@@ -87,6 +87,10 @@ HTTP_POOL_MAXSIZE = int(os.environ.get("HTTP_POOL_MAXSIZE", "5"))
 ENV_CONNECT_TIMEOUT = "TRANSLATE_CONNECT_TIMEOUT"
 ENV_READ_TIMEOUT = "TRANSLATE_READ_TIMEOUT"
 
+# LibreOffice headless conversion for legacy .doc/.xls
+LIBREOFFICE_PATH = os.environ.get("LIBREOFFICE_PATH", "")  # Empty = auto-detect
+LIBREOFFICE_TIMEOUT = int(os.environ.get("LIBREOFFICE_TIMEOUT", "120"))
+
 SUPPORTED_EXTENSIONS = {".docx", ".doc", ".pptx", ".xlsx", ".xls", ".pdf"}
 
 LANG_CODE_MAP = {

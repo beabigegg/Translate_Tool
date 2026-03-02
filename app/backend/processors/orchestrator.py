@@ -17,6 +17,7 @@ from app.backend.config import (
 )
 from app.backend.processors.com_helpers import is_win32com_available, word_convert
 from app.backend.processors.docx_processor import translate_docx
+from app.backend.processors.libreoffice_helpers import doc_to_docx, is_libreoffice_available
 from app.backend.processors.pdf_processor import translate_pdf
 from app.backend.processors.pptx_processor import translate_pptx
 from app.backend.processors.xlsx_processor import translate_xlsx_xls
@@ -116,26 +117,38 @@ def process_files(
                     max_batch_chars=max_batch_chars,
                 )
             elif ext == ".doc":
-                if not is_win32com_available():
-                    log("[DOC] Word COM not available; convert to .docx first")
-                    continue
                 tmp_docx = str(output_dir / f"{src.stem}__tmp.docx")
-                word_convert(str(src), tmp_docx, 16)
-                stopped = translate_docx(
-                    tmp_docx,
-                    str(out_path),
-                    targets,
-                    src_lang,
-                    client,
-                    include_headers_shapes_via_com=include_headers_shapes_via_com,
-                    stop_flag=stop_flag,
-                    log=log,
-                    max_batch_chars=max_batch_chars,
-                )
+                if is_libreoffice_available():
+                    log("[DOC] Converting to .docx via LibreOffice")
+                    doc_to_docx(str(src), tmp_docx)
+                elif is_win32com_available():
+                    log("[DOC] Converting to .docx via COM")
+                    word_convert(str(src), tmp_docx, 16)
+                else:
+                    log(
+                        "[DOC] Cannot convert .doc: neither LibreOffice nor "
+                        "Word COM is available. Install LibreOffice: "
+                        "sudo apt install libreoffice-core (Linux) / "
+                        "brew install --cask libreoffice (macOS)"
+                    )
+                    continue
                 try:
-                    os.remove(tmp_docx)
-                except OSError:
-                    pass
+                    stopped = translate_docx(
+                        tmp_docx,
+                        str(out_path),
+                        targets,
+                        src_lang,
+                        client,
+                        include_headers_shapes_via_com=include_headers_shapes_via_com,
+                        stop_flag=stop_flag,
+                        log=log,
+                        max_batch_chars=max_batch_chars,
+                    )
+                finally:
+                    try:
+                        os.remove(tmp_docx)
+                    except OSError:
+                        pass
             elif ext == ".pptx":
                 stopped = translate_pptx(
                     str(src),

@@ -14,6 +14,7 @@ from openpyxl.styles import Alignment
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import DEFAULT_MAX_BATCH_CHARS, EXCEL_FORMULA_MODE, MAX_SEGMENTS, MAX_TEXT_LENGTH
 from app.backend.processors.com_helpers import excel_convert, is_win32com_available
+from app.backend.processors.libreoffice_helpers import is_libreoffice_available, xls_to_xlsx
 from app.backend.services.translation_service import translate_texts
 from app.backend.utils.exceptions import check_document_size_limits
 from app.backend.utils.logging_utils import logger
@@ -51,11 +52,22 @@ def translate_xlsx_xls(
 ) -> bool:
     ext = Path(in_path).suffix.lower()
     out_xlsx = Path(out_path).with_suffix(".xlsx")
-    if ext == ".xls" and is_win32com_available():
+    if ext == ".xls":
         tmp = str(Path(out_path).with_suffix("")) + "__from_xls.xlsx"
-        try:
+        if is_libreoffice_available():
+            log("[XLS] Converting to .xlsx via LibreOffice")
+            xls_to_xlsx(in_path, tmp)
+        elif is_win32com_available():
             log("[XLS] Converting to .xlsx via COM")
             excel_convert(in_path, tmp)
+        else:
+            raise RuntimeError(
+                "Cannot convert .xls: neither LibreOffice nor Excel COM is "
+                "available. Install LibreOffice: "
+                "sudo apt install libreoffice-core (Linux) / "
+                "brew install --cask libreoffice (macOS)"
+            )
+        try:
             return translate_xlsx_xls(
                 tmp,
                 out_path,
@@ -74,7 +86,7 @@ def translate_xlsx_xls(
                 os.remove(tmp)
             except OSError as exc:
                 logger.debug("Failed to remove temp file %s: %s", tmp, exc)
-    if ext not in (".xlsx", ".xls"):
+    if ext != ".xlsx":
         raise RuntimeError("Unsupported Excel type")
 
     wb = openpyxl.load_workbook(in_path, data_only=False)
