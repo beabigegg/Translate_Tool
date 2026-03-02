@@ -9,6 +9,16 @@ LOG_DIR="$PID_DIR/logs"
 BACKEND_HOST="${TRANSLATE_TOOL_HOST:-127.0.0.1}"
 BACKEND_PORT="${TRANSLATE_TOOL_PORT:-8765}"
 FRONTEND_PORT="5173"
+
+# Auto-detect Ollama URL: in WSL, connect via Windows host gateway IP
+if [[ -z "${OLLAMA_BASE_URL:-}" ]] && grep -qi microsoft /proc/version 2>/dev/null; then
+  WSL_GATEWAY="$(ip route show default 2>/dev/null | awk '{print $3}')"
+  if [[ -n "$WSL_GATEWAY" ]] && curl -s --connect-timeout 2 "http://${WSL_GATEWAY}:11434/api/tags" >/dev/null 2>&1; then
+    export OLLAMA_BASE_URL="http://${WSL_GATEWAY}:11434"
+    echo "WSL detected: using Ollama at $OLLAMA_BASE_URL"
+  fi
+fi
+
 OLLAMA_URL="${OLLAMA_BASE_URL:-http://localhost:11434}"
 
 usage() {
