@@ -122,7 +122,13 @@ def translate_xlsx_xls(
     )
 
     log(f"[Excel] cells: {len(segs)}")
-    uniq = sorted(set(s[3] for s in segs))
+    # Preserve document order for better batch context
+    _seen: set[str] = set()
+    uniq: list[str] = []
+    for s in segs:
+        if s[3] not in _seen:
+            _seen.add(s[3])
+            uniq.append(s[3])
     tmap, _, fail_cnt, stopped = translate_texts(
         uniq,
         targets,

@@ -247,7 +247,13 @@ def translate_pptx(
 
     # Collect all unique texts for translation
     all_texts = [s for _, _, s in segs] + [s for _, _, s in smartart_segs]
-    uniq = [s for s in sorted(set(all_texts)) if should_translate(s, (src_lang or "auto"))]
+    # Preserve document order for better batch context
+    _seen: set[str] = set()
+    uniq: list[str] = []
+    for t in all_texts:
+        if t not in _seen and should_translate(t, (src_lang or "auto")):
+            _seen.add(t)
+            uniq.append(t)
 
     tmap, _, fail_cnt, stopped = translate_texts(
         uniq,

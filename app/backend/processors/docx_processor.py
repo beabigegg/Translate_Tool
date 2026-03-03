@@ -194,16 +194,15 @@ class Segment:
         self.text = text
 
 
-def _get_paragraph_key(p: Paragraph) -> str:
-    try:
-        xml_content = p._p.xml if hasattr(p._p, "xml") else str(p._p)
-        text_content = _p_text_with_breaks(p)
-        combined = f"{hash(xml_content)}_{len(text_content)}_{text_content[:50]}"
-        return combined
-    except (AttributeError, TypeError) as exc:
-        logger.debug("Paragraph key generation fallback due to: %s", exc)
-        text_content = _p_text_with_breaks(p)
-        return f"fallback_{hash(text_content)}_{len(text_content)}"
+def _get_paragraph_key(p: Paragraph) -> int:
+    """Return a key that uniquely identifies a paragraph XML element.
+
+    Uses ``id()`` so that *different* elements with identical content are
+    treated as separate segments (fixes missing translations in repeated
+    table columns), while the *same* element visited twice (e.g. merged
+    cells in a table) is still de-duplicated.
+    """
+    return id(p._p)
 
 
 def _collect_docx_segments(
@@ -493,7 +492,15 @@ def translate_docx(
     segs = _collect_docx_segments(doc)
     log(f"[DOCX] segments: {len(segs)}")
 
-    uniq_texts = [t for t in sorted(set(s.text for s in segs)) if should_translate(t, (src_lang or "auto"))]
+    # Preserve document order (don't sort) so that adjacent segments stay
+    # together in translation batches — gives the model better context and
+    # avoids mixing already-English text with Chinese text at batch heads.
+    seen_texts: set[str] = set()
+    uniq_texts: list[str] = []
+    for s in segs:
+        if s.text not in seen_texts and should_translate(s.text, (src_lang or "auto")):
+            seen_texts.add(s.text)
+            uniq_texts.append(s.text)
     tmap, _, fail_cnt, stopped = translate_texts(
         uniq_texts,
         targets,
