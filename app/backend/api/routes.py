@@ -14,8 +14,9 @@ from fastapi.responses import FileResponse, StreamingResponse
 
 from app.backend.api.schemas import JobCreateResponse, JobStatus, ModelsResponse
 from app.backend.clients.ollama_client import list_ollama_models
-from app.backend.config import SSE_IDLE_TIMEOUT_SECONDS
+from app.backend.config import SSE_IDLE_TIMEOUT_SECONDS, TRANSLATION_CACHE_ENABLED
 from app.backend.services.job_manager import JobManager
+from app.backend.services.translation_cache import get_cache
 
 router = APIRouter()
 job_manager = JobManager()
@@ -208,3 +209,23 @@ def get_stats() -> dict:
     return {
         "jobs": job_manager.get_stats(),
     }
+
+
+@router.get("/api/cache/stats")
+def cache_stats() -> dict:
+    """Return translation cache statistics."""
+    cache = get_cache()
+    if cache is None:
+        return {"enabled": False, "entries": 0, "db_size_bytes": 0, "db_path": None}
+    info = cache.stats()
+    return {"enabled": True, **info}
+
+
+@router.delete("/api/cache")
+def clear_cache(model: Optional[str] = None) -> dict:
+    """Clear translation cache. Optionally filter by model."""
+    cache = get_cache()
+    if cache is None:
+        return {"enabled": False, "cleared": 0}
+    cleared = cache.clear(model=model)
+    return {"enabled": True, "cleared": cleared}

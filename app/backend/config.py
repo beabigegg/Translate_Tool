@@ -174,6 +174,8 @@ LANG_CODE_MAP = {
 DATA_DIR = Path(os.environ.get("TRANSLATE_TOOL_DATA_DIR", Path.home() / ".translate_tool"))
 JOBS_DIR = DATA_DIR / "jobs"
 LOG_DIR = DATA_DIR / "logs"
+TRANSLATION_CACHE_ENABLED = os.environ.get("TRANSLATION_CACHE_ENABLED", "1").lower() in ("1", "true", "yes")
+CACHE_DIR = DATA_DIR / "cache"
 
 DEFAULT_HOST = os.environ.get("TRANSLATE_TOOL_HOST", "127.0.0.1")
 DEFAULT_PORT = int(os.environ.get("TRANSLATE_TOOL_PORT", "8765"))

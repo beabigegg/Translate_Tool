@@ -7,6 +7,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import DEFAULT_MAX_BATCH_CHARS, SENTENCE_MODE
+from app.backend.services.translation_cache import get_cache
 from app.backend.utils.translation_helpers import translate_blocks_batch
 
 logger = logging.getLogger(__name__)
@@ -69,6 +70,8 @@ def translate_texts(
     done = 0
     fail_cnt = 0
     stopped = False
+    cache = get_cache()
+    cache_hits = 0
 
     for tgt in targets:
         if stop_flag and stop_flag.is_set():
@@ -79,21 +82,55 @@ def translate_texts(
         # Check if we need OpenCC conversion for Traditional Chinese
         needs_s2t_conversion = _is_traditional_chinese_target(tgt)
 
+        # --- Cache lookup ---
+        if cache is not None:
+            cached = cache.get_batch(texts, tgt, src_lang or "auto", client.model)
+            for src_text, cached_trans in cached.items():
+                trans = _convert_to_traditional(cached_trans) if needs_s2t_conversion else cached_trans
+                tmap[(tgt, src_text)] = trans
+                done += 1
+                cache_hits += 1
+            texts_to_translate = [t for t in texts if t not in cached]
+            if not texts_to_translate:
+                log(f"[CACHE] {tgt}: all {len(cached)} from cache")
+                continue
+            log(f"[CACHE] {tgt}: {len(cached)} hits, {len(texts_to_translate)} to translate")
+        else:
+            texts_to_translate = texts
+
         if SENTENCE_MODE:
+            # Progress callback: emit [TR] logs during batch processing
+            batch_base = done
+
+            def _on_batch_progress(batch_done: int) -> None:
+                current = batch_base + batch_done
+                if batch_done % 10 == 0 or current == total:
+                    log(f"[TR] {current}/{total} {tgt} len=~")
+
             # Use character-based batching - translate_blocks_batch handles batching internally
-            results = translate_blocks_batch(texts, tgt, src_lang, client, max_batch_chars=max_batch_chars)
-            for text, (ok, res) in zip(texts, results):
+            results = translate_blocks_batch(
+                texts_to_translate, tgt, src_lang, client,
+                max_batch_chars=max_batch_chars,
+                progress_log=_on_batch_progress,
+            )
+            cache_entries: List[Tuple[str, str, str, str, str]] = []
+            for text, (ok, res) in zip(texts_to_translate, results):
                 done += 1
                 if not ok:
                     fail_cnt += 1
+                else:
+                    # Store raw (pre-OpenCC) result in cache
+                    cache_entries.append((text, tgt, src_lang or "auto", client.model, res))
                 # Convert Simplified to Traditional if needed
                 if ok and needs_s2t_conversion:
                     res = _convert_to_traditional(res)
                 tmap[(tgt, text)] = res
                 if done % 10 == 0 or done == total:
                     log(f"[TR] {done}/{total} {tgt} len={len(text)}")
+            if cache is not None and cache_entries:
+                cache.put_batch(cache_entries)
         else:
-            for text in texts:
+            for text in texts_to_translate:
                 if stop_flag and stop_flag.is_set():
                     log(f"[STOP] Translation stopped at {done}/{total} segments")
                     stopped = True
@@ -102,6 +139,9 @@ def translate_texts(
                 if not ok:
                     res = f"[Translation failed|{tgt}] {text}"
                     fail_cnt += 1
+                else:
+                    if cache is not None:
+                        cache.put(text, tgt, src_lang or "auto", client.model, res)
                 # Convert Simplified to Traditional if needed
                 if ok and needs_s2t_conversion:
                     res = _convert_to_traditional(res)
@@ -111,5 +151,8 @@ def translate_texts(
                     log(f"[TR] {done}/{total} {tgt} len={len(text)}")
             if stopped:
                 break
+
+    if cache_hits > 0:
+        log(f"[CACHE] total: {cache_hits} hits, {done - cache_hits} translated")
 
     return tmap, done, fail_cnt, stopped
