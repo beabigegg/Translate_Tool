@@ -125,8 +125,6 @@ def translate_texts(
                 if ok and needs_s2t_conversion:
                     res = _convert_to_traditional(res)
                 tmap[(tgt, text)] = res
-                if done % 10 == 0 or done == total:
-                    log(f"[TR] {done}/{total} {tgt} len={len(text)}")
             if cache is not None and cache_entries:
                 cache.put_batch(cache_entries)
         else:
