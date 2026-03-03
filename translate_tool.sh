@@ -10,6 +10,13 @@ BACKEND_HOST="${TRANSLATE_TOOL_HOST:-127.0.0.1}"
 BACKEND_PORT="${TRANSLATE_TOOL_PORT:-8765}"
 FRONTEND_PORT="5173"
 
+# Runtime defaults tuned for 8GB VRAM class GPUs (preserve user overrides)
+export OLLAMA_NUM_CTX="${OLLAMA_NUM_CTX:-4096}"
+export OLLAMA_NUM_GPU="${OLLAMA_NUM_GPU:-99}"
+export OLLAMA_KV_CACHE_TYPE="${OLLAMA_KV_CACHE_TYPE:-q8_0}"
+export TRANSLATE_CONNECT_TIMEOUT="${TRANSLATE_CONNECT_TIMEOUT:-15}"
+export TRANSLATE_READ_TIMEOUT="${TRANSLATE_READ_TIMEOUT:-360}"
+
 # Auto-detect Ollama URL: in WSL, connect via Windows host gateway IP
 if [[ -z "${OLLAMA_BASE_URL:-}" ]] && grep -qi microsoft /proc/version 2>/dev/null; then
   WSL_GATEWAY="$(ip route show default 2>/dev/null | awk '{print $3}')"

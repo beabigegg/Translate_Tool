@@ -212,6 +212,8 @@ class JobManager:
         src_lang: Optional[str],
         include_headers: bool,
         model: str,
+        system_prompt: str = "",
+        profile_id: str = "general",
         pdf_output_format: str = "docx",
         pdf_layout_mode: str = "overlay",
     ) -> JobRecord:
@@ -236,7 +238,12 @@ class JobManager:
         self.jobs[job_id] = job
 
         log = JobLogger(job).log
-        log(f"[CONFIG] PDF output_format={pdf_output_format}, layout_mode={pdf_layout_mode}")
+        resolved_model = model or DEFAULT_MODEL
+        resolved_profile = profile_id or "general"
+        log(
+            f"[CONFIG] model={resolved_model}, profile={resolved_profile}, "
+            f"PDF output_format={pdf_output_format}, layout_mode={pdf_layout_mode}"
+        )
 
         def _run_job() -> None:
             client: Optional[OllamaClient] = None
@@ -252,7 +259,9 @@ class JobManager:
                     targets,
                     src_lang,
                     include_headers_shapes_via_com=include_headers,
-                    ollama_model=model or DEFAULT_MODEL,
+                    ollama_model=resolved_model,
+                    system_prompt=system_prompt,
+                    profile_id=resolved_profile,
                     timeout_config=timeout_config,
                     stop_flag=job.stop_flag,
                     log=log,

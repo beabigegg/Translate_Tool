@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import re
 import threading
 import time
-from typing import Callable, ClassVar, List, Optional, Tuple
+from typing import Callable, ClassVar, Dict, List, Optional, Tuple
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -38,11 +39,15 @@ class OllamaClient:
         self,
         base_url: str = OLLAMA_BASE_URL,
         model: str = DEFAULT_MODEL,
+        system_prompt: Optional[str] = None,
+        profile_id: Optional[str] = None,
         timeout: Optional[TimeoutConfig] = None,
         log: Callable[[str], None] = lambda s: None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
+        self.system_prompt = (system_prompt or "").strip()
+        self.profile_id = (profile_id or "").strip() or None
         self.timeout = timeout or TimeoutConfig()
         self.log = log
         logger.info(
@@ -93,7 +98,119 @@ class OllamaClient:
 
     @staticmethod
     def _build_options() -> dict:
-        return {"num_ctx": OLLAMA_NUM_CTX, "num_gpu": OLLAMA_NUM_GPU}
+        return {
+            "num_ctx": OLLAMA_NUM_CTX,
+            "num_gpu": OLLAMA_NUM_GPU,
+            "frequency_penalty": 0.5,  # Penalise degenerate repetition loops without hurting term consistency
+        }
+
+    @property
+    def cache_model_key(self) -> str:
+        if self.profile_id:
+            return f"{self.model}::{self.profile_id}"
+        return self.model
+
+    def _build_payload(self, prompt: str) -> Dict[str, object]:
+        payload: Dict[str, object] = {
+            "model": self.model,
+            "prompt": prompt,
+            "options": self._build_options(),
+            "think": False,  # Disable thinking mode — translation needs output only, not reasoning
+        }
+        if self.system_prompt:
+            payload["system"] = self.system_prompt
+        return payload
+
+    def _build_no_system_payload(self, prompt: str) -> Dict[str, object]:
+        return {"model": self.model, "prompt": prompt, "options": self._build_options(), "think": False}
+
+    def _is_translategemma_model(self) -> bool:
+        return "translategemma" in self.model.lower()
+
+    @staticmethod
+    def _normalize_source_language(source_language: Optional[str]) -> str:
+        if not source_language:
+            return "English"
+        normalized = source_language.strip()
+        if not normalized or normalized.lower() == "auto":
+            return "English"
+        return normalized
+
+    @staticmethod
+    def _is_auto_source(source_language: Optional[str]) -> bool:
+        return not source_language or not source_language.strip() or source_language.strip().lower() == "auto"
+
+    def _call_ollama(self, payload: dict, timeout_tuple=None) -> Tuple[bool, str]:
+        """Call Ollama /api/generate with streaming.
+
+        stream=True makes read_timeout the max silence between chunks,
+        not the max wait for the entire response. As long as Ollama keeps
+        producing tokens, it won't timeout.
+        """
+        session = self._get_session()
+        send_payload = {**payload, "stream": True}
+        timeout = timeout_tuple or self.timeout.get_timeout_tuple()
+
+        # Log outgoing payload (truncate prompt/system to keep logs readable)
+        prompt_preview = str(payload.get("prompt", ""))[:200]
+        system_preview = str(payload.get("system", ""))[:200]
+        logger.info(
+            "[OLLAMA_REQ] model=%s options=%s think=%s\n  system(%d): %s%s\n  prompt(%d): %s%s",
+            payload.get("model", "?"),
+            payload.get("options", {}),
+            payload.get("think", "default"),
+            len(str(payload.get("system", ""))), system_preview,
+            "..." if len(str(payload.get("system", ""))) > 200 else "",
+            len(str(payload.get("prompt", ""))), prompt_preview,
+            "..." if len(str(payload.get("prompt", ""))) > 200 else "",
+        )
+
+        t0 = time.time()
+        resp = session.post(
+            self._gen_url("/api/generate"),
+            json=send_payload, stream=True, timeout=timeout,
+        )
+
+        if resp.status_code != 200:
+            error_text = ""
+            try:
+                error_text = resp.text[:180]
+            except Exception:
+                pass
+            resp.close()
+            elapsed = time.time() - t0
+            logger.info("[OLLAMA_ERR] HTTP %s after %.1fs: %s", resp.status_code, elapsed, error_text)
+            return False, f"HTTP {resp.status_code}: {error_text}"
+
+        try:
+            parts: list[str] = []
+            for line in resp.iter_lines():
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                token = data.get("response", "")
+                if token:
+                    parts.append(token)
+                if data.get("done", False):
+                    break
+            raw_result = "".join(parts).strip()
+            # Strip <think>...</think> blocks from Qwen3.5 thinking mode output
+            result = re.sub(r"<think>.*?</think>", "", raw_result, flags=re.DOTALL).strip()
+            if raw_result and not result:
+                logger.warning("[OLLAMA_RES] Model returned only <think> content (%d chars), no translation", len(raw_result))
+            elapsed = time.time() - t0
+            result_preview = result[:300]
+            logger.info(
+                "[OLLAMA_RES] ok, %d chars in %.1fs (%.1f chars/s)\n  response: %s%s",
+                len(result), elapsed, len(result) / elapsed if elapsed > 0 else 0,
+                result_preview, "..." if len(result) > 300 else "",
+            )
+            return True, result
+        finally:
+            resp.close()
 
     def health_check(self) -> Tuple[bool, str]:
         try:
@@ -110,8 +227,7 @@ class OllamaClient:
     @staticmethod
     def _build_translategemma_prompt(text: str, target_language: str, source_language: Optional[str]) -> str:
         tgt_name, tgt_code = LANG_CODE_MAP.get(target_language, (target_language, target_language.lower()[:2]))
-        # Source language is required - default to English if not provided
-        src_lang = source_language if source_language else "English"
+        src_lang = OllamaClient._normalize_source_language(source_language)
         src_name, src_code = LANG_CODE_MAP.get(src_lang, (src_lang, src_lang.lower()[:2]))
         return (
             f"You are a professional {src_name} ({src_code}) to {tgt_name} ({tgt_code}) translator. "
@@ -123,8 +239,7 @@ class OllamaClient:
 
     @staticmethod
     def _build_generic_prompt(text: str, target_language: str, source_language: Optional[str]) -> str:
-        # Source language is required - default to English if not provided
-        source = source_language if source_language else "English"
+        source = OllamaClient._normalize_source_language(source_language)
         return (
             f"Task: Translate ONLY into {target_language} from {source}.\n"
             f"Rules:\n"
@@ -134,23 +249,75 @@ class OllamaClient:
             f"{text}"
         )
 
-    def translate_once(self, text: str, tgt: str, src_lang: Optional[str]) -> Tuple[bool, str]:
-        if "translategemma" in self.model.lower():
-            prompt = self._build_translategemma_prompt(text, tgt, src_lang)
+    @staticmethod
+    def _build_user_prompt(text: str, target_language: str, source_language: Optional[str]) -> str:
+        if OllamaClient._is_auto_source(source_language):
+            direction = f"Translate to {target_language}:"
         else:
-            prompt = self._build_generic_prompt(text, tgt, src_lang)
+            direction = f"Translate from {source_language} to {target_language}:"
+        return f"{direction}\n\n{text}"
 
-        payload = {"model": self.model, "prompt": prompt, "stream": False, "options": self._build_options()}
-        session = self._get_session()
+    @staticmethod
+    def _build_batch_user_prompt(texts: List[str], target_language: str, source_language: Optional[str]) -> str:
+        segments = [f"<<<SEG_{i}>>>\n{text}" for i, text in enumerate(texts)]
+        combined_text = "\n".join(segments)
+        if OllamaClient._is_auto_source(source_language):
+            direction = f"Translate to {target_language}:"
+        else:
+            direction = f"Translate from {source_language} to {target_language}:"
+        return (
+            f"{direction}\n"
+            "Translate each segment and keep every <<<SEG_N>>> marker exactly as-is.\n"
+            "Output only translated text in the same marker order.\n\n"
+            f"{combined_text}\n\n"
+            "Output format:\n"
+            "<<<SEG_0>>>\n[translation]\n"
+            "<<<SEG_1>>>\n[translation]\n..."
+        )
+
+    def _build_single_translate_payload(self, text: str, tgt: str, src_lang: Optional[str]) -> Dict[str, object]:
+        if self._is_translategemma_model():
+            prompt = self._build_translategemma_prompt(text, tgt, src_lang)
+            return self._build_no_system_payload(prompt)
+        if self.system_prompt:
+            prompt = self._build_user_prompt(text, tgt, src_lang)
+            return self._build_payload(prompt)
+        prompt = self._build_generic_prompt(text, tgt, src_lang)
+        return self._build_payload(prompt)
+
+    def _build_batch_translate_payload(self, texts: List[str], tgt: str, src_lang: Optional[str]) -> Dict[str, object]:
+        if self._is_translategemma_model():
+            prompt = self._build_batch_translategemma_prompt(texts, tgt, src_lang)
+            return self._build_no_system_payload(prompt)
+        if self.system_prompt:
+            prompt = self._build_batch_user_prompt(texts, tgt, src_lang)
+            return self._build_payload(prompt)
+
+        segments = [f"<<<SEG_{i}>>>\n{text}" for i, text in enumerate(texts)]
+        combined_text = "\n".join(segments)
+        source = self._normalize_source_language(src_lang)
+        prompt = (
+            f"Translate the following text from {source} to {tgt}.\n\n"
+            "Rules:\n"
+            "1) Output translation text ONLY (no source text, no notes, no questions).\n"
+            "2) Preserve original line breaks within each segment.\n"
+            "3) Do NOT wrap in quotes or code blocks.\n"
+            "4) IMPORTANT: Keep the <<<SEG_N>>> markers in your output.\n\n"
+            f"{combined_text}\n\n"
+            "Output format (keep all markers):\n"
+            "<<<SEG_0>>>\n[translation]\n<<<SEG_1>>>\n[translation]..."
+        )
+        return self._build_payload(prompt)
+
+    def translate_once(self, text: str, tgt: str, src_lang: Optional[str]) -> Tuple[bool, str]:
+        payload = self._build_single_translate_payload(text, tgt, src_lang)
         last = None
         for attempt in range(1, API_ATTEMPTS + 1):
             try:
-                resp = session.post(self._gen_url("/api/generate"), json=payload, timeout=self.timeout.get_timeout_tuple())
-                if resp.status_code == 200:
-                    data = resp.json()
-                    ans = data.get("response", "")
-                    return True, ans.strip()
-                last = f"HTTP {resp.status_code}: {resp.text[:180]}"
+                ok, result = self._call_ollama(payload)
+                if ok:
+                    return True, result
+                last = result
             except requests.exceptions.RequestException as exc:
                 last = f"Request error: {exc}"
             time.sleep(API_BACKOFF_BASE * attempt)
@@ -231,25 +398,14 @@ class OllamaClient:
         # Translate each chunk
         translated_chunks = []
         for chunk in final_chunks:
-            if "translategemma" in self.model.lower():
-                prompt = self._build_translategemma_prompt(chunk, tgt, src_lang)
-            else:
-                prompt = self._build_generic_prompt(chunk, tgt, src_lang)
-
-            payload = {"model": self.model, "prompt": prompt, "stream": False, "options": self._build_options()}
-            session = self._get_session()
+            payload = self._build_single_translate_payload(chunk, tgt, src_lang)
 
             try:
-                resp = session.post(
-                    self._gen_url("/api/generate"),
-                    json=payload,
-                    timeout=self.timeout.get_timeout_tuple()
-                )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    translated_chunks.append(data.get("response", "").strip())
+                ok, result = self._call_ollama(payload)
+                if ok:
+                    translated_chunks.append(result)
                 else:
-                    return False, f"[Chunk translation failed] HTTP {resp.status_code}"
+                    return False, f"[Chunk translation failed] {result}"
             except requests.exceptions.RequestException as exc:
                 return False, f"[Chunk translation failed] {exc}"
 
@@ -266,13 +422,8 @@ class OllamaClient:
         Returns:
             Tuple of (success, result_or_error).
         """
-        if "translategemma" in self.model.lower():
-            prompt = self._build_translategemma_prompt(text, tgt, src_lang)
-        else:
-            prompt = self._build_generic_prompt(text, tgt, src_lang)
-
-        payload = {"model": self.model, "prompt": prompt, "stream": False, "options": self._build_options()}
-        session = self._get_session()
+        payload = self._build_single_translate_payload(text, tgt, src_lang)
+        extended_timeout = (self.timeout.connect_timeout, self.timeout.read_timeout * 1.5)
 
         # Extended retry with longer waits
         wait_times = [5, 10, 20]  # seconds
@@ -281,14 +432,9 @@ class OllamaClient:
             time.sleep(wait_time)
 
             try:
-                resp = session.post(
-                    self._gen_url("/api/generate"),
-                    json=payload,
-                    timeout=(self.timeout.connect_timeout, self.timeout.read_timeout * 1.5)
-                )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    return True, data.get("response", "").strip()
+                ok, result = self._call_ollama(payload, timeout_tuple=extended_timeout)
+                if ok:
+                    return True, result
             except requests.exceptions.RequestException:
                 continue
 
@@ -298,8 +444,7 @@ class OllamaClient:
     def _build_batch_translategemma_prompt(texts: List[str], target_language: str, source_language: Optional[str]) -> str:
         """Build batch translation prompt with numbered segment markers for better parsing."""
         tgt_name, tgt_code = LANG_CODE_MAP.get(target_language, (target_language, target_language.lower()[:2]))
-        # Source language is required - default to English if not provided
-        src_lang = source_language if source_language else "English"
+        src_lang = OllamaClient._normalize_source_language(source_language)
         src_name, src_code = LANG_CODE_MAP.get(src_lang, (src_lang, src_lang.lower()[:2]))
 
         # Build segments with numbered markers
@@ -325,40 +470,13 @@ class OllamaClient:
         if len(texts) == 1:
             ok, result = self.translate_once(texts[0], tgt, src_lang)
             return ok, [result]
-
-        if "translategemma" in self.model.lower():
-            prompt = self._build_batch_translategemma_prompt(texts, tgt, src_lang)
-        else:
-            # Build segments with numbered markers for reliable parsing
-            segments = []
-            for i, text in enumerate(texts):
-                segments.append(f"<<<SEG_{i}>>>\n{text}")
-            combined_text = "\n".join(segments)
-
-            # Source language is required - default to English if not provided
-            source = src_lang if src_lang else "English"
-            prompt = (
-                f"Translate the following text from {source} to {tgt}.\n\n"
-                f"Rules:\n"
-                f"1) Output translation text ONLY (no source text, no notes, no questions).\n"
-                f"2) Preserve original line breaks within each segment.\n"
-                f"3) Do NOT wrap in quotes or code blocks.\n"
-                f"4) IMPORTANT: Keep the <<<SEG_N>>> markers in your output.\n\n"
-                f"{combined_text}\n\n"
-                f"Output format (keep all markers):\n"
-                f"<<<SEG_0>>>\n[translation]\n<<<SEG_1>>>\n[translation]..."
-            )
-
-        payload = {"model": self.model, "prompt": prompt, "stream": False, "options": self._build_options()}
-        session = self._get_session()
+        payload = self._build_batch_translate_payload(texts, tgt, src_lang)
         last = None
         for attempt in range(1, API_ATTEMPTS + 1):
             try:
-                resp = session.post(self._gen_url("/api/generate"), json=payload, timeout=self.timeout.get_timeout_tuple())
-                if resp.status_code == 200:
-                    data = resp.json()
-                    ans = data.get("response", "").strip()
-                    results = self._parse_batch_response(ans, len(texts))
+                ok, result = self._call_ollama(payload)
+                if ok:
+                    results = self._parse_batch_response(result, len(texts))
                     if len(results) == len(texts):
                         return True, results
                     logger.warning(
@@ -370,7 +488,7 @@ class OllamaClient:
                     )
                     last = f"Batch parse failed: expected {len(texts)} segments, got {len(results)}"
                 else:
-                    last = f"HTTP {resp.status_code}: {resp.text[:180]}"
+                    last = result
             except requests.exceptions.RequestException as exc:
                 last = f"Request error: {exc}"
             time.sleep(API_BACKOFF_BASE * attempt)

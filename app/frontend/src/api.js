@@ -6,6 +6,14 @@ export async function fetchModels() {
   return res.json();
 }
 
+export async function fetchProfiles() {
+  const res = await fetch("/api/profiles");
+  if (!res.ok) {
+    throw new Error("Failed to load profiles");
+  }
+  return res.json();
+}
+
 export async function createJob(formData) {
   const res = await fetch("/api/jobs", {
     method: "POST",
@@ -34,22 +42,3 @@ export async function cancelJob(jobId) {
   return res.json();
 }
 
-export function streamLogs(jobId, fromIndex, onLine, onDone) {
-  const url = `/api/jobs/${jobId}/logs?from_index=${fromIndex}`;
-  const source = new EventSource(url);
-
-  source.onmessage = (event) => {
-    if (event.data) {
-      onLine(event.data);
-    }
-  };
-
-  source.onerror = () => {
-    source.close();
-    if (onDone) {
-      onDone();
-    }
-  };
-
-  return source;
-}

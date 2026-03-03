@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import (
     DEFAULT_MAX_BATCH_CHARS,
     MAX_MAX_BATCH_CHARS,
+    MAX_MERGE_SEGMENTS,
     MAX_PARAGRAPH_CHARS,
     MIN_MAX_BATCH_CHARS,
     TRANSLATION_GRANULARITY,
@@ -35,12 +36,13 @@ def _build_segment_marker(index: int) -> str:
     return f"{SEGMENT_MARKER_PREFIX}{index}{SEGMENT_MARKER_SUFFIX}"
 
 
-def _merge_texts_with_markers(texts: List[str], max_chars: int = MAX_PARAGRAPH_CHARS) -> List[Tuple[str, List[int]]]:
+def _merge_texts_with_markers(texts: List[str], max_chars: int = MAX_PARAGRAPH_CHARS, max_segments: int = MAX_MERGE_SEGMENTS) -> List[Tuple[str, List[int]]]:
     """Merge multiple texts with segment markers, staying under character limit.
 
     Args:
         texts: List of text segments to merge.
         max_chars: Maximum characters per merged batch.
+        max_segments: Maximum number of segments per merged batch.
 
     Returns:
         List of tuples: (merged_text, list_of_original_indices).
@@ -62,7 +64,7 @@ def _merge_texts_with_markers(texts: List[str], max_chars: int = MAX_PARAGRAPH_C
         segment_length = len(segment) + 1  # +1 for newline separator
 
         # Check if adding this segment would exceed limit
-        if current_batch and (current_length + segment_length > max_chars):
+        if current_batch and (current_length + segment_length > max_chars or len(current_indices) >= max_segments):
             # Flush current batch
             merged_text = "\n".join(current_batch)
             merged_batches.append((merged_text, current_indices.copy()))
@@ -129,6 +131,9 @@ def translate_merged_paragraphs(
     src_lang: Optional[str],
     client: OllamaClient,
     max_chars: int = MAX_PARAGRAPH_CHARS,
+    progress_log: Optional[Callable[[int], None]] = None,
+    log: Optional[Callable[[str], None]] = None,
+    on_segment_done: Optional[Callable[[str, str], None]] = None,
 ) -> List[Tuple[bool, str]]:
     """Translate multiple texts by merging them for better context preservation.
 
@@ -141,6 +146,7 @@ def translate_merged_paragraphs(
         src_lang: Source language.
         client: Ollama client.
         max_chars: Maximum characters per merged batch.
+        progress_log: Optional callback called with count of segments completed so far.
 
     Returns:
         List of (success, translated_text) tuples.
@@ -173,10 +179,15 @@ def translate_merged_paragraphs(
 
     # Track which valid index we're at
     valid_offset = 0
+    completed = 0
+    total_batches = len(merged_batches)
+    _log = log or (lambda s: None)
 
     # Translate each merged batch
-    for merged_text, local_indices in merged_batches:
+    for batch_idx, (merged_text, local_indices) in enumerate(merged_batches):
         batch_size = len(local_indices)
+
+        _log(f"[BATCH] {batch_idx + 1}/{total_batches} ({batch_size} segs, {len(merged_text)} chars) {tgt}")
 
         # Add marker preservation instruction to the text
         instruction = (
@@ -197,13 +208,20 @@ def translate_merged_paragraphs(
 
                 if translation:
                     results[original_idx] = (True, translation)
+                    if on_segment_done:
+                        on_segment_done(original_text, translation)
                 else:
                     # Fallback: translate individually
                     fallback_ok, fallback_result = client.translate_once(original_text, tgt, src_lang)
                     if fallback_ok:
                         results[original_idx] = (True, fallback_result)
+                        if on_segment_done:
+                            on_segment_done(original_text, fallback_result)
                     else:
                         results[original_idx] = (False, f"[翻譯失敗] {original_text[:30]}...")
+                completed += 1
+                if progress_log:
+                    progress_log(completed)
         else:
             # Batch failed, fallback to individual translation
             logger.warning("Merged translation failed, falling back to individual")
@@ -213,8 +231,13 @@ def translate_merged_paragraphs(
                 fallback_ok, fallback_result = client.translate_once(original_text, tgt, src_lang)
                 if fallback_ok:
                     results[original_idx] = (True, fallback_result)
+                    if on_segment_done:
+                        on_segment_done(original_text, fallback_result)
                 else:
                     results[original_idx] = (False, f"[翻譯失敗] {original_text[:30]}...")
+                completed += 1
+                if progress_log:
+                    progress_log(completed)
 
         valid_offset += batch_size
 
@@ -401,6 +424,9 @@ def translate_blocks_batch(
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
     granularity: Optional[str] = None,
     use_merged_context: Optional[bool] = None,
+    progress_log: Optional[Callable[[int], None]] = None,
+    log: Optional[Callable[[str], None]] = None,
+    on_segment_done: Optional[Callable[[str, str], None]] = None,
 ) -> List[Tuple[bool, str]]:
     """Batch translate multiple text blocks.
 
@@ -414,6 +440,7 @@ def translate_blocks_batch(
                     None uses config default (TRANSLATION_GRANULARITY).
         use_merged_context: If True, merge multiple paragraphs for context-aware
                            translation (within MAX_PARAGRAPH_CHARS limit).
+        progress_log: Optional callback called with count of segments completed so far.
 
     Returns:
         List of (success, translated_text) tuples.
@@ -435,7 +462,7 @@ def translate_blocks_batch(
     # For paragraph granularity with merged context (recommended for quality)
     if use_granularity == "paragraph" and enable_merged:
         logger.debug("Using merged paragraph translation for %d texts", len(texts))
-        return translate_merged_paragraphs(texts, tgt, src_lang, client, MAX_PARAGRAPH_CHARS)
+        return translate_merged_paragraphs(texts, tgt, src_lang, client, MAX_PARAGRAPH_CHARS, progress_log=progress_log, log=log, on_segment_done=on_segment_done)
 
     # For paragraph granularity without merged context, translate each block individually
     if use_granularity == "paragraph":

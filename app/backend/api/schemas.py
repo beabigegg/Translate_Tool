@@ -31,3 +31,9 @@ class JobStatus(BaseModel):
 
 class ModelsResponse(BaseModel):
     models: List[str]
+
+
+class ProfileItem(BaseModel):
+    id: str
+    name: str
+    description: str

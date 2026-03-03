@@ -10,13 +10,13 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 APP_NAME = "Translate Tool"
-DEFAULT_MODEL = "translategemma:12b"
+DEFAULT_MODEL = "qwen3.5:4b"
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_NUM_CTX = int(os.environ.get("OLLAMA_NUM_CTX", "4096"))
 OLLAMA_NUM_GPU = int(os.environ.get("OLLAMA_NUM_GPU", "99"))
 
 DEFAULT_CONNECT_TIMEOUT_S = 10.0
-DEFAULT_READ_TIMEOUT_S = 180.0
+DEFAULT_READ_TIMEOUT_S = 360.0
 
 API_ATTEMPTS = 3
 API_BACKOFF_BASE = 1.6
@@ -38,6 +38,7 @@ DEFAULT_MAX_BATCH_CHARS = max(MIN_MAX_BATCH_CHARS, min((OLLAMA_NUM_CTX // 2) * 3
 # Translation granularity: "sentence" (legacy) | "paragraph" (recommended for quality)
 TRANSLATION_GRANULARITY = "paragraph"
 MAX_PARAGRAPH_CHARS = 2000  # Split paragraphs longer than this
+MAX_MERGE_SEGMENTS = 4  # Max segments per merged batch (reduced for 4B model to mitigate "Lost in the Middle")
 # Merge multiple paragraphs for context-aware translation (within MAX_PARAGRAPH_CHARS)
 USE_MERGED_CONTEXT = True
 EXCEL_FORMULA_MODE = "skip"
@@ -80,9 +81,6 @@ MAX_TEXT_LENGTH = 1_000_000_000  # 1 billion characters (effectively unlimited)
 MAX_JOBS_IN_MEMORY = int(os.environ.get("MAX_JOBS_IN_MEMORY", "100"))
 JOB_TTL_HOURS = int(os.environ.get("JOB_TTL_HOURS", "24"))
 CLEANUP_INTERVAL_MINUTES = int(os.environ.get("CLEANUP_INTERVAL_MINUTES", "30"))
-
-# Performance: SSE stream management
-SSE_IDLE_TIMEOUT_SECONDS = int(os.environ.get("SSE_IDLE_TIMEOUT_SECONDS", "60"))
 
 # Performance: HTTP connection pool
 HTTP_POOL_CONNECTIONS = int(os.environ.get("HTTP_POOL_CONNECTIONS", "2"))

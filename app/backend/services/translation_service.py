@@ -73,6 +73,9 @@ def translate_texts(
     cache = get_cache()
     cache_hits = 0
 
+    # Emit initial progress so frontend knows total segment count immediately
+    log(f"[TR] 0/{total} - len=0")
+
     for tgt in targets:
         if stop_flag and stop_flag.is_set():
             log(f"[STOP] Translation stopped at {done}/{total} segments")
@@ -82,21 +85,33 @@ def translate_texts(
         # Check if we need OpenCC conversion for Traditional Chinese
         needs_s2t_conversion = _is_traditional_chinese_target(tgt)
 
-        # --- Cache lookup ---
+        # --- Deduplicate + cache lookup ---
+        # Count how many times each text appears (for correct progress counting)
+        seen_texts: Dict[str, int] = {}
+        for t in texts:
+            seen_texts[t] = seen_texts.get(t, 0) + 1
+        unique_input = list(seen_texts.keys())
+
         if cache is not None:
-            cached = cache.get_batch(texts, tgt, src_lang or "auto", client.model)
+            cached = cache.get_batch(unique_input, tgt, src_lang or "auto", client.cache_model_key)
             for src_text, cached_trans in cached.items():
                 trans = _convert_to_traditional(cached_trans) if needs_s2t_conversion else cached_trans
                 tmap[(tgt, src_text)] = trans
-                done += 1
-                cache_hits += 1
-            texts_to_translate = [t for t in texts if t not in cached]
+                count = seen_texts[src_text]
+                done += count
+                cache_hits += count
+            texts_to_translate = [t for t in unique_input if t not in cached]
             if not texts_to_translate:
-                log(f"[CACHE] {tgt}: all {len(cached)} from cache")
+                log(f"[CACHE] {tgt}: all {len(texts)} from cache")
                 continue
-            log(f"[CACHE] {tgt}: {len(cached)} hits, {len(texts_to_translate)} to translate")
+            uncached_segs = sum(seen_texts[t] for t in texts_to_translate)
+            log(f"[CACHE] {tgt}: {done} hits, {uncached_segs} to translate ({len(texts_to_translate)} unique)")
         else:
-            texts_to_translate = texts
+            texts_to_translate = unique_input
+
+        dedup_saved = sum(seen_texts[t] - 1 for t in texts_to_translate)
+        if dedup_saved > 0:
+            log(f"[DEDUP] {tgt}: {dedup_saved} duplicate segments skipped ({len(texts_to_translate)} unique)")
 
         if SENTENCE_MODE:
             # Progress callback: emit [TR] logs during batch processing
@@ -107,26 +122,42 @@ def translate_texts(
                 if batch_done % 10 == 0 or current == total:
                     log(f"[TR] {current}/{total} {tgt} len=~")
 
+            # Incremental cache write: each segment is cached as soon as it's translated
+            incremental_cache_entries: List[Tuple[str, str, str, str, str]] = []
+
+            def _on_segment_done(src_text: str, translated: str) -> None:
+                """Cache each segment immediately so interrupted jobs still benefit."""
+                incremental_cache_entries.append(
+                    (src_text, tgt, src_lang or "auto", client.cache_model_key, translated)
+                )
+                # Flush to DB every 10 segments to balance I/O and safety
+                if cache is not None and len(incremental_cache_entries) >= 10:
+                    cache.put_batch(incremental_cache_entries[:])
+                    incremental_cache_entries.clear()
+
             # Use character-based batching - translate_blocks_batch handles batching internally
             results = translate_blocks_batch(
                 texts_to_translate, tgt, src_lang, client,
                 max_batch_chars=max_batch_chars,
                 progress_log=_on_batch_progress,
+                log=log,
+                on_segment_done=_on_segment_done,
             )
-            cache_entries: List[Tuple[str, str, str, str, str]] = []
+            # Flush remaining cache entries
+            if cache is not None and incremental_cache_entries:
+                cache.put_batch(incremental_cache_entries)
+
+            # Build map from unique translated texts
             for text, (ok, res) in zip(texts_to_translate, results):
-                done += 1
                 if not ok:
                     fail_cnt += 1
-                else:
-                    # Store raw (pre-OpenCC) result in cache
-                    cache_entries.append((text, tgt, src_lang or "auto", client.model, res))
                 # Convert Simplified to Traditional if needed
                 if ok and needs_s2t_conversion:
                     res = _convert_to_traditional(res)
                 tmap[(tgt, text)] = res
-            if cache is not None and cache_entries:
-                cache.put_batch(cache_entries)
+
+            # Count all segments (unique + duplicates) as done
+            done += len(texts_to_translate) + dedup_saved
         else:
             for text in texts_to_translate:
                 if stop_flag and stop_flag.is_set():
@@ -139,11 +170,11 @@ def translate_texts(
                     fail_cnt += 1
                 else:
                     if cache is not None:
-                        cache.put(text, tgt, src_lang or "auto", client.model, res)
+                        cache.put(text, tgt, src_lang or "auto", client.cache_model_key, res)
                 # Convert Simplified to Traditional if needed
                 if ok and needs_s2t_conversion:
                     res = _convert_to_traditional(res)
-                done += 1
+                done += seen_texts.get(text, 1)  # Count duplicates
                 tmap[(tgt, text)] = res
                 if done % 10 == 0 or done == total:
                     log(f"[TR] {done}/{total} {tgt} len={len(text)}")

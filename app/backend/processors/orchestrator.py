@@ -54,6 +54,8 @@ def process_files(
     src_lang: Optional[str],
     include_headers_shapes_via_com: bool,
     ollama_model: str,
+    system_prompt: str = "",
+    profile_id: str = "general",
     timeout_config: Optional[TimeoutConfig] = None,
     stop_flag: Optional[threading.Event] = None,
     log: Callable[[str], None] = lambda s: None,
@@ -70,6 +72,8 @@ def process_files(
         src_lang: Source language (or None for auto-detect).
         include_headers_shapes_via_com: Use COM for headers/shapes (Windows).
         ollama_model: Ollama model name.
+        system_prompt: Domain-specific system prompt.
+        profile_id: Resolved profile id.
         timeout_config: Optional timeout configuration.
         stop_flag: Optional stop flag for cancellation.
         log: Logging callback.
@@ -84,7 +88,13 @@ def process_files(
     if layout_mode is None:
         layout_mode = LAYOUT_PRESERVATION_MODE
     output_dir.mkdir(parents=True, exist_ok=True)
-    client = OllamaClient(model=ollama_model, timeout=timeout_config, log=log)
+    client = OllamaClient(
+        model=ollama_model,
+        system_prompt=system_prompt,
+        profile_id=profile_id,
+        timeout=timeout_config,
+        log=log,
+    )
     processed_count = 0
     total_count = len(files)
     stopped = False

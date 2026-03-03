@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import {
   cancelJob,
   createJob,
+  fetchProfiles,
   fetchJobStatus,
-  streamLogs
 } from "./api.js";
 
 // Language options grouped by region for better UX
@@ -18,6 +18,10 @@ const LANG_GROUPS = {
   "Middle Eastern": ["Arabic", "Hebrew", "Persian"],
   "African": ["Swahili", "Amharic", "Hausa", "Yoruba", "Zulu"]
 };
+
+const PROFILE_FALLBACK = [
+  { id: "general", name: "通用翻譯", description: "General translation" }
+];
 
 // File type icons and colors
 const FILE_TYPES = {
@@ -71,12 +75,6 @@ const Icons = {
   Activity: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-    </svg>
-  ),
-  Terminal: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <polyline points="4 17 10 11 4 5" />
-      <line x1="12" y1="19" x2="20" y2="19" />
     </svg>
   ),
   Translate: () => (
@@ -140,12 +138,6 @@ const Icons = {
       <circle cx="12" cy="12" r="10" />
       <line x1="15" y1="9" x2="9" y2="15" />
       <line x1="9" y1="9" x2="15" y2="15" />
-    </svg>
-  ),
-  Clock: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12 6 12 12 16 14" />
     </svg>
   ),
   FileText: () => (
@@ -270,9 +262,10 @@ function FileCard({ file, onRemove }) {
 }
 
 // Language selector with search and groups
-function LanguageSelector({ selected, onChange, multiple = false }) {
+function LanguageSelector({ selected, onChange, multiple = false, showAutoOption = false }) {
   const [search, setSearch] = useState("");
   const [expandedGroups, setExpandedGroups] = useState(new Set(["East Asian"]));
+  const autoLabel = "Auto-detect (自動偵測)";
 
   const filteredGroups = useMemo(() => {
     if (!search) return LANG_GROUPS;
@@ -298,7 +291,10 @@ function LanguageSelector({ selected, onChange, multiple = false }) {
     onChange(lang);
   };
 
-  const totalSelected = multiple ? selected.length : (selected ? 1 : 0);
+  const showAuto =
+    !multiple &&
+    showAutoOption &&
+    (!search || autoLabel.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="language-selector">
@@ -324,6 +320,19 @@ function LanguageSelector({ selected, onChange, multiple = false }) {
       </div>
 
       <div className="language-groups">
+        {showAuto && (
+          <div
+            className={`language-item auto ${selected === "auto" ? "selected" : ""}`}
+            onClick={() => handleSelect("auto")}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === "Enter" && handleSelect("auto")}
+            aria-pressed={selected === "auto"}
+          >
+            <span className="auto-icon">A</span>
+            <span>{autoLabel}</span>
+          </div>
+        )}
         {Object.entries(filteredGroups).map(([group, langs]) => (
           <div key={group} className="language-group">
             <button
@@ -371,24 +380,6 @@ function LanguageSelector({ selected, onChange, multiple = false }) {
 }
 
 // Log entry component with timestamp and type
-function LogEntry({ line, index }) {
-  const isError = line.toLowerCase().includes('error') || line.toLowerCase().includes('failed');
-  const isSuccess = line.toLowerCase().includes('success') || line.toLowerCase().includes('completed');
-  const isProgress = line.includes('%') || line.toLowerCase().includes('processing');
-
-  let type = 'info';
-  if (isError) type = 'error';
-  else if (isSuccess) type = 'success';
-  else if (isProgress) type = 'progress';
-
-  return (
-    <div className={`log-entry ${type}`}>
-      <span className="log-index">{String(index + 1).padStart(3, '0')}</span>
-      <span className="log-content">{line}</span>
-    </div>
-  );
-}
-
 // Empty state component
 function EmptyState({ icon: Icon, title, description }) {
   return (
@@ -402,19 +393,19 @@ function EmptyState({ icon: Icon, title, description }) {
   );
 }
 
+
 export default function App() {
   const [files, setFiles] = useState([]);
   const [selectedTargets, setSelectedTargets] = useState(["English", "Vietnamese"]);
   const [activeTarget, setActiveTarget] = useState(0);
-  const [srcLang, setSrcLang] = useState("English");
-  const model = "translategemma:12b";  // Hardcoded - single model
+  const [srcLang, setSrcLang] = useState("auto");
+  const [profiles, setProfiles] = useState([]);
+  const [selectedProfile, setSelectedProfile] = useState("general");
   const [includeHeaders, setIncludeHeaders] = useState(false);
   const [pdfOutputFormat, setPdfOutputFormat] = useState("pdf");  // "docx" or "pdf"
   const [pdfLayoutMode, setPdfLayoutMode] = useState("overlay");  // "overlay" or "side_by_side"
   const [jobId, setJobId] = useState(null);
   const [jobStatus, setJobStatus] = useState(null);
-  const [logs, setLogs] = useState([]);
-  const [logCursor, setLogCursor] = useState(0);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -422,9 +413,7 @@ export default function App() {
 
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
-  const logBoxRef = useRef(null);
   const dropZoneRef = useRef(null);
-
   // Calculate current step
   const currentStep = useMemo(() => {
     if (jobStatus?.status === "completed") return 3;
@@ -441,12 +430,36 @@ export default function App() {
   ];
 
   useEffect(() => {
+    let cancelled = false;
+    const loadProfiles = async () => {
+      try {
+        const loaded = await fetchProfiles();
+        if (!cancelled) {
+          setProfiles(Array.isArray(loaded) && loaded.length > 0 ? loaded : PROFILE_FALLBACK);
+        }
+      } catch (err) {
+        console.error("Failed to fetch profiles:", err);
+        if (!cancelled) {
+          setProfiles(PROFILE_FALLBACK);
+        }
+      }
+    };
+    loadProfiles();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!jobId) return;
     let cancelled = false;
     const poll = async () => {
       try {
         const status = await fetchJobStatus(jobId);
-        if (!cancelled) setJobStatus(status);
+        if (!cancelled) {
+          setJobStatus(status);
+          setError(null);
+        }
       } catch (err) {
         if (!cancelled) setError(err.message || "Status polling failed");
       }
@@ -459,38 +472,20 @@ export default function App() {
     };
   }, [jobId]);
 
-  useEffect(() => {
-    if (!jobId) return undefined;
-    const source = streamLogs(
-      jobId,
-      logCursor,
-      (line) => {
-        setLogs((prev) => [...prev, line]);
-        setLogCursor((prev) => prev + 1);
-      },
-      () => {}
-    );
-    return () => source.close();
-  }, [jobId]);
-
-  // Auto-scroll logs
-  useEffect(() => {
-    if (logBoxRef.current) {
-      logBoxRef.current.scrollTop = logBoxRef.current.scrollHeight;
-    }
-  }, [logs]);
-
   const isRunning = jobStatus?.status === "running";
   const canStart = useMemo(
     () => files.length > 0 && selectedTargets.length > 0 && !loading && !isRunning,
     [files, selectedTargets, loading, isRunning]
   );
   const outputReady = jobStatus?.output_ready;
+  const srcLangLabel = srcLang === "auto" ? "Auto-detect (自動偵測)" : srcLang;
+
+  const liveStatus = jobStatus;
 
   const progress = useMemo(() => {
-    if (!jobStatus) return 0;
-    return (jobStatus.overall_progress || 0) * 100;
-  }, [jobStatus]);
+    if (!liveStatus) return 0;
+    return (liveStatus.overall_progress || 0) * 100;
+  }, [liveStatus]);
 
   const handleFileChange = (event) => {
     const incoming = Array.from(event.target.files || []);
@@ -654,14 +649,12 @@ export default function App() {
   const handleStart = async () => {
     setError(null);
     setLoading(true);
-    setLogs([]);
-    setLogCursor(0);
     try {
       const form = new FormData();
       files.forEach((file) => form.append("files", file));
       form.append("targets", selectedTargets.join(","));
       form.append("src_lang", srcLang);
-      form.append("model", model);
+      form.append("profile", selectedProfile);
       form.append("include_headers", String(includeHeaders));
       form.append("pdf_output_format", pdfOutputFormat);
       form.append("pdf_layout_mode", pdfLayoutMode);
@@ -685,10 +678,10 @@ export default function App() {
 
   const handleReset = () => {
     setFiles([]);
+    setSrcLang("auto");
+    setSelectedProfile("general");
     setJobId(null);
     setJobStatus(null);
-    setLogs([]);
-    setLogCursor(0);
     setError(null);
   };
 
@@ -821,12 +814,13 @@ export default function App() {
                 <Icons.Globe />
                 Source Language
               </h2>
-              <span className="current-selection">{srcLang}</span>
+              <span className="current-selection">{srcLangLabel}</span>
             </div>
             <div className="language-card-content">
               <LanguageSelector
                 selected={srcLang}
                 onChange={setSrcLang}
+                showAutoOption
               />
             </div>
           </section>
@@ -913,6 +907,40 @@ export default function App() {
 
         {/* Right Column - Settings & Actions */}
         <div className="column column-right">
+          <section className="card profile-card">
+            <div className="card-header">
+              <h2>
+                <Icons.Star />
+                Translation Profile (翻譯模式)
+              </h2>
+            </div>
+            <div className="settings-content">
+              <div className="setting-group">
+                <div className="radio-group">
+                  {(profiles.length > 0 ? profiles : PROFILE_FALLBACK).map((profile) => (
+                    <label
+                      key={profile.id}
+                      className={`radio-option ${selectedProfile === profile.id ? "selected" : ""}`}
+                    >
+                      <input
+                        type="radio"
+                        name="translationProfile"
+                        value={profile.id}
+                        checked={selectedProfile === profile.id}
+                        onChange={(e) => setSelectedProfile(e.target.value)}
+                        disabled={isRunning}
+                      />
+                      <div className="radio-label">
+                        <strong>{profile.name}</strong>
+                        <small>{profile.description}</small>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
           {/* Settings */}
           <section className="card settings-card">
             <button
@@ -1045,13 +1073,18 @@ export default function App() {
                 <>
                   <ProgressBar progress={progress} status={jobStatus?.status || "idle"} />
 
-                  {jobStatus?.current_file && jobStatus?.status === "running" && (
+                  {liveStatus?.current_file && jobStatus?.status === "running" && (
                     <div className="current-file-indicator">
                       <span className="current-file-label">Translating</span>
-                      <span className="current-file-name">{jobStatus.current_file}</span>
-                      {jobStatus.file_segments_total > 0 && (
+                      <span className="current-file-name">
+                        {liveStatus.current_file}
+                        {liveStatus.current_target_lang && (
+                          <span className="current-file-lang"> [{liveStatus.current_target_lang}]</span>
+                        )}
+                      </span>
+                      {liveStatus.file_segments_total > 0 && (
                         <span className="current-file-segments">
-                          {jobStatus.file_segments_done}/{jobStatus.file_segments_total} segments
+                          {liveStatus.file_segments_done}/{liveStatus.file_segments_total} segments
                         </span>
                       )}
                     </div>
@@ -1061,35 +1094,47 @@ export default function App() {
                     <div className="status-item">
                       <span className="status-label">Files</span>
                       <span className="status-value">
-                        {jobStatus?.processed_files || 0} / {jobStatus?.total_files || 0}
+                        {liveStatus?.processed_files || 0} / {liveStatus?.total_files || 0}
                       </span>
                     </div>
                     <div className="status-item">
                       <span className="status-label">Segments</span>
                       <span className="status-value">
-                        {jobStatus?.segments_done || 0} / {jobStatus?.segments_total || 0}
+                        {liveStatus?.segments_done || 0} / {liveStatus?.segments_total || 0}
                       </span>
                     </div>
                     <div className="status-item">
                       <span className="status-label">Speed</span>
                       <span className="status-value">
-                        {jobStatus?.segments_per_second > 0
-                          ? `${jobStatus.segments_per_second} seg/s`
+                        {liveStatus?.segments_per_second > 0
+                          ? `${liveStatus.segments_per_second} seg/s`
                           : "--"}
                       </span>
                     </div>
                     <div className="status-item">
                       <span className="status-label">ETA</span>
                       <span className="status-value">
-                        {formatEta(jobStatus?.eta_seconds)}
+                        {formatEta(liveStatus?.eta_seconds)}
                       </span>
                     </div>
                     <div className="status-item">
                       <span className="status-label">Elapsed</span>
                       <span className="status-value">
-                        {formatElapsed(jobStatus?.elapsed_seconds)}
+                        {formatElapsed(liveStatus?.elapsed_seconds)}
                       </span>
                     </div>
+                    {liveStatus?.current_target_lang && (
+                      <div className="status-item">
+                        <span className="status-label">Language</span>
+                        <span className="status-value">{liveStatus.current_target_lang}</span>
+                      </div>
+                    )}
+                    {liveStatus?.cache_hits > 0 && (
+                      <div className="status-item">
+                        <span className="status-label">Cache Hits</span>
+                        <span className="status-value">{liveStatus.cache_hits}</span>
+                      </div>
+                    )}
                     <div className="status-item">
                       <span className="status-label">Job ID</span>
                       <span className="status-value job-id" title={jobId}>
@@ -1170,37 +1215,6 @@ export default function App() {
           </section>
         </div>
       </main>
-
-      {/* Logs Section */}
-      {jobId && (
-        <section className="card logs-card">
-          <div className="card-header">
-            <h2>
-              <Icons.Terminal />
-              Translation Logs
-            </h2>
-            <span className="log-count">{logs.length} entries</span>
-          </div>
-          <div
-            className="log-box"
-            ref={logBoxRef}
-            role="log"
-            aria-live="polite"
-            aria-label="Translation logs"
-          >
-            {logs.length === 0 ? (
-              <div className="log-placeholder">
-                <Icons.Clock />
-                <p>Waiting for logs...</p>
-              </div>
-            ) : (
-              logs.map((line, index) => (
-                <LogEntry key={`${index}-${line.slice(0, 20)}`} line={line} index={index} />
-              ))
-            )}
-          </div>
-        </section>
-      )}
 
       {/* Footer */}
       <footer className="footer">

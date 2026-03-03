@@ -174,8 +174,8 @@ class TranslationCache:
         conn = self._get_conn()
         if model:
             cursor = conn.execute(
-                "DELETE FROM translations WHERE LOWER(model) = ?",
-                (model.lower(),),
+                "DELETE FROM translations WHERE LOWER(model) = ? OR LOWER(model) LIKE ?",
+                (model.lower(), f"{model.lower()}::%"),
             )
         else:
             cursor = conn.execute("DELETE FROM translations")

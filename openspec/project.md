@@ -21,7 +21,7 @@ Translate_Tool is a document translation platform designed to translate multiple
 - **blingfire/pysbd** - Sentence boundary detection
 - **SQLite** - Translation cache storage
 - **MySQL** - User/task database (server queue version)
-- **Ollama + TranslateGemma:12b** - Local translation service
+- **Ollama + Qwen3.5:9b** - Local translation service (profile-driven prompts)
 
 ## Project Conventions
 
@@ -36,6 +36,7 @@ Translate_Tool is a document translation platform designed to translate multiple
 - **Translation Pipeline**: Segment extraction → Translation via API/cache → Insertion into documents
 - **Client-Server Pattern**: GUI client with backend translation worker
 - **Cache-First Strategy**: Check SQLite cache before making API calls
+- **Profile-Based Translation**: Profile ID resolves model + system prompt (general, government, semiconductor, fab, manufacturing, financial, legal)
 - **Sentence-Level Processing**: Split text into sentences before translation for better results
 - **Fallback Mechanism**: Graceful degradation when translations are unavailable
 - **Error Resilience**: Exponential backoff retry logic for API failures
@@ -76,11 +77,16 @@ Translate_Tool is a document translation platform designed to translate multiple
 
 ## External Dependencies
 
-### Ollama + TranslateGemma (Local Translation)
+### Ollama + Qwen (Local Translation)
 - **Service**: Ollama running on `http://localhost:11434`
-- **Model**: `translategemma:12b` (~8GB)
+- **Default Model**: `qwen3.5:9b`
+- **Profiles**: `general`, `government`, `semiconductor`, `fab`, `manufacturing`, `financial`, `legal`
+- **Runtime Tuning (8GB VRAM baseline)**:
+  - `OLLAMA_NUM_CTX=5120`
+  - `OLLAMA_NUM_GPU=99`
+  - `TRANSLATE_READ_TIMEOUT=360`
 - **Supported Languages**: 55+ languages
-- **Timeout**: 180 seconds (extended for local inference)
+- **Timeout**: 360 seconds default read timeout (extended for local inference)
 - **Setup**: See `SETUP.md` for installation instructions
 
 ### File Storage

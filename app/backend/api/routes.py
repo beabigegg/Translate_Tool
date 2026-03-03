@@ -1,20 +1,19 @@
-"""FastAPI routes with optimized SSE streaming."""
+"""FastAPI routes."""
 
 from __future__ import annotations
 
-import asyncio
 import shutil
 import tempfile
 import time
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 
-from app.backend.api.schemas import JobCreateResponse, JobStatus, ModelsResponse
+from app.backend.api.schemas import JobCreateResponse, JobStatus, ModelsResponse, ProfileItem
 from app.backend.clients.ollama_client import list_ollama_models
-from app.backend.config import SSE_IDLE_TIMEOUT_SECONDS, TRANSLATION_CACHE_ENABLED
+from app.backend.translation_profiles import get_profile, list_profiles
 from app.backend.services.job_manager import JobManager
 from app.backend.services.translation_cache import get_cache
 
@@ -36,13 +35,21 @@ def models() -> ModelsResponse:
     return ModelsResponse(models=list_ollama_models())
 
 
+@router.get("/profiles", response_model=List[ProfileItem])
+def profiles() -> List[ProfileItem]:
+    return [
+        ProfileItem(id=profile.id, name=profile.name, description=profile.description)
+        for profile in list_profiles()
+    ]
+
+
 @router.post("/jobs", response_model=JobCreateResponse)
 async def create_job(
     files: List[UploadFile] = File(...),
     targets: str = Form(...),
     src_lang: Optional[str] = Form(None),
     include_headers: bool = Form(False),
-    model: Optional[str] = Form(None),
+    profile: Optional[str] = Form(None),
     pdf_output_format: str = Form("docx"),  # "docx" or "pdf"
     pdf_layout_mode: str = Form("overlay"),  # "overlay" or "side_by_side"
 ) -> JobCreateResponse:
@@ -63,12 +70,16 @@ async def create_job(
             stored_files.append(dest)
             await upload.close()
 
+        resolved_profile = get_profile(profile)
+
         job = job_manager.create_job(
             stored_files,
             targets=target_list,
             src_lang=src_lang,
             include_headers=include_headers,
-            model=model or "",
+            model=resolved_profile.model,
+            system_prompt=resolved_profile.system_prompt,
+            profile_id=resolved_profile.id,
             pdf_output_format=pdf_output_format,
             pdf_layout_mode=pdf_layout_mode,
         )
@@ -158,50 +169,6 @@ def download(job_id: str):
     return FileResponse(output_zip, filename=f"{job_id}.zip")
 
 
-@router.get("/jobs/{job_id}/logs")
-async def stream_logs(job_id: str, request: Request, from_index: int = 0):
-    """Stream job logs with client disconnect detection and idle timeout."""
-    job = job_manager.get_job(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-
-    async def event_stream():
-        idx = max(from_index, 0)
-        idle_count = 0
-        # Calculate max idle iterations (0.5s per iteration)
-        max_idle = SSE_IDLE_TIMEOUT_SECONDS * 2
-
-        while True:
-            # Check if client disconnected
-            if await request.is_disconnected():
-                break
-
-            with job.lock:
-                logs = list(job.logs)
-                status = job.status
-
-            # Send any new log entries
-            if idx < len(logs):
-                idle_count = 0
-                while idx < len(logs):
-                    line = logs[idx]
-                    idx += 1
-                    yield f"data: {line}\n\n"
-            else:
-                idle_count += 1
-                # Terminate if idle for too long
-                if idle_count > max_idle:
-                    yield f"data: [SSE timeout after {SSE_IDLE_TIMEOUT_SECONDS}s idle]\n\n"
-                    break
-
-            # Check if job is done
-            if status in {"completed", "failed", "stopped"}:
-                break
-
-            await asyncio.sleep(0.5)
-
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
-
 
 @router.get("/stats")
 def get_stats() -> dict:
@@ -211,7 +178,7 @@ def get_stats() -> dict:
     }
 
 
-@router.get("/api/cache/stats")
+@router.get("/cache/stats")
 def cache_stats() -> dict:
     """Return translation cache statistics."""
     cache = get_cache()
@@ -221,7 +188,7 @@ def cache_stats() -> dict:
     return {"enabled": True, **info}
 
 
-@router.delete("/api/cache")
+@router.delete("/cache")
 def clear_cache(model: Optional[str] = None) -> dict:
     """Clear translation cache. Optionally filter by model."""
     cache = get_cache()
