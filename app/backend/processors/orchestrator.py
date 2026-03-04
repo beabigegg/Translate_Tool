@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import threading
 from pathlib import Path
@@ -9,6 +10,8 @@ from typing import Callable, List, Optional, Tuple
 
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import (
+    CONTEXT_DETECTION_ENABLED,
+    CONTEXT_SAMPLE_CHARS,
     DEFAULT_MAX_BATCH_CHARS,
     LAYOUT_PRESERVATION_MODE,
     PDF_SKIP_HEADER_FOOTER,
@@ -21,6 +24,102 @@ from app.backend.processors.libreoffice_helpers import doc_to_docx, is_libreoffi
 from app.backend.processors.pdf_processor import translate_pdf
 from app.backend.processors.pptx_processor import translate_pptx
 from app.backend.processors.xlsx_processor import translate_xlsx_xls
+
+logger = logging.getLogger(__name__)
+
+
+def _sample_file_text(file_path: Path, max_chars: int = CONTEXT_SAMPLE_CHARS) -> str:
+    """Extract the first ~max_chars of text from a file for context detection."""
+    ext = file_path.suffix.lower()
+    try:
+        if ext == ".docx":
+            from docx import Document
+            doc = Document(str(file_path))
+            parts: List[str] = []
+            total = 0
+            for para in doc.paragraphs:
+                t = para.text.strip()
+                if not t:
+                    continue
+                parts.append(t)
+                total += len(t)
+                if total >= max_chars:
+                    break
+            return "\n".join(parts)[:max_chars]
+        elif ext == ".pptx":
+            from pptx import Presentation
+            prs = Presentation(str(file_path))
+            parts = []
+            total = 0
+            for slide in prs.slides:
+                for shape in slide.shapes:
+                    if shape.has_text_frame:
+                        for para in shape.text_frame.paragraphs:
+                            t = para.text.strip()
+                            if not t:
+                                continue
+                            parts.append(t)
+                            total += len(t)
+                            if total >= max_chars:
+                                break
+                    if total >= max_chars:
+                        break
+                if total >= max_chars:
+                    break
+            return "\n".join(parts)[:max_chars]
+        elif ext in (".xlsx", ".xls"):
+            from openpyxl import load_workbook
+            wb = load_workbook(str(file_path), read_only=True, data_only=True)
+            parts = []
+            total = 0
+            for ws in wb.worksheets:
+                for row in ws.iter_rows(values_only=True):
+                    for cell in row:
+                        if cell is not None:
+                            t = str(cell).strip()
+                            if t:
+                                parts.append(t)
+                                total += len(t)
+                                if total >= max_chars:
+                                    break
+                    if total >= max_chars:
+                        break
+                if total >= max_chars:
+                    break
+            wb.close()
+            return "\n".join(parts)[:max_chars]
+        elif ext == ".pdf":
+            # PDF parsing is expensive; use filename as sample
+            return file_path.stem.replace("_", " ").replace("-", " ")
+        elif ext == ".doc":
+            # .doc gets converted to .docx later; use filename
+            return file_path.stem.replace("_", " ").replace("-", " ")
+    except Exception as exc:
+        logger.debug(f"Context sampling failed for {file_path.name}: {exc}")
+    return ""
+
+
+def _detect_document_context(
+    client: OllamaClient,
+    sample: str,
+    log: Callable[[str], None],
+) -> str:
+    """Ask LLM to describe the document in one sentence (Chinese prompt)."""
+    prompt = (
+        "以下是一份文件的開頭內容，請用一句話描述這份文件的類型、所屬領域和主題。"
+        "只輸出描述，不要解釋。\n\n"
+        f"{sample}"
+    )
+    payload = client._build_no_system_payload(prompt)
+    try:
+        ok, result = client._call_ollama(payload)
+        if ok and result.strip():
+            context = result.strip()[:200]
+            log(f"[CONTEXT] Detected: {context}")
+            return context
+    except Exception as exc:
+        logger.debug(f"Context detection failed: {exc}")
+    return ""
 
 
 def _output_name(src: Path, output_format: Optional[str] = None) -> str:
@@ -104,6 +203,7 @@ def process_files(
     processed_count = 0
     total_count = len(files)
     stopped = False
+    base_system_prompt = client.system_prompt
 
     for src in files:
         if stop_flag and stop_flag.is_set():
@@ -119,6 +219,17 @@ def process_files(
         out_path = output_dir / _output_name(src, output_format=pdf_output_fmt)
         log("=" * 24)
         log(f"Processing: {src.name} ({processed_count + 1}/{total_count})")
+        # Auto-detect document context for general models
+        if CONTEXT_DETECTION_ENABLED and not client._is_translation_dedicated():
+            sample = _sample_file_text(src)
+            if sample:
+                doc_context = _detect_document_context(client, sample, log)
+                if doc_context:
+                    client.system_prompt = f"{base_system_prompt}\n\nDocument context: {doc_context}"
+                else:
+                    client.system_prompt = base_system_prompt
+            else:
+                client.system_prompt = base_system_prompt
         try:
             if ext == ".docx":
                 stopped = translate_docx(
@@ -211,6 +322,8 @@ def process_files(
             log(f"Done: {src.name} -> {out_path.name}")
         except Exception as exc:
             log(f"[ERROR] {src.name}: {exc}")
+        finally:
+            client.system_prompt = base_system_prompt
     if stopped:
         log(f"[STOP] job stopped after {processed_count}/{total_count} files")
     else:

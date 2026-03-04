@@ -98,6 +98,10 @@ CONTEXT_MAX_CHARS = 300  # Max total chars for context (truncate if longer)
 # Two-pass refinement: send draft + source back to LLM for quality improvement
 REFINEMENT_ENABLED = False  # Disabled: 4B models hallucinate/add content during refinement
 REFINEMENT_MIN_CHARS = 20  # Skip refinement for very short segments (headers, labels)
+# Auto-detect document context: sample file text and ask LLM to describe the document
+# before translating, then inject the description into the system prompt.
+CONTEXT_DETECTION_ENABLED = True
+CONTEXT_SAMPLE_CHARS = 500  # Max chars to sample from file for context detection
 
 EXCEL_FORMULA_MODE = "skip"
 MAX_SHAPE_CHARS = 1200
