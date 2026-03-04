@@ -91,10 +91,12 @@ DEFAULT_MAX_BATCH_CHARS = max(MIN_MAX_BATCH_CHARS, min((OLLAMA_NUM_CTX // 2) * 3
 TRANSLATION_GRANULARITY = "paragraph"
 MAX_PARAGRAPH_CHARS = 2000  # Split paragraphs longer than this
 MAX_MERGE_SEGMENTS = 4  # Max segments per merged batch (reduced for 4B model to mitigate "Lost in the Middle")
-# Merge multiple paragraphs for context-aware translation (within MAX_PARAGRAPH_CHARS)
-USE_MERGED_CONTEXT = True
+# Sliding context: include N preceding segments as read-only context so the model
+# understands the domain without an explicit glossary.  Only the last segment is translated.
+CONTEXT_WINDOW_SEGMENTS = 2  # Number of preceding segments to include as context
+CONTEXT_MAX_CHARS = 300  # Max total chars for context (truncate if longer)
 # Two-pass refinement: send draft + source back to LLM for quality improvement
-REFINEMENT_ENABLED = True
+REFINEMENT_ENABLED = False  # Disabled: 4B models hallucinate/add content during refinement
 REFINEMENT_MIN_CHARS = 20  # Skip refinement for very short segments (headers, labels)
 
 EXCEL_FORMULA_MODE = "skip"

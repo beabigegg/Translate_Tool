@@ -29,6 +29,46 @@ from app.backend.config import (
 from app.backend.utils.logging_utils import logger
 
 
+def _is_latin_only(text: str) -> bool:
+    """Check if text contains only Latin script (ASCII letters), digits, and punctuation."""
+    return all(
+        ch.isascii() or ch in '""''…–—' for ch in text
+    )
+
+
+def _has_non_latin(text: str) -> bool:
+    """Check if text contains any non-Latin characters (CJK, Vietnamese diacritics, etc.)."""
+    for ch in text:
+        if not ch.isascii() and ch.isalpha():
+            return True
+    return False
+
+
+def _drop_english_preamble(lines: list[str]) -> list[str]:
+    """Drop leading English-only lines when later lines contain non-Latin text.
+
+    Small models often emit an English intermediary translation before the
+    actual target-language translation.  E.g.:
+        "Version History"        ← English preamble (drop)
+        "Phiên bản"              ← actual Vietnamese (keep)
+    """
+    # Find first line with non-Latin characters
+    first_non_latin = -1
+    for i, line in enumerate(lines):
+        if _has_non_latin(line.strip()):
+            first_non_latin = i
+            break
+
+    if first_non_latin <= 0:
+        return lines  # No non-Latin found or first line is already non-Latin
+
+    # Check if all lines before the first non-Latin line are English-only
+    if all(_is_latin_only(l.strip()) for l in lines[:first_non_latin]):
+        return lines[first_non_latin:]
+
+    return lines
+
+
 class OllamaClient:
     """Ollama API client for local translation services with connection pooling."""
 
@@ -363,7 +403,7 @@ class OllamaClient:
             try:
                 ok, result = self._call_ollama(payload)
                 if ok:
-                    return True, result
+                    return True, self._sanitize_translation(result)
                 last = result
             except requests.exceptions.RequestException as exc:
                 last = f"Request error: {exc}"
@@ -423,7 +463,12 @@ class OllamaClient:
         try:
             ok, result = self._call_ollama(payload)
             if ok and result.strip():
-                return True, result
+                sanitized = self._sanitize_translation(result)
+                # If sanitization removed everything, keep draft
+                if not sanitized.strip():
+                    logger.warning("[REFINE] Sanitization removed all content, keeping draft")
+                    return False, draft
+                return True, sanitized
             return False, draft
         except requests.exceptions.RequestException:
             return False, draft
@@ -433,11 +478,9 @@ class OllamaClient:
         source_text: str, draft: str, target_language: str, source_language: Optional[str],
     ) -> str:
         return (
-            f"Review and improve this {target_language} translation.\n\n"
             f"Source:\n{source_text}\n\n"
-            f"Draft translation:\n{draft}\n\n"
-            "Fix any errors, improve fluency, and ensure terminology consistency. "
-            "Output only the improved translation."
+            f"Draft:\n{draft}\n\n"
+            f"Improve this {target_language} draft. Output only the improved translation, nothing else."
         )
 
     def _smart_retry(self, text: str, tgt: str, src_lang: Optional[str], error_msg: str) -> Tuple[bool, str]:
@@ -623,6 +666,60 @@ class OllamaClient:
     def _strip_seg_markers(text: str) -> str:
         """Strip <<<SEG_N>>> markers from translated text."""
         return re.sub(r'<<<SEG_\d+>>>\s*', '', text).strip()
+
+    @staticmethod
+    def _sanitize_translation(text: str) -> str:
+        """Strip LLM commentary leaked into translation output.
+
+        Small models sometimes emit reasoning, notes, markdown, or format
+        artefacts despite being told to output only the translation.
+        """
+        if not text:
+            return text
+
+        # Strip markdown bold/italic wrappers (e.g. **version**)
+        cleaned = re.sub(r'\*{1,2}(.+?)\*{1,2}', r'\1', text)
+
+        # Strip <<<SEP>>>, <<</SEP>>, <<END>>, <<</END>> and similar artefacts
+        cleaned = re.sub(r'<<<?\/?(?:SEP|END|SEG_\d+)>>>?', '', cleaned)
+
+        # Strip hallucinated XML-like tags (UPPERCASE tag names like <SEC_GEN>, </REV_CONTENT>)
+        # These are document-structure annotations the model invents, not real content.
+        cleaned = re.sub(r'</?[A-Z][A-Z0-9_]*(?:\s[^>]*)?>',  '', cleaned)
+
+        # Remove lines that look like LLM commentary / reasoning
+        commentary_patterns = re.compile(
+            r'^(?:'
+            r'(?:Final decision|Note|Output|Translation|Explanation|Answer|Result|Remark|Comment)'
+            r'\s*[:：]'
+            r'|→\s'
+            r'|\(Note[:：]'
+            r'|\((?:người|Revision|Version|Name|Date|Release|New Issue)[^)]*\)\s*$'
+            r')',
+            re.IGNORECASE,
+        )
+        lines = cleaned.split('\n')
+        kept: list[str] = []
+        for line in lines:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if commentary_patterns.match(stripped):
+                continue
+            # Drop lines that are purely parenthetical notes
+            if stripped.startswith('(') and stripped.endswith(')') and len(stripped) > 20:
+                continue
+            # Drop lines that are only English when mixed with non-Latin lines
+            # (model generates English intermediary before actual translation)
+            kept.append(line)
+
+        # If multiple non-empty lines remain, check if first line is English-only
+        # and later lines contain non-Latin (actual translation) — drop the English line
+        if len(kept) > 1:
+            kept = _drop_english_preamble(kept)
+
+        result = '\n'.join(kept).strip()
+        return result if result else text  # Never return empty
 
     def _parse_batch_response(self, response: str, expected_count: int) -> List[str]:
         """Parse batch response using numbered segment markers.
