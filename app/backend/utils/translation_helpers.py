@@ -12,6 +12,8 @@ from app.backend.config import (
     MAX_MERGE_SEGMENTS,
     MAX_PARAGRAPH_CHARS,
     MIN_MAX_BATCH_CHARS,
+    REFINEMENT_ENABLED,
+    REFINEMENT_MIN_CHARS,
     TRANSLATION_GRANULARITY,
     USE_MERGED_CONTEXT,
 )
@@ -21,6 +23,26 @@ from app.backend.utils.text_utils import is_cjk_language, split_sentences
 # Segment marker for merged paragraph translation
 SEGMENT_MARKER_PREFIX = "<<<SEG_"
 SEGMENT_MARKER_SUFFIX = ">>>"
+
+
+def _maybe_refine(
+    client: OllamaClient,
+    source_text: str,
+    translation: str,
+    tgt: str,
+    src_lang: Optional[str],
+) -> str:
+    """Apply refinement pass if enabled and text is long enough."""
+    if not REFINEMENT_ENABLED:
+        return translation
+    if client._is_translation_dedicated():
+        return translation
+    if len(source_text) < REFINEMENT_MIN_CHARS:
+        return translation
+    ok, refined = client.refine_translation(source_text, translation, tgt, src_lang)
+    if ok and refined:
+        return refined
+    return translation
 
 
 def _get_sentence_joiner(target_lang: str) -> str:
@@ -88,6 +110,11 @@ def _merge_texts_with_markers(texts: List[str], max_chars: int = MAX_PARAGRAPH_C
     return merged_batches
 
 
+def _strip_seg_markers(text: str) -> str:
+    """Strip <<<SEG_N>>> markers from translated text."""
+    return re.sub(r'<<<SEG_\d+>>>\s*', '', text).strip()
+
+
 def _parse_merged_response(response: str, expected_count: int) -> List[str]:
     """Parse merged translation response using segment markers.
 
@@ -117,10 +144,10 @@ def _parse_merged_response(response: str, expected_count: int) -> List[str]:
     if not any(results):
         parts = [p.strip() for p in response.split("\n\n") if p.strip()]
         if len(parts) == expected_count:
-            return parts
+            return [_strip_seg_markers(p) for p in parts]
         # Single text fallback
         if expected_count == 1:
-            return [response.strip()]
+            return [_strip_seg_markers(response)]
 
     return results
 
@@ -208,14 +235,7 @@ def translate_merged_paragraphs(
 
         _log(f"[BATCH] {batch_idx + 1}/{total_batches} ({batch_size} segs, {len(merged_text)} chars) {tgt}")
 
-        # Add marker preservation instruction to the text
-        instruction = (
-            "IMPORTANT: Keep the <<<SEG_N>>> markers in your output.\n"
-            "Translate each segment while preserving the markers.\n\n"
-        )
-        augmented_text = instruction + merged_text
-
-        ok, response = client.translate_once(augmented_text, tgt, src_lang)
+        ok, response = client.translate_merged_text(merged_text, batch_size, tgt, src_lang)
 
         if ok:
             # Parse response to extract individual translations
@@ -226,6 +246,7 @@ def translate_merged_paragraphs(
                 original_text = texts[original_idx]
 
                 if translation:
+                    translation = _maybe_refine(client, original_text, translation, tgt, src_lang)
                     results[original_idx] = (True, translation)
                     if on_segment_done:
                         on_segment_done(original_text, translation)
@@ -233,6 +254,7 @@ def translate_merged_paragraphs(
                     # Fallback: translate individually
                     fallback_ok, fallback_result = client.translate_once(original_text, tgt, src_lang)
                     if fallback_ok:
+                        fallback_result = _maybe_refine(client, original_text, fallback_result, tgt, src_lang)
                         results[original_idx] = (True, fallback_result)
                         if on_segment_done:
                             on_segment_done(original_text, fallback_result)
@@ -249,6 +271,7 @@ def translate_merged_paragraphs(
                 original_text = texts[original_idx]
                 fallback_ok, fallback_result = client.translate_once(original_text, tgt, src_lang)
                 if fallback_ok:
+                    fallback_result = _maybe_refine(client, original_text, fallback_result, tgt, src_lang)
                     results[original_idx] = (True, fallback_result)
                     if on_segment_done:
                         on_segment_done(original_text, fallback_result)
@@ -288,7 +311,10 @@ def translate_block_as_paragraph(
 
     # If text is within reasonable length, translate as whole
     if len(text) <= MAX_PARAGRAPH_CHARS:
-        return client.translate_once(text, tgt, src_lang)
+        ok, result = client.translate_once(text, tgt, src_lang)
+        if ok:
+            result = _maybe_refine(client, text, result, tgt, src_lang)
+        return ok, result
 
     # For very long texts, split by paragraphs (double newlines) or sentences
     logger.debug(f"Text too long ({len(text)} chars), splitting for translation")
@@ -316,6 +342,7 @@ def translate_block_as_paragraph(
     for chunk in final_chunks:
         ok, result = client.translate_once(chunk, tgt, src_lang)
         if ok:
+            result = _maybe_refine(client, chunk, result, tgt, src_lang)
             translated_chunks.append(result)
         else:
             all_ok = False

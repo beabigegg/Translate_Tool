@@ -99,8 +99,8 @@ def should_translate(text: Any, source_lang: str) -> bool:
         return False
 
     # Skip very short text that likely lacks meaningful context
-    # At least 3 letters required for translation
-    if len(letters_only) < 3:
+    # CJK characters are meaningful even as single characters (e.g., 目的, 周期)
+    if not has_cjk(text_str) and len(letters_only) < 3:
         return False
 
     # All other text should be translated

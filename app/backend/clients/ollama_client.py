@@ -372,6 +372,74 @@ class OllamaClient:
         # Smart retry: detect error type and apply appropriate strategy
         return self._smart_retry(text, tgt, src_lang, str(last))
 
+    def translate_merged_text(
+        self, merged_text: str, segment_count: int, tgt: str, src_lang: Optional[str],
+    ) -> Tuple[bool, str]:
+        """Translate pre-merged text containing <<<SEG_N>>> markers."""
+        prompt = self._build_merged_prompt(merged_text, segment_count, tgt, src_lang)
+        payload = self._build_payload(prompt)
+        last = None
+        for attempt in range(1, API_ATTEMPTS + 1):
+            try:
+                ok, result = self._call_ollama(payload)
+                if ok:
+                    return True, result
+                last = result
+            except requests.exceptions.RequestException as exc:
+                last = f"Request error: {exc}"
+            time.sleep(API_BACKOFF_BASE * attempt)
+        return False, str(last)
+
+    @staticmethod
+    def _build_merged_prompt(
+        merged_text: str, segment_count: int, target_language: str, source_language: Optional[str],
+    ) -> str:
+        if OllamaClient._is_auto_source(source_language):
+            direction = f"Translate to {target_language}:"
+        else:
+            direction = f"Translate from {source_language} to {target_language}:"
+        example_lines = "\n".join(
+            f"<<<SEG_{i}>>>\n{{translation}}" for i in range(min(segment_count, 2))
+        )
+        if segment_count > 2:
+            example_lines += "\n..."
+        return (
+            f"{direction}\n"
+            "Keep every <<<SEG_N>>> marker. Output only translations.\n\n"
+            f"{merged_text}\n\n"
+            f"Output:\n{example_lines}"
+        )
+
+    def refine_translation(
+        self, source_text: str, draft: str, tgt: str, src_lang: Optional[str],
+    ) -> Tuple[bool, str]:
+        """Refine a draft translation by comparing with the source text.
+
+        Uses the same system prompt as translation (profile terminology applies).
+        Single attempt — if refinement fails, caller should keep the draft.
+        """
+        prompt = self._build_refine_prompt(source_text, draft, tgt, src_lang)
+        payload = self._build_payload(prompt)
+        try:
+            ok, result = self._call_ollama(payload)
+            if ok and result.strip():
+                return True, result
+            return False, draft
+        except requests.exceptions.RequestException:
+            return False, draft
+
+    @staticmethod
+    def _build_refine_prompt(
+        source_text: str, draft: str, target_language: str, source_language: Optional[str],
+    ) -> str:
+        return (
+            f"Review and improve this {target_language} translation.\n\n"
+            f"Source:\n{source_text}\n\n"
+            f"Draft translation:\n{draft}\n\n"
+            "Fix any errors, improve fluency, and ensure terminology consistency. "
+            "Output only the improved translation."
+        )
+
     def _smart_retry(self, text: str, tgt: str, src_lang: Optional[str], error_msg: str) -> Tuple[bool, str]:
         """Apply smart retry strategies based on error type.
 
@@ -551,6 +619,11 @@ class OllamaClient:
             time.sleep(API_BACKOFF_BASE * attempt)
         return False, [str(last)] * len(texts)
 
+    @staticmethod
+    def _strip_seg_markers(text: str) -> str:
+        """Strip <<<SEG_N>>> markers from translated text."""
+        return re.sub(r'<<<SEG_\d+>>>\s*', '', text).strip()
+
     def _parse_batch_response(self, response: str, expected_count: int) -> List[str]:
         """Parse batch response using numbered segment markers.
 
@@ -589,7 +662,7 @@ class OllamaClient:
         parts = response.split(separator)
         parts = [p.strip() for p in parts if p.strip()]
         if len(parts) == expected_count:
-            return parts
+            return [self._strip_seg_markers(p) for p in parts]
 
         # Strategy 3: Try alternative separators
         alternative_separators = [
@@ -603,15 +676,16 @@ class OllamaClient:
                 parts = response.split(alt_sep)
                 parts = [p.strip() for p in parts if p.strip()]
                 if len(parts) == expected_count:
-                    return parts
+                    return [self._strip_seg_markers(p) for p in parts]
 
         # Strategy 4: If numbered markers got partial results, use them
         if matches and any(r for r in results):
             logger.debug(f"Using partial numbered marker results: {sum(1 for r in results if r)}/{expected_count}")
             return results
 
-        # Return whatever we got from legacy parsing
-        return parts if parts else results
+        # Return whatever we got from legacy parsing, stripping any leaked markers
+        cleaned = [self._strip_seg_markers(p) for p in parts] if parts else results
+        return cleaned
 
     def unload_model(self) -> Tuple[bool, str]:
         try:

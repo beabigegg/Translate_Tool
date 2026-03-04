@@ -93,6 +93,10 @@ MAX_PARAGRAPH_CHARS = 2000  # Split paragraphs longer than this
 MAX_MERGE_SEGMENTS = 4  # Max segments per merged batch (reduced for 4B model to mitigate "Lost in the Middle")
 # Merge multiple paragraphs for context-aware translation (within MAX_PARAGRAPH_CHARS)
 USE_MERGED_CONTEXT = True
+# Two-pass refinement: send draft + source back to LLM for quality improvement
+REFINEMENT_ENABLED = True
+REFINEMENT_MIN_CHARS = 20  # Skip refinement for very short segments (headers, labels)
+
 EXCEL_FORMULA_MODE = "skip"
 MAX_SHAPE_CHARS = 1200
 
