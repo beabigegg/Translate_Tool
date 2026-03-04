@@ -21,9 +21,9 @@ from app.backend.config import (
     HTTP_POOL_CONNECTIONS,
     HTTP_POOL_MAXSIZE,
     LANG_CODE_MAP,
+    MODEL_TYPE_OPTIONS,
+    ModelType,
     OLLAMA_BASE_URL,
-    OLLAMA_NUM_CTX,
-    OLLAMA_NUM_GPU,
     TimeoutConfig,
 )
 from app.backend.utils.logging_utils import logger
@@ -39,21 +39,27 @@ class OllamaClient:
         self,
         base_url: str = OLLAMA_BASE_URL,
         model: str = DEFAULT_MODEL,
+        model_type: str = ModelType.GENERAL.value,
         system_prompt: Optional[str] = None,
         profile_id: Optional[str] = None,
+        num_ctx_override: Optional[int] = None,
         timeout: Optional[TimeoutConfig] = None,
         log: Callable[[str], None] = lambda s: None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
+        self.model_type = self._normalize_model_type(model_type).value
         self.system_prompt = (system_prompt or "").strip()
         self.profile_id = (profile_id or "").strip() or None
+        self._num_ctx_override = num_ctx_override if (num_ctx_override is not None and num_ctx_override > 0) else None
         self.timeout = timeout or TimeoutConfig()
         self.log = log
+        options = self._build_options()
         logger.info(
-            "[CONFIG] Ollama options: num_ctx=%d, num_gpu=%d, max_batch_chars=%d",
-            OLLAMA_NUM_CTX,
-            OLLAMA_NUM_GPU,
+            "[CONFIG] Ollama options: model_type=%s, options=%s, num_ctx_override=%s, max_batch_chars=%d",
+            self.model_type,
+            options,
+            self._num_ctx_override,
             DEFAULT_MAX_BATCH_CHARS,
         )
 
@@ -97,15 +103,32 @@ class OllamaClient:
         return f"{self.base_url}{path}"
 
     @staticmethod
-    def _build_options() -> dict:
-        return {
-            "num_ctx": OLLAMA_NUM_CTX,
-            "num_gpu": OLLAMA_NUM_GPU,
-            "frequency_penalty": 0.5,  # Penalise degenerate repetition loops without hurting term consistency
-        }
+    def _normalize_model_type(model_type: Optional[str]) -> ModelType:
+        if not model_type:
+            return ModelType.GENERAL
+        try:
+            return ModelType(model_type.strip().lower())
+        except ValueError:
+            logger.warning("Unknown model_type=%r, falling back to general", model_type)
+            return ModelType.GENERAL
+
+    def _build_options(self) -> Dict[str, object]:
+        model_type_enum = self._normalize_model_type(self.model_type)
+        options_template = MODEL_TYPE_OPTIONS.get(model_type_enum, MODEL_TYPE_OPTIONS[ModelType.GENERAL])
+        options = dict(options_template)
+        if self._num_ctx_override is not None:
+            options["num_ctx"] = self._num_ctx_override
+        return options
+
+    def _is_translation_dedicated(self) -> bool:
+        return self.model_type == ModelType.TRANSLATION.value
 
     @property
     def cache_model_key(self) -> str:
+        if self._is_translation_dedicated():
+            if self.profile_id:
+                return f"{self.model}::{self.profile_id}::{self.model_type}"
+            return f"{self.model}::{self.model_type}"
         if self.profile_id:
             return f"{self.model}::{self.profile_id}"
         return self.model
@@ -250,6 +273,10 @@ class OllamaClient:
         )
 
     @staticmethod
+    def _build_translation_dedicated_prompt(text: str, target_language: str) -> str:
+        return f"Translate the following segment into {target_language}, without additional explanation.\n\n{text}"
+
+    @staticmethod
     def _build_user_prompt(text: str, target_language: str, source_language: Optional[str]) -> str:
         if OllamaClient._is_auto_source(source_language):
             direction = f"Translate to {target_language}:"
@@ -276,6 +303,9 @@ class OllamaClient:
         )
 
     def _build_single_translate_payload(self, text: str, tgt: str, src_lang: Optional[str]) -> Dict[str, object]:
+        if self._is_translation_dedicated():
+            prompt = self._build_translation_dedicated_prompt(text, tgt)
+            return self._build_no_system_payload(prompt)
         if self._is_translategemma_model():
             prompt = self._build_translategemma_prompt(text, tgt, src_lang)
             return self._build_no_system_payload(prompt)
@@ -286,6 +316,9 @@ class OllamaClient:
         return self._build_payload(prompt)
 
     def _build_batch_translate_payload(self, texts: List[str], tgt: str, src_lang: Optional[str]) -> Dict[str, object]:
+        if self._is_translation_dedicated():
+            prompt = self._build_translation_dedicated_prompt("\n\n".join(texts), tgt)
+            return self._build_no_system_payload(prompt)
         if self._is_translategemma_model():
             prompt = self._build_batch_translategemma_prompt(texts, tgt, src_lang)
             return self._build_no_system_payload(prompt)
@@ -470,6 +503,16 @@ class OllamaClient:
         if len(texts) == 1:
             ok, result = self.translate_once(texts[0], tgt, src_lang)
             return ok, [result]
+        if self._is_translation_dedicated():
+            results: List[str] = []
+            all_ok = True
+            for text in texts:
+                ok, result = self.translate_once(text, tgt, src_lang)
+                if not ok:
+                    all_ok = False
+                results.append(result)
+            return all_ok, results
+
         payload = self._build_batch_translate_payload(texts, tgt, src_lang)
         last = None
         for attempt in range(1, API_ATTEMPTS + 1):
@@ -559,7 +602,8 @@ class OllamaClient:
     def unload_model(self) -> Tuple[bool, str]:
         try:
             session = self._get_session()
-            payload = {"model": self.model, "prompt": "", "keep_alive": 0, "options": {"num_gpu": OLLAMA_NUM_GPU}}
+            num_gpu = self._build_options().get("num_gpu")
+            payload = {"model": self.model, "prompt": "", "keep_alive": 0, "options": {"num_gpu": num_gpu}}
             resp = session.post(
                 self._gen_url("/api/generate"),
                 json=payload,

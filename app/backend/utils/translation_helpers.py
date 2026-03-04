@@ -170,6 +170,25 @@ def translate_merged_paragraphs(
     if not valid_texts:
         return results
 
+    if hasattr(client, "_is_translation_dedicated") and client._is_translation_dedicated():
+        logger.debug(
+            "Skipping merged paragraph translation for translation-dedicated model; falling back to per-segment"
+        )
+        completed = 0
+        for original_idx in valid_indices:
+            original_text = texts[original_idx]
+            ok, translated = client.translate_once(original_text, tgt, src_lang)
+            if ok:
+                results[original_idx] = (True, translated)
+                if on_segment_done:
+                    on_segment_done(original_text, translated)
+            else:
+                results[original_idx] = (False, f"[翻譯失敗] {original_text[:30]}...")
+            completed += 1
+            if progress_log:
+                progress_log(completed)
+        return results
+
     # Merge texts into batches
     merged_batches = _merge_texts_with_markers(valid_texts, max_chars)
     logger.debug(

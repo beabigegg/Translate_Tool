@@ -120,9 +120,22 @@ The system SHALL support batch translation to improve performance when processin
 
 #### Scenario: Batch multiple segments
 - **WHEN** multiple unique text segments need translation
+- **AND** the model type is general-purpose
 - **THEN** the system collects segments up to the configured batch size
-- **AND** sends them as a single translation request
+- **AND** sends them as a single translation request with <<<SEG_N>>> markers
 - **AND** distributes results back to the appropriate segments
+
+#### Scenario: Translation-dedicated model batch fallback
+- **WHEN** multiple unique text segments need translation
+- **AND** the model type is translation-dedicated
+- **THEN** the system SHALL translate each segment individually
+- **AND** NOT use <<<SEG_N>>> markers (unsupported by translation-dedicated models)
+
+#### Scenario: Merged paragraph translation with translation-dedicated model
+- **WHEN** merged context translation is enabled
+- **AND** the model type is translation-dedicated
+- **THEN** the system SHALL skip merging and translate each paragraph individually
+- **AND** NOT inject marker preservation instructions
 
 #### Scenario: Configurable batch size
 - **WHEN** user configures batch size in settings
@@ -305,6 +318,12 @@ The system SHALL provide a local HTTP API for translation jobs and artifacts.
 - **THEN** the system stores files in a job workspace
 - **AND** returns a job identifier
 
+#### Scenario: Upload creates a job with num_ctx override
+- **GIVEN** a user uploads files with an optional `num_ctx` parameter
+- **WHEN** the API receives the multipart upload
+- **THEN** the system passes the `num_ctx` override through the pipeline
+- **AND** the translation job uses the overridden value instead of the model-type default
+
 #### Scenario: Job status query
 - **WHEN** the client requests job status
 - **THEN** the system returns state and progress counts
@@ -325,6 +344,10 @@ The system SHALL provide a local HTTP API for translation jobs and artifacts.
 - **THEN** the system signals stop and completes the current file
 - **AND** the job status reports "stopped"
 
+#### Scenario: Model config endpoint
+- **WHEN** the client requests model configuration via GET /api/model-config
+- **THEN** the system returns per-model-type VRAM metadata and num_ctx defaults
+
 ### Requirement: Web Frontend UI
 The system SHALL provide a local web UI for translation workflows.
 
@@ -339,7 +362,7 @@ The system SHALL provide a local web UI for translation workflows.
 - **THEN** the system preserves the chosen order for output
 
 #### Scenario: Update settings
-- **WHEN** the user changes batch size or timeout settings
+- **WHEN** the user changes batch size, timeout settings, or num_ctx override
 - **THEN** the system applies the settings to new jobs
 
 #### Scenario: Stop job
@@ -350,6 +373,17 @@ The system SHALL provide a local web UI for translation workflows.
 #### Scenario: Download results
 - **WHEN** a job completes
 - **THEN** the UI offers the output archive for download
+
+#### Scenario: Profile grouped by model type
+- **WHEN** the profile list is displayed in the UI
+- **THEN** profiles SHALL be grouped into two sections by model_type
+- **AND** general-purpose profiles are shown under a "通用AI翻譯 (General AI)" heading
+- **AND** translation-dedicated profiles are shown under a "專業翻譯引擎 (Dedicated Translation)" heading
+
+#### Scenario: VRAM calculator in advanced settings
+- **WHEN** the user expands Advanced Settings
+- **THEN** a VRAM calculator panel SHALL be displayed below PDF settings
+- **AND** it SHALL show estimated VRAM usage based on the selected profile and num_ctx value
 
 ### Requirement: Startup Script Service Management
 The startup script SHALL manage both backend and frontend services with clear status output.
@@ -419,4 +453,33 @@ The system SHALL support converting .doc and .xls files to .docx and .xlsx via L
 - **WHEN** 系統啟動
 - **THEN** 依序檢查: LIBREOFFICE_PATH 環境變數 → PATH 中的 soffice/libreoffice → 常見安裝路徑
 - **AND** 快取偵測結果供後續使用
+
+### Requirement: Model Type System
+The system SHALL support multiple model types that determine prompt building strategy, inference parameters, and batch translation behavior.
+
+#### Scenario: General-purpose model type
+- **WHEN** a profile with `model_type="general"` is selected
+- **THEN** the system SHALL use the profile's system prompt in the Ollama payload
+- **AND** build user prompts with the existing "Translate from X to Y:" format
+- **AND** use general inference parameters (frequency_penalty=0.5, think=False)
+
+#### Scenario: Translation-dedicated model type
+- **WHEN** a profile with `model_type="translation"` is selected
+- **THEN** the system SHALL NOT send a system prompt to Ollama
+- **AND** build prompts using a fixed English translation template
+- **AND** use dedicated inference parameters (top_k=20, top_p=0.6, repeat_penalty=1.05, temperature=0.7)
+
+#### Scenario: Model type defaults to general
+- **WHEN** a profile does not specify a model_type
+- **THEN** the system SHALL default to `model_type="general"`
+- **AND** existing profiles continue to work without modification
+
+### Requirement: Translation-Dedicated Prompt Template
+The system SHALL use a single English fixed template for translation-dedicated models regardless of the language pair.
+
+#### Scenario: Translation-dedicated prompt format
+- **WHEN** text is submitted for translation
+- **AND** the model type is translation-dedicated
+- **THEN** the system SHALL use the English prompt template: "Translate the following segment into {target_language}, without additional explanation.\n\n{text}"
+- **AND** the system SHALL NOT use a system prompt
 

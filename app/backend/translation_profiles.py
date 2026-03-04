@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-from app.backend.config import DEFAULT_MODEL
+from app.backend.config import DEFAULT_MODEL, HYMT_DEFAULT_MODEL, ModelType
 
 
 @dataclass(frozen=True)
@@ -15,6 +15,7 @@ class TranslationProfile:
     description: str
     model: str
     system_prompt: str
+    model_type: str = ModelType.GENERAL.value
 
 
 def _build_system_prompt(role: str, terminology: str, register_tone: str) -> str:
@@ -136,6 +137,14 @@ PROFILES: Dict[str, TranslationProfile] = {
             ),
             register_tone="Use strict legal wording; do not paraphrase obligations, rights, or conditions.",
         ),
+    ),
+    "hymt": TranslationProfile(
+        id="hymt",
+        name="HY-MT 翻譯引擎",
+        description="HY-MT Translation Engine",
+        model=HYMT_DEFAULT_MODEL,
+        system_prompt="",
+        model_type=ModelType.TRANSLATION.value,
     ),
 }
 

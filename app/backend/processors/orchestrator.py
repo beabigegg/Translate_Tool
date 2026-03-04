@@ -54,8 +54,10 @@ def process_files(
     src_lang: Optional[str],
     include_headers_shapes_via_com: bool,
     ollama_model: str,
+    model_type: str = "general",
     system_prompt: str = "",
     profile_id: str = "general",
+    num_ctx_override: Optional[int] = None,
     timeout_config: Optional[TimeoutConfig] = None,
     stop_flag: Optional[threading.Event] = None,
     log: Callable[[str], None] = lambda s: None,
@@ -72,8 +74,10 @@ def process_files(
         src_lang: Source language (or None for auto-detect).
         include_headers_shapes_via_com: Use COM for headers/shapes (Windows).
         ollama_model: Ollama model name.
+        model_type: Profile-resolved model type.
         system_prompt: Domain-specific system prompt.
         profile_id: Resolved profile id.
+        num_ctx_override: Optional per-job num_ctx override.
         timeout_config: Optional timeout configuration.
         stop_flag: Optional stop flag for cancellation.
         log: Logging callback.
@@ -90,8 +94,10 @@ def process_files(
     output_dir.mkdir(parents=True, exist_ok=True)
     client = OllamaClient(
         model=ollama_model,
+        model_type=model_type,
         system_prompt=system_prompt,
         profile_id=profile_id,
+        num_ctx_override=num_ctx_override,
         timeout=timeout_config,
         log=log,
     )

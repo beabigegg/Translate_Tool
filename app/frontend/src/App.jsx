@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback, useRef } from "react"
 import {
   cancelJob,
   createJob,
+  fetchModelConfig,
   fetchProfiles,
   fetchJobStatus,
 } from "./api.js";
@@ -20,8 +21,29 @@ const LANG_GROUPS = {
 };
 
 const PROFILE_FALLBACK = [
-  { id: "general", name: "通用翻譯", description: "General translation" }
+  { id: "general", name: "通用翻譯", description: "General translation", model_type: "general" }
 ];
+
+const MODEL_CONFIG_FALLBACK = [
+  {
+    model_type: "general",
+    model_size_gb: 3.5,
+    kv_per_1k_ctx_gb: 0.35,
+    default_num_ctx: 4096,
+    min_num_ctx: 1024,
+    max_num_ctx: 8192
+  },
+  {
+    model_type: "translation",
+    model_size_gb: 5.7,
+    kv_per_1k_ctx_gb: 0.22,
+    default_num_ctx: 3072,
+    min_num_ctx: 1024,
+    max_num_ctx: 8192
+  }
+];
+
+const GPU_VRAM_OPTIONS = [6, 8, 10, 12, 16, 24];
 
 // File type icons and colors
 const FILE_TYPES = {
@@ -401,6 +423,14 @@ export default function App() {
   const [srcLang, setSrcLang] = useState("auto");
   const [profiles, setProfiles] = useState([]);
   const [selectedProfile, setSelectedProfile] = useState("general");
+  const [modelConfig, setModelConfig] = useState(MODEL_CONFIG_FALLBACK);
+  const [gpuVram, setGpuVram] = useState(() => {
+    const fallback = 8;
+    if (typeof window === "undefined") return fallback;
+    const stored = Number(window.localStorage.getItem("translate-tool-gpu-vram"));
+    return Number.isFinite(stored) && stored > 0 ? stored : fallback;
+  });
+  const [numCtxOverride, setNumCtxOverride] = useState(null);
   const [includeHeaders, setIncludeHeaders] = useState(false);
   const [pdfOutputFormat, setPdfOutputFormat] = useState("pdf");  // "docx" or "pdf"
   const [pdfLayoutMode, setPdfLayoutMode] = useState("overlay");  // "overlay" or "side_by_side"
@@ -410,6 +440,52 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+
+  const effectiveProfiles = useMemo(() => {
+    const source = profiles.length > 0 ? profiles : PROFILE_FALLBACK;
+    return source.map((profile) => ({
+      ...profile,
+      model_type: (profile.model_type || "general").toLowerCase(),
+    }));
+  }, [profiles]);
+
+  const groupedProfiles = useMemo(() => {
+    const groups = { general: [], translation: [] };
+    for (const profile of effectiveProfiles) {
+      if (profile.model_type === "translation") {
+        groups.translation.push(profile);
+      } else {
+        groups.general.push(profile);
+      }
+    }
+    return groups;
+  }, [effectiveProfiles]);
+
+  const selectedProfileItem = useMemo(() => {
+    return effectiveProfiles.find((profile) => profile.id === selectedProfile) || effectiveProfiles[0] || PROFILE_FALLBACK[0];
+  }, [effectiveProfiles, selectedProfile]);
+
+  const selectedModelConfig = useMemo(() => {
+    const modelType = (selectedProfileItem?.model_type || "general").toLowerCase();
+    return (
+      modelConfig.find((item) => (item.model_type || "").toLowerCase() === modelType) ||
+      MODEL_CONFIG_FALLBACK.find((item) => item.model_type === modelType) ||
+      MODEL_CONFIG_FALLBACK[0]
+    );
+  }, [modelConfig, selectedProfileItem]);
+
+  const minNumCtx = Number(selectedModelConfig?.min_num_ctx || 1024);
+  const maxNumCtx = Number(selectedModelConfig?.max_num_ctx || 8192);
+  const defaultNumCtx = Number(selectedModelConfig?.default_num_ctx || 4096);
+  const effectiveNumCtx = numCtxOverride === null ? defaultNumCtx : numCtxOverride;
+
+  const modelSizeGb = Number(selectedModelConfig?.model_size_gb || 0);
+  const kvPer1kCtxGb = Number(selectedModelConfig?.kv_per_1k_ctx_gb || 0);
+  const kvCacheGb = (effectiveNumCtx / 1024) * kvPer1kCtxGb;
+  const estimatedVramGb = modelSizeGb + kvCacheGb;
+  const rawUsagePercent = gpuVram > 0 ? (estimatedVramGb / gpuVram) * 100 : 0;
+  const barUsagePercent = Math.max(0, Math.min(rawUsagePercent, 100));
+  const vramStateClass = rawUsagePercent > 90 ? "danger" : rawUsagePercent >= 75 ? "warning" : "safe";
 
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
@@ -431,24 +507,38 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    const loadProfiles = async () => {
+    const loadInitialData = async () => {
       try {
-        const loaded = await fetchProfiles();
+        const [loadedProfiles, loadedModelConfig] = await Promise.all([
+          fetchProfiles(),
+          fetchModelConfig(),
+        ]);
         if (!cancelled) {
-          setProfiles(Array.isArray(loaded) && loaded.length > 0 ? loaded : PROFILE_FALLBACK);
+          setProfiles(Array.isArray(loadedProfiles) && loadedProfiles.length > 0 ? loadedProfiles : PROFILE_FALLBACK);
+          setModelConfig(Array.isArray(loadedModelConfig) && loadedModelConfig.length > 0 ? loadedModelConfig : MODEL_CONFIG_FALLBACK);
         }
       } catch (err) {
-        console.error("Failed to fetch profiles:", err);
+        console.error("Failed to load initial profile/model config:", err);
         if (!cancelled) {
           setProfiles(PROFILE_FALLBACK);
+          setModelConfig(MODEL_CONFIG_FALLBACK);
         }
       }
     };
-    loadProfiles();
+    loadInitialData();
     return () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("translate-tool-gpu-vram", String(gpuVram));
+  }, [gpuVram]);
+
+  useEffect(() => {
+    setNumCtxOverride(null);
+  }, [selectedProfile]);
 
   useEffect(() => {
     if (!jobId) return;
@@ -655,6 +745,9 @@ export default function App() {
       form.append("targets", selectedTargets.join(","));
       form.append("src_lang", srcLang);
       form.append("profile", selectedProfile);
+      if (numCtxOverride !== null) {
+        form.append("num_ctx", String(numCtxOverride));
+      }
       form.append("include_headers", String(includeHeaders));
       form.append("pdf_output_format", pdfOutputFormat);
       form.append("pdf_layout_mode", pdfLayoutMode);
@@ -916,26 +1009,54 @@ export default function App() {
             </div>
             <div className="settings-content">
               <div className="setting-group">
-                <div className="radio-group">
-                  {(profiles.length > 0 ? profiles : PROFILE_FALLBACK).map((profile) => (
-                    <label
-                      key={profile.id}
-                      className={`radio-option ${selectedProfile === profile.id ? "selected" : ""}`}
-                    >
-                      <input
-                        type="radio"
-                        name="translationProfile"
-                        value={profile.id}
-                        checked={selectedProfile === profile.id}
-                        onChange={(e) => setSelectedProfile(e.target.value)}
-                        disabled={isRunning}
-                      />
-                      <div className="radio-label">
-                        <strong>{profile.name}</strong>
-                        <small>{profile.description}</small>
-                      </div>
-                    </label>
-                  ))}
+                <div className="profile-section">
+                  <h3 className="setting-label">通用AI翻譯 (General AI)</h3>
+                  <div className="radio-group">
+                    {groupedProfiles.general.map((profile) => (
+                      <label
+                        key={profile.id}
+                        className={`radio-option ${selectedProfile === profile.id ? "selected" : ""}`}
+                      >
+                        <input
+                          type="radio"
+                          name="translationProfile"
+                          value={profile.id}
+                          checked={selectedProfile === profile.id}
+                          onChange={(e) => setSelectedProfile(e.target.value)}
+                          disabled={isRunning}
+                        />
+                        <div className="radio-label">
+                          <strong>{profile.name}</strong>
+                          <small>{profile.description}</small>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="profile-section">
+                  <h3 className="setting-label">專業翻譯引擎 (Dedicated Translation)</h3>
+                  <div className="radio-group">
+                    {groupedProfiles.translation.map((profile) => (
+                      <label
+                        key={profile.id}
+                        className={`radio-option ${selectedProfile === profile.id ? "selected" : ""}`}
+                      >
+                        <input
+                          type="radio"
+                          name="translationProfile"
+                          value={profile.id}
+                          checked={selectedProfile === profile.id}
+                          onChange={(e) => setSelectedProfile(e.target.value)}
+                          disabled={isRunning}
+                        />
+                        <div className="radio-label">
+                          <strong>{profile.name}</strong>
+                          <small>{profile.description}</small>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1041,6 +1162,63 @@ export default function App() {
                     )}
                   </div>
                 )}
+
+                <div className="setting-group">
+                  <label className="setting-label" htmlFor="gpu-vram-select">VRAM 試算 (VRAM Estimate)</label>
+                  <div className="vram-panel">
+                    <div className="vram-top-row">
+                      <label htmlFor="gpu-vram-select" className="vram-inline-label">GPU VRAM Capacity</label>
+                      <select
+                        id="gpu-vram-select"
+                        value={gpuVram}
+                        onChange={(e) => setGpuVram(Number(e.target.value))}
+                        disabled={isRunning}
+                      >
+                        {GPU_VRAM_OPTIONS.map((sizeGb) => (
+                          <option key={sizeGb} value={sizeGb}>{sizeGb} GB</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="vram-top-row">
+                      <span className="vram-inline-label">num_ctx</span>
+                      <span className="vram-inline-value">
+                        {effectiveNumCtx}
+                        {numCtxOverride === null && " (default)"}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={minNumCtx}
+                      max={maxNumCtx}
+                      step={256}
+                      value={effectiveNumCtx}
+                      onChange={(e) => setNumCtxOverride(Number(e.target.value))}
+                      disabled={isRunning}
+                      aria-label="num_ctx override"
+                    />
+                    <div className="vram-range">
+                      <span>{minNumCtx}</span>
+                      <span>{maxNumCtx}</span>
+                    </div>
+
+                    <div className="vram-bar" role="img" aria-label={`Estimated VRAM usage ${rawUsagePercent.toFixed(0)} percent`}>
+                      <div
+                        className={`vram-bar-fill ${vramStateClass}`}
+                        style={{ width: `${barUsagePercent}%` }}
+                      />
+                    </div>
+                    <div className="vram-percent">
+                      Estimated: {estimatedVramGb.toFixed(1)} GB / {gpuVram} GB ({rawUsagePercent.toFixed(0)}%)
+                    </div>
+                    <div className="vram-info">
+                      Model: {modelSizeGb.toFixed(1)} GB + KV Cache: {kvCacheGb.toFixed(1)} GB = Total: {estimatedVramGb.toFixed(1)} GB
+                    </div>
+                    <div className="vram-note">
+                      Estimated VRAM usage only. Actual memory use may vary by runtime conditions.
+                    </div>
+                  </div>
+                </div>
 
                 <label className="toggle-setting">
                   <div className="toggle-switch">

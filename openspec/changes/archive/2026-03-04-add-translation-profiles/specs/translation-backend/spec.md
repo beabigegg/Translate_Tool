@@ -1,3 +1,7 @@
+## RENAMED Requirements
+- FROM: `### Requirement: TranslateGemma Local Translation Backend`
+- TO: `### Requirement: Profile-Driven Translation Backend`
+
 ## MODIFIED Requirements
 
 ### Requirement: Profile-Driven Translation Backend
@@ -58,6 +62,8 @@ The system SHALL default to `qwen3.5:9b` model when available.
 - **WHEN** the application starts
 - **THEN** the system SHALL display a warning that Ollama is not available
 
+## ADDED Requirements
+
 ### Requirement: 8GB VRAM Runtime Tuning Defaults
 The system SHALL provide runtime defaults tuned for RTX 4060 8GB-class environments to improve long-text coherence while minimizing VRAM↔RAM paging overhead.
 
@@ -80,8 +86,6 @@ The system SHALL provide runtime defaults tuned for RTX 4060 8GB-class environme
 - **WHEN** runtime tuning is adjusted
 - **THEN** lowering `OLLAMA_NUM_CTX` to `4608` SHALL be the documented first-line fallback
 - **AND** translation behavior SHALL remain functionally correct through existing chunking/retry paths
-
-## ADDED Requirements
 
 ### Requirement: Two-Tier Prompt Architecture
 The system SHALL separate translation prompts into a system prompt (static per job, domain instructions) and a user prompt (dynamic per request, language direction + source text).

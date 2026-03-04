@@ -15,7 +15,6 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.backend.cache.translation_cache import TranslationCache
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.processors.pdf_processor import translate_pdf
 
@@ -39,8 +38,6 @@ def main():
     print("Initializing translation components")
     print("=" * 60)
 
-    cache_path = output_dir / "translation_cache.db"
-    cache = TranslationCache(cache_path)
     client = OllamaClient()
 
     # Test Ollama connection
@@ -71,7 +68,6 @@ def main():
             out_path=str(output_overlay),
             targets=["zh-TW"],  # Traditional Chinese
             src_lang="en",
-            cache=cache,
             client=client,
             stop_flag=None,
             log=log_callback,
@@ -107,7 +103,6 @@ def main():
             out_path=str(output_side_by_side),
             targets=["zh-TW"],  # Traditional Chinese
             src_lang="en",
-            cache=cache,
             client=client,
             stop_flag=None,
             log=log_callback,

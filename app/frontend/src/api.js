@@ -1,3 +1,22 @@
+const MODEL_CONFIG_FALLBACK = [
+  {
+    model_type: "general",
+    model_size_gb: 3.5,
+    kv_per_1k_ctx_gb: 0.35,
+    default_num_ctx: 4096,
+    min_num_ctx: 1024,
+    max_num_ctx: 8192
+  },
+  {
+    model_type: "translation",
+    model_size_gb: 5.7,
+    kv_per_1k_ctx_gb: 0.22,
+    default_num_ctx: 3072,
+    min_num_ctx: 1024,
+    max_num_ctx: 8192
+  }
+];
+
 export async function fetchModels() {
   const res = await fetch("/api/models");
   if (!res.ok) {
@@ -12,6 +31,22 @@ export async function fetchProfiles() {
     throw new Error("Failed to load profiles");
   }
   return res.json();
+}
+
+export async function fetchModelConfig() {
+  try {
+    const res = await fetch("/api/model-config");
+    if (!res.ok) {
+      throw new Error("Failed to load model config");
+    }
+    const payload = await res.json();
+    if (Array.isArray(payload) && payload.length > 0) {
+      return payload;
+    }
+  } catch (err) {
+    console.warn("Failed to fetch model config, using fallback:", err);
+  }
+  return MODEL_CONFIG_FALLBACK;
 }
 
 export async function createJob(formData) {
@@ -41,4 +76,3 @@ export async function cancelJob(jobId) {
   }
   return res.json();
 }
-

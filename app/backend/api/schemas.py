@@ -37,3 +37,13 @@ class ProfileItem(BaseModel):
     id: str
     name: str
     description: str
+    model_type: str
+
+
+class ModelConfigItem(BaseModel):
+    model_type: str
+    model_size_gb: float
+    kv_per_1k_ctx_gb: float
+    default_num_ctx: int
+    min_num_ctx: int
+    max_num_ctx: int

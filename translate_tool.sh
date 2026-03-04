@@ -10,10 +10,7 @@ BACKEND_HOST="${TRANSLATE_TOOL_HOST:-127.0.0.1}"
 BACKEND_PORT="${TRANSLATE_TOOL_PORT:-8765}"
 FRONTEND_PORT="5173"
 
-# Runtime defaults tuned for 8GB VRAM class GPUs (preserve user overrides)
-export OLLAMA_NUM_CTX="${OLLAMA_NUM_CTX:-4096}"
-export OLLAMA_NUM_GPU="${OLLAMA_NUM_GPU:-99}"
-export OLLAMA_KV_CACHE_TYPE="${OLLAMA_KV_CACHE_TYPE:-q8_0}"
+# Runtime defaults (transport-level only). Model-level tuning is handled in app/backend/config.py.
 export TRANSLATE_CONNECT_TIMEOUT="${TRANSLATE_CONNECT_TIMEOUT:-15}"
 export TRANSLATE_READ_TIMEOUT="${TRANSLATE_READ_TIMEOUT:-360}"
 

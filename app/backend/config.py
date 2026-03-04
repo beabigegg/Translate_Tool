@@ -6,14 +6,66 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
+
+
+class ModelType(str, Enum):
+    """Supported translation model categories."""
+
+    GENERAL = "general"
+    TRANSLATION = "translation"
 
 APP_NAME = "Translate Tool"
 DEFAULT_MODEL = "qwen3.5:4b"
+HYMT_DEFAULT_MODEL = os.environ.get("HYMT_DEFAULT_MODEL", "demonbyron/HY-MT1.5-7B:Q4_K_M")
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_NUM_CTX = int(os.environ.get("OLLAMA_NUM_CTX", "4096"))
 OLLAMA_NUM_GPU = int(os.environ.get("OLLAMA_NUM_GPU", "99"))
+OLLAMA_KV_CACHE_TYPE = os.environ.get("OLLAMA_KV_CACHE_TYPE", "q8_0")
+
+# OLLAMA_NUM_CTX env override applies to all model types for backward compatibility.
+_NUM_CTX_OVERRIDE = os.environ.get("OLLAMA_NUM_CTX")
+GENERAL_NUM_CTX = int(_NUM_CTX_OVERRIDE) if _NUM_CTX_OVERRIDE else 4096
+TRANSLATION_NUM_CTX = int(_NUM_CTX_OVERRIDE) if _NUM_CTX_OVERRIDE else 3072
+
+# Keep legacy constant name for downstream modules.
+OLLAMA_NUM_CTX = GENERAL_NUM_CTX
+
+MODEL_TYPE_OPTIONS: Dict[ModelType, Dict[str, object]] = {
+    ModelType.GENERAL: {
+        "num_ctx": GENERAL_NUM_CTX,
+        "num_gpu": OLLAMA_NUM_GPU,
+        "kv_cache_type": OLLAMA_KV_CACHE_TYPE,
+        "frequency_penalty": 0.5,  # Penalise repetitive loops without hurting terminology consistency.
+    },
+    ModelType.TRANSLATION: {
+        "num_ctx": TRANSLATION_NUM_CTX,
+        "num_gpu": OLLAMA_NUM_GPU,
+        "kv_cache_type": OLLAMA_KV_CACHE_TYPE,
+        "top_k": 20,
+        "top_p": 0.6,
+        "repeat_penalty": 1.05,
+        "temperature": 0.7,
+    },
+}
+
+VRAM_METADATA: Dict[ModelType, Dict[str, object]] = {
+    ModelType.GENERAL: {
+        "model_size_gb": 3.5,
+        "kv_per_1k_ctx_gb": 0.35,
+        "default_num_ctx": GENERAL_NUM_CTX,
+        "min_num_ctx": 1024,
+        "max_num_ctx": 8192,
+    },
+    ModelType.TRANSLATION: {
+        "model_size_gb": 5.7,
+        "kv_per_1k_ctx_gb": 0.22,
+        "default_num_ctx": TRANSLATION_NUM_CTX,
+        "min_num_ctx": 1024,
+        "max_num_ctx": 8192,
+    },
+}
 
 DEFAULT_CONNECT_TIMEOUT_S = 10.0
 DEFAULT_READ_TIMEOUT_S = 360.0

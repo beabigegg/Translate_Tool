@@ -21,7 +21,7 @@ Translate_Tool is a document translation platform designed to translate multiple
 - **blingfire/pysbd** - Sentence boundary detection
 - **SQLite** - Translation cache storage
 - **MySQL** - User/task database (server queue version)
-- **Ollama + Qwen3.5:9b** - Local translation service (profile-driven prompts)
+- **Ollama + Qwen3.5:4b** - Local translation service (profile-driven prompts)
 
 ## Project Conventions
 
@@ -79,7 +79,7 @@ Translate_Tool is a document translation platform designed to translate multiple
 
 ### Ollama + Qwen (Local Translation)
 - **Service**: Ollama running on `http://localhost:11434`
-- **Default Model**: `qwen3.5:9b`
+- **Default Model**: `qwen3.5:4b`
 - **Profiles**: `general`, `government`, `semiconductor`, `fab`, `manufacturing`, `financial`, `legal`
 - **Runtime Tuning (8GB VRAM baseline)**:
   - `OLLAMA_NUM_CTX=5120`

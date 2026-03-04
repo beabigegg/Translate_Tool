@@ -212,8 +212,10 @@ class JobManager:
         src_lang: Optional[str],
         include_headers: bool,
         model: str,
+        model_type: str = "general",
         system_prompt: str = "",
         profile_id: str = "general",
+        num_ctx: Optional[int] = None,
         pdf_output_format: str = "docx",
         pdf_layout_mode: str = "overlay",
     ) -> JobRecord:
@@ -240,9 +242,11 @@ class JobManager:
         log = JobLogger(job).log
         resolved_model = model or DEFAULT_MODEL
         resolved_profile = profile_id or "general"
+        resolved_model_type = model_type or "general"
+        num_ctx_log = f", num_ctx={num_ctx} (override)" if num_ctx is not None else ""
         log(
-            f"[CONFIG] model={resolved_model}, profile={resolved_profile}, "
-            f"PDF output_format={pdf_output_format}, layout_mode={pdf_layout_mode}"
+            f"[CONFIG] model={resolved_model}, model_type={resolved_model_type}, profile={resolved_profile}, "
+            f"PDF output_format={pdf_output_format}, layout_mode={pdf_layout_mode}{num_ctx_log}"
         )
 
         def _run_job() -> None:
@@ -260,8 +264,10 @@ class JobManager:
                     src_lang,
                     include_headers_shapes_via_com=include_headers,
                     ollama_model=resolved_model,
+                    model_type=resolved_model_type,
                     system_prompt=system_prompt,
                     profile_id=resolved_profile,
+                    num_ctx_override=num_ctx,
                     timeout_config=timeout_config,
                     stop_flag=job.stop_flag,
                     log=log,
