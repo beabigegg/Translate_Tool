@@ -466,7 +466,7 @@ The system SHALL support multiple model types that determine prompt building str
 #### Scenario: Translation-dedicated model type
 - **WHEN** a profile with `model_type="translation"` is selected
 - **THEN** the system SHALL NOT send a system prompt to Ollama
-- **AND** build prompts using a fixed English translation template
+- **AND** build prompts using the official HY-MT fixed template (Chinese template for Chinese-involved pairs, English template otherwise)
 - **AND** use dedicated inference parameters (top_k=20, top_p=0.6, repeat_penalty=1.05, temperature=0.7)
 
 #### Scenario: Model type defaults to general
@@ -475,11 +475,19 @@ The system SHALL support multiple model types that determine prompt building str
 - **AND** existing profiles continue to work without modification
 
 ### Requirement: Translation-Dedicated Prompt Template
-The system SHALL use a single English fixed template for translation-dedicated models regardless of the language pair.
+The system SHALL use the official HY-MT fixed templates for translation-dedicated models, selecting the template based on whether Chinese is involved as source or target language.
 
-#### Scenario: Translation-dedicated prompt format
+#### Scenario: Translation-dedicated prompt for Chinese-involved pairs
 - **WHEN** text is submitted for translation
 - **AND** the model type is translation-dedicated
+- **AND** the source or target language involves Chinese (Traditional Chinese, Simplified Chinese, zh-TW, zh-CN)
+- **THEN** the system SHALL use the Chinese prompt template: "将以下文本翻译为{target_language}，注意只需要输出翻译后的结果，不要额外解释：\n\n{text}"
+- **AND** the system SHALL NOT use a system prompt
+
+#### Scenario: Translation-dedicated prompt for non-Chinese pairs
+- **WHEN** text is submitted for translation
+- **AND** the model type is translation-dedicated
+- **AND** neither the source nor target language involves Chinese
 - **THEN** the system SHALL use the English prompt template: "Translate the following segment into {target_language}, without additional explanation.\n\n{text}"
 - **AND** the system SHALL NOT use a system prompt
 

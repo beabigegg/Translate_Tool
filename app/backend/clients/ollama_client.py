@@ -273,7 +273,21 @@ class OllamaClient:
         )
 
     @staticmethod
-    def _build_translation_dedicated_prompt(text: str, target_language: str) -> str:
+    def _involves_chinese(target_language: str, source_language: Optional[str] = None) -> bool:
+        """Check if Chinese is involved as source or target (for HY-MT template selection)."""
+        cn_keywords = ("chinese", "zh-tw", "zh-cn", "zh")
+        if any(kw in target_language.lower() for kw in cn_keywords):
+            return True
+        if source_language and any(kw in source_language.lower() for kw in cn_keywords):
+            return True
+        return False
+
+    @staticmethod
+    def _build_translation_dedicated_prompt(
+        text: str, target_language: str, source_language: Optional[str] = None,
+    ) -> str:
+        if OllamaClient._involves_chinese(target_language, source_language):
+            return f"将以下文本翻译为{target_language}，注意只需要输出翻译后的结果，不要额外解释：\n\n{text}"
         return f"Translate the following segment into {target_language}, without additional explanation.\n\n{text}"
 
     @staticmethod
@@ -304,7 +318,7 @@ class OllamaClient:
 
     def _build_single_translate_payload(self, text: str, tgt: str, src_lang: Optional[str]) -> Dict[str, object]:
         if self._is_translation_dedicated():
-            prompt = self._build_translation_dedicated_prompt(text, tgt)
+            prompt = self._build_translation_dedicated_prompt(text, tgt, src_lang)
             return self._build_no_system_payload(prompt)
         if self._is_translategemma_model():
             prompt = self._build_translategemma_prompt(text, tgt, src_lang)
@@ -317,7 +331,7 @@ class OllamaClient:
 
     def _build_batch_translate_payload(self, texts: List[str], tgt: str, src_lang: Optional[str]) -> Dict[str, object]:
         if self._is_translation_dedicated():
-            prompt = self._build_translation_dedicated_prompt("\n\n".join(texts), tgt)
+            prompt = self._build_translation_dedicated_prompt("\n\n".join(texts), tgt, src_lang)
             return self._build_no_system_payload(prompt)
         if self._is_translategemma_model():
             prompt = self._build_batch_translategemma_prompt(texts, tgt, src_lang)
