@@ -7,6 +7,12 @@ import logging
 import re
 from typing import Callable, Dict, List, Optional
 
+try:
+    from json_repair import repair_json as _repair_json
+    _HAS_JSON_REPAIR = True
+except ImportError:  # pragma: no cover
+    _HAS_JSON_REPAIR = False
+
 from app.backend.config import DEFAULT_MODEL, OLLAMA_BASE_URL, TimeoutConfig
 from app.backend.models.term import Term
 from app.backend.services.term_db import TermDB
@@ -226,19 +232,36 @@ class TermExtractor:
 # Parsing helpers
 # ------------------------------------------------------------------
 
+def _robust_loads(text: str):
+    """Parse JSON with json_repair when available, fall back to stdlib."""
+    if _HAS_JSON_REPAIR:
+        return _repair_json(text, return_objects=True)
+    # Fallback: try raw json.loads (may still fail on malformed output)
+    return json.loads(text)
+
+
 def _parse_json_list(text: str) -> List[Dict]:
-    """Extract a JSON array from model output."""
+    """Extract a JSON array from model output, using json_repair when available."""
     text = text.strip()
-    # Try to find JSON array in text
-    match = re.search(r"\[.*\]", text, re.DOTALL)
-    if match:
-        text = match.group(0)
     try:
-        parsed = json.loads(text)
+        parsed = _robust_loads(text)
         if isinstance(parsed, list):
             return [d for d in parsed if isinstance(d, dict)]
-    except json.JSONDecodeError:
-        pass
+        # json_repair may wrap a lone array as a dict in edge cases — unwrap
+        if isinstance(parsed, dict) and len(parsed) == 1:
+            inner = next(iter(parsed.values()))
+            if isinstance(inner, list):
+                return [d for d in inner if isinstance(d, dict)]
+    except Exception:
+        # Last-resort: try regex extraction before giving up
+        match = re.search(r"\[.*\]", text, re.DOTALL)
+        if match:
+            try:
+                parsed = json.loads(match.group(0))
+                if isinstance(parsed, list):
+                    return [d for d in parsed if isinstance(d, dict)]
+            except Exception:
+                pass
     logger.warning("[PHASE0] Failed to parse extraction JSON: %r", text[:200])
     return []
 
@@ -246,12 +269,8 @@ def _parse_json_list(text: str) -> List[Dict]:
 def _parse_translation_response(text: str) -> List[Dict]:
     """Parse {'translations': [{source, target, confidence}]} from model output."""
     text = text.strip()
-    # Try to extract JSON object
-    match = re.search(r"\{.*\}", text, re.DOTALL)
-    if match:
-        text = match.group(0)
     try:
-        parsed = json.loads(text)
+        parsed = _robust_loads(text)
         if isinstance(parsed, dict):
             translations = parsed.get("translations", [])
             if isinstance(translations, list):
@@ -264,8 +283,25 @@ def _parse_translation_response(text: str) -> List[Dict]:
                     for t in translations
                     if isinstance(t, dict) and t.get("source")
                 ]
-    except (json.JSONDecodeError, ValueError):
-        pass
+    except Exception:
+        # Last-resort fallback
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if match:
+            try:
+                parsed = json.loads(match.group(0))
+                if isinstance(parsed, dict):
+                    translations = parsed.get("translations", [])
+                    return [
+                        {
+                            "source": str(t.get("source", "")),
+                            "target": str(t.get("target", "")),
+                            "confidence": float(t.get("confidence", 1.0)),
+                        }
+                        for t in translations
+                        if isinstance(t, dict) and t.get("source")
+                    ]
+            except Exception:
+                pass
     logger.warning("[PHASE0] Failed to parse translation JSON: %r", text[:200])
     return []
 

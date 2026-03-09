@@ -7,6 +7,8 @@ import {
   fetchJobStatus,
   fetchRouteInfo,
   fetchTermStats,
+  fetchUnverifiedTerms,
+  approveTerm,
   getTermExportUrl,
   importTerms,
 } from "./api.js";
@@ -446,6 +448,10 @@ function TermDBPanel({ onClose }) {
   const [importResult, setImportResult] = useState(null);
   const [importError, setImportError] = useState(null);
   const [importLoading, setImportLoading] = useState(false);
+  const [unverified, setUnverified] = useState(null);
+  const [unverifiedLoading, setUnverifiedLoading] = useState(false);
+  const [unverifiedError, setUnverifiedError] = useState(null);
+  const [activeTab, setActiveTab] = useState("stats"); // "stats" | "review"
 
   const loadStats = useCallback(async () => {
     try {
@@ -457,7 +463,36 @@ function TermDBPanel({ onClose }) {
     }
   }, []);
 
+  const loadUnverified = useCallback(async () => {
+    setUnverifiedLoading(true);
+    setUnverifiedError(null);
+    try {
+      const data = await fetchUnverifiedTerms();
+      setUnverified(data);
+    } catch (err) {
+      setUnverifiedError(err.message);
+    } finally {
+      setUnverifiedLoading(false);
+    }
+  }, []);
+
   useEffect(() => { loadStats(); }, [loadStats]);
+
+  useEffect(() => {
+    if (activeTab === "review") loadUnverified();
+  }, [activeTab, loadUnverified]);
+
+  const handleApprove = async (term) => {
+    try {
+      await approveTerm(term.source_text, term.target_lang, term.domain);
+      setUnverified((prev) => prev.filter(
+        (t) => !(t.source_text === term.source_text && t.target_lang === term.target_lang && t.domain === term.domain)
+      ));
+      await loadStats();
+    } catch (err) {
+      alert(`核准失敗：${err.message}`);
+    }
+  };
 
   const handleImport = async () => {
     if (!importFile) return;
@@ -485,91 +520,157 @@ function TermDBPanel({ onClose }) {
           </button>
         </div>
 
-        {/* Stats */}
-        <div className="term-panel-section">
-          <h3>資料庫統計</h3>
-          {statsError ? (
-            <p className="term-panel-error">{statsError}</p>
-          ) : stats ? (
-            <div className="term-stats">
-              <div className="term-stat-row">
-                <span className="term-stat-label">總術語數</span>
-                <span className="term-stat-value">{stats.total}</span>
+        {/* Tabs */}
+        <div className="term-panel-tabs">
+          <button
+            type="button"
+            className={`term-tab-btn${activeTab === "stats" ? " active" : ""}`}
+            onClick={() => setActiveTab("stats")}
+          >
+            統計 / 匯入匯出
+          </button>
+          <button
+            type="button"
+            className={`term-tab-btn${activeTab === "review" ? " active" : ""}`}
+            onClick={() => setActiveTab("review")}
+          >
+            待審核
+            {stats?.unverified > 0 && (
+              <span className="term-unverified-badge">{stats.unverified}</span>
+            )}
+          </button>
+        </div>
+
+        {activeTab === "stats" && (
+          <>
+            {/* Stats */}
+            <div className="term-panel-section">
+              <h3>資料庫統計</h3>
+              {statsError ? (
+                <p className="term-panel-error">{statsError}</p>
+              ) : stats ? (
+                <div className="term-stats">
+                  <div className="term-stat-row">
+                    <span className="term-stat-label">總術語數</span>
+                    <span className="term-stat-value">{stats.total}</span>
+                  </div>
+                  {stats.unverified > 0 && (
+                    <div className="term-stat-row">
+                      <span className="term-stat-label">待審核（未注入）</span>
+                      <span className="term-stat-value term-stat-warn">{stats.unverified}</span>
+                    </div>
+                  )}
+                  {Object.keys(stats.by_target_lang || {}).length > 0 && (
+                    <div className="term-stat-row">
+                      <span className="term-stat-label">依目標語言</span>
+                      <span className="term-stat-value">
+                        {Object.entries(stats.by_target_lang).map(([lang, cnt]) => `${lang}: ${cnt}`).join(", ")}
+                      </span>
+                    </div>
+                  )}
+                  {Object.keys(stats.by_domain || {}).length > 0 && (
+                    <div className="term-stat-row">
+                      <span className="term-stat-label">依領域</span>
+                      <span className="term-stat-value">
+                        {Object.entries(stats.by_domain).map(([domain, cnt]) => `${domain}: ${cnt}`).join(", ")}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p>載入中...</p>
+              )}
+            </div>
+
+            {/* Export */}
+            <div className="term-panel-section">
+              <h3>匯出術語庫</h3>
+              <div className="term-export-buttons">
+                {["json", "csv", "xlsx"].map((fmt) => (
+                  <a
+                    key={fmt}
+                    className="btn btn-secondary btn-sm"
+                    href={getTermExportUrl(fmt)}
+                    download={`term_db.${fmt}`}
+                  >
+                    {fmt.toUpperCase()}
+                  </a>
+                ))}
               </div>
-              {Object.keys(stats.by_target_lang || {}).length > 0 && (
-                <div className="term-stat-row">
-                  <span className="term-stat-label">依目標語言</span>
-                  <span className="term-stat-value">
-                    {Object.entries(stats.by_target_lang).map(([lang, cnt]) => `${lang}: ${cnt}`).join(", ")}
-                  </span>
+            </div>
+
+            {/* Import */}
+            <div className="term-panel-section">
+              <h3>匯入術語庫</h3>
+              <div className="term-import-controls">
+                <input
+                  type="file"
+                  accept=".json,.csv"
+                  onChange={(e) => { setImportFile(e.target.files?.[0] || null); setImportResult(null); }}
+                  aria-label="選擇匯入檔案"
+                />
+                <select
+                  value={importStrategy}
+                  onChange={(e) => setImportStrategy(e.target.value)}
+                  aria-label="衝突策略"
+                >
+                  <option value="skip">保留現有 (skip)</option>
+                  <option value="overwrite">覆蓋 (overwrite)</option>
+                  <option value="merge">依信心值合併 (merge)</option>
+                </select>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={handleImport}
+                  disabled={!importFile || importLoading}
+                >
+                  {importLoading ? "匯入中..." : "確認匯入"}
+                </button>
+              </div>
+              {importResult && (
+                <div className="term-import-result">
+                  新增 {importResult.inserted} 筆、略過 {importResult.skipped} 筆、覆蓋 {importResult.overwritten} 筆
                 </div>
               )}
-              {Object.keys(stats.by_domain || {}).length > 0 && (
-                <div className="term-stat-row">
-                  <span className="term-stat-label">依領域</span>
-                  <span className="term-stat-value">
-                    {Object.entries(stats.by_domain).map(([domain, cnt]) => `${domain}: ${cnt}`).join(", ")}
-                  </span>
-                </div>
-              )}
+              {importError && <p className="term-panel-error">{importError}</p>}
             </div>
-          ) : (
-            <p>載入中...</p>
-          )}
-        </div>
+          </>
+        )}
 
-        {/* Export */}
-        <div className="term-panel-section">
-          <h3>匯出術語庫</h3>
-          <div className="term-export-buttons">
-            {["json", "csv", "xlsx"].map((fmt) => (
-              <a
-                key={fmt}
-                className="btn btn-secondary btn-sm"
-                href={getTermExportUrl(fmt)}
-                download={`term_db.${fmt}`}
-              >
-                {fmt.toUpperCase()}
-              </a>
-            ))}
+        {activeTab === "review" && (
+          <div className="term-panel-section">
+            <h3>待審核術語 <small>（核准後才會注入翻譯 Prompt）</small></h3>
+            {unverifiedLoading && <p>載入中...</p>}
+            {unverifiedError && <p className="term-panel-error">{unverifiedError}</p>}
+            {!unverifiedLoading && unverified && unverified.length === 0 && (
+              <p className="term-panel-empty">目前沒有待審核術語。</p>
+            )}
+            {!unverifiedLoading && unverified && unverified.length > 0 && (
+              <div className="term-review-list">
+                {unverified.map((t) => (
+                  <div key={`${t.source_text}|${t.target_lang}|${t.domain}`} className="term-review-row">
+                    <div className="term-review-main">
+                      <span className="term-review-source">{t.source_text}</span>
+                      <span className="term-review-arrow">→</span>
+                      <span className="term-review-target">{t.target_text}</span>
+                    </div>
+                    <div className="term-review-meta">
+                      {t.domain} · {t.target_lang} · 信心值 {(t.confidence * 100).toFixed(0)}%
+                      {t.context_snippet && <span> · 「{t.context_snippet}」</span>}
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-xs"
+                      onClick={() => handleApprove(t)}
+                    >
+                      核准
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-
-        {/* Import */}
-        <div className="term-panel-section">
-          <h3>匯入術語庫</h3>
-          <div className="term-import-controls">
-            <input
-              type="file"
-              accept=".json,.csv"
-              onChange={(e) => { setImportFile(e.target.files?.[0] || null); setImportResult(null); }}
-              aria-label="選擇匯入檔案"
-            />
-            <select
-              value={importStrategy}
-              onChange={(e) => setImportStrategy(e.target.value)}
-              aria-label="衝突策略"
-            >
-              <option value="skip">保留現有 (skip)</option>
-              <option value="overwrite">覆蓋 (overwrite)</option>
-              <option value="merge">依信心值合併 (merge)</option>
-            </select>
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              onClick={handleImport}
-              disabled={!importFile || importLoading}
-            >
-              {importLoading ? "匯入中..." : "確認匯入"}
-            </button>
-          </div>
-          {importResult && (
-            <div className="term-import-result">
-              新增 {importResult.inserted} 筆、略過 {importResult.skipped} 筆、覆蓋 {importResult.overwritten} 筆
-            </div>
-          )}
-          {importError && <p className="term-panel-error">{importError}</p>}
-        </div>
+        )}
       </div>
     </div>
   );

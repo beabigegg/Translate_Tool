@@ -28,9 +28,14 @@ CREATE TABLE IF NOT EXISTS terms (
     context_snippet TEXT NOT NULL DEFAULT '',
     confidence REAL NOT NULL DEFAULT 1.0,
     usage_count INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'unverified',
     created_at TEXT NOT NULL,
     UNIQUE (source_text, target_lang, domain)
 );
+"""
+
+_MIGRATE_ADD_STATUS_SQL = """
+ALTER TABLE terms ADD COLUMN status TEXT NOT NULL DEFAULT 'unverified';
 """
 
 
@@ -59,6 +64,12 @@ class TermDB:
         with _DB_LOCK, self._connect() as conn:
             conn.execute(_CREATE_TABLE_SQL)
             conn.commit()
+            # Migration: add status column if absent (existing DBs)
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(terms)").fetchall()}
+            if "status" not in cols:
+                conn.execute(_MIGRATE_ADD_STATUS_SQL)
+                conn.commit()
+                logger.info("[TermDB] Migrated: added status column")
 
     # ------------------------------------------------------------------
     # Query methods
@@ -89,12 +100,13 @@ class TermDB:
     def get_top_terms(
         self, target_lang: str, domain: str, top_n: int = 30
     ) -> List[Term]:
-        """Return top N terms by usage_count for (target_lang, domain)."""
+        """Return top N injection-safe terms (approved or confidence=1.0)."""
         with _DB_LOCK, self._connect() as conn:
             rows = conn.execute(
                 """
                 SELECT * FROM terms
                 WHERE target_lang=? AND domain=?
+                  AND (status='approved' OR confidence=1.0)
                 ORDER BY usage_count DESC
                 LIMIT ?
                 """,
@@ -122,8 +134,8 @@ class TermDB:
                     """
                     INSERT INTO terms
                         (source_text, target_text, source_lang, target_lang,
-                         domain, context_snippet, confidence, usage_count, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         domain, context_snippet, confidence, usage_count, status, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         term.source_text,
@@ -134,6 +146,7 @@ class TermDB:
                         term.context_snippet,
                         term.confidence,
                         term.usage_count,
+                        term.status,
                         term.created_at or _now_iso(),
                     ),
                 )
@@ -194,6 +207,35 @@ class TermDB:
 
         return "skipped"
 
+    def approve(self, source_text: str, target_lang: str, domain: str) -> bool:
+        """Set status='approved' for a term. Returns True if the term was found."""
+        with _DB_LOCK, self._connect() as conn:
+            cur = conn.execute(
+                "UPDATE terms SET status='approved' WHERE source_text=? AND target_lang=? AND domain=?",
+                (source_text, target_lang, domain),
+            )
+            conn.commit()
+        return cur.rowcount > 0
+
+    def get_unverified(
+        self,
+        target_lang: Optional[str] = None,
+        domain: Optional[str] = None,
+    ) -> List[Term]:
+        """Return all unverified terms, optionally filtered."""
+        conditions = ["status='unverified'"]
+        params: list = []
+        if target_lang:
+            conditions.append("target_lang=?")
+            params.append(target_lang)
+        if domain:
+            conditions.append("domain=?")
+            params.append(domain)
+        sql = f"SELECT * FROM terms WHERE {' AND '.join(conditions)} ORDER BY id DESC"
+        with _DB_LOCK, self._connect() as conn:
+            rows = conn.execute(sql, params).fetchall()
+        return [_row_to_term(r) for r in rows]
+
     def increment_usage(self, source_text: str, target_lang: str, domain: str) -> None:
         """Increment usage_count for a term."""
         with _DB_LOCK, self._connect() as conn:
@@ -211,9 +253,12 @@ class TermDB:
     # ------------------------------------------------------------------
 
     def get_stats(self) -> Dict:
-        """Return total / by_target_lang / by_domain statistics."""
+        """Return total / unverified / by_target_lang / by_domain statistics."""
         with _DB_LOCK, self._connect() as conn:
             total = conn.execute("SELECT COUNT(*) FROM terms").fetchone()[0]
+            unverified = conn.execute(
+                "SELECT COUNT(*) FROM terms WHERE status='unverified'"
+            ).fetchone()[0]
             by_lang_rows = conn.execute(
                 "SELECT target_lang, COUNT(*) as cnt FROM terms GROUP BY target_lang"
             ).fetchall()
@@ -222,6 +267,7 @@ class TermDB:
             ).fetchall()
         return {
             "total": total,
+            "unverified": unverified,
             "by_target_lang": {r["target_lang"]: r["cnt"] for r in by_lang_rows},
             "by_domain": {r["domain"]: r["cnt"] for r in by_domain_rows},
         }
@@ -250,7 +296,7 @@ class TermDB:
         path.parent.mkdir(parents=True, exist_ok=True)
         fieldnames = [
             "source_text", "target_text", "source_lang", "target_lang",
-            "domain", "context_snippet", "confidence", "usage_count",
+            "domain", "context_snippet", "confidence", "usage_count", "status",
         ]
         with path.open("w", encoding="utf-8", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -279,7 +325,7 @@ class TermDB:
 
         headers = [
             "source_text", "target_text", "source_lang", "target_lang",
-            "domain", "context_snippet", "confidence", "usage_count",
+            "domain", "context_snippet", "confidence", "usage_count", "status",
         ]
         for lang, lang_terms in by_lang.items():
             ws = wb.create_sheet(title=lang[:31])  # Sheet names max 31 chars
@@ -364,6 +410,7 @@ def _row_to_term(row: sqlite3.Row) -> Term:
         context_snippet=row["context_snippet"],
         confidence=float(row["confidence"]),
         usage_count=int(row["usage_count"]),
+        status=row["status"] if "status" in row.keys() else "unverified",
         created_at=row["created_at"],
     )
 
@@ -378,10 +425,12 @@ def _term_to_dict(t: Term) -> Dict:
         "context_snippet": t.context_snippet,
         "confidence": t.confidence,
         "usage_count": t.usage_count,
+        "status": t.status,
     }
 
 
 def _dict_to_term(d: Dict) -> Term:
+    """Convert an import dict to a Term. Defaults status to 'approved' (human-curated import)."""
     return Term(
         source_text=str(d.get("source_text", "")),
         target_text=str(d.get("target_text", "")),
@@ -391,5 +440,6 @@ def _dict_to_term(d: Dict) -> Term:
         context_snippet=str(d.get("context_snippet", "")),
         confidence=float(d.get("confidence", 1.0)),
         usage_count=int(d.get("usage_count", 0)),
+        status=str(d.get("status", "approved")),  # imports are human-curated
         created_at=str(d.get("created_at") or _now_iso()),
     )

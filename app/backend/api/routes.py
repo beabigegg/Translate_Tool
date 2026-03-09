@@ -20,7 +20,9 @@ from app.backend.api.schemas import (
     ProfileItem,
     RouteInfoEntry,
     RouteInfoResponse,
+    TermApproveRequest,
     TermImportResult,
+    TermItem,
     TermStatsResponse,
 )
 from app.backend.clients.ollama_client import list_ollama_models
@@ -360,3 +362,35 @@ async def terms_import(
         skipped=counts.get("skipped", 0),
         overwritten=counts.get("overwritten", 0),
     )
+
+
+@router.get("/terms/unverified", response_model=List[TermItem])
+def terms_unverified(
+    target_lang: Optional[str] = None,
+    domain: Optional[str] = None,
+) -> List[TermItem]:
+    """List unverified terms pending human review."""
+    terms = _term_db.get_unverified(target_lang=target_lang, domain=domain)
+    return [
+        TermItem(
+            source_text=t.source_text,
+            target_text=t.target_text,
+            source_lang=t.source_lang,
+            target_lang=t.target_lang,
+            domain=t.domain,
+            context_snippet=t.context_snippet,
+            confidence=t.confidence,
+            usage_count=t.usage_count,
+            status=t.status,
+        )
+        for t in terms
+    ]
+
+
+@router.post("/terms/approve")
+def terms_approve(body: TermApproveRequest):
+    """Mark a term as approved for prompt injection."""
+    found = _term_db.approve(body.source_text, body.target_lang, body.domain)
+    if not found:
+        raise HTTPException(status_code=404, detail="Term not found")
+    return {"ok": True}

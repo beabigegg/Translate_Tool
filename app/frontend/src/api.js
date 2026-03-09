@@ -99,6 +99,26 @@ export function getTermExportUrl(format) {
   return `/api/terms/export?format=${encodeURIComponent(format)}`;
 }
 
+export async function fetchUnverifiedTerms(targetLang, domain) {
+  const params = new URLSearchParams();
+  if (targetLang) params.set("target_lang", targetLang);
+  if (domain) params.set("domain", domain);
+  const qs = params.toString() ? `?${params}` : "";
+  const res = await fetch(`/api/terms/unverified${qs}`);
+  if (!res.ok) throw new Error("Failed to fetch unverified terms");
+  return res.json();
+}
+
+export async function approveTerm(sourceText, targetLang, domain) {
+  const res = await fetch("/api/terms/approve", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ source_text: sourceText, target_lang: targetLang, domain }),
+  });
+  if (!res.ok) throw new Error("Failed to approve term");
+  return res.json();
+}
+
 export async function importTerms(file, strategy = "skip") {
   const formData = new FormData();
   formData.append("file", file);

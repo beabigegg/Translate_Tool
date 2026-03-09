@@ -38,8 +38,27 @@ class TermImportResult(BaseModel):
 
 class TermStatsResponse(BaseModel):
     total: int
+    unverified: int = 0
     by_target_lang: Dict[str, int]
     by_domain: Dict[str, int]
+
+
+class TermItem(BaseModel):
+    source_text: str
+    target_text: str
+    source_lang: str
+    target_lang: str
+    domain: str
+    context_snippet: str
+    confidence: float
+    usage_count: int
+    status: str
+
+
+class TermApproveRequest(BaseModel):
+    source_text: str
+    target_lang: str
+    domain: str
 
 
 class ModelsResponse(BaseModel):
