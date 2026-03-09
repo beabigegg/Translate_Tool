@@ -173,7 +173,7 @@ class TermExtractor:
             "prompt": prompt,
             "stream": True,
             "think": False,
-            "options": {"temperature": 0.1, "top_p": 0.9, "top_k": 40},
+            "options": {"temperature": 0.1, "top_p": 0.9, "top_k": 40, "num_ctx": 4096},
         }
         connect_t, read_t = self.timeout.get_timeout_tuple()
         resp = requests.post(
