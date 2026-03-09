@@ -24,6 +24,8 @@ from app.backend.config import (
     TimeoutConfig,
 )
 from app.backend.processors.orchestrator import process_files
+from app.backend.services.model_router import RouteGroup
+from app.backend.translation_profiles import get_profile as _get_translation_profile
 from app.backend.utils.logging_utils import logger
 from app.backend.utils.resource_utils import release_resources
 
@@ -60,6 +62,11 @@ class JobLogger:
     def __init__(self, job: JobRecord) -> None:
         self.job = job
         self._file_seg_offset: int = 0
+        self._processed_offset: int = 0
+
+    def advance_processed_offset(self, n: int) -> None:
+        """Advance the processed-files offset after a route group completes."""
+        self._processed_offset += n
 
     def log(self, message: str) -> None:
         timestamp = time.strftime("%H:%M:%S")
@@ -78,8 +85,8 @@ class JobLogger:
         if m:
             job.current_file = m.group(1)
             index = int(m.group(2))
-            job.total_files = int(m.group(3))
-            job.processed_files = index - 1
+            # Don't overwrite total_files — it is set upfront by create_job
+            job.processed_files = self._processed_offset + (index - 1)
             # Save cumulative offset before resetting per-file counters
             self._file_seg_offset = job.segments_done
             job.file_segments_done = 0
@@ -208,13 +215,9 @@ class JobManager:
     def create_job(
         self,
         uploaded_files: List[Path],
-        targets: List[str],
+        route_groups: List[RouteGroup],
         src_lang: Optional[str],
         include_headers: bool,
-        model: str,
-        model_type: str = "general",
-        system_prompt: str = "",
-        profile_id: str = "general",
         num_ctx: Optional[int] = None,
         pdf_output_format: str = "docx",
         pdf_layout_mode: str = "overlay",
@@ -236,53 +239,82 @@ class JobManager:
             stored_files.append(dest)
 
         job = JobRecord(job_id=job_id, input_dir=input_dir, output_dir=output_dir)
-        job.total_files = len(stored_files)
+        # total_files = files × groups (each group translates all files to its target languages)
+        job.total_files = len(stored_files) * len(route_groups)
         self.jobs[job_id] = job
 
-        log = JobLogger(job).log
-        resolved_model = model or DEFAULT_MODEL
-        resolved_profile = profile_id or "general"
-        resolved_model_type = model_type or "general"
+        job_logger = JobLogger(job)
+        log = job_logger.log
         num_ctx_log = f", num_ctx={num_ctx} (override)" if num_ctx is not None else ""
+        group_summary = ", ".join(
+            f"{g.model}→[{','.join(g.targets)}]" for g in route_groups
+        )
         log(
-            f"[CONFIG] model={resolved_model}, model_type={resolved_model_type}, profile={resolved_profile}, "
+            f"[CONFIG] groups={len(route_groups)}: {group_summary}, "
             f"PDF output_format={pdf_output_format}, layout_mode={pdf_layout_mode}{num_ctx_log}"
         )
 
         def _run_job() -> None:
-            client: Optional[OllamaClient] = None
             with job.lock:
                 job.status = "running"
                 job.started_at = time.time()
-            log(f"Job started with {len(stored_files)} files")
+            log(f"Job started with {len(stored_files)} files × {len(route_groups)} route group(s)")
+            total_processed = 0
+            overall_stopped = False
+            last_client: Optional[OllamaClient] = None
             try:
                 timeout_config = TimeoutConfig()
-                processed, total, stopped, client = process_files(
-                    stored_files,
-                    output_dir,
-                    targets,
-                    src_lang,
-                    include_headers_shapes_via_com=include_headers,
-                    ollama_model=resolved_model,
-                    model_type=resolved_model_type,
-                    system_prompt=system_prompt,
-                    profile_id=resolved_profile,
-                    num_ctx_override=num_ctx,
-                    timeout_config=timeout_config,
-                    stop_flag=job.stop_flag,
-                    log=log,
-                    max_batch_chars=DEFAULT_MAX_BATCH_CHARS,
-                    layout_mode=pdf_layout_mode,
-                    output_format=pdf_output_format,
-                )
+                multi_group = len(route_groups) > 1
+                for group in route_groups:
+                    if job.stop_flag.is_set():
+                        overall_stopped = True
+                        break
+
+                    system_prompt = _get_translation_profile(group.profile_id).system_prompt
+                    # When multiple groups exist, tag output files with target language codes
+                    # to avoid filename collisions (e.g. doc_translated_en.docx, doc_translated_vi.docx)
+                    output_suffix = "_".join(t[:2].lower() for t in group.targets) if multi_group else ""
+                    log(
+                        f"[GROUP] model={group.model}, profile={group.profile_id}, "
+                        f"targets={group.targets}"
+                    )
+                    processed, _total, stopped, last_client = process_files(
+                        stored_files,
+                        output_dir,
+                        group.targets,
+                        src_lang,
+                        include_headers_shapes_via_com=include_headers,
+                        ollama_model=group.model,
+                        model_type=group.model_type,
+                        system_prompt=system_prompt,
+                        profile_id=group.profile_id,
+                        num_ctx_override=num_ctx,
+                        timeout_config=timeout_config,
+                        stop_flag=job.stop_flag,
+                        log=log,
+                        max_batch_chars=DEFAULT_MAX_BATCH_CHARS,
+                        layout_mode=pdf_layout_mode,
+                        output_format=pdf_output_format,
+                        output_suffix=output_suffix,
+                        refine_model=group.refine_model,
+                    )
+                    total_processed += processed
+                    job_logger.advance_processed_offset(len(stored_files))
+
+                    # Release VRAM between groups (8GB constraint)
+                    release_resources(last_client, log=log)
+                    last_client = None
+
+                    if stopped:
+                        overall_stopped = True
+                        break
 
                 # Archive outputs and update state atomically
                 archive_path = self._archive_outputs(job)
                 with job.lock:
-                    job.processed_files = processed
-                    job.total_files = total
-                    job.output_zip = archive_path  # Set within lock to avoid race condition
-                    job.status = "stopped" if stopped else "completed"
+                    job.processed_files = total_processed
+                    job.output_zip = archive_path
+                    job.status = "stopped" if overall_stopped else "completed"
                     job.updated_at = time.time()
 
             except Exception as exc:
@@ -292,7 +324,8 @@ class JobManager:
                     job.updated_at = time.time()
                 log(f"[ERROR] {exc}")
             finally:
-                release_resources(client, log=log)
+                if last_client is not None:
+                    release_resources(last_client, log=log)
 
         job.thread = threading.Thread(target=_run_job, daemon=True)
         job.thread.start()

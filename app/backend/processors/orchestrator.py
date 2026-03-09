@@ -12,9 +12,13 @@ from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import (
     CONTEXT_DETECTION_ENABLED,
     CONTEXT_SAMPLE_CHARS,
+    CROSS_MODEL_REFINEMENT_ENABLED,
     DEFAULT_MAX_BATCH_CHARS,
+    DYNAMIC_SCENARIO_STRATEGY_ENABLED,
     LAYOUT_PRESERVATION_MODE,
     PDF_SKIP_HEADER_FOOTER,
+    QWEN_CONTEXT_FLOW_ENABLED,
+    SCENARIO_CACHE_VARIANT_ENABLED,
     SUPPORTED_EXTENSIONS,
     TimeoutConfig,
 )
@@ -24,6 +28,11 @@ from app.backend.processors.libreoffice_helpers import doc_to_docx, is_libreoffi
 from app.backend.processors.pdf_processor import translate_pdf
 from app.backend.processors.pptx_processor import translate_pptx
 from app.backend.processors.xlsx_processor import translate_xlsx_xls
+from app.backend.services.translation_strategy import (
+    build_strategy,
+    detect_translation_scenario,
+    scenario_from_profile,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -122,28 +131,29 @@ def _detect_document_context(
     return ""
 
 
-def _output_name(src: Path, output_format: Optional[str] = None) -> str:
+def _output_name(src: Path, output_format: Optional[str] = None, output_suffix: str = "") -> str:
     """Generate output filename for translated file.
 
     Args:
         src: Source file path.
         output_format: Optional output format override (e.g., 'pdf' for PDF output).
+        output_suffix: Optional suffix inserted before the extension (e.g., '_en', '_vi').
 
     Returns:
         Output filename with _translated suffix.
     """
     ext = src.suffix.lower()
     stem = src.stem
+    tag = f"_{output_suffix}" if output_suffix else ""
     if ext in (".docx", ".pptx", ".xlsx"):
-        return f"{stem}_translated{ext}"
+        return f"{stem}_translated{tag}{ext}"
     if ext == ".pdf":
-        # Support PDF-to-PDF output when output_format is "pdf"
         if output_format == "pdf":
-            return f"{stem}_translated.pdf"
-        return f"{stem}_translated.docx"
+            return f"{stem}_translated{tag}.pdf"
+        return f"{stem}_translated{tag}.docx"
     if ext in (".doc", ".xls"):
-        return f"{stem}_translated.docx" if ext == ".doc" else f"{stem}_translated.xlsx"
-    return f"{stem}_translated{ext}"
+        return f"{stem}_translated{tag}.docx" if ext == ".doc" else f"{stem}_translated{tag}.xlsx"
+    return f"{stem}_translated{tag}{ext}"
 
 
 def process_files(
@@ -163,6 +173,9 @@ def process_files(
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
     layout_mode: Optional[str] = None,
     output_format: Optional[str] = None,
+    output_suffix: str = "",
+    refine_model: Optional[str] = None,
+    refiner_num_ctx: Optional[int] = None,
 ) -> Tuple[int, int, bool, Optional[OllamaClient]]:
     """Process files for translation.
 
@@ -200,10 +213,29 @@ def process_files(
         timeout=timeout_config,
         log=log,
     )
+
+    # Build cross-model refine client (Qwen) for HY-MT/TranslateGemma jobs
+    refine_client: Optional[OllamaClient] = None
+    if refine_model and CROSS_MODEL_REFINEMENT_ENABLED and targets:
+        refine_system_prompt = OllamaClient._build_refine_system_prompt(targets[0], profile_id)
+        refine_client = OllamaClient(
+            model=refine_model,
+            model_type="general",
+            system_prompt=refine_system_prompt,
+            num_ctx_override=refiner_num_ctx,
+            timeout=timeout_config,
+            log=log,
+        )
+        log(f"[REFINE] Cross-model refiner configured: {refine_model} (profile={profile_id}, tgt={targets[0]})")
+
     processed_count = 0
     total_count = len(files)
     stopped = False
     base_system_prompt = client.system_prompt
+
+    forced_scenario = scenario_from_profile(profile_id)
+    if DYNAMIC_SCENARIO_STRATEGY_ENABLED and forced_scenario:
+        log(f"[STRATEGY] fixed scenario from profile={profile_id}: {forced_scenario.value}")
 
     for src in files:
         if stop_flag and stop_flag.is_set():
@@ -216,18 +248,55 @@ def process_files(
             continue
         # Determine output format for PDF files
         pdf_output_fmt = output_format if ext == ".pdf" else None
-        out_path = output_dir / _output_name(src, output_format=pdf_output_fmt)
+        out_path = output_dir / _output_name(src, output_format=pdf_output_fmt, output_suffix=output_suffix)
         log("=" * 24)
         log(f"Processing: {src.name} ({processed_count + 1}/{total_count})")
-        # Auto-detect document context for general models
-        if CONTEXT_DETECTION_ENABLED and not client._is_translation_dedicated():
-            sample = _sample_file_text(src)
-            if sample:
-                doc_context = _detect_document_context(client, sample, log)
-                if doc_context:
-                    client.system_prompt = f"{base_system_prompt}\n\nDocument context: {doc_context}"
-                else:
-                    client.system_prompt = base_system_prompt
+
+        sample = _sample_file_text(src)
+        doc_context = ""
+        if (
+            CONTEXT_DETECTION_ENABLED
+            and QWEN_CONTEXT_FLOW_ENABLED
+            and not client._is_translation_dedicated()
+            and sample
+        ):
+            doc_context = _detect_document_context(client, sample, log)
+
+        # For dedicated primary models (e.g. HY-MT), defer context detection to
+        # Phase 2 so it runs after HY-MT is evicted from VRAM.
+        if (
+            refine_client is not None
+            and client._is_translation_dedicated()
+            and CONTEXT_DETECTION_ENABLED
+            and QWEN_CONTEXT_FLOW_ENABLED
+            and sample
+        ):
+            refine_client._deferred_context_sample = sample
+            refine_client._deferred_context_profile = profile_id
+            refine_client._deferred_context_target = targets[0] if targets else ""
+
+        if DYNAMIC_SCENARIO_STRATEGY_ENABLED:
+            scenario = forced_scenario or detect_translation_scenario(src.name, sample_text=sample, detected_context=doc_context)
+            decision = build_strategy(
+                base_system_prompt=base_system_prompt,
+                model_type=client.model_type,
+                scenario=scenario,
+                detected_context=doc_context,
+                enable_context_flow=QWEN_CONTEXT_FLOW_ENABLED,
+            )
+            client.system_prompt = decision.system_prompt
+            client.set_runtime_options_override(decision.options_override)
+            if SCENARIO_CACHE_VARIANT_ENABLED:
+                client.set_cache_variant(decision.cache_variant)
+            log(
+                f"[STRATEGY] mode={'forced' if forced_scenario else 'auto'}, "
+                f"scenario={decision.scenario.value}, "
+                f"cache_variant={decision.cache_variant}, "
+                f"options_override={decision.options_override}"
+            )
+        else:
+            if doc_context:
+                client.system_prompt = f"{base_system_prompt}\n\nDocument context: {doc_context}"
             else:
                 client.system_prompt = base_system_prompt
         try:
@@ -242,6 +311,7 @@ def process_files(
                     stop_flag=stop_flag,
                     log=log,
                     max_batch_chars=max_batch_chars,
+                    refine_client=refine_client,
                 )
             elif ext == ".doc":
                 tmp_docx = str(output_dir / f"{src.stem}__tmp.docx")
@@ -270,6 +340,7 @@ def process_files(
                         stop_flag=stop_flag,
                         log=log,
                         max_batch_chars=max_batch_chars,
+                        refine_client=refine_client,
                     )
                 finally:
                     try:
@@ -286,6 +357,7 @@ def process_files(
                     stop_flag=stop_flag,
                     log=log,
                     max_batch_chars=max_batch_chars,
+                    refine_client=refine_client,
                 )
             elif ext in (".xlsx", ".xls"):
                 stopped = translate_xlsx_xls(
@@ -297,6 +369,7 @@ def process_files(
                     stop_flag=stop_flag,
                     log=log,
                     max_batch_chars=max_batch_chars,
+                    refine_client=refine_client,
                 )
             elif ext == ".pdf":
                 log(f"[PDF] Using output_format={output_format}, layout_mode={layout_mode}")
@@ -324,6 +397,8 @@ def process_files(
             log(f"[ERROR] {src.name}: {exc}")
         finally:
             client.system_prompt = base_system_prompt
+            client.set_runtime_options_override(None)
+            client.set_cache_variant(None)
     if stopped:
         log(f"[STOP] job stopped after {processed_count}/{total_count} files")
     else:

@@ -359,13 +359,61 @@ body {
    =================================================================== */
 .main {
   flex: 1;
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
   width: 100%;
   padding: var(--space-6);
   display: grid;
-  grid-template-columns: 1fr 1.2fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: var(--space-6);
+}
+
+/* Target language checkbox grid */
+.target-lang-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.target-lang-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.target-lang-item:hover {
+  border-color: var(--border-dark);
+  background: var(--bg-secondary);
+}
+
+.target-lang-item.checked {
+  background: var(--primary-50);
+  border-color: var(--primary-300);
+}
+
+.target-lang-item input[type="checkbox"] {
+  display: none;
+}
+
+.target-lang-label {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+/* Route info hint */
+.route-info-hint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .column {
@@ -1798,10 +1846,6 @@ body {
 @media (max-width: 1024px) {
   .main {
     grid-template-columns: 1fr 1fr;
-  }
-
-  .column-right {
-    grid-column: 1 / -1;
   }
 
   .action-buttons {

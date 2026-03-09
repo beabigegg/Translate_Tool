@@ -5,9 +5,22 @@ import {
   fetchModelConfig,
   fetchProfiles,
   fetchJobStatus,
+  fetchRouteInfo,
 } from "./api.js";
 
-// Language options grouped by region for better UX
+// 8 commonly-used target languages with bilingual labels
+const TARGET_LANGUAGES = [
+  { id: "English", label: "English 英語" },
+  { id: "Vietnamese", label: "Vietnamese 越南語" },
+  { id: "Thai", label: "Thai 泰語" },
+  { id: "Japanese", label: "Japanese 日語" },
+  { id: "Korean", label: "Korean 韓語" },
+  { id: "Indonesian", label: "Indonesian 印尼語" },
+  { id: "Traditional Chinese", label: "Traditional Chinese 繁體中文" },
+  { id: "Simplified Chinese", label: "Simplified Chinese 簡體中文" },
+];
+
+// Full language list for source language override (used inside Advanced Settings)
 const LANG_GROUPS = {
   "East Asian": ["English", "Traditional Chinese", "Simplified Chinese", "Japanese", "Korean"],
   "Southeast Asian": ["Vietnamese", "Thai", "Indonesian", "Malay", "Filipino", "Burmese", "Khmer", "Lao"],
@@ -21,6 +34,11 @@ const LANG_GROUPS = {
 };
 
 const PROFILE_FALLBACK = [
+  { id: "technical_process", name: "技術製程", description: "準確、可操作", model_type: "translation" },
+  { id: "business_finance", name: "商務金融", description: "專業、客觀", model_type: "translation" },
+  { id: "legal_contract", name: "法律合約", description: "嚴謹、無歧義", model_type: "general" },
+  { id: "marketing_pr", name: "行銷公關", description: "吸引人、在地化", model_type: "translation" },
+  { id: "daily_communication", name: "日常溝通", description: "得體、流暢", model_type: "general" },
   { id: "general", name: "通用翻譯", description: "General translation", model_type: "general" }
 ];
 
@@ -419,10 +437,11 @@ function EmptyState({ icon: Icon, title, description }) {
 export default function App() {
   const [files, setFiles] = useState([]);
   const [selectedTargets, setSelectedTargets] = useState(["English", "Vietnamese"]);
-  const [activeTarget, setActiveTarget] = useState(0);
   const [srcLang, setSrcLang] = useState("auto");
   const [profiles, setProfiles] = useState([]);
-  const [selectedProfile, setSelectedProfile] = useState("general");
+  // "auto" means use automatic routing; any other value is an explicit profile override
+  const [selectedProfile, setSelectedProfile] = useState("auto");
+  const [routeInfo, setRouteInfo] = useState([]);
   const [modelConfig, setModelConfig] = useState(MODEL_CONFIG_FALLBACK);
   const [gpuVram, setGpuVram] = useState(() => {
     const fallback = 8;
@@ -448,18 +467,6 @@ export default function App() {
       model_type: (profile.model_type || "general").toLowerCase(),
     }));
   }, [profiles]);
-
-  const groupedProfiles = useMemo(() => {
-    const groups = { general: [], translation: [] };
-    for (const profile of effectiveProfiles) {
-      if (profile.model_type === "translation") {
-        groups.translation.push(profile);
-      } else {
-        groups.general.push(profile);
-      }
-    }
-    return groups;
-  }, [effectiveProfiles]);
 
   const selectedProfileItem = useMemo(() => {
     return effectiveProfiles.find((profile) => profile.id === selectedProfile) || effectiveProfiles[0] || PROFILE_FALLBACK[0];
@@ -539,6 +546,19 @@ export default function App() {
   useEffect(() => {
     setNumCtxOverride(null);
   }, [selectedProfile]);
+
+  // Fetch route info when targets change and auto-routing is active
+  useEffect(() => {
+    if (selectedProfile !== "auto" || selectedTargets.length === 0) {
+      setRouteInfo([]);
+      return;
+    }
+    let cancelled = false;
+    fetchRouteInfo(selectedTargets).then((data) => {
+      if (!cancelled) setRouteInfo(data.routes || []);
+    });
+    return () => { cancelled = true; };
+  }, [selectedTargets, selectedProfile]);
 
   useEffect(() => {
     if (!jobId) return;
@@ -623,19 +643,6 @@ export default function App() {
         return next.length ? next : prev;
       }
       return [...prev, lang];
-    });
-  };
-
-  const moveTarget = (direction) => {
-    setSelectedTargets((prev) => {
-      const next = [...prev];
-      if (activeTarget < 0 || activeTarget >= next.length) return prev;
-      const newIndex = direction === "up" ? activeTarget - 1 : activeTarget + 1;
-      if (newIndex < 0 || newIndex >= next.length) return prev;
-      const [item] = next.splice(activeTarget, 1);
-      next.splice(newIndex, 0, item);
-      setActiveTarget(newIndex);
-      return next;
     });
   };
 
@@ -744,7 +751,10 @@ export default function App() {
       files.forEach((file) => form.append("files", file));
       form.append("targets", selectedTargets.join(","));
       form.append("src_lang", srcLang);
-      form.append("profile", selectedProfile);
+      // Omit profile field when auto-routing; backend will use routing table
+      if (selectedProfile && selectedProfile !== "auto") {
+        form.append("profile", selectedProfile);
+      }
       if (numCtxOverride !== null) {
         form.append("num_ctx", String(numCtxOverride));
       }
@@ -772,7 +782,7 @@ export default function App() {
   const handleReset = () => {
     setFiles([]);
     setSrcLang("auto");
-    setSelectedProfile("general");
+    setSelectedProfile("auto");
     setJobId(null);
     setJobStatus(null);
     setError(null);
@@ -794,7 +804,7 @@ export default function App() {
           </div>
           <div className="header-badges">
             <span className="badge">Offline Ready</span>
-            <span className="badge">55+ Languages</span>
+            <span className="badge">Auto Routing</span>
             <span className="badge accent">FastAPI + Ollama</span>
           </div>
         </div>
@@ -805,9 +815,9 @@ export default function App() {
         <StepIndicator currentStep={currentStep} steps={steps} />
       </div>
 
-      {/* Main Content */}
+      {/* Main Content — 2-column layout */}
       <main className="main">
-        {/* Left Column - Upload & Language Selection */}
+        {/* Left Column - Upload & Target Languages */}
         <div className="column column-left">
           {/* Upload Section */}
           <section className="card upload-card">
@@ -900,27 +910,7 @@ export default function App() {
             )}
           </section>
 
-          {/* Source Language */}
-          <section className="card language-card">
-            <div className="card-header">
-              <h2>
-                <Icons.Globe />
-                Source Language
-              </h2>
-              <span className="current-selection">{srcLangLabel}</span>
-            </div>
-            <div className="language-card-content">
-              <LanguageSelector
-                selected={srcLang}
-                onChange={setSrcLang}
-                showAutoOption
-              />
-            </div>
-          </section>
-        </div>
-
-        {/* Center Column - Target Languages */}
-        <div className="column column-center">
+          {/* Target Languages — compact checkbox grid */}
           <section className="card targets-card">
             <div className="card-header">
               <h2>
@@ -930,312 +920,62 @@ export default function App() {
               <span className="selection-count">{selectedTargets.length} selected</span>
             </div>
 
-            <div className="target-selection">
-              <div className="language-selector-wrapper">
-                <LanguageSelector
-                  selected={selectedTargets}
-                  onChange={toggleTarget}
-                  multiple
-                />
+            {/* Auto-routing hint */}
+            {selectedProfile === "auto" && routeInfo.length > 0 ? (
+              <div className="route-info-hint">
+                {(() => {
+                  // Group routes by model to show per-model targets
+                  const groups = {};
+                  routeInfo.forEach(r => {
+                    const name = r.model?.split("/").pop()?.split(":")[0] || r.model;
+                    if (!groups[name]) groups[name] = [];
+                    groups[name].push(r.target);
+                  });
+                  const entries = Object.entries(groups);
+                  if (entries.length === 1) {
+                    return `使用模型: ${entries[0][0]}`;
+                  }
+                  return entries.map(([model, targets]) =>
+                    `${model} → ${targets.join(", ")}`
+                  ).join(" ｜ ");
+                })()}
               </div>
+            ) : selectedProfile !== "auto" ? (
+              <div className="route-info-hint">
+                使用模式: {effectiveProfiles.find(p => p.id === selectedProfile)?.name || selectedProfile}
+              </div>
+            ) : (
+              <div className="route-info-hint">系統自動選擇最佳翻譯模型</div>
+            )}
 
-              <div className="output-order">
-                <h3>Output Order</h3>
-                <p className="order-hint">Click to select, then use arrows to reorder</p>
-                <ul className="order-list" role="listbox" aria-label="Selected target languages">
-                  {selectedTargets.map((lang, index) => (
-                    <li
-                      key={lang}
-                      className={`order-item ${index === activeTarget ? "selected" : ""}`}
-                      onClick={() => setActiveTarget(index)}
-                      role="option"
-                      aria-selected={index === activeTarget}
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') setActiveTarget(index);
-                        if (e.key === 'ArrowUp') { setActiveTarget(index); moveTarget("up"); }
-                        if (e.key === 'ArrowDown') { setActiveTarget(index); moveTarget("down"); }
-                      }}
-                    >
-                      <span className="order-number">{index + 1}</span>
-                      <span className="order-lang">{lang}</span>
-                      <div className="order-actions">
-                        <button
-                          type="button"
-                          disabled={index === 0}
-                          onClick={(e) => { e.stopPropagation(); setActiveTarget(index); moveTarget("up"); }}
-                          aria-label={`Move ${lang} up`}
-                          title="Move up"
-                        >
-                          <Icons.ChevronUp />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={index === selectedTargets.length - 1}
-                          onClick={(e) => { e.stopPropagation(); setActiveTarget(index); moveTarget("down"); }}
-                          aria-label={`Move ${lang} down`}
-                          title="Move down"
-                        >
-                          <Icons.ChevronDown />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); toggleTarget(lang); }}
-                          aria-label={`Remove ${lang}`}
-                          title="Remove"
-                        >
-                          <Icons.X />
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-                {selectedTargets.length === 0 && (
-                  <p className="no-targets">Select at least one target language</p>
-                )}
-              </div>
+            <div className="target-lang-grid">
+              {TARGET_LANGUAGES.map(({ id, label }) => {
+                const checked = selectedTargets.includes(id);
+                return (
+                  <label
+                    key={id}
+                    className={`target-lang-item ${checked ? "checked" : ""}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={isRunning}
+                      onChange={() => toggleTarget(id)}
+                      aria-label={label}
+                    />
+                    <span className={`checkbox ${checked ? "checked" : ""}`}>
+                      {checked && <Icons.Check />}
+                    </span>
+                    <span className="target-lang-label">{label}</span>
+                  </label>
+                );
+              })}
             </div>
           </section>
         </div>
 
-        {/* Right Column - Settings & Actions */}
+        {/* Right Column - Status & Settings */}
         <div className="column column-right">
-          <section className="card profile-card">
-            <div className="card-header">
-              <h2>
-                <Icons.Star />
-                Translation Profile (翻譯模式)
-              </h2>
-            </div>
-            <div className="settings-content">
-              <div className="setting-group">
-                <div className="profile-section">
-                  <h3 className="setting-label">通用AI翻譯 (General AI)</h3>
-                  <div className="radio-group">
-                    {groupedProfiles.general.map((profile) => (
-                      <label
-                        key={profile.id}
-                        className={`radio-option ${selectedProfile === profile.id ? "selected" : ""}`}
-                      >
-                        <input
-                          type="radio"
-                          name="translationProfile"
-                          value={profile.id}
-                          checked={selectedProfile === profile.id}
-                          onChange={(e) => setSelectedProfile(e.target.value)}
-                          disabled={isRunning}
-                        />
-                        <div className="radio-label">
-                          <strong>{profile.name}</strong>
-                          <small>{profile.description}</small>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="profile-section">
-                  <h3 className="setting-label">專業翻譯引擎 (Dedicated Translation)</h3>
-                  <div className="radio-group">
-                    {groupedProfiles.translation.map((profile) => (
-                      <label
-                        key={profile.id}
-                        className={`radio-option ${selectedProfile === profile.id ? "selected" : ""}`}
-                      >
-                        <input
-                          type="radio"
-                          name="translationProfile"
-                          value={profile.id}
-                          checked={selectedProfile === profile.id}
-                          onChange={(e) => setSelectedProfile(e.target.value)}
-                          disabled={isRunning}
-                        />
-                        <div className="radio-label">
-                          <strong>{profile.name}</strong>
-                          <small>{profile.description}</small>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Settings */}
-          <section className="card settings-card">
-            <button
-              type="button"
-              className="card-header collapsible"
-              onClick={() => setShowSettings(!showSettings)}
-              aria-expanded={showSettings}
-              aria-controls="settings-content"
-            >
-              <h2>
-                <Icons.Settings />
-                Advanced Settings
-              </h2>
-              <svg
-                className={`chevron ${showSettings ? 'open' : ''}`}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </button>
-
-            {showSettings && (
-              <div className="settings-content" id="settings-content">
-                {/* PDF Output Format */}
-                <div className="setting-group">
-                  <label className="setting-label">PDF 輸出格式</label>
-                  <div className="radio-group">
-                    <label className={`radio-option ${pdfOutputFormat === 'pdf' ? 'selected' : ''}`}>
-                      <input
-                        type="radio"
-                        name="pdfOutputFormat"
-                        value="pdf"
-                        checked={pdfOutputFormat === 'pdf'}
-                        onChange={(e) => setPdfOutputFormat(e.target.value)}
-                      />
-                      <span className="radio-label">
-                        <strong>PDF（保留版面）</strong>
-                        <small>輸出 PDF，在原位置覆蓋譯文</small>
-                      </span>
-                    </label>
-                    <label className={`radio-option ${pdfOutputFormat === 'docx' ? 'selected' : ''}`}>
-                      <input
-                        type="radio"
-                        name="pdfOutputFormat"
-                        value="docx"
-                        checked={pdfOutputFormat === 'docx'}
-                        onChange={(e) => setPdfOutputFormat(e.target.value)}
-                      />
-                      <span className="radio-label">
-                        <strong>DOCX（雙語對照）</strong>
-                        <small>輸出 Word，原文+譯文並列</small>
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* PDF Layout Mode - only show when PDF output is selected */}
-                {pdfOutputFormat === 'pdf' && (
-                  <div className="setting-group">
-                    <label className="setting-label">PDF 版面模式</label>
-                    <div className="radio-group">
-                      <label className={`radio-option ${pdfLayoutMode === 'overlay' ? 'selected' : ''}`}>
-                        <input
-                          type="radio"
-                          name="pdfLayoutMode"
-                          value="overlay"
-                          checked={pdfLayoutMode === 'overlay'}
-                          onChange={(e) => setPdfLayoutMode(e.target.value)}
-                        />
-                        <span className="radio-label">
-                          <strong>覆蓋模式</strong>
-                          <small>直接在原文位置放置譯文</small>
-                        </span>
-                      </label>
-                      <label className={`radio-option ${pdfLayoutMode === 'side_by_side' ? 'selected' : ''}`}>
-                        <input
-                          type="radio"
-                          name="pdfLayoutMode"
-                          value="side_by_side"
-                          checked={pdfLayoutMode === 'side_by_side'}
-                          onChange={(e) => setPdfLayoutMode(e.target.value)}
-                        />
-                        <span className="radio-label">
-                          <strong>並排模式</strong>
-                          <small>每頁顯示原文與譯文對照</small>
-                        </span>
-                      </label>
-                    </div>
-                    {/* Warning for multi-language PDF output */}
-                    {selectedTargets.length > 1 && (
-                      <div className="setting-warning" role="alert">
-                        <Icons.Error />
-                        <span>PDF 輸出只支援單一目標語言。將只使用第一個語言：<strong>{selectedTargets[0]}</strong></span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="setting-group">
-                  <label className="setting-label" htmlFor="gpu-vram-select">VRAM 試算 (VRAM Estimate)</label>
-                  <div className="vram-panel">
-                    <div className="vram-top-row">
-                      <label htmlFor="gpu-vram-select" className="vram-inline-label">GPU VRAM Capacity</label>
-                      <select
-                        id="gpu-vram-select"
-                        value={gpuVram}
-                        onChange={(e) => setGpuVram(Number(e.target.value))}
-                        disabled={isRunning}
-                      >
-                        {GPU_VRAM_OPTIONS.map((sizeGb) => (
-                          <option key={sizeGb} value={sizeGb}>{sizeGb} GB</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="vram-top-row">
-                      <span className="vram-inline-label">num_ctx</span>
-                      <span className="vram-inline-value">
-                        {effectiveNumCtx}
-                        {numCtxOverride === null && " (default)"}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={minNumCtx}
-                      max={maxNumCtx}
-                      step={256}
-                      value={effectiveNumCtx}
-                      onChange={(e) => setNumCtxOverride(Number(e.target.value))}
-                      disabled={isRunning}
-                      aria-label="num_ctx override"
-                    />
-                    <div className="vram-range">
-                      <span>{minNumCtx}</span>
-                      <span>{maxNumCtx}</span>
-                    </div>
-
-                    <div className="vram-bar" role="img" aria-label={`Estimated VRAM usage ${rawUsagePercent.toFixed(0)} percent`}>
-                      <div
-                        className={`vram-bar-fill ${vramStateClass}`}
-                        style={{ width: `${barUsagePercent}%` }}
-                      />
-                    </div>
-                    <div className="vram-percent">
-                      Estimated: {estimatedVramGb.toFixed(1)} GB / {gpuVram} GB ({rawUsagePercent.toFixed(0)}%)
-                    </div>
-                    <div className="vram-info">
-                      Model: {modelSizeGb.toFixed(1)} GB + KV Cache: {kvCacheGb.toFixed(1)} GB = Total: {estimatedVramGb.toFixed(1)} GB
-                    </div>
-                    <div className="vram-note">
-                      Estimated VRAM usage only. Actual memory use may vary by runtime conditions.
-                    </div>
-                  </div>
-                </div>
-
-                <label className="toggle-setting">
-                  <div className="toggle-switch">
-                    <input
-                      type="checkbox"
-                      checked={includeHeaders}
-                      onChange={(e) => setIncludeHeaders(e.target.checked)}
-                      aria-label="翻譯頁首頁尾內容"
-                    />
-                    <span className="toggle-slider"></span>
-                  </div>
-                  <span>翻譯頁首頁尾內容（僅限 Windows）</span>
-                </label>
-              </div>
-            )}
-          </section>
-
           {/* Status & Progress */}
           <section className="card status-card">
             <div className="card-header">
@@ -1390,6 +1130,211 @@ export default function App() {
                 </a>
               )}
             </div>
+          </section>
+
+          {/* Advanced Settings */}
+          <section className="card settings-card">
+            <button
+              type="button"
+              className="card-header collapsible"
+              onClick={() => setShowSettings(!showSettings)}
+              aria-expanded={showSettings}
+              aria-controls="settings-content"
+            >
+              <h2>
+                <Icons.Settings />
+                Advanced Settings
+              </h2>
+              <svg
+                className={`chevron ${showSettings ? 'open' : ''}`}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+
+            {showSettings && (
+              <div className="settings-content" id="settings-content">
+                {/* Profile Override */}
+                <div className="setting-group">
+                  <label className="setting-label" htmlFor="profile-select">翻譯模式覆寫 (Profile Override)</label>
+                  <select
+                    id="profile-select"
+                    value={selectedProfile}
+                    onChange={(e) => setSelectedProfile(e.target.value)}
+                    disabled={isRunning}
+                  >
+                    <option value="auto">自動 (Auto)</option>
+                    {effectiveProfiles.map((profile) => (
+                      <option key={profile.id} value={profile.id}>
+                        {profile.name} — {profile.description}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Source Language Override */}
+                <div className="setting-group">
+                  <label className="setting-label">來源語言 (Source Language)</label>
+                  <span className="current-selection">{srcLangLabel}</span>
+                  <div className="language-card-content">
+                    <LanguageSelector
+                      selected={srcLang}
+                      onChange={setSrcLang}
+                      showAutoOption
+                    />
+                  </div>
+                </div>
+
+                {/* PDF Output Format */}
+                <div className="setting-group">
+                  <label className="setting-label">PDF 輸出格式</label>
+                  <div className="radio-group">
+                    <label className={`radio-option ${pdfOutputFormat === 'pdf' ? 'selected' : ''}`}>
+                      <input
+                        type="radio"
+                        name="pdfOutputFormat"
+                        value="pdf"
+                        checked={pdfOutputFormat === 'pdf'}
+                        onChange={(e) => setPdfOutputFormat(e.target.value)}
+                      />
+                      <span className="radio-label">
+                        <strong>PDF（保留版面）</strong>
+                        <small>輸出 PDF，在原位置覆蓋譯文</small>
+                      </span>
+                    </label>
+                    <label className={`radio-option ${pdfOutputFormat === 'docx' ? 'selected' : ''}`}>
+                      <input
+                        type="radio"
+                        name="pdfOutputFormat"
+                        value="docx"
+                        checked={pdfOutputFormat === 'docx'}
+                        onChange={(e) => setPdfOutputFormat(e.target.value)}
+                      />
+                      <span className="radio-label">
+                        <strong>DOCX（雙語對照）</strong>
+                        <small>輸出 Word，原文+譯文並列</small>
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* PDF Layout Mode - only show when PDF output is selected */}
+                {pdfOutputFormat === 'pdf' && (
+                  <div className="setting-group">
+                    <label className="setting-label">PDF 版面模式</label>
+                    <div className="radio-group">
+                      <label className={`radio-option ${pdfLayoutMode === 'overlay' ? 'selected' : ''}`}>
+                        <input
+                          type="radio"
+                          name="pdfLayoutMode"
+                          value="overlay"
+                          checked={pdfLayoutMode === 'overlay'}
+                          onChange={(e) => setPdfLayoutMode(e.target.value)}
+                        />
+                        <span className="radio-label">
+                          <strong>覆蓋模式</strong>
+                          <small>直接在原文位置放置譯文</small>
+                        </span>
+                      </label>
+                      <label className={`radio-option ${pdfLayoutMode === 'side_by_side' ? 'selected' : ''}`}>
+                        <input
+                          type="radio"
+                          name="pdfLayoutMode"
+                          value="side_by_side"
+                          checked={pdfLayoutMode === 'side_by_side'}
+                          onChange={(e) => setPdfLayoutMode(e.target.value)}
+                        />
+                        <span className="radio-label">
+                          <strong>並排模式</strong>
+                          <small>每頁顯示原文與譯文對照</small>
+                        </span>
+                      </label>
+                    </div>
+                    {/* Warning for multi-language PDF output */}
+                    {selectedTargets.length > 1 && (
+                      <div className="setting-warning" role="alert">
+                        <Icons.Error />
+                        <span>PDF 輸出只支援單一目標語言。將只使用第一個語言：<strong>{selectedTargets[0]}</strong></span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="setting-group">
+                  <label className="setting-label" htmlFor="gpu-vram-select">VRAM 試算 (VRAM Estimate)</label>
+                  <div className="vram-panel">
+                    <div className="vram-top-row">
+                      <label htmlFor="gpu-vram-select" className="vram-inline-label">GPU VRAM Capacity</label>
+                      <select
+                        id="gpu-vram-select"
+                        value={gpuVram}
+                        onChange={(e) => setGpuVram(Number(e.target.value))}
+                        disabled={isRunning}
+                      >
+                        {GPU_VRAM_OPTIONS.map((sizeGb) => (
+                          <option key={sizeGb} value={sizeGb}>{sizeGb} GB</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="vram-top-row">
+                      <span className="vram-inline-label">num_ctx</span>
+                      <span className="vram-inline-value">
+                        {effectiveNumCtx}
+                        {numCtxOverride === null && " (default)"}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={minNumCtx}
+                      max={maxNumCtx}
+                      step={256}
+                      value={effectiveNumCtx}
+                      onChange={(e) => setNumCtxOverride(Number(e.target.value))}
+                      disabled={isRunning}
+                      aria-label="num_ctx override"
+                    />
+                    <div className="vram-range">
+                      <span>{minNumCtx}</span>
+                      <span>{maxNumCtx}</span>
+                    </div>
+
+                    <div className="vram-bar" role="img" aria-label={`Estimated VRAM usage ${rawUsagePercent.toFixed(0)} percent`}>
+                      <div
+                        className={`vram-bar-fill ${vramStateClass}`}
+                        style={{ width: `${barUsagePercent}%` }}
+                      />
+                    </div>
+                    <div className="vram-percent">
+                      Estimated: {estimatedVramGb.toFixed(1)} GB / {gpuVram} GB ({rawUsagePercent.toFixed(0)}%)
+                    </div>
+                    <div className="vram-info">
+                      Model: {modelSizeGb.toFixed(1)} GB + KV Cache: {kvCacheGb.toFixed(1)} GB = Total: {estimatedVramGb.toFixed(1)} GB
+                    </div>
+                    <div className="vram-note">
+                      Estimated VRAM usage only. Actual memory use may vary by runtime conditions.
+                    </div>
+                  </div>
+                </div>
+
+                <label className="toggle-setting">
+                  <div className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={includeHeaders}
+                      onChange={(e) => setIncludeHeaders(e.target.checked)}
+                      aria-label="翻譯頁首頁尾內容"
+                    />
+                    <span className="toggle-slider"></span>
+                  </div>
+                  <span>翻譯頁首頁尾內容（僅限 Windows）</span>
+                </label>
+              </div>
+            )}
           </section>
         </div>
       </main>

@@ -190,6 +190,7 @@ def translate_pptx(
     max_segments: int = MAX_SEGMENTS,
     max_text_length: int = MAX_TEXT_LENGTH,
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
+    refine_client: Optional[OllamaClient] = None,
 ) -> bool:
     prs = pptx.Presentation(in_path)
     # segs: List of (segment_type, object_ref, text)
@@ -263,6 +264,7 @@ def translate_pptx(
         max_batch_chars=max_batch_chars,
         stop_flag=stop_flag,
         log=log,
+        refine_client=refine_client,
     )
 
     if fail_cnt and not stopped:

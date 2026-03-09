@@ -76,3 +76,15 @@ export async function cancelJob(jobId) {
   }
   return res.json();
 }
+
+export async function fetchRouteInfo(targets) {
+  if (!targets || targets.length === 0) return { routes: [] };
+  const query = targets.join(",");
+  try {
+    const res = await fetch(`/api/route-info?targets=${encodeURIComponent(query)}`);
+    if (!res.ok) return { routes: [] };
+    return res.json();
+  } catch {
+    return { routes: [] };
+  }
+}

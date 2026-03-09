@@ -29,6 +29,26 @@ from app.backend.config import (
 from app.backend.utils.logging_utils import logger
 
 
+# Common CJK "none / N-A" single-token values that small models tend to over-translate.
+# Mapped to a concise target-language equivalent to bypass the LLM entirely.
+_SHORT_NA_TOKENS: frozenset[str] = frozenset(["无", "無", "无。", "無。"])
+_LANGUAGE_NA: Dict[str, str] = {
+    "Vietnamese": "Không có",
+    "English": "N/A",
+    "Japanese": "なし",
+    "Korean": "없음",
+    "Thai": "ไม่มี",
+    "German": "Keine",
+    "French": "Aucun",
+    "Spanish": "Ninguno",
+    "Italian": "Nessuno",
+    "Portuguese": "Nenhum",
+    "Dutch": "Geen",
+    "Indonesian": "Tidak ada",
+    "Malay": "Tiada",
+}
+
+
 def _is_latin_only(text: str) -> bool:
     """Check if text contains only Latin script (ASCII letters), digits, and punctuation."""
     return all(
@@ -92,6 +112,8 @@ class OllamaClient:
         self.system_prompt = (system_prompt or "").strip()
         self.profile_id = (profile_id or "").strip() or None
         self._num_ctx_override = num_ctx_override if (num_ctx_override is not None and num_ctx_override > 0) else None
+        self._runtime_options_override: Dict[str, object] = {}
+        self._cache_variant: Optional[str] = None
         self.timeout = timeout or TimeoutConfig()
         self.log = log
         options = self._build_options()
@@ -158,7 +180,18 @@ class OllamaClient:
         options = dict(options_template)
         if self._num_ctx_override is not None:
             options["num_ctx"] = self._num_ctx_override
+        if self._runtime_options_override:
+            options.update(self._runtime_options_override)
         return options
+
+    def set_runtime_options_override(self, options: Optional[Dict[str, object]]) -> None:
+        """Set per-file option overrides merged into model-type defaults."""
+        self._runtime_options_override = dict(options or {})
+
+    def set_cache_variant(self, variant: Optional[str]) -> None:
+        """Set optional cache key suffix to isolate scenario-specific outputs."""
+        cleaned = (variant or "").strip()
+        self._cache_variant = cleaned or None
 
     def _is_translation_dedicated(self) -> bool:
         return self.model_type == ModelType.TRANSLATION.value
@@ -167,11 +200,17 @@ class OllamaClient:
     def cache_model_key(self) -> str:
         if self._is_translation_dedicated():
             if self.profile_id:
-                return f"{self.model}::{self.profile_id}::{self.model_type}"
-            return f"{self.model}::{self.model_type}"
-        if self.profile_id:
-            return f"{self.model}::{self.profile_id}"
-        return self.model
+                base = f"{self.model}::{self.profile_id}::{self.model_type}"
+            else:
+                base = f"{self.model}::{self.model_type}"
+        elif self.profile_id:
+            base = f"{self.model}::{self.profile_id}"
+        else:
+            base = self.model
+
+        if self._cache_variant:
+            return f"{base}::scenario={self._cache_variant}"
+        return base
 
     def _build_payload(self, prompt: str) -> Dict[str, object]:
         payload: Dict[str, object] = {
@@ -328,7 +367,7 @@ class OllamaClient:
     ) -> str:
         if OllamaClient._involves_chinese(target_language, source_language):
             return f"将以下文本翻译为{target_language}，注意只需要输出翻译后的结果，不要额外解释：\n\n{text}"
-        return f"Translate the following segment into {target_language}, without additional explanation.\n\n{text}"
+        return f"Translate the following segment into {target_language}. Prefer natural, idiomatic phrasing over literal translation. Output only the translation.\n\n{text}"
 
     @staticmethod
     def _build_user_prompt(text: str, target_language: str, source_language: Optional[str]) -> str:
@@ -359,6 +398,8 @@ class OllamaClient:
     def _build_single_translate_payload(self, text: str, tgt: str, src_lang: Optional[str]) -> Dict[str, object]:
         if self._is_translation_dedicated():
             prompt = self._build_translation_dedicated_prompt(text, tgt, src_lang)
+            if self.system_prompt:
+                return self._build_payload(prompt)
             return self._build_no_system_payload(prompt)
         if self._is_translategemma_model():
             prompt = self._build_translategemma_prompt(text, tgt, src_lang)
@@ -372,6 +413,8 @@ class OllamaClient:
     def _build_batch_translate_payload(self, texts: List[str], tgt: str, src_lang: Optional[str]) -> Dict[str, object]:
         if self._is_translation_dedicated():
             prompt = self._build_translation_dedicated_prompt("\n\n".join(texts), tgt, src_lang)
+            if self.system_prompt:
+                return self._build_payload(prompt)
             return self._build_no_system_payload(prompt)
         if self._is_translategemma_model():
             prompt = self._build_batch_translategemma_prompt(texts, tgt, src_lang)
@@ -397,13 +440,27 @@ class OllamaClient:
         return self._build_payload(prompt)
 
     def translate_once(self, text: str, tgt: str, src_lang: Optional[str]) -> Tuple[bool, str]:
+        src_stripped = text.strip()
+        # Pre-translation bypass: common CJK "none/N-A" tokens that models over-translate.
+        if src_stripped in _SHORT_NA_TOKENS:
+            return True, _LANGUAGE_NA.get(tgt, "N/A")
         payload = self._build_single_translate_payload(text, tgt, src_lang)
         last = None
         for attempt in range(1, API_ATTEMPTS + 1):
             try:
                 ok, result = self._call_ollama(payload)
                 if ok:
-                    return True, self._sanitize_translation(result)
+                    sanitized = self._sanitize_translation(result)
+                    # Detect hallucination: very short input producing disproportionately long output.
+                    # LLMs sometimes interpret empty/single-char inputs as "no content" and emit a
+                    # chatty assistant-mode apology instead of a translation.
+                    if len(src_stripped) < 10 and len(sanitized) > max(len(src_stripped) * 20, 100):
+                        logger.warning(
+                            "[HALLUCINATION] Short input (%d chars) produced long output (%d chars) — returning original",
+                            len(src_stripped), len(sanitized),
+                        )
+                        return True, src_stripped  # passthrough: original is better than hallucination
+                    return True, sanitized
                 last = result
             except requests.exceptions.RequestException as exc:
                 last = f"Request error: {exc}"
@@ -478,9 +535,60 @@ class OllamaClient:
         source_text: str, draft: str, target_language: str, source_language: Optional[str],
     ) -> str:
         return (
-            f"Source:\n{source_text}\n\n"
-            f"Draft:\n{draft}\n\n"
-            f"Improve this {target_language} draft. Output only the improved translation, nothing else."
+            f"[SOURCE]: {source_text}\n"
+            f"[DRAFT]: {draft}\n\n"
+            f"Corrected {target_language}:"
+        )
+
+    @staticmethod
+    def _build_refine_system_prompt(target_language: str, profile_id: str) -> str:
+        """Build domain+persona system prompt for cross-model Qwen refiner.
+
+        Maps (target_language, profile_id) to a role-grounded persona that
+        constrains Qwen to the correction role rather than free translation.
+        """
+        _NATIONALITY_MAP = {
+            "Vietnamese": ("Vietnamese", "manufacturing"),
+            "Japanese": ("Japanese", "manufacturing"),
+            "German": ("German", "manufacturing"),
+            "Korean": ("Korean", "manufacturing"),
+            "French": ("French", "manufacturing"),
+            "Spanish": ("Spanish", "manufacturing"),
+            "Italian": ("Italian", "manufacturing"),
+            "Portuguese": ("Portuguese", "manufacturing"),
+            "Dutch": ("Dutch", "manufacturing"),
+            "Thai": ("Thai", "manufacturing"),
+            "Indonesian": ("Indonesian", "manufacturing"),
+        }
+        nationality, _ = _NATIONALITY_MAP.get(target_language, ("", "manufacturing"))
+        nationality_phrase = f"{nationality} " if nationality else ""
+
+        if profile_id == "technical_process":
+            vi_dept_rule = (
+                "\n3. Department names: Chinese '部' (bù) in a factory context = 'Phòng' in Vietnamese "
+                "(e.g., 工务部 → Phòng Kỹ thuật, 品质部 → Phòng Chất lượng, 生产部 → Phòng Sản xuất). "
+                "Never use 'Bộ' for internal factory departments — 'Bộ' denotes a national ministry."
+            ) if target_language == "Vietnamese" else ""
+            return (
+                f"You are a senior {nationality_phrase}process/manufacturing engineer at a discrete component plant "
+                f"reviewing a machine-translated SOP/maintenance manual draft.\n\n"
+                "Rules:\n"
+                f"1. Cross-reference the [SOURCE] to verify professional terminology in the [DRAFT].\n"
+                "2. Correct unnatural literal renderings to standard industrial terms."
+                f"{vi_dept_rule}\n"
+                f"{'4' if vi_dept_rule else '3'}. Ensure register matches standard SOP/work instruction formality.\n"
+                f"{'5' if vi_dept_rule else '4'}. Output ONLY the corrected {target_language}. No explanations, no dialogue."
+            )
+
+        # Generic manufacturing persona for other profiles
+        return (
+            f"You are a senior {nationality_phrase}professional reviewing a machine-translated document draft "
+            f"in a manufacturing context.\n\n"
+            "Rules:\n"
+            "1. Cross-reference the [SOURCE] to verify terminology and meaning in the [DRAFT].\n"
+            "2. Correct unnatural literal renderings to fluent, idiomatic phrasing.\n"
+            "3. Preserve the register and formality of the original document.\n"
+            f"4. Output ONLY the corrected {target_language}. No explanations, no dialogue."
         )
 
     def _smart_retry(self, text: str, tgt: str, src_lang: Optional[str], error_msg: str) -> Tuple[bool, str]:

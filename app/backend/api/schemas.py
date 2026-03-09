@@ -47,3 +47,15 @@ class ModelConfigItem(BaseModel):
     default_num_ctx: int
     min_num_ctx: int
     max_num_ctx: int
+
+
+class RouteInfoEntry(BaseModel):
+    target: str
+    model: str
+    profile_id: str
+    model_type: str
+    is_primary: bool
+
+
+class RouteInfoResponse(BaseModel):
+    routes: List[RouteInfoEntry]

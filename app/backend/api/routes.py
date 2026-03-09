@@ -11,9 +11,10 @@ from typing import List, Optional
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
-from app.backend.api.schemas import JobCreateResponse, JobStatus, ModelConfigItem, ModelsResponse, ProfileItem
+from app.backend.api.schemas import JobCreateResponse, JobStatus, ModelConfigItem, ModelsResponse, ProfileItem, RouteInfoEntry, RouteInfoResponse
 from app.backend.clients.ollama_client import list_ollama_models
 from app.backend.config import ModelType, VRAM_METADATA
+from app.backend.services.model_router import RouteGroup, get_route_info, resolve_route_groups
 from app.backend.translation_profiles import get_profile, list_profiles
 from app.backend.services.job_manager import JobManager
 from app.backend.services.translation_cache import get_cache
@@ -69,6 +70,14 @@ def model_config() -> List[ModelConfigItem]:
     return items
 
 
+@router.get("/route-info", response_model=RouteInfoResponse)
+def route_info(targets: str = "") -> RouteInfoResponse:
+    """Return auto-routing model info for each requested target language."""
+    target_list = [t.strip() for t in targets.split(",") if t.strip()]
+    entries = [RouteInfoEntry(**entry) for entry in get_route_info(target_list)]
+    return RouteInfoResponse(routes=entries)
+
+
 @router.post("/jobs", response_model=JobCreateResponse)
 async def create_job(
     files: List[UploadFile] = File(...),
@@ -87,9 +96,24 @@ async def create_job(
     if not target_list:
         raise HTTPException(status_code=400, detail="No target languages provided")
 
-    resolved_profile = get_profile(profile)
+    # Auto-routing: group targets by benchmark-optimal model, or use manual override
+    route_groups_result = resolve_route_groups(target_list, profile_override=profile)
+    if route_groups_result is None:
+        # Manual profile override: all targets in one group with explicit profile's model
+        explicit_profile = get_profile(profile)
+        route_groups = [RouteGroup(
+            targets=target_list,
+            model=explicit_profile.model,
+            profile_id=explicit_profile.id,
+            model_type=explicit_profile.model_type,
+        )]
+        ref_model_type = explicit_profile.model_type
+    else:
+        route_groups = route_groups_result
+        ref_model_type = route_groups[0].model_type if route_groups else ModelType.GENERAL.value
+
     try:
-        resolved_model_type = ModelType((resolved_profile.model_type or ModelType.GENERAL.value).lower())
+        resolved_model_type = ModelType((ref_model_type or ModelType.GENERAL.value).lower())
     except ValueError:
         resolved_model_type = ModelType.GENERAL
 
@@ -120,13 +144,9 @@ async def create_job(
 
         job = job_manager.create_job(
             stored_files,
-            targets=target_list,
+            route_groups=route_groups,
             src_lang=src_lang,
             include_headers=include_headers,
-            model=resolved_profile.model,
-            model_type=resolved_profile.model_type,
-            system_prompt=resolved_profile.system_prompt,
-            profile_id=resolved_profile.id,
             num_ctx=num_ctx,
             pdf_output_format=pdf_output_format,
             pdf_layout_mode=pdf_layout_mode,

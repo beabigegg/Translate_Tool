@@ -18,11 +18,11 @@ class ModelType(str, Enum):
     TRANSLATION = "translation"
 
 APP_NAME = "Translate Tool"
-DEFAULT_MODEL = "qwen3.5:4b"
+DEFAULT_MODEL = "qwen3.5:9b"
 HYMT_DEFAULT_MODEL = os.environ.get("HYMT_DEFAULT_MODEL", "demonbyron/HY-MT1.5-7B:Q4_K_M")
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_NUM_GPU = int(os.environ.get("OLLAMA_NUM_GPU", "99"))
-OLLAMA_KV_CACHE_TYPE = os.environ.get("OLLAMA_KV_CACHE_TYPE", "q8_0")
+OLLAMA_KV_CACHE_TYPE = os.environ.get("OLLAMA_KV_CACHE_TYPE", "q4_0")
 
 # OLLAMA_NUM_CTX env override applies to all model types for backward compatibility.
 _NUM_CTX_OVERRIDE = os.environ.get("OLLAMA_NUM_CTX")
@@ -37,16 +37,23 @@ MODEL_TYPE_OPTIONS: Dict[ModelType, Dict[str, object]] = {
         "num_ctx": GENERAL_NUM_CTX,
         "num_gpu": OLLAMA_NUM_GPU,
         "kv_cache_type": OLLAMA_KV_CACHE_TYPE,
-        "frequency_penalty": 0.5,  # Penalise repetitive loops without hurting terminology consistency.
+        # Greedy decode defaults — benchmark-optimal (March 2026 full-factorial study)
+        "temperature": 0.05,
+        "top_p": 0.50,
+        "top_k": 10,
+        "repeat_penalty": 1.0,
+        "frequency_penalty": 0.0,
     },
     ModelType.TRANSLATION: {
         "num_ctx": TRANSLATION_NUM_CTX,
         "num_gpu": OLLAMA_NUM_GPU,
         "kv_cache_type": OLLAMA_KV_CACHE_TYPE,
-        "top_k": 20,
-        "top_p": 0.6,
-        "repeat_penalty": 1.05,
-        "temperature": 0.7,
+        # Greedy decode defaults — benchmark-optimal (March 2026 full-factorial study)
+        "temperature": 0.05,
+        "top_p": 0.50,
+        "top_k": 10,
+        "repeat_penalty": 1.0,
+        "frequency_penalty": 0.0,
     },
 }
 
@@ -97,11 +104,22 @@ CONTEXT_WINDOW_SEGMENTS = 2  # Number of preceding segments to include as contex
 CONTEXT_MAX_CHARS = 300  # Max total chars for context (truncate if longer)
 # Two-pass refinement: send draft + source back to LLM for quality improvement
 REFINEMENT_ENABLED = False  # Disabled: 4B models hallucinate/add content during refinement
-REFINEMENT_MIN_CHARS = 20  # Skip refinement for very short segments (headers, labels)
+REFINEMENT_MIN_CHARS = 3  # Skip refinement only for truly trivial 1-2 char tokens
+# Cross-model refinement: HY-MT translates → Qwen refines for semantic naturalness.
+# Unlike REFINEMENT_ENABLED (same-model), this separates translation and polishing roles.
+CROSS_MODEL_REFINEMENT_ENABLED = os.environ.get("CROSS_MODEL_REFINEMENT_ENABLED", "1").lower() in ("1", "true", "yes")
 # Auto-detect document context: sample file text and ask LLM to describe the document
 # before translating, then inject the description into the system prompt.
 CONTEXT_DETECTION_ENABLED = True
 CONTEXT_SAMPLE_CHARS = 500  # Max chars to sample from file for context detection
+
+# Dynamic scenario strategy:
+# - Detect translation scenario from filename/sample/context
+# - Apply scenario-specific decoding options
+# - Isolate cache keys per scenario variant to avoid cross-scenario contamination
+DYNAMIC_SCENARIO_STRATEGY_ENABLED = os.environ.get("DYNAMIC_SCENARIO_STRATEGY_ENABLED", "1").lower() in ("1", "true", "yes")
+QWEN_CONTEXT_FLOW_ENABLED = os.environ.get("QWEN_CONTEXT_FLOW_ENABLED", "1").lower() in ("1", "true", "yes")
+SCENARIO_CACHE_VARIANT_ENABLED = os.environ.get("SCENARIO_CACHE_VARIANT_ENABLED", "1").lower() in ("1", "true", "yes")
 
 EXCEL_FORMULA_MODE = "skip"
 MAX_SHAPE_CHARS = 1200

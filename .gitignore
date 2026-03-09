@@ -26,8 +26,13 @@ app/backend/__pycache__/
 .vscode/
 CLAUDE.md
 
-# Test documents
+# Test documents and output artifacts
 test_document/
+test_output/
+scripts/*.xlsx
+scripts/*.xls
+scripts/*.doc
+scripts/*.docx
 
 # Unused / staging fonts
 app/backend/fonts/NotoSansTC-Regular-NEW.ttf

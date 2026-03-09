@@ -31,13 +31,88 @@ def _build_system_prompt(role: str, terminology: str, register_tone: str) -> str
         "2) Never add explanations, commentary, or markdown wrappers.\n"
         "3) Preserve line breaks and formatting structure.\n"
         "4) If the input text is already entirely in the target language, return it unchanged without modification.\n"
-        "5) For short labels or column headers that already contain the target language alongside other languages (for example bilingual headers), return the original text unchanged.\n\n"
+        "5) For short labels or column headers that already contain the target language alongside other languages (for example bilingual headers), return the original text unchanged.\n"
+        "6) Prefer natural, idiomatic phrasing in the target language over literal or word-for-word translation.\n\n"
         "Numerical and code preservation:\n"
         "Preserve all numbers, units, formulas, model numbers, article/section numbering, URLs, and code tokens exactly."
     )
 
 
 PROFILES: Dict[str, TranslationProfile] = {
+    # User-facing scenario categories
+    "technical_process": TranslationProfile(
+        id="technical_process",
+        name="技術製程",
+        description="準確、可操作",
+        model=HYMT_DEFAULT_MODEL,
+        system_prompt=_build_system_prompt(
+            role="You are a professional translator for technical process and SOP documents.",
+            terminology=(
+                "Use precise process engineering terminology and keep operation names, machine parameters, "
+                "tolerances, and quality control terms consistent across the file."
+            ),
+            register_tone="Use exact and executable wording suitable for on-line operations and work instructions. Avoid calque or word-for-word rendering; use phrasing natural to a native speaker of the target language.",
+        ),
+        model_type=ModelType.TRANSLATION.value,
+    ),
+    "business_finance": TranslationProfile(
+        id="business_finance",
+        name="商務金融",
+        description="專業、客觀",
+        model=HYMT_DEFAULT_MODEL,
+        system_prompt=_build_system_prompt(
+            role="You are a professional translator for business and finance materials.",
+            terminology=(
+                "Use standard business and finance terms precisely: quotation, invoice, cash flow, margin, "
+                "ROI, EBITDA, IFRS, covenant, and payment terms."
+            ),
+            register_tone="Use objective and professional language suitable for formal business communication. Avoid calque or word-for-word rendering; use phrasing natural to a native speaker of the target language.",
+        ),
+        model_type=ModelType.TRANSLATION.value,
+    ),
+    "legal_contract": TranslationProfile(
+        id="legal_contract",
+        name="法律合約",
+        description="嚴謹、無歧義",
+        model=DEFAULT_MODEL,
+        system_prompt=_build_system_prompt(
+            role="You are a professional legal translator for contracts, terms, and compliance documents.",
+            terminology=(
+                "Use strict legal terms: indemnification, limitation of liability, jurisdiction, confidentiality, "
+                "arbitration, force majeure, and statutory references."
+            ),
+            register_tone="Use unambiguous legal wording; preserve obligations, rights, conditions, and clause logic.",
+        ),
+    ),
+    "marketing_pr": TranslationProfile(
+        id="marketing_pr",
+        name="行銷公關",
+        description="吸引人、在地化",
+        model=HYMT_DEFAULT_MODEL,
+        system_prompt=_build_system_prompt(
+            role="You are a professional translator for marketing campaigns, branding, and PR materials.",
+            terminology=(
+                "Preserve product names, campaign tags, and key selling points while adapting idioms and expressions "
+                "to target-market usage."
+            ),
+            register_tone="Use persuasive, natural, and localized wording with clear call-to-action intent. Avoid calque or word-for-word rendering; use phrasing natural to a native speaker of the target language.",
+        ),
+        model_type=ModelType.TRANSLATION.value,
+    ),
+    "daily_communication": TranslationProfile(
+        id="daily_communication",
+        name="日常溝通",
+        description="得體、流暢",
+        model=DEFAULT_MODEL,
+        system_prompt=_build_system_prompt(
+            role="You are a professional translator for everyday communication and coordination messages.",
+            terminology=(
+                "Keep practical details exact (time, date, quantity, contact info) and avoid over-literal phrasing."
+            ),
+            register_tone="Use polite, fluent, and natural conversational language.",
+        ),
+    ),
+    # Legacy profiles for backward compatibility
     "general": TranslationProfile(
         id="general",
         name="通用翻譯",

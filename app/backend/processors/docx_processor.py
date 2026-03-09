@@ -478,6 +478,7 @@ def translate_docx(
     stop_flag: Optional[threading.Event] = None,
     log: Callable[[str], None] = lambda s: None,
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
+    refine_client: Optional[OllamaClient] = None,
 ) -> bool:
     from shutil import copyfile
 
@@ -509,6 +510,7 @@ def translate_docx(
         max_batch_chars=max_batch_chars,
         stop_flag=stop_flag,
         log=log,
+        refine_client=refine_client,
     )
 
     if fail_cnt:
