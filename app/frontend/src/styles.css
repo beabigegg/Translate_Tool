@@ -2051,3 +2051,208 @@ select:focus-visible {
     border: 1px solid #000;
   }
 }
+
+/* ===================================================================
+   Mode Toggle
+   =================================================================== */
+.mode-toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.mode-toggle-label {
+  font-size: 0.85rem;
+  color: var(--neutral-600);
+  white-space: nowrap;
+}
+
+.mode-toggle-buttons {
+  display: flex;
+  border: 1px solid var(--neutral-300);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.mode-btn {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.85rem;
+  background: var(--neutral-50);
+  color: var(--neutral-700);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.mode-btn:not(:last-child) {
+  border-right: 1px solid var(--neutral-300);
+}
+
+.mode-btn.active {
+  background: var(--primary-600);
+  color: #fff;
+}
+
+.mode-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===================================================================
+   Term Summary Box
+   =================================================================== */
+.term-summary-box {
+  background: var(--neutral-50);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  color: var(--neutral-700);
+  margin-bottom: 0.75rem;
+}
+
+.term-summary-export {
+  margin-top: 0.5rem;
+}
+
+/* ===================================================================
+   Term DB Panel (modal overlay)
+   =================================================================== */
+.term-panel-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.term-panel {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  width: min(600px, 95vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.term-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.term-panel-header h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.term-panel-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--neutral-500);
+  width: 1.75rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+
+.term-panel-close:hover {
+  background: var(--neutral-100);
+  color: var(--neutral-800);
+}
+
+.term-panel-close svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.term-panel-section {
+  border-top: 1px solid var(--neutral-200);
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+
+.term-panel-section h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--neutral-600);
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.term-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.term-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  font-size: 0.9rem;
+  gap: 1rem;
+}
+
+.term-stat-label {
+  color: var(--neutral-500);
+  white-space: nowrap;
+}
+
+.term-stat-value {
+  color: var(--text-primary);
+  font-weight: 500;
+  text-align: right;
+}
+
+.term-export-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.term-import-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.term-import-controls input[type="file"] {
+  font-size: 0.85rem;
+}
+
+.term-import-controls select {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--neutral-300);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  background: var(--bg-input, #fff);
+  color: var(--text-primary);
+}
+
+.term-import-result {
+  margin-top: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--success-50, #f0fdf4);
+  border: 1px solid var(--success-200, #bbf7d0);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--success-700, #15803d);
+}
+
+.term-panel-error {
+  color: var(--danger, #ef4444);
+  font-size: 0.85rem;
+  margin-top: 0.4rem;
+}

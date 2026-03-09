@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import shutil
 import tempfile
 import time
@@ -9,15 +10,28 @@ from pathlib import Path
 from typing import List, Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
-from app.backend.api.schemas import JobCreateResponse, JobStatus, ModelConfigItem, ModelsResponse, ProfileItem, RouteInfoEntry, RouteInfoResponse
+from app.backend.api.schemas import (
+    JobCreateResponse,
+    JobStatus,
+    ModelConfigItem,
+    ModelsResponse,
+    ProfileItem,
+    RouteInfoEntry,
+    RouteInfoResponse,
+    TermImportResult,
+    TermStatsResponse,
+)
 from app.backend.clients.ollama_client import list_ollama_models
 from app.backend.config import ModelType, VRAM_METADATA
 from app.backend.services.model_router import RouteGroup, get_route_info, resolve_route_groups
 from app.backend.translation_profiles import get_profile, list_profiles
 from app.backend.services.job_manager import JobManager
 from app.backend.services.translation_cache import get_cache
+from app.backend.services.term_db import TermDB
+
+_term_db = TermDB()
 
 router = APIRouter()
 job_manager = JobManager()
@@ -88,6 +102,7 @@ async def create_job(
     num_ctx: Optional[int] = Form(None),
     pdf_output_format: str = Form("docx"),  # "docx" or "pdf"
     pdf_layout_mode: str = Form("overlay"),  # "overlay" or "side_by_side"
+    mode: str = Form("translation"),  # "translation" or "extraction_only"
 ) -> JobCreateResponse:
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded")
@@ -150,6 +165,7 @@ async def create_job(
             num_ctx=num_ctx,
             pdf_output_format=pdf_output_format,
             pdf_layout_mode=pdf_layout_mode,
+            mode=mode,
         )
         return JobCreateResponse(job_id=job.job_id)
     finally:
@@ -175,6 +191,7 @@ def job_status(job_id: str) -> JobStatus:
         file_seg_done = job.file_segments_done
         file_seg_total = job.file_segments_total
         started_at = job.started_at
+        term_summary = job.term_summary
 
     output_ready = output_zip is not None and output_zip.exists()
 
@@ -213,6 +230,7 @@ def job_status(job_id: str) -> JobStatus:
         overall_progress=round(overall_progress, 4),
         segments_per_second=round(speed, 2),
         eta_seconds=round(eta, 1) if eta is not None else None,
+        term_summary=term_summary,
     )
 
 
@@ -264,3 +282,81 @@ def clear_cache(model: Optional[str] = None) -> dict:
         return {"enabled": False, "cleared": 0}
     cleared = cache.clear(model=model)
     return {"enabled": True, "cleared": cleared}
+
+
+# ---------------------------------------------------------------------------
+# Term DB API
+# ---------------------------------------------------------------------------
+
+@router.get("/terms/stats", response_model=TermStatsResponse)
+def terms_stats() -> TermStatsResponse:
+    """Return term database statistics."""
+    stats = _term_db.get_stats()
+    return TermStatsResponse(**stats)
+
+
+@router.get("/terms/export")
+def terms_export(format: str = "json"):
+    """Download term database in the requested format (json | csv | xlsx)."""
+    fmt = format.lower()
+    if fmt not in ("json", "csv", "xlsx"):
+        raise HTTPException(status_code=400, detail="format must be json, csv, or xlsx")
+
+    import tempfile as _tempfile
+
+    with _tempfile.NamedTemporaryFile(suffix=f".{fmt}", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+
+    try:
+        if fmt == "json":
+            _term_db.export_json(tmp_path)
+            media_type = "application/json"
+        elif fmt == "csv":
+            _term_db.export_csv(tmp_path)
+            media_type = "text/csv"
+        else:
+            _term_db.export_xlsx(tmp_path)
+            media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+        return FileResponse(
+            tmp_path,
+            media_type=media_type,
+            filename=f"term_db.{fmt}",
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/terms/import", response_model=TermImportResult)
+async def terms_import(
+    file: UploadFile = File(...),
+    strategy: str = "skip",
+) -> TermImportResult:
+    """Import terms from a JSON or CSV file."""
+    if strategy not in ("skip", "overwrite", "merge"):
+        raise HTTPException(status_code=400, detail="strategy must be skip, overwrite, or merge")
+
+    suffix = Path(file.filename or "import.json").suffix.lower()
+    if suffix not in (".json", ".csv"):
+        raise HTTPException(status_code=400, detail="Only .json and .csv files are supported")
+
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+        shutil.copyfileobj(file.file, tmp)
+    await file.close()
+
+    try:
+        counts = _term_db.import_file(tmp_path, strategy=strategy)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    finally:
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+    return TermImportResult(
+        inserted=counts.get("inserted", 0),
+        skipped=counts.get("skipped", 0),
+        overwritten=counts.get("overwritten", 0),
+    )

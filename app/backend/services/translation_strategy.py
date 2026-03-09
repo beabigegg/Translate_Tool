@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Iterable, Optional
+from typing import Dict, Iterable, List, Optional, TYPE_CHECKING
 
 from app.backend.config import ModelType
+
+if TYPE_CHECKING:
+    from app.backend.models.term import Term
 
 
 class TranslationScenario(str, Enum):
@@ -286,3 +289,17 @@ def build_strategy(
         options_override=options,
         cache_variant=cache_variant,
     )
+
+
+def build_terminology_block(terms: "List[Term]") -> str:
+    """Build a 'Terminology constraints' section from a list of Term objects.
+
+    Returns an empty string when the list is empty so callers can safely
+    skip appending it without special-casing.
+    """
+    if not terms:
+        return ""
+    lines = ["Terminology constraints:"]
+    for t in terms:
+        lines.append(f"- {t.source_text} => {t.target_text}")
+    return "\n".join(lines)

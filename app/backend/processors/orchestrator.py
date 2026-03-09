@@ -6,7 +6,7 @@ import logging
 import os
 import threading
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import (
@@ -14,8 +14,10 @@ from app.backend.config import (
     CONTEXT_SAMPLE_CHARS,
     CROSS_MODEL_REFINEMENT_ENABLED,
     DEFAULT_MAX_BATCH_CHARS,
+    DEFAULT_MODEL,
     DYNAMIC_SCENARIO_STRATEGY_ENABLED,
     LAYOUT_PRESERVATION_MODE,
+    OLLAMA_BASE_URL,
     PDF_SKIP_HEADER_FOOTER,
     QWEN_CONTEXT_FLOW_ENABLED,
     SCENARIO_CACHE_VARIANT_ENABLED,
@@ -30,6 +32,7 @@ from app.backend.processors.pptx_processor import translate_pptx
 from app.backend.processors.xlsx_processor import translate_xlsx_xls
 from app.backend.services.translation_strategy import (
     build_strategy,
+    build_terminology_block,
     detect_translation_scenario,
     scenario_from_profile,
 )
@@ -108,6 +111,62 @@ def _sample_file_text(file_path: Path, max_chars: int = CONTEXT_SAMPLE_CHARS) ->
     return ""
 
 
+_PHASE0_CHUNK_SIZE = 2000  # Max chars per segment sent to Phase 0 extraction
+
+
+def _extract_all_segments(file_path: Path, chunk_size: int = _PHASE0_CHUNK_SIZE) -> List[str]:
+    """Extract all text from a document and split into fixed-size chunks for Phase 0."""
+    ext = file_path.suffix.lower()
+    parts: List[str] = []
+    try:
+        if ext == ".docx":
+            from docx import Document
+            doc = Document(str(file_path))
+            for para in doc.paragraphs:
+                t = para.text.strip()
+                if t:
+                    parts.append(t)
+        elif ext == ".pptx":
+            from pptx import Presentation
+            prs = Presentation(str(file_path))
+            for slide in prs.slides:
+                for shape in slide.shapes:
+                    if shape.has_text_frame:
+                        for para in shape.text_frame.paragraphs:
+                            t = para.text.strip()
+                            if t:
+                                parts.append(t)
+        elif ext in (".xlsx", ".xls"):
+            from openpyxl import load_workbook
+            wb = load_workbook(str(file_path), read_only=True, data_only=True)
+            for ws in wb.worksheets:
+                for row in ws.iter_rows(values_only=True):
+                    for cell in row:
+                        if cell is not None:
+                            t = str(cell).strip()
+                            if t:
+                                parts.append(t)
+            wb.close()
+        elif ext == ".pdf":
+            parts.append(file_path.stem.replace("_", " ").replace("-", " "))
+        elif ext == ".doc":
+            parts.append(file_path.stem.replace("_", " ").replace("-", " "))
+    except Exception as exc:
+        logger.debug("Phase 0 text extraction failed for %s: %s", file_path.name, exc)
+
+    # Join all parts and split into chunks
+    full_text = "\n".join(parts)
+    if not full_text.strip():
+        return []
+
+    chunks: List[str] = []
+    for i in range(0, len(full_text), chunk_size):
+        chunk = full_text[i : i + chunk_size].strip()
+        if chunk:
+            chunks.append(chunk)
+    return chunks
+
+
 def _detect_document_context(
     client: OllamaClient,
     sample: str,
@@ -176,7 +235,9 @@ def process_files(
     output_suffix: str = "",
     refine_model: Optional[str] = None,
     refiner_num_ctx: Optional[int] = None,
-) -> Tuple[int, int, bool, Optional[OllamaClient]]:
+    mode: str = "translation",
+    term_db=None,
+) -> Tuple[int, int, bool, Optional[OllamaClient], Dict]:
     """Process files for translation.
 
     Args:
@@ -196,14 +257,20 @@ def process_files(
         max_batch_chars: Maximum characters per batch.
         layout_mode: Layout preservation mode (inline|overlay|side_by_side).
         output_format: Output format for PDF (docx|pdf).
+        mode: Job mode: 'translation' (default) or 'extraction_only'.
+        term_db: Optional TermDB instance for terminology extraction and injection.
 
     Returns:
-        Tuple of (processed_count, total_count, stopped, client).
+        Tuple of (processed_count, total_count, stopped, client, term_summary).
     """
     # Use defaults from config if not specified
     if layout_mode is None:
         layout_mode = LAYOUT_PRESERVATION_MODE
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    extraction_only = mode == "extraction_only"
+    aggregate_term_summary: Dict = {"extracted": 0, "skipped": 0, "added": 0}
+
     client = OllamaClient(
         model=ollama_model,
         model_type=model_type,
@@ -299,6 +366,64 @@ def process_files(
                 client.system_prompt = f"{base_system_prompt}\n\nDocument context: {doc_context}"
             else:
                 client.system_prompt = base_system_prompt
+
+        # ------------------------------------------------------------------
+        # Phase 0: Term Extraction
+        # ------------------------------------------------------------------
+        if term_db is not None:
+            from app.backend.services.term_extractor import run_phase0, SCENARIO_TO_DOMAIN
+            phase0_segments = _extract_all_segments(src)
+            _scenario_name = (
+                (scenario.value if hasattr(scenario, "value") else str(scenario))
+                if DYNAMIC_SCENARIO_STRATEGY_ENABLED else "general"
+            )
+            _domain = SCENARIO_TO_DOMAIN.get(_scenario_name, "general")
+            _source_lang = src_lang or "Chinese"
+            _target_lang = targets[0] if targets else "English"
+            try:
+                term_summary = run_phase0(
+                    segments=phase0_segments,
+                    source_lang=_source_lang,
+                    target_lang=_target_lang,
+                    scenario=_scenario_name,
+                    document_context=doc_context,
+                    term_db=term_db,
+                    model=DEFAULT_MODEL,
+                    base_url=OLLAMA_BASE_URL,
+                    timeout=timeout_config,
+                    log=log,
+                )
+                for k in aggregate_term_summary:
+                    aggregate_term_summary[k] += term_summary.get(k, 0)
+            except Exception as _ph0_exc:
+                log(f"[PHASE0] Unexpected error (non-fatal): {_ph0_exc}")
+                logger.warning("[PHASE0] Unexpected error: %s", _ph0_exc)
+
+            # Inject top terms into Phase 1 and Phase 2 system prompts
+            top_terms = term_db.get_top_terms(_target_lang, _domain)
+            if top_terms:
+                term_block = build_terminology_block(top_terms)
+                # Phase 1: inject unless TranslateGemma (no system prompt support)
+                if not client._is_translategemma_model():
+                    client.system_prompt = (
+                        client.system_prompt.rstrip() + "\n\n" + term_block
+                        if client.system_prompt.strip()
+                        else term_block
+                    )
+                # Phase 2 Refiner: always inject
+                if refine_client is not None:
+                    refine_client.system_prompt = (
+                        refine_client.system_prompt.rstrip() + "\n\n" + term_block
+                        if refine_client.system_prompt.strip()
+                        else term_block
+                    )
+
+        # extraction_only mode: skip translation
+        if extraction_only:
+            processed_count += 1
+            log(f"[EXTRACTION] Done: {src.name} (extraction only)")
+            continue
+
         try:
             if ext == ".docx":
                 stopped = translate_docx(
@@ -403,4 +528,4 @@ def process_files(
         log(f"[STOP] job stopped after {processed_count}/{total_count} files")
     else:
         log(f"[DONE] job complete: {processed_count}/{total_count} files")
-    return processed_count, total_count, stopped, client
+    return processed_count, total_count, stopped, client, aggregate_term_summary

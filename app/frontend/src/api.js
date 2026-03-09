@@ -88,3 +88,27 @@ export async function fetchRouteInfo(targets) {
     return { routes: [] };
   }
 }
+
+export async function fetchTermStats() {
+  const res = await fetch("/api/terms/stats");
+  if (!res.ok) throw new Error("Failed to fetch term stats");
+  return res.json();
+}
+
+export function getTermExportUrl(format) {
+  return `/api/terms/export?format=${encodeURIComponent(format)}`;
+}
+
+export async function importTerms(file, strategy = "skip") {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`/api/terms/import?strategy=${encodeURIComponent(strategy)}`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({}));
+    throw new Error(payload.detail || "Import failed");
+  }
+  return res.json();
+}

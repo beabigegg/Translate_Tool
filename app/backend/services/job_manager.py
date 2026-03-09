@@ -11,7 +11,7 @@ import uuid
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import (
@@ -52,6 +52,8 @@ class JobRecord:
     stop_flag: threading.Event = field(default_factory=threading.Event)
     thread: Optional[threading.Thread] = None
     output_zip: Optional[Path] = None
+    mode: str = "translation"
+    term_summary: Optional[Dict] = None
 
 
 class JobLogger:
@@ -221,6 +223,7 @@ class JobManager:
         num_ctx: Optional[int] = None,
         pdf_output_format: str = "docx",
         pdf_layout_mode: str = "overlay",
+        mode: str = "translation",
     ) -> JobRecord:
         # Cleanup by capacity before creating new job
         self._cleanup_by_capacity()
@@ -238,7 +241,7 @@ class JobManager:
             shutil.copy2(src, dest)
             stored_files.append(dest)
 
-        job = JobRecord(job_id=job_id, input_dir=input_dir, output_dir=output_dir)
+        job = JobRecord(job_id=job_id, input_dir=input_dir, output_dir=output_dir, mode=mode)
         # total_files = files × groups (each group translates all files to its target languages)
         job.total_files = len(stored_files) * len(route_groups)
         self.jobs[job_id] = job
@@ -262,9 +265,15 @@ class JobManager:
             total_processed = 0
             overall_stopped = False
             last_client: Optional[OllamaClient] = None
+            agg_term_summary: Dict = {"extracted": 0, "skipped": 0, "added": 0}
             try:
                 timeout_config = TimeoutConfig()
                 multi_group = len(route_groups) > 1
+
+                # Initialise shared TermDB for Phase 0
+                from app.backend.services.term_db import TermDB
+                term_db = TermDB()
+
                 for group in route_groups:
                     if job.stop_flag.is_set():
                         overall_stopped = True
@@ -278,7 +287,7 @@ class JobManager:
                         f"[GROUP] model={group.model}, profile={group.profile_id}, "
                         f"targets={group.targets}"
                     )
-                    processed, _total, stopped, last_client = process_files(
+                    processed, _total, stopped, last_client, grp_term_summary = process_files(
                         stored_files,
                         output_dir,
                         group.targets,
@@ -297,7 +306,11 @@ class JobManager:
                         output_format=pdf_output_format,
                         output_suffix=output_suffix,
                         refine_model=group.refine_model,
+                        mode=mode,
+                        term_db=term_db,
                     )
+                    for k in agg_term_summary:
+                        agg_term_summary[k] += grp_term_summary.get(k, 0)
                     total_processed += processed
                     job_logger.advance_processed_offset(len(stored_files))
 
@@ -309,12 +322,15 @@ class JobManager:
                         overall_stopped = True
                         break
 
-                # Archive outputs and update state atomically
-                archive_path = self._archive_outputs(job)
+                # Archive outputs (skip for extraction_only — no translated files produced)
+                archive_path: Optional[Path] = None
+                if mode != "extraction_only":
+                    archive_path = self._archive_outputs(job)
                 with job.lock:
                     job.processed_files = total_processed
                     job.output_zip = archive_path
                     job.status = "stopped" if overall_stopped else "completed"
+                    job.term_summary = agg_term_summary
                     job.updated_at = time.time()
 
             except Exception as exc:

@@ -6,6 +6,9 @@ import {
   fetchProfiles,
   fetchJobStatus,
   fetchRouteInfo,
+  fetchTermStats,
+  getTermExportUrl,
+  importTerms,
 } from "./api.js";
 
 // 8 commonly-used target languages with bilingual labels
@@ -434,6 +437,145 @@ function EmptyState({ icon: Icon, title, description }) {
 }
 
 
+// TermDB Management Panel
+function TermDBPanel({ onClose }) {
+  const [stats, setStats] = useState(null);
+  const [statsError, setStatsError] = useState(null);
+  const [importFile, setImportFile] = useState(null);
+  const [importStrategy, setImportStrategy] = useState("skip");
+  const [importResult, setImportResult] = useState(null);
+  const [importError, setImportError] = useState(null);
+  const [importLoading, setImportLoading] = useState(false);
+
+  const loadStats = useCallback(async () => {
+    try {
+      const data = await fetchTermStats();
+      setStats(data);
+      setStatsError(null);
+    } catch (err) {
+      setStatsError(err.message);
+    }
+  }, []);
+
+  useEffect(() => { loadStats(); }, [loadStats]);
+
+  const handleImport = async () => {
+    if (!importFile) return;
+    setImportLoading(true);
+    setImportError(null);
+    setImportResult(null);
+    try {
+      const result = await importTerms(importFile, importStrategy);
+      setImportResult(result);
+      await loadStats();
+    } catch (err) {
+      setImportError(err.message);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  return (
+    <div className="term-panel-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="術語庫管理">
+      <div className="term-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="term-panel-header">
+          <h2>術語庫管理</h2>
+          <button type="button" className="term-panel-close" onClick={onClose} aria-label="關閉">
+            <Icons.X />
+          </button>
+        </div>
+
+        {/* Stats */}
+        <div className="term-panel-section">
+          <h3>資料庫統計</h3>
+          {statsError ? (
+            <p className="term-panel-error">{statsError}</p>
+          ) : stats ? (
+            <div className="term-stats">
+              <div className="term-stat-row">
+                <span className="term-stat-label">總術語數</span>
+                <span className="term-stat-value">{stats.total}</span>
+              </div>
+              {Object.keys(stats.by_target_lang || {}).length > 0 && (
+                <div className="term-stat-row">
+                  <span className="term-stat-label">依目標語言</span>
+                  <span className="term-stat-value">
+                    {Object.entries(stats.by_target_lang).map(([lang, cnt]) => `${lang}: ${cnt}`).join(", ")}
+                  </span>
+                </div>
+              )}
+              {Object.keys(stats.by_domain || {}).length > 0 && (
+                <div className="term-stat-row">
+                  <span className="term-stat-label">依領域</span>
+                  <span className="term-stat-value">
+                    {Object.entries(stats.by_domain).map(([domain, cnt]) => `${domain}: ${cnt}`).join(", ")}
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p>載入中...</p>
+          )}
+        </div>
+
+        {/* Export */}
+        <div className="term-panel-section">
+          <h3>匯出術語庫</h3>
+          <div className="term-export-buttons">
+            {["json", "csv", "xlsx"].map((fmt) => (
+              <a
+                key={fmt}
+                className="btn btn-secondary btn-sm"
+                href={getTermExportUrl(fmt)}
+                download={`term_db.${fmt}`}
+              >
+                {fmt.toUpperCase()}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* Import */}
+        <div className="term-panel-section">
+          <h3>匯入術語庫</h3>
+          <div className="term-import-controls">
+            <input
+              type="file"
+              accept=".json,.csv"
+              onChange={(e) => { setImportFile(e.target.files?.[0] || null); setImportResult(null); }}
+              aria-label="選擇匯入檔案"
+            />
+            <select
+              value={importStrategy}
+              onChange={(e) => setImportStrategy(e.target.value)}
+              aria-label="衝突策略"
+            >
+              <option value="skip">保留現有 (skip)</option>
+              <option value="overwrite">覆蓋 (overwrite)</option>
+              <option value="merge">依信心值合併 (merge)</option>
+            </select>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={handleImport}
+              disabled={!importFile || importLoading}
+            >
+              {importLoading ? "匯入中..." : "確認匯入"}
+            </button>
+          </div>
+          {importResult && (
+            <div className="term-import-result">
+              新增 {importResult.inserted} 筆、略過 {importResult.skipped} 筆、覆蓋 {importResult.overwritten} 筆
+            </div>
+          )}
+          {importError && <p className="term-panel-error">{importError}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 export default function App() {
   const [files, setFiles] = useState([]);
   const [selectedTargets, setSelectedTargets] = useState(["English", "Vietnamese"]);
@@ -459,6 +601,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [jobMode, setJobMode] = useState("translation");  // "translation" | "extraction_only"
+  const [termPanelOpen, setTermPanelOpen] = useState(false);
 
   const effectiveProfiles = useMemo(() => {
     const source = profiles.length > 0 ? profiles : PROFILE_FALLBACK;
@@ -761,6 +905,7 @@ export default function App() {
       form.append("include_headers", String(includeHeaders));
       form.append("pdf_output_format", pdfOutputFormat);
       form.append("pdf_layout_mode", pdfLayoutMode);
+      form.append("mode", jobMode);
       const response = await createJob(form);
       setJobId(response.job_id);
     } catch (err) {
@@ -786,6 +931,7 @@ export default function App() {
     setJobId(null);
     setJobStatus(null);
     setError(null);
+    setJobMode("translation");
   };
 
   return (
@@ -806,6 +952,14 @@ export default function App() {
             <span className="badge">Offline Ready</span>
             <span className="badge">Auto Routing</span>
             <span className="badge accent">FastAPI + Ollama</span>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setTermPanelOpen(true)}
+              title="術語庫管理"
+            >
+              術語庫
+            </button>
           </div>
         </div>
       </header>
@@ -1083,6 +1237,48 @@ export default function App() {
               )}
             </div>
 
+            {/* Mode Toggle */}
+            <div className="mode-toggle-group">
+              <span className="mode-toggle-label">模式：</span>
+              <div className="mode-toggle-buttons">
+                <button
+                  type="button"
+                  className={`mode-btn ${jobMode === "translation" ? "active" : ""}`}
+                  onClick={() => setJobMode("translation")}
+                  disabled={isRunning}
+                  aria-pressed={jobMode === "translation"}
+                >
+                  翻譯
+                </button>
+                <button
+                  type="button"
+                  className={`mode-btn ${jobMode === "extraction_only" ? "active" : ""}`}
+                  onClick={() => setJobMode("extraction_only")}
+                  disabled={isRunning}
+                  aria-pressed={jobMode === "extraction_only"}
+                >
+                  僅萃取術語
+                </button>
+              </div>
+            </div>
+
+            {/* Extraction result summary */}
+            {jobStatus?.status === "completed" && jobStatus?.term_summary && (
+              <div className="term-summary-box">
+                <strong>術語萃取結果：</strong>
+                萃取 {jobStatus.term_summary.extracted} 筆、
+                略過 {jobStatus.term_summary.skipped} 筆（已在DB）、
+                新增 {jobStatus.term_summary.added} 筆
+                {jobMode === "extraction_only" && (
+                  <div className="term-summary-export">
+                    <a className="btn btn-secondary btn-sm" href={getTermExportUrl("json")} download="term_db.json">
+                      <Icons.Download /> 匯出結果
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Action Buttons */}
             <div className="action-buttons">
               {!jobId || jobStatus?.status === "completed" || jobStatus?.status === "failed" || jobStatus?.status === "cancelled" ? (
@@ -1101,7 +1297,7 @@ export default function App() {
                     ) : (
                       <>
                         <Icons.Play />
-                        Start Translation
+                        {jobMode === "extraction_only" ? "開始萃取" : "Start Translation"}
                       </>
                     )}
                   </button>
@@ -1119,7 +1315,7 @@ export default function App() {
                 </button>
               )}
 
-              {outputReady && jobId && (
+              {outputReady && jobId && jobMode !== "extraction_only" && (
                 <a
                   className="btn btn-success"
                   href={`/api/jobs/${jobId}/download`}
@@ -1338,6 +1534,9 @@ export default function App() {
           </section>
         </div>
       </main>
+
+      {/* Term DB Panel */}
+      {termPanelOpen && <TermDBPanel onClose={() => setTermPanelOpen(false)} />}
 
       {/* Footer */}
       <footer className="footer">

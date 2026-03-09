@@ -338,7 +338,7 @@ release_resources() {
   if [[ -d "$LOG_DIR" ]]; then
     for log_pattern in backend frontend; do
       local log_count
-      log_count=$(ls -1 "$LOG_DIR/${log_pattern}"*.log 2>/dev/null | wc -l)
+      log_count=$(find "$LOG_DIR" -maxdepth 1 -name "${log_pattern}*.log" 2>/dev/null | wc -l)
       if [[ "$log_count" -gt 5 ]]; then
         echo "  Rotating old $log_pattern logs"
         ls -1t "$LOG_DIR/${log_pattern}"*.log 2>/dev/null | tail -n +6 | xargs -r rm -f

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -27,6 +27,19 @@ class JobStatus(BaseModel):
     overall_progress: float = 0.0
     segments_per_second: float = 0.0
     eta_seconds: Optional[float] = None
+    term_summary: Optional[Dict[str, Any]] = None
+
+
+class TermImportResult(BaseModel):
+    inserted: int
+    skipped: int
+    overwritten: int
+
+
+class TermStatsResponse(BaseModel):
+    total: int
+    by_target_lang: Dict[str, int]
+    by_domain: Dict[str, int]
 
 
 class ModelsResponse(BaseModel):
