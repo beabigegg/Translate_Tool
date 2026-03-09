@@ -26,7 +26,7 @@ from app.backend.config import (
 )
 from app.backend.processors.com_helpers import is_win32com_available, word_convert
 from app.backend.processors.docx_processor import translate_docx
-from app.backend.processors.libreoffice_helpers import doc_to_docx, is_libreoffice_available
+from app.backend.processors.libreoffice_helpers import doc_to_docx, is_libreoffice_available, xls_to_xlsx
 from app.backend.processors.pdf_processor import translate_pdf
 from app.backend.processors.pptx_processor import translate_pptx
 from app.backend.processors.xlsx_processor import translate_xlsx_xls
@@ -136,7 +136,7 @@ def _extract_all_segments(file_path: Path, chunk_size: int = _PHASE0_CHUNK_SIZE)
                             t = para.text.strip()
                             if t:
                                 parts.append(t)
-        elif ext in (".xlsx", ".xls"):
+        elif ext == ".xlsx":
             from openpyxl import load_workbook
             wb = load_workbook(str(file_path), read_only=True, data_only=True)
             for ws in wb.worksheets:
@@ -147,10 +147,46 @@ def _extract_all_segments(file_path: Path, chunk_size: int = _PHASE0_CHUNK_SIZE)
                             if t:
                                 parts.append(t)
             wb.close()
+        elif ext == ".xls":
+            if is_libreoffice_available():
+                import tempfile
+                tmp_xlsx = tempfile.mktemp(suffix=".xlsx")
+                try:
+                    xls_to_xlsx(str(file_path), tmp_xlsx)
+                    from openpyxl import load_workbook
+                    wb = load_workbook(tmp_xlsx, read_only=True, data_only=True)
+                    for ws in wb.worksheets:
+                        for row in ws.iter_rows(values_only=True):
+                            for cell in row:
+                                if cell is not None:
+                                    t = str(cell).strip()
+                                    if t:
+                                        parts.append(t)
+                    wb.close()
+                finally:
+                    import os as _os
+                    _os.unlink(tmp_xlsx) if _os.path.exists(tmp_xlsx) else None
+            else:
+                parts.append(file_path.stem.replace("_", " ").replace("-", " "))
         elif ext == ".pdf":
             parts.append(file_path.stem.replace("_", " ").replace("-", " "))
         elif ext == ".doc":
-            parts.append(file_path.stem.replace("_", " ").replace("-", " "))
+            if is_libreoffice_available():
+                import tempfile
+                tmp_docx = tempfile.mktemp(suffix=".docx")
+                try:
+                    doc_to_docx(str(file_path), tmp_docx)
+                    from docx import Document
+                    doc = Document(tmp_docx)
+                    for para in doc.paragraphs:
+                        t = para.text.strip()
+                        if t:
+                            parts.append(t)
+                finally:
+                    import os as _os
+                    _os.unlink(tmp_docx) if _os.path.exists(tmp_docx) else None
+            else:
+                parts.append(file_path.stem.replace("_", " ").replace("-", " "))
     except Exception as exc:
         logger.debug("Phase 0 text extraction failed for %s: %s", file_path.name, exc)
 
