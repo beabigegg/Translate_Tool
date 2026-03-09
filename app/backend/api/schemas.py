@@ -61,6 +61,14 @@ class TermApproveRequest(BaseModel):
     domain: str
 
 
+class TermEditRequest(BaseModel):
+    source_text: str
+    target_lang: str
+    domain: str
+    target_text: str
+    confidence: Optional[float] = None
+
+
 class ModelsResponse(BaseModel):
     models: List[str]
 

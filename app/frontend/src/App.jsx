@@ -8,7 +8,9 @@ import {
   fetchRouteInfo,
   fetchTermStats,
   fetchUnverifiedTerms,
+  fetchApprovedTerms,
   approveTerm,
+  editTerm,
   getTermExportUrl,
   importTerms,
 } from "./api.js";
@@ -443,6 +445,7 @@ function EmptyState({ icon: Icon, title, description }) {
 function TermDBPanel({ onClose }) {
   const [stats, setStats] = useState(null);
   const [statsError, setStatsError] = useState(null);
+  const [exportStatus, setExportStatus] = useState("all");
   const [importFile, setImportFile] = useState(null);
   const [importStrategy, setImportStrategy] = useState("skip");
   const [importResult, setImportResult] = useState(null);
@@ -451,7 +454,12 @@ function TermDBPanel({ onClose }) {
   const [unverified, setUnverified] = useState(null);
   const [unverifiedLoading, setUnverifiedLoading] = useState(false);
   const [unverifiedError, setUnverifiedError] = useState(null);
-  const [activeTab, setActiveTab] = useState("stats"); // "stats" | "review"
+  const [approved, setApproved] = useState(null);
+  const [approvedLoading, setApprovedLoading] = useState(false);
+  const [approvedError, setApprovedError] = useState(null);
+  const [editingKey, setEditingKey] = useState(null); // "source|lang|domain"
+  const [editValue, setEditValue] = useState("");
+  const [activeTab, setActiveTab] = useState("stats"); // "stats" | "review" | "approved"
 
   const loadStats = useCallback(async () => {
     try {
@@ -476,11 +484,22 @@ function TermDBPanel({ onClose }) {
     }
   }, []);
 
-  useEffect(() => { loadStats(); }, [loadStats]);
+  const loadApproved = useCallback(async () => {
+    setApprovedLoading(true);
+    setApprovedError(null);
+    try {
+      const data = await fetchApprovedTerms();
+      setApproved(data);
+    } catch (err) {
+      setApprovedError(err.message);
+    } finally {
+      setApprovedLoading(false);
+    }
+  }, []);
 
-  useEffect(() => {
-    if (activeTab === "review") loadUnverified();
-  }, [activeTab, loadUnverified]);
+  useEffect(() => { loadStats(); }, [loadStats]);
+  useEffect(() => { if (activeTab === "review") loadUnverified(); }, [activeTab, loadUnverified]);
+  useEffect(() => { if (activeTab === "approved") loadApproved(); }, [activeTab, loadApproved]);
 
   const handleApprove = async (term) => {
     try {
@@ -491,6 +510,26 @@ function TermDBPanel({ onClose }) {
       await loadStats();
     } catch (err) {
       alert(`核准失敗：${err.message}`);
+    }
+  };
+
+  const termKey = (t) => `${t.source_text}|${t.target_lang}|${t.domain}`;
+
+  const handleEditStart = (t) => {
+    setEditingKey(termKey(t));
+    setEditValue(t.target_text);
+  };
+
+  const handleEditSave = async (t) => {
+    if (!editValue.trim()) return;
+    try {
+      await editTerm(t.source_text, t.target_lang, t.domain, editValue.trim());
+      setApproved((prev) => prev.map((item) =>
+        termKey(item) === termKey(t) ? { ...item, target_text: editValue.trim() } : item
+      ));
+      setEditingKey(null);
+    } catch (err) {
+      alert(`儲存失敗：${err.message}`);
     }
   };
 
@@ -522,33 +561,23 @@ function TermDBPanel({ onClose }) {
 
         {/* Tabs */}
         <div className="term-panel-tabs">
-          <button
-            type="button"
-            className={`term-tab-btn${activeTab === "stats" ? " active" : ""}`}
-            onClick={() => setActiveTab("stats")}
-          >
+          <button type="button" className={`term-tab-btn${activeTab === "stats" ? " active" : ""}`} onClick={() => setActiveTab("stats")}>
             統計 / 匯入匯出
           </button>
-          <button
-            type="button"
-            className={`term-tab-btn${activeTab === "review" ? " active" : ""}`}
-            onClick={() => setActiveTab("review")}
-          >
+          <button type="button" className={`term-tab-btn${activeTab === "review" ? " active" : ""}`} onClick={() => setActiveTab("review")}>
             待審核
-            {stats?.unverified > 0 && (
-              <span className="term-unverified-badge">{stats.unverified}</span>
-            )}
+            {stats?.unverified > 0 && <span className="term-unverified-badge">{stats.unverified}</span>}
+          </button>
+          <button type="button" className={`term-tab-btn${activeTab === "approved" ? " active" : ""}`} onClick={() => setActiveTab("approved")}>
+            已核准
           </button>
         </div>
 
         {activeTab === "stats" && (
           <>
-            {/* Stats */}
             <div className="term-panel-section">
               <h3>資料庫統計</h3>
-              {statsError ? (
-                <p className="term-panel-error">{statsError}</p>
-              ) : stats ? (
+              {statsError ? <p className="term-panel-error">{statsError}</p> : stats ? (
                 <div className="term-stats">
                   <div className="term-stat-row">
                     <span className="term-stat-label">總術語數</span>
@@ -577,56 +606,50 @@ function TermDBPanel({ onClose }) {
                     </div>
                   )}
                 </div>
-              ) : (
-                <p>載入中...</p>
-              )}
+              ) : <p>載入中...</p>}
             </div>
 
-            {/* Export */}
             <div className="term-panel-section">
               <h3>匯出術語庫</h3>
-              <div className="term-export-buttons">
-                {["json", "csv", "xlsx"].map((fmt) => (
-                  <a
-                    key={fmt}
-                    className="btn btn-secondary btn-sm"
-                    href={getTermExportUrl(fmt)}
-                    download={`term_db.${fmt}`}
-                  >
-                    {fmt.toUpperCase()}
-                  </a>
-                ))}
+              <div className="term-export-row">
+                <select value={exportStatus} onChange={(e) => setExportStatus(e.target.value)} aria-label="匯出範圍">
+                  <option value="all">全部</option>
+                  <option value="approved">僅已核准</option>
+                  <option value="unverified">僅待審核</option>
+                </select>
+                <div className="term-export-buttons">
+                  {["json", "csv", "xlsx"].map((fmt) => (
+                    <a key={fmt} className="btn btn-secondary btn-sm"
+                      href={getTermExportUrl(fmt, exportStatus === "all" ? undefined : exportStatus)}
+                      download={`term_db${exportStatus !== "all" ? `_${exportStatus}` : ""}.${fmt}`}
+                    >
+                      {fmt.toUpperCase()}
+                    </a>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* Import */}
             <div className="term-panel-section">
               <h3>匯入術語庫</h3>
               <div className="term-import-controls">
-                <input
-                  type="file"
-                  accept=".json,.csv"
+                <input type="file" accept=".json,.csv"
                   onChange={(e) => { setImportFile(e.target.files?.[0] || null); setImportResult(null); }}
                   aria-label="選擇匯入檔案"
                 />
-                <select
-                  value={importStrategy}
-                  onChange={(e) => setImportStrategy(e.target.value)}
-                  aria-label="衝突策略"
-                >
+                <select value={importStrategy} onChange={(e) => setImportStrategy(e.target.value)} aria-label="衝突策略">
                   <option value="skip">保留現有 (skip)</option>
-                  <option value="overwrite">覆蓋 (overwrite)</option>
+                  <option value="overwrite">覆蓋未核准 (overwrite)</option>
                   <option value="merge">依信心值合併 (merge)</option>
+                  <option value="force">強制覆蓋含已核准 (force)</option>
                 </select>
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  onClick={handleImport}
-                  disabled={!importFile || importLoading}
-                >
+                <button type="button" className="btn btn-primary btn-sm" onClick={handleImport} disabled={!importFile || importLoading}>
                   {importLoading ? "匯入中..." : "確認匯入"}
                 </button>
               </div>
+              {importStrategy === "force" && (
+                <p className="term-import-warn">⚠ force 模式會覆蓋已核准術語，請確認匯入資料來自受信任來源。</p>
+              )}
               {importResult && (
                 <div className="term-import-result">
                   新增 {importResult.inserted} 筆、略過 {importResult.skipped} 筆、覆蓋 {importResult.overwritten} 筆
@@ -648,7 +671,7 @@ function TermDBPanel({ onClose }) {
             {!unverifiedLoading && unverified && unverified.length > 0 && (
               <div className="term-review-list">
                 {unverified.map((t) => (
-                  <div key={`${t.source_text}|${t.target_lang}|${t.domain}`} className="term-review-row">
+                  <div key={termKey(t)} className="term-review-row">
                     <div className="term-review-main">
                       <span className="term-review-source">{t.source_text}</span>
                       <span className="term-review-arrow">→</span>
@@ -658,15 +681,58 @@ function TermDBPanel({ onClose }) {
                       {t.domain} · {t.target_lang} · 信心值 {(t.confidence * 100).toFixed(0)}%
                       {t.context_snippet && <span> · 「{t.context_snippet}」</span>}
                     </div>
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-xs"
-                      onClick={() => handleApprove(t)}
-                    >
-                      核准
-                    </button>
+                    <button type="button" className="btn btn-primary btn-xs" onClick={() => handleApprove(t)}>核准</button>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "approved" && (
+          <div className="term-panel-section">
+            <h3>已核准術語 <small>（點擊翻譯欄位可行內編輯）</small></h3>
+            {approvedLoading && <p>載入中...</p>}
+            {approvedError && <p className="term-panel-error">{approvedError}</p>}
+            {!approvedLoading && approved && approved.length === 0 && (
+              <p className="term-panel-empty">目前沒有已核准術語。</p>
+            )}
+            {!approvedLoading && approved && approved.length > 0 && (
+              <div className="term-review-list">
+                {approved.map((t) => {
+                  const key = termKey(t);
+                  const isEditing = editingKey === key;
+                  return (
+                    <div key={key} className="term-review-row">
+                      <div className="term-review-main">
+                        <span className="term-review-source">{t.source_text}</span>
+                        <span className="term-review-arrow">→</span>
+                        {isEditing ? (
+                          <input
+                            className="term-edit-input"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(t); if (e.key === "Escape") setEditingKey(null); }}
+                            autoFocus
+                          />
+                        ) : (
+                          <span className="term-review-target term-editable" onClick={() => handleEditStart(t)} title="點擊編輯">
+                            {t.target_text}
+                          </span>
+                        )}
+                      </div>
+                      <div className="term-review-meta">
+                        {t.domain} · {t.target_lang} · 使用 {t.usage_count} 次
+                      </div>
+                      {isEditing ? (
+                        <div style={{ display: "flex", gap: "0.3rem" }}>
+                          <button type="button" className="btn btn-primary btn-xs" onClick={() => handleEditSave(t)}>儲存</button>
+                          <button type="button" className="btn btn-secondary btn-xs" onClick={() => setEditingKey(null)}>取消</button>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

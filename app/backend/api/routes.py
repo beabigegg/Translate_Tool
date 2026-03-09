@@ -21,6 +21,7 @@ from app.backend.api.schemas import (
     RouteInfoEntry,
     RouteInfoResponse,
     TermApproveRequest,
+    TermEditRequest,
     TermImportResult,
     TermItem,
     TermStatsResponse,
@@ -298,32 +299,34 @@ def terms_stats() -> TermStatsResponse:
 
 
 @router.get("/terms/export")
-def terms_export(format: str = "json"):
-    """Download term database in the requested format (json | csv | xlsx)."""
+def terms_export(format: str = "json", status: Optional[str] = None):
+    """Download term database. format: json|csv|xlsx. status: approved|unverified|all (default all)."""
     fmt = format.lower()
     if fmt not in ("json", "csv", "xlsx"):
         raise HTTPException(status_code=400, detail="format must be json, csv, or xlsx")
+    status_filter = status if status in ("approved", "unverified") else None
 
     import tempfile as _tempfile
 
     with _tempfile.NamedTemporaryFile(suffix=f".{fmt}", delete=False) as tmp:
         tmp_path = Path(tmp.name)
 
+    suffix_str = f"_{status_filter}" if status_filter else ""
     try:
         if fmt == "json":
-            _term_db.export_json(tmp_path)
+            _term_db.export_json(tmp_path, status_filter=status_filter)
             media_type = "application/json"
         elif fmt == "csv":
-            _term_db.export_csv(tmp_path)
+            _term_db.export_csv(tmp_path, status_filter=status_filter)
             media_type = "text/csv"
         else:
-            _term_db.export_xlsx(tmp_path)
+            _term_db.export_xlsx(tmp_path, status_filter=status_filter)
             media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
         return FileResponse(
             tmp_path,
             media_type=media_type,
-            filename=f"term_db.{fmt}",
+            filename=f"term_db{suffix_str}.{fmt}",
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -334,9 +337,13 @@ async def terms_import(
     file: UploadFile = File(...),
     strategy: str = "skip",
 ) -> TermImportResult:
-    """Import terms from a JSON or CSV file."""
-    if strategy not in ("skip", "overwrite", "merge"):
-        raise HTTPException(status_code=400, detail="strategy must be skip, overwrite, or merge")
+    """Import terms from a JSON or CSV file.
+    strategy: skip | overwrite | merge | force
+    - overwrite/merge protect already-approved records
+    - force overwrites everything including approved (intentional correction)
+    """
+    if strategy not in ("skip", "overwrite", "merge", "force"):
+        raise HTTPException(status_code=400, detail="strategy must be skip, overwrite, merge, or force")
 
     suffix = Path(file.filename or "import.json").suffix.lower()
     if suffix not in (".json", ".csv"):
@@ -391,6 +398,44 @@ def terms_unverified(
 def terms_approve(body: TermApproveRequest):
     """Mark a term as approved for prompt injection."""
     found = _term_db.approve(body.source_text, body.target_lang, body.domain)
+    if not found:
+        raise HTTPException(status_code=404, detail="Term not found")
+    return {"ok": True}
+
+
+@router.get("/terms/approved", response_model=List[TermItem])
+def terms_approved(
+    target_lang: Optional[str] = None,
+    domain: Optional[str] = None,
+) -> List[TermItem]:
+    """List approved terms, optionally filtered."""
+    terms = _term_db.get_approved(target_lang=target_lang, domain=domain)
+    return [
+        TermItem(
+            source_text=t.source_text,
+            target_text=t.target_text,
+            source_lang=t.source_lang,
+            target_lang=t.target_lang,
+            domain=t.domain,
+            context_snippet=t.context_snippet,
+            confidence=t.confidence,
+            usage_count=t.usage_count,
+            status=t.status,
+        )
+        for t in terms
+    ]
+
+
+@router.patch("/terms/edit")
+def terms_edit(body: TermEditRequest):
+    """Edit the target_text (and optionally confidence) of any term. Sets status='approved'."""
+    found = _term_db.edit_term(
+        body.source_text,
+        body.target_lang,
+        body.domain,
+        target_text=body.target_text,
+        confidence=body.confidence,
+    )
     if not found:
         raise HTTPException(status_code=404, detail="Term not found")
     return {"ok": True}

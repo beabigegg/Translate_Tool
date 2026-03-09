@@ -95,8 +95,32 @@ export async function fetchTermStats() {
   return res.json();
 }
 
-export function getTermExportUrl(format) {
-  return `/api/terms/export?format=${encodeURIComponent(format)}`;
+export function getTermExportUrl(format, status) {
+  const params = new URLSearchParams({ format });
+  if (status && status !== "all") params.set("status", status);
+  return `/api/terms/export?${params}`;
+}
+
+export async function fetchApprovedTerms(targetLang, domain) {
+  const params = new URLSearchParams();
+  if (targetLang) params.set("target_lang", targetLang);
+  if (domain) params.set("domain", domain);
+  const qs = params.toString() ? `?${params}` : "";
+  const res = await fetch(`/api/terms/approved${qs}`);
+  if (!res.ok) throw new Error("Failed to fetch approved terms");
+  return res.json();
+}
+
+export async function editTerm(sourceText, targetLang, domain, targetText, confidence) {
+  const body = { source_text: sourceText, target_lang: targetLang, domain, target_text: targetText };
+  if (confidence !== undefined) body.confidence = confidence;
+  const res = await fetch("/api/terms/edit", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error("Failed to edit term");
+  return res.json();
 }
 
 export async function fetchUnverifiedTerms(targetLang, domain) {

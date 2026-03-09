@@ -2362,3 +2362,35 @@ select:focus-visible {
   font-size: 0.78rem;
   padding: 0.2rem 0.6rem;
 }
+
+.term-export-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.term-import-warn {
+  font-size: 0.82rem;
+  color: var(--warning, #f59e0b);
+  margin-top: 0.35rem;
+}
+
+.term-editable {
+  cursor: pointer;
+  border-bottom: 1px dashed var(--text-muted, #888);
+}
+
+.term-editable:hover {
+  color: var(--primary, #3b82f6);
+  border-color: var(--primary, #3b82f6);
+}
+
+.term-edit-input {
+  border: 1px solid var(--primary, #3b82f6);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.95rem;
+  min-width: 120px;
+  outline: none;
+}

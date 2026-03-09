@@ -121,11 +121,17 @@ class TermDB:
     def insert(self, term: Term, strategy: str = "skip") -> str:
         """Insert a term with the given conflict strategy.
 
+        Strategies:
+          skip      – never overwrite (safe default)
+          overwrite – update unverified records; PROTECTS approved records
+          merge     – overwrite only if imported confidence > existing; PROTECTS approved
+          force     – overwrites everything, including approved (intentional correction)
+
         Returns: 'inserted', 'skipped', or 'overwritten'.
         """
         with _DB_LOCK, self._connect() as conn:
             existing = conn.execute(
-                "SELECT id, confidence FROM terms WHERE source_text=? AND target_lang=? AND domain=?",
+                "SELECT id, confidence, status FROM terms WHERE source_text=? AND target_lang=? AND domain=?",
                 (term.source_text, term.target_lang, term.domain),
             ).fetchone()
 
@@ -153,52 +159,70 @@ class TermDB:
                 conn.commit()
                 return "inserted"
 
+            existing_approved = existing["status"] == "approved"
+
             # Conflict resolution
             if strategy == "skip":
                 return "skipped"
 
             if strategy == "overwrite":
+                # Protect approved records — use 'force' for intentional correction
+                if existing_approved:
+                    return "skipped"
                 conn.execute(
                     """
                     UPDATE terms SET
                         target_text=?, source_lang=?, context_snippet=?,
-                        confidence=?, usage_count=?, created_at=?
+                        confidence=?, usage_count=?, status=?, created_at=?
                     WHERE source_text=? AND target_lang=? AND domain=?
                     """,
                     (
-                        term.target_text,
-                        term.source_lang,
-                        term.context_snippet,
-                        term.confidence,
-                        term.usage_count,
+                        term.target_text, term.source_lang, term.context_snippet,
+                        term.confidence, term.usage_count, term.status,
                         term.created_at or _now_iso(),
-                        term.source_text,
-                        term.target_lang,
-                        term.domain,
+                        term.source_text, term.target_lang, term.domain,
+                    ),
+                )
+                conn.commit()
+                return "overwritten"
+
+            if strategy == "force":
+                # Intentional correction — overwrites approved records too
+                conn.execute(
+                    """
+                    UPDATE terms SET
+                        target_text=?, source_lang=?, context_snippet=?,
+                        confidence=?, usage_count=?, status=?, created_at=?
+                    WHERE source_text=? AND target_lang=? AND domain=?
+                    """,
+                    (
+                        term.target_text, term.source_lang, term.context_snippet,
+                        term.confidence, term.usage_count, term.status,
+                        term.created_at or _now_iso(),
+                        term.source_text, term.target_lang, term.domain,
                     ),
                 )
                 conn.commit()
                 return "overwritten"
 
             if strategy == "merge":
+                # Protect approved; for unverified: take higher confidence
+                if existing_approved:
+                    return "skipped"
                 existing_confidence = existing["confidence"]
                 if term.confidence > existing_confidence:
                     conn.execute(
                         """
                         UPDATE terms SET
                             target_text=?, source_lang=?, context_snippet=?,
-                            confidence=?, created_at=?
+                            confidence=?, status=?, created_at=?
                         WHERE source_text=? AND target_lang=? AND domain=?
                         """,
                         (
-                            term.target_text,
-                            term.source_lang,
-                            term.context_snippet,
-                            term.confidence,
+                            term.target_text, term.source_lang, term.context_snippet,
+                            term.confidence, term.status,
                             term.created_at or _now_iso(),
-                            term.source_text,
-                            term.target_lang,
-                            term.domain,
+                            term.source_text, term.target_lang, term.domain,
                         ),
                     )
                     conn.commit()
@@ -206,6 +230,39 @@ class TermDB:
                 return "skipped"
 
         return "skipped"
+
+    def edit_term(
+        self,
+        source_text: str,
+        target_lang: str,
+        domain: str,
+        *,
+        target_text: str,
+        confidence: Optional[float] = None,
+    ) -> bool:
+        """Update target_text (and optionally confidence) of any term, keeping status='approved'.
+
+        Returns True if the term was found and updated.
+        """
+        with _DB_LOCK, self._connect() as conn:
+            if confidence is not None:
+                cur = conn.execute(
+                    """
+                    UPDATE terms SET target_text=?, confidence=?, status='approved'
+                    WHERE source_text=? AND target_lang=? AND domain=?
+                    """,
+                    (target_text, confidence, source_text, target_lang, domain),
+                )
+            else:
+                cur = conn.execute(
+                    """
+                    UPDATE terms SET target_text=?, status='approved'
+                    WHERE source_text=? AND target_lang=? AND domain=?
+                    """,
+                    (target_text, source_text, target_lang, domain),
+                )
+            conn.commit()
+        return cur.rowcount > 0
 
     def approve(self, source_text: str, target_lang: str, domain: str) -> bool:
         """Set status='approved' for a term. Returns True if the term was found."""
@@ -276,9 +333,28 @@ class TermDB:
     # Export
     # ------------------------------------------------------------------
 
-    def export_json(self, path: Path) -> None:
-        """Export all terms to a JSON file."""
-        terms = self._all_terms()
+    def get_approved(
+        self,
+        target_lang: Optional[str] = None,
+        domain: Optional[str] = None,
+    ) -> List[Term]:
+        """Return all approved terms, optionally filtered."""
+        conditions = ["status='approved'"]
+        params: list = []
+        if target_lang:
+            conditions.append("target_lang=?")
+            params.append(target_lang)
+        if domain:
+            conditions.append("domain=?")
+            params.append(domain)
+        sql = f"SELECT * FROM terms WHERE {' AND '.join(conditions)} ORDER BY id DESC"
+        with _DB_LOCK, self._connect() as conn:
+            rows = conn.execute(sql, params).fetchall()
+        return [_row_to_term(r) for r in rows]
+
+    def export_json(self, path: Path, status_filter: Optional[str] = None) -> None:
+        """Export terms to a JSON file. status_filter: 'approved' | 'unverified' | None (all)."""
+        terms = self._all_terms(status_filter)
         payload = {
             "version": 1,
             "exported_at": _now_iso(),
@@ -289,9 +365,9 @@ class TermDB:
         with path.open("w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, indent=2)
 
-    def export_csv(self, path: Path) -> None:
-        """Export all terms to a CSV file."""
-        terms = self._all_terms()
+    def export_csv(self, path: Path, status_filter: Optional[str] = None) -> None:
+        """Export terms to a CSV file. status_filter: 'approved' | 'unverified' | None (all)."""
+        terms = self._all_terms(status_filter)
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         fieldnames = [
@@ -304,14 +380,14 @@ class TermDB:
             for t in terms:
                 writer.writerow({k: getattr(t, k) for k in fieldnames})
 
-    def export_xlsx(self, path: Path) -> None:
-        """Export all terms to an XLSX file with one sheet per target_lang."""
+    def export_xlsx(self, path: Path, status_filter: Optional[str] = None) -> None:
+        """Export terms to an XLSX file. status_filter: 'approved' | 'unverified' | None (all)."""
         try:
             import openpyxl
         except ImportError:
             raise RuntimeError("openpyxl is required for XLSX export. Install it with: pip install openpyxl")
 
-        terms = self._all_terms()
+        terms = self._all_terms(status_filter)
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -372,9 +448,15 @@ class TermDB:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _all_terms(self) -> List[Term]:
+    def _all_terms(self, status_filter: Optional[str] = None) -> List[Term]:
+        sql = "SELECT * FROM terms"
+        params: list = []
+        if status_filter in ("approved", "unverified"):
+            sql += " WHERE status=?"
+            params.append(status_filter)
+        sql += " ORDER BY id"
         with _DB_LOCK, self._connect() as conn:
-            rows = conn.execute("SELECT * FROM terms ORDER BY id").fetchall()
+            rows = conn.execute(sql, params).fetchall()
         return [_row_to_term(r) for r in rows]
 
     def _parse_json_import(self, path: Path) -> List[Term]:
