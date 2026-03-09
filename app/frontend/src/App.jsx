@@ -460,6 +460,7 @@ function TermDBPanel({ onClose }) {
   const [editingKey, setEditingKey] = useState(null); // "source|lang|domain"
   const [editValue, setEditValue] = useState("");
   const [activeTab, setActiveTab] = useState("stats"); // "stats" | "review" | "approved"
+  const importFileRef = useRef(null);
 
   const loadStats = useCallback(async () => {
     try {
@@ -573,6 +574,7 @@ function TermDBPanel({ onClose }) {
           </button>
         </div>
 
+        <div className="term-panel-body">
         {activeTab === "stats" && (
           <>
             <div className="term-panel-section">
@@ -633,19 +635,27 @@ function TermDBPanel({ onClose }) {
             <div className="term-panel-section">
               <h3>匯入術語庫</h3>
               <div className="term-import-controls">
-                <input type="file" accept=".json,.csv"
-                  onChange={(e) => { setImportFile(e.target.files?.[0] || null); setImportResult(null); }}
-                  aria-label="選擇匯入檔案"
-                />
-                <select value={importStrategy} onChange={(e) => setImportStrategy(e.target.value)} aria-label="衝突策略">
-                  <option value="skip">保留現有 (skip)</option>
-                  <option value="overwrite">覆蓋未核准 (overwrite)</option>
-                  <option value="merge">依信心值合併 (merge)</option>
-                  <option value="force">強制覆蓋含已核准 (force)</option>
-                </select>
-                <button type="button" className="btn btn-primary btn-sm" onClick={handleImport} disabled={!importFile || importLoading}>
-                  {importLoading ? "匯入中..." : "確認匯入"}
-                </button>
+                <div className="term-import-file-row">
+                  <input type="file" accept=".json,.csv" ref={importFileRef} style={{ display: "none" }}
+                    onChange={(e) => { setImportFile(e.target.files?.[0] || null); setImportResult(null); }}
+                    aria-label="選擇匯入檔案"
+                  />
+                  <button type="button" className="btn btn-secondary btn-sm term-file-btn" onClick={() => importFileRef.current?.click()}>
+                    選擇檔案
+                  </button>
+                  <span className="term-file-name">{importFile ? importFile.name : "未選擇檔案"}</span>
+                </div>
+                <div className="term-import-action-row">
+                  <select value={importStrategy} onChange={(e) => setImportStrategy(e.target.value)} aria-label="衝突策略">
+                    <option value="skip">保留現有 (skip)</option>
+                    <option value="overwrite">覆蓋未核准 (overwrite)</option>
+                    <option value="merge">依信心值合併 (merge)</option>
+                    <option value="force">強制覆蓋含已核准 (force)</option>
+                  </select>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={handleImport} disabled={!importFile || importLoading}>
+                    {importLoading ? "匯入中..." : "確認匯入"}
+                  </button>
+                </div>
               </div>
               {importStrategy === "force" && (
                 <p className="term-import-warn">⚠ force 模式會覆蓋已核准術語，請確認匯入資料來自受信任來源。</p>
@@ -737,6 +747,7 @@ function TermDBPanel({ onClose }) {
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );
