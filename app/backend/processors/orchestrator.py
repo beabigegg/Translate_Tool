@@ -114,38 +114,102 @@ def _sample_file_text(file_path: Path, max_chars: int = CONTEXT_SAMPLE_CHARS) ->
 _PHASE0_CHUNK_SIZE = 2000  # Max chars per segment sent to Phase 0 extraction
 
 
-def _extract_all_segments(file_path: Path, chunk_size: int = _PHASE0_CHUNK_SIZE) -> List[str]:
-    """Extract all text from a document and split into fixed-size chunks for Phase 0."""
-    ext = file_path.suffix.lower()
+def _group_into_chunks(units: List[str], max_size: int) -> List[str]:
+    """Group semantic text units into chunks not exceeding *max_size* characters."""
+    chunks: List[str] = []
+    current: List[str] = []
+    current_len = 0
+    for unit in units:
+        unit = unit.strip()
+        if not unit:
+            continue
+        unit_len = len(unit)
+        if current_len + unit_len + 1 > max_size and current:
+            chunks.append("\n".join(current))
+            current = [unit]
+            current_len = unit_len
+        else:
+            current.append(unit)
+            current_len += unit_len + 1
+    if current:
+        chunks.append("\n".join(current))
+    return chunks
+
+
+def _split_paragraphs_to_sentences(paragraphs: List[str]) -> List[str]:
+    """Split paragraph-level text into sentences using blingfire."""
+    try:
+        from blingfire import text_to_sentences
+    except ImportError:
+        return paragraphs  # fallback: use paragraphs as-is
+    sentences: List[str] = []
+    for para in paragraphs:
+        sents = text_to_sentences(para).split("\n")
+        sentences.extend(s.strip() for s in sents if s.strip())
+    return sentences
+
+
+def _extract_spreadsheet_rows(wb) -> List[str]:
+    """Extract rows from an openpyxl workbook, preserving row structure with header labels."""
     parts: List[str] = []
+    for ws in wb.worksheets:
+        header_row: Optional[List[str]] = None
+        for row in ws.iter_rows(values_only=True):
+            cells = [str(c).strip() if c is not None else "" for c in row]
+            non_empty = [c for c in cells if c]
+            if not non_empty:
+                continue
+            if header_row is None:
+                header_row = cells
+                parts.append(" | ".join(non_empty))
+                continue
+            # Build row with header context
+            labeled: List[str] = []
+            for i, val in enumerate(cells):
+                if not val:
+                    continue
+                hdr = header_row[i] if i < len(header_row) and header_row[i] else ""
+                if hdr and hdr != val:
+                    labeled.append(f"{hdr}: {val}")
+                else:
+                    labeled.append(val)
+            if labeled:
+                parts.append(" | ".join(labeled))
+    return parts
+
+
+def _extract_all_segments(file_path: Path, chunk_size: int = _PHASE0_CHUNK_SIZE) -> List[str]:
+    """Extract text from a document as semantic units, then group into chunks for Phase 0.
+
+    - xlsx/xls: row-level units with column header prefixes
+    - docx/doc: sentence-level units via blingfire
+    - pptx: sentence-level units from slide text
+    - pdf: filename stem only (placeholder)
+    """
+    ext = file_path.suffix.lower()
+    units: List[str] = []  # semantic units (sentences or rows)
     try:
         if ext == ".docx":
             from docx import Document
             doc = Document(str(file_path))
-            for para in doc.paragraphs:
-                t = para.text.strip()
-                if t:
-                    parts.append(t)
+            paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+            units = _split_paragraphs_to_sentences(paragraphs)
         elif ext == ".pptx":
             from pptx import Presentation
             prs = Presentation(str(file_path))
+            paragraphs: List[str] = []
             for slide in prs.slides:
                 for shape in slide.shapes:
                     if shape.has_text_frame:
                         for para in shape.text_frame.paragraphs:
                             t = para.text.strip()
                             if t:
-                                parts.append(t)
+                                paragraphs.append(t)
+            units = _split_paragraphs_to_sentences(paragraphs)
         elif ext == ".xlsx":
             from openpyxl import load_workbook
             wb = load_workbook(str(file_path), read_only=True, data_only=True)
-            for ws in wb.worksheets:
-                for row in ws.iter_rows(values_only=True):
-                    for cell in row:
-                        if cell is not None:
-                            t = str(cell).strip()
-                            if t:
-                                parts.append(t)
+            units = _extract_spreadsheet_rows(wb)
             wb.close()
         elif ext == ".xls":
             if is_libreoffice_available():
@@ -155,21 +219,15 @@ def _extract_all_segments(file_path: Path, chunk_size: int = _PHASE0_CHUNK_SIZE)
                     xls_to_xlsx(str(file_path), tmp_xlsx)
                     from openpyxl import load_workbook
                     wb = load_workbook(tmp_xlsx, read_only=True, data_only=True)
-                    for ws in wb.worksheets:
-                        for row in ws.iter_rows(values_only=True):
-                            for cell in row:
-                                if cell is not None:
-                                    t = str(cell).strip()
-                                    if t:
-                                        parts.append(t)
+                    units = _extract_spreadsheet_rows(wb)
                     wb.close()
                 finally:
                     import os as _os
                     _os.unlink(tmp_xlsx) if _os.path.exists(tmp_xlsx) else None
             else:
-                parts.append(file_path.stem.replace("_", " ").replace("-", " "))
+                units.append(file_path.stem.replace("_", " ").replace("-", " "))
         elif ext == ".pdf":
-            parts.append(file_path.stem.replace("_", " ").replace("-", " "))
+            units.append(file_path.stem.replace("_", " ").replace("-", " "))
         elif ext == ".doc":
             if is_libreoffice_available():
                 import tempfile
@@ -178,29 +236,19 @@ def _extract_all_segments(file_path: Path, chunk_size: int = _PHASE0_CHUNK_SIZE)
                     doc_to_docx(str(file_path), tmp_docx)
                     from docx import Document
                     doc = Document(tmp_docx)
-                    for para in doc.paragraphs:
-                        t = para.text.strip()
-                        if t:
-                            parts.append(t)
+                    paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+                    units = _split_paragraphs_to_sentences(paragraphs)
                 finally:
                     import os as _os
                     _os.unlink(tmp_docx) if _os.path.exists(tmp_docx) else None
             else:
-                parts.append(file_path.stem.replace("_", " ").replace("-", " "))
+                units.append(file_path.stem.replace("_", " ").replace("-", " "))
     except Exception as exc:
         logger.debug("Phase 0 text extraction failed for %s: %s", file_path.name, exc)
 
-    # Join all parts and split into chunks
-    full_text = "\n".join(parts)
-    if not full_text.strip():
+    if not units:
         return []
-
-    chunks: List[str] = []
-    for i in range(0, len(full_text), chunk_size):
-        chunk = full_text[i : i + chunk_size].strip()
-        if chunk:
-            chunks.append(chunk)
-    return chunks
+    return _group_into_chunks(units, chunk_size)
 
 
 def _detect_document_context(

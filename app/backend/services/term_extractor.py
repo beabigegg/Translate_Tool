@@ -46,7 +46,10 @@ SCENARIO_TO_DOMAIN: Dict[str, str] = {
 
 _EXTRACTION_PROMPT_TEMPLATE = """\
 你是術語提取專家。請從以下【{domain}】領域文本中，提取所有專有名詞。
-包含：品牌名稱、型號、設備名稱、縮寫、製程術語、動作術語、品質術語。
+包含：品牌名稱、完整型號名稱、設備名稱、縮寫、製程術語、動作術語、品質術語。
+注意：
+- 型號名稱必須完整提取，例如「SMD C MAX」不要拆成「C MAX」
+- 代號+版本應完整提取，例如「OR128 A1」不要拆成「OR128」和「A1」
 排除：
 - 一般動詞、形容詞、介詞
 - 數字、單位、數值範圍（如 100mm、±0.5）
@@ -55,7 +58,7 @@ _EXTRACTION_PROMPT_TEMPLATE = """\
 - 純代碼縮寫（如 OK、N/A、TBD）
 
 輸出格式為 JSON array，不要任何額外說明：
-[{{"term": "...", "context": "...（術語出現的短語，10字以內）"}}, ...]
+[{{"term": "...", "context": "...（包含該術語的完整短語，20字以內）"}}, ...]
 
 文本：
 {segment_text}"""
@@ -121,7 +124,7 @@ class TermExtractor:
                         continue
                     key = term.lower()
                     if key not in all_terms:
-                        all_terms[key] = {"term": term, "context": c.get("context", "")[:30]}
+                        all_terms[key] = {"term": term, "context": c.get("context", "")[:60]}
             except Exception as exc:
                 logger.warning("[PHASE0] Extraction failed for segment %d: %s", idx, exc)
                 self.log(f"[PHASE0] Segment {idx} extraction error: {exc}")

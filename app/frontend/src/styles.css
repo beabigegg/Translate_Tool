@@ -2130,10 +2130,10 @@ select:focus-visible {
 }
 
 .term-panel {
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xl);
-  width: min(600px, 95vw);
+  background: var(--bg-card, #ffffff);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: var(--shadow-xl, 0 20px 60px rgba(0, 0, 0, 0.3));
+  width: min(640px, 95vw);
   max-height: 85vh;
   overflow: hidden;
   display: flex;
@@ -2365,7 +2365,7 @@ select:focus-visible {
   align-items: start;
   gap: 0.25rem 0.75rem;
   padding: 0.6rem 0.75rem;
-  background: var(--bg-card, #f8fafc);
+  background: var(--bg-subtle, #f8fafc);
   border: 1px solid var(--border, #e2e8f0);
   border-radius: 8px;
 }
