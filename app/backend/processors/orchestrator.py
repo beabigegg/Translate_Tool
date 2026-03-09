@@ -136,7 +136,7 @@ def _extract_all_segments(file_path: Path, chunk_size: int = _PHASE0_CHUNK_SIZE)
                             t = para.text.strip()
                             if t:
                                 parts.append(t)
-        elif ext in (".xlsx", ".xls"):
+        elif ext == ".xlsx":
             from openpyxl import load_workbook
             wb = load_workbook(str(file_path), read_only=True, data_only=True)
             for ws in wb.worksheets:
@@ -147,6 +147,15 @@ def _extract_all_segments(file_path: Path, chunk_size: int = _PHASE0_CHUNK_SIZE)
                             if t:
                                 parts.append(t)
             wb.close()
+        elif ext == ".xls":
+            import xlrd
+            wb = xlrd.open_workbook(str(file_path))
+            for ws in wb.sheets():
+                for row_idx in range(ws.nrows):
+                    for cell in ws.row(row_idx):
+                        t = str(cell.value).strip()
+                        if t and t not in ("", "empty:"):
+                            parts.append(t)
         elif ext == ".pdf":
             parts.append(file_path.stem.replace("_", " ").replace("-", " "))
         elif ext == ".doc":
