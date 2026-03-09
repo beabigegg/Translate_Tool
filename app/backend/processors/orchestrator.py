@@ -371,7 +371,7 @@ def process_files(
         # Phase 0: Term Extraction
         # ------------------------------------------------------------------
         if term_db is not None:
-            from app.backend.services.term_extractor import run_phase0, SCENARIO_TO_DOMAIN
+            from app.backend.services.term_extractor import run_phase0_multi, SCENARIO_TO_DOMAIN
             phase0_segments = _extract_all_segments(src)
             _scenario_name = (
                 (scenario.value if hasattr(scenario, "value") else str(scenario))
@@ -379,12 +379,12 @@ def process_files(
             )
             _domain = SCENARIO_TO_DOMAIN.get(_scenario_name, "general")
             _source_lang = src_lang or "Chinese"
-            _target_lang = targets[0] if targets else "English"
+            _target_langs = targets if targets else ["English"]
             try:
-                term_summary = run_phase0(
+                term_summary = run_phase0_multi(
                     segments=phase0_segments,
                     source_lang=_source_lang,
-                    target_lang=_target_lang,
+                    target_langs=_target_langs,
                     scenario=_scenario_name,
                     document_context=doc_context,
                     term_db=term_db,
@@ -399,8 +399,15 @@ def process_files(
                 log(f"[PHASE0] Unexpected error (non-fatal): {_ph0_exc}")
                 logger.warning("[PHASE0] Unexpected error: %s", _ph0_exc)
 
-            # Inject top terms into Phase 1 and Phase 2 system prompts
-            top_terms = term_db.get_top_terms(_target_lang, _domain)
+            # Inject top terms for all target languages into Phase 1 and Phase 2 system prompts
+            _seen_term_keys: set = set()
+            top_terms: list = []
+            for _lang in _target_langs:
+                for _t in term_db.get_top_terms(_lang, _domain):
+                    _k = (_t.source_text, _t.target_text)
+                    if _k not in _seen_term_keys:
+                        _seen_term_keys.add(_k)
+                        top_terms.append(_t)
             if top_terms:
                 term_block = build_terminology_block(top_terms)
                 # Phase 1: inject unless TranslateGemma (no system prompt support)

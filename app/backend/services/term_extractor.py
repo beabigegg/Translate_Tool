@@ -318,11 +318,44 @@ def run_phase0(
     timeout: Optional[TimeoutConfig] = None,
     log: Callable[[str], None] = lambda s: None,
 ) -> Dict:
-    """Run Phase 0 end-to-end: extract → filter → translate → write DB → unload.
+    """Run Phase 0 for a single target language (backward-compat wrapper)."""
+    return run_phase0_multi(
+        segments=segments,
+        source_lang=source_lang,
+        target_langs=[target_lang],
+        scenario=scenario,
+        document_context=document_context,
+        term_db=term_db,
+        model=model,
+        base_url=base_url,
+        timeout=timeout,
+        log=log,
+    )
 
-    Returns a term_summary dict: {extracted, skipped, added}.
+
+def run_phase0_multi(
+    segments: List[str],
+    source_lang: str,
+    target_langs: List[str],
+    scenario: str,
+    document_context: str,
+    term_db: TermDB,
+    model: str = DEFAULT_MODEL,
+    base_url: str = OLLAMA_BASE_URL,
+    timeout: Optional[TimeoutConfig] = None,
+    log: Callable[[str], None] = lambda s: None,
+) -> Dict:
+    """Run Phase 0 for multiple target languages.
+
+    Extracts candidates once (language-agnostic), then for each target language
+    filters unknown terms, translates, and writes to DB.
+
+    Returns a term_summary dict: {extracted, skipped, added} (totals across all languages).
     Always unloads the model. On failure, returns current DB terms still usable.
     """
+    if not target_langs:
+        target_langs = ["English"]
+
     domain = SCENARIO_TO_DOMAIN.get(scenario, "general")
     extractor = TermExtractor(model=model, base_url=base_url, timeout=timeout, log=log)
 
@@ -331,55 +364,59 @@ def run_phase0(
     added_count = 0
 
     try:
-        log(f"[PHASE0] Starting term extraction (domain={domain}, model={model})")
+        log(f"[PHASE0] Starting term extraction (domain={domain}, model={model}, targets={target_langs})")
 
-        # 1. Extract candidates from all segments
+        # 1. Extract candidates once — language-agnostic
         candidates = extractor.extract_from_segments(segments, domain)
         extracted_count = len(candidates)
         log(f"[PHASE0] Extracted {extracted_count} unique term candidates")
 
-        # 2. Filter already-known terms
-        unknown = term_db.get_unknown(candidates, target_lang, domain)
-        skipped_count = extracted_count - len(unknown)
-        log(f"[PHASE0] {skipped_count} already in DB, {len(unknown)} unknown")
+        # 2–4. For each target language: filter → translate → write DB
+        for target_lang in target_langs:
+            unknown = term_db.get_unknown(candidates, target_lang, domain)
+            lang_skipped = extracted_count - len(unknown)
+            log(f"[PHASE0] [{target_lang}] {lang_skipped} already in DB, {len(unknown)} unknown")
 
-        # 3. Translate unknown terms
-        if unknown:
-            translations = extractor.translate_unknown(
-                unknown,
-                source_lang=source_lang,
-                target_lang=target_lang,
-                domain=domain,
-                document_context=document_context,
-            )
-
-            # 4. Write to DB
-            for t in translations:
-                src = t.get("source", "")
-                tgt = t.get("target", "")
-                conf = t.get("confidence", 1.0)
-                if not src or not tgt:
-                    continue
-                # Find context_snippet from candidates
-                ctx = next(
-                    (c.get("context", "") for c in candidates if c.get("term") == src),
-                    "",
-                )
-                term = Term(
-                    source_text=src,
-                    target_text=tgt,
+            if unknown:
+                translations = extractor.translate_unknown(
+                    unknown,
                     source_lang=source_lang,
                     target_lang=target_lang,
                     domain=domain,
-                    context_snippet=ctx,
-                    confidence=conf,
-                    usage_count=0,
+                    document_context=document_context,
                 )
-                result = term_db.insert(term, strategy="skip")
-                if result == "inserted":
-                    added_count += 1
-                else:
-                    skipped_count += 1
+
+                lang_added = 0
+                for t in translations:
+                    src = t.get("source", "")
+                    tgt = t.get("target", "")
+                    conf = t.get("confidence", 1.0)
+                    if not src or not tgt:
+                        continue
+                    ctx = next(
+                        (c.get("context", "") for c in candidates if c.get("term") == src),
+                        "",
+                    )
+                    term = Term(
+                        source_text=src,
+                        target_text=tgt,
+                        source_lang=source_lang,
+                        target_lang=target_lang,
+                        domain=domain,
+                        context_snippet=ctx,
+                        confidence=conf,
+                        usage_count=0,
+                    )
+                    result = term_db.insert(term, strategy="skip")
+                    if result == "inserted":
+                        lang_added += 1
+                    else:
+                        lang_skipped += 1
+
+                added_count += lang_added
+                log(f"[PHASE0] [{target_lang}] added={lang_added}")
+
+            skipped_count += lang_skipped
 
         log(f"[PHASE0] Done: extracted={extracted_count}, skipped={skipped_count}, added={added_count}")
 
