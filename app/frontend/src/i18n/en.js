@@ -1,0 +1,100 @@
+export default {
+  // Nav
+  'nav.translate': 'Translate',
+  'nav.terms': 'Term DB',
+  'nav.history': 'History',
+  'nav.settings': 'Settings',
+
+  // Page titles
+  'page.translate': 'Translation Workspace',
+  'page.terms': 'Term Database',
+  'page.termsReview': 'Term Review',
+  'page.history': 'Translation History',
+  'page.settings': 'Settings',
+
+  // Steps
+  'step.upload': 'Upload Files',
+  'step.settings': 'Language & Settings',
+  'step.progress': 'Translation Progress',
+
+  // Buttons
+  'btn.next': 'Next',
+  'btn.prev': 'Previous',
+  'btn.submit': 'Start Translation',
+  'btn.submitExtract': 'Start Extraction',
+  'btn.submitting': 'Submitting...',
+  'btn.cancel': 'Cancel Translation',
+  'btn.download': 'Download Translation',
+  'btn.newTranslation': 'New Translation',
+  'btn.restart': 'Start Over',
+  'btn.approveAll': 'Approve All',
+  'btn.approve': 'Approve',
+  'btn.edit': 'Edit',
+  'btn.export': 'Export',
+  'btn.selectFile': 'Select File',
+  'btn.clearCache': 'Clear Cache',
+  'btn.expandLangs': 'Show all languages',
+  'btn.collapseLangs': 'Show less',
+
+  // Labels
+  'label.srcLang': 'Source Language',
+  'label.autoDetect': 'Auto-detect',
+  'label.profile': 'Translation Profile',
+  'label.targetLangs': 'Target Languages',
+  'label.translate': 'Translate',
+  'label.extractOnly': 'Extract Terms Only',
+  'label.modelRoute': 'Model Routing',
+  'label.format': 'Format',
+  'label.conflictStrategy': 'Conflict Strategy',
+  'label.theme': 'Theme',
+  'label.language': 'Language',
+  'label.gpuVram': 'GPU VRAM',
+
+  // Feedback
+  'msg.translationComplete': 'Translation complete',
+  'msg.translationFailed': 'Translation failed',
+  'msg.translationCancelled': 'Translation cancelled',
+  'msg.ollamaOnline': 'Ollama service reconnected',
+  'msg.ollamaOffline': 'Ollama service not responding, please check it is running',
+  'msg.cacheCleared': 'Cache cleared',
+  'msg.termApproved': 'Term approved',
+  'msg.noTerms': 'No terms pending review',
+  'msg.noApprovedTerms': 'No approved terms yet',
+  'msg.noHistory': 'No translation history',
+  'msg.dropFiles': 'Drag files here or click to browse',
+  'msg.supported': 'Supported',
+  'msg.errorPage': 'Page Error',
+  'msg.retry': 'Retry',
+  'msg.loading': 'Loading...',
+  'msg.translating': 'Translation in progress, wait or cancel before switching',
+  'msg.complete': 'Complete',
+
+  // Settings
+  'settings.systemStatus': 'System Status',
+  'settings.gpuMemory': 'GPU & Memory',
+  'settings.defaults': 'Translation Defaults',
+  'settings.interface': 'Interface',
+  'settings.themeLight': 'Light',
+  'settings.themeDark': 'Dark',
+  'settings.themeSystem': 'System',
+
+  // Terms
+  'terms.total': 'Total Terms',
+  'terms.pending': 'Pending Review',
+  'terms.approved': 'Approved',
+  'terms.overview': 'Overview',
+  'terms.approvedTab': 'Approved',
+  'terms.importExport': 'Import/Export',
+  'terms.exportTitle': 'Export Terms',
+  'terms.importTitle': 'Import Terms',
+  'terms.reviewPending': 'Review Pending Terms',
+  'terms.search': 'Search...',
+  'terms.allLangs': 'All Languages',
+  'terms.allDomains': 'All Domains',
+
+  // Status
+  'status.online': 'Ollama Online',
+  'status.offline': 'Ollama Offline',
+  'status.completed': 'Completed',
+  'status.failed': 'Failed',
+};

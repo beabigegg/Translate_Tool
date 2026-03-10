@@ -1,0 +1,100 @@
+export default {
+  // Nav
+  'nav.translate': '翻譯',
+  'nav.terms': '術語庫',
+  'nav.history': '歷史紀錄',
+  'nav.settings': '設定',
+
+  // Page titles
+  'page.translate': '翻譯工作台',
+  'page.terms': '術語庫',
+  'page.termsReview': '術語審核',
+  'page.history': '翻譯歷史',
+  'page.settings': '設定',
+
+  // Steps
+  'step.upload': '上傳檔案',
+  'step.settings': '語言與設定',
+  'step.progress': '翻譯進度',
+
+  // Buttons
+  'btn.next': '下一步',
+  'btn.prev': '上一步',
+  'btn.submit': '開始翻譯',
+  'btn.submitExtract': '開始萃取',
+  'btn.submitting': '提交中...',
+  'btn.cancel': '取消翻譯',
+  'btn.download': '下載譯文',
+  'btn.newTranslation': '開始新翻譯',
+  'btn.restart': '重新開始',
+  'btn.approveAll': '全部核准',
+  'btn.approve': '核准',
+  'btn.edit': '編輯',
+  'btn.export': '匯出',
+  'btn.selectFile': '選擇檔案',
+  'btn.clearCache': '清除快取',
+  'btn.expandLangs': '展開完整語言列表',
+  'btn.collapseLangs': '收起語言列表',
+
+  // Labels
+  'label.srcLang': '來源語言',
+  'label.autoDetect': '自動偵測',
+  'label.profile': '翻譯情境',
+  'label.targetLangs': '目標語言',
+  'label.translate': '翻譯',
+  'label.extractOnly': '僅萃取術語',
+  'label.modelRoute': '模型路由',
+  'label.format': '格式',
+  'label.conflictStrategy': '衝突策略',
+  'label.theme': '主題',
+  'label.language': '語言',
+  'label.gpuVram': 'GPU 顯存容量',
+
+  // Feedback
+  'msg.translationComplete': '翻譯完成',
+  'msg.translationFailed': '翻譯失敗',
+  'msg.translationCancelled': '翻譯已取消',
+  'msg.ollamaOnline': 'Ollama 服務已恢復連線',
+  'msg.ollamaOffline': 'Ollama 服務未回應，請確認已啟動',
+  'msg.cacheCleared': '快取已清除',
+  'msg.termApproved': '術語已核准',
+  'msg.noTerms': '無待審核術語',
+  'msg.noApprovedTerms': '尚無已核准術語',
+  'msg.noHistory': '尚無翻譯紀錄',
+  'msg.dropFiles': '拖曳檔案至此，或點擊選擇',
+  'msg.supported': '支援',
+  'msg.errorPage': '頁面發生錯誤',
+  'msg.retry': '重試',
+  'msg.loading': '載入中...',
+  'msg.translating': '翻譯進行中，請等待完成或取消後再切換',
+  'msg.complete': '完成',
+
+  // Settings
+  'settings.systemStatus': '系統狀態',
+  'settings.gpuMemory': 'GPU 與記憶體',
+  'settings.defaults': '翻譯預設值',
+  'settings.interface': '介面',
+  'settings.themeLight': '淺色',
+  'settings.themeDark': '暗色',
+  'settings.themeSystem': '跟隨系統',
+
+  // Terms
+  'terms.total': '總術語數',
+  'terms.pending': '待審核',
+  'terms.approved': '已核准',
+  'terms.overview': '總覽',
+  'terms.approvedTab': '已核准',
+  'terms.importExport': '匯入匯出',
+  'terms.exportTitle': '匯出術語庫',
+  'terms.importTitle': '匯入術語庫',
+  'terms.reviewPending': '審核待審術語',
+  'terms.search': '搜尋...',
+  'terms.allLangs': '所有語言',
+  'terms.allDomains': '所有領域',
+
+  // Status
+  'status.online': 'Ollama 連線中',
+  'status.offline': 'Ollama 離線',
+  'status.completed': '完成',
+  'status.failed': '失敗',
+};
