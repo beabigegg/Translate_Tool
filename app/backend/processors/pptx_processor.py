@@ -191,6 +191,7 @@ def translate_pptx(
     max_text_length: int = MAX_TEXT_LENGTH,
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
     refine_client: Optional[OllamaClient] = None,
+    pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
 ) -> bool:
     prs = pptx.Presentation(in_path)
     # segs: List of (segment_type, object_ref, text)
@@ -256,6 +257,8 @@ def translate_pptx(
             _seen.add(t)
             uniq.append(t)
 
+    if pre_translate_hook:
+        pre_translate_hook(uniq)
     tmap, _, fail_cnt, stopped = translate_texts(
         uniq,
         targets,

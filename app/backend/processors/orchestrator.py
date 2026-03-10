@@ -16,12 +16,14 @@ from app.backend.config import (
     DEFAULT_MAX_BATCH_CHARS,
     DEFAULT_MODEL,
     DYNAMIC_SCENARIO_STRATEGY_ENABLED,
+    GENERAL_NUM_CTX,
     LAYOUT_PRESERVATION_MODE,
     OLLAMA_BASE_URL,
     PDF_SKIP_HEADER_FOOTER,
     QWEN_CONTEXT_FLOW_ENABLED,
     SCENARIO_CACHE_VARIANT_ENABLED,
     SUPPORTED_EXTENSIONS,
+    TRANSLATION_NUM_CTX,
     TimeoutConfig,
 )
 from app.backend.processors.com_helpers import is_win32com_available, word_convert
@@ -38,6 +40,23 @@ from app.backend.services.translation_strategy import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _cap_terms_by_budget(terms, num_ctx, existing_prompt):
+    """Limit terms to fit within ≤25% of num_ctx (conservative: 2.5 chars/token)."""
+    max_term_tokens = int(num_ctx * 0.25)
+    existing_tokens = int(len(existing_prompt) / 2.5)
+    available_tokens = max(0, max_term_tokens - existing_tokens)
+    header_chars = len("Terminology constraints:\n")
+    used_chars = header_chars
+    capped = []
+    for t in terms:
+        line_chars = len(f"- {t.source_text} => {t.target_text}\n")
+        if int((used_chars + line_chars) / 2.5) > available_tokens:
+            break
+        used_chars += line_chars
+        capped.append(t)
+    return capped
 
 
 def _sample_file_text(file_path: Path, max_chars: int = CONTEXT_SAMPLE_CHARS) -> str:
@@ -101,8 +120,15 @@ def _sample_file_text(file_path: Path, max_chars: int = CONTEXT_SAMPLE_CHARS) ->
             wb.close()
             return "\n".join(parts)[:max_chars]
         elif ext == ".pdf":
-            # PDF parsing is expensive; use filename as sample
-            return file_path.stem.replace("_", " ").replace("-", " ")
+            import fitz
+            doc = fitz.open(str(file_path))
+            text = ""
+            for page in doc:
+                text += page.get_text()
+                if len(text) >= max_chars:
+                    break
+            doc.close()
+            return text[:max_chars] if text.strip() else file_path.stem.replace("_", " ").replace("-", " ")
         elif ext == ".doc":
             # .doc gets converted to .docx later; use filename
             return file_path.stem.replace("_", " ").replace("-", " ")
@@ -227,7 +253,18 @@ def _extract_all_segments(file_path: Path, chunk_size: int = _PHASE0_CHUNK_SIZE)
             else:
                 units.append(file_path.stem.replace("_", " ").replace("-", " "))
         elif ext == ".pdf":
-            units.append(file_path.stem.replace("_", " ").replace("-", " "))
+            import fitz
+            doc = fitz.open(str(file_path))
+            for page in doc:
+                page_text = page.get_text().strip()
+                if page_text:
+                    units.append(page_text)
+            doc.close()
+            if units:
+                sentences = _split_paragraphs_to_sentences(units)
+                units = sentences
+            else:
+                units.append(file_path.stem.replace("_", " ").replace("-", " "))
         elif ext == ".doc":
             if is_libreoffice_available():
                 import tempfile
@@ -454,9 +491,9 @@ def process_files(
         # ------------------------------------------------------------------
         # Phase 0: Term Extraction
         # ------------------------------------------------------------------
+        _phase0_hook = None
         if term_db is not None:
             from app.backend.services.term_extractor import run_phase0_multi, SCENARIO_TO_DOMAIN
-            phase0_segments = _extract_all_segments(src)
             _scenario_name = (
                 (scenario.value if hasattr(scenario, "value") else str(scenario))
                 if DYNAMIC_SCENARIO_STRATEGY_ENABLED else "general"
@@ -464,50 +501,91 @@ def process_files(
             _domain = SCENARIO_TO_DOMAIN.get(_scenario_name, "general")
             _source_lang = src_lang or "Chinese"
             _target_langs = targets if targets else ["English"]
-            try:
-                term_summary = run_phase0_multi(
-                    segments=phase0_segments,
-                    source_lang=_source_lang,
-                    target_langs=_target_langs,
-                    scenario=_scenario_name,
-                    document_context=doc_context,
-                    term_db=term_db,
-                    model=DEFAULT_MODEL,
-                    base_url=OLLAMA_BASE_URL,
-                    timeout=timeout_config,
-                    log=log,
-                )
-                for k in aggregate_term_summary:
-                    aggregate_term_summary[k] += term_summary.get(k, 0)
-            except Exception as _ph0_exc:
-                log(f"[PHASE0] Unexpected error (non-fatal): {_ph0_exc}")
-                logger.warning("[PHASE0] Unexpected error: %s", _ph0_exc)
 
-            # Inject top terms for all target languages into Phase 1 and Phase 2 system prompts
-            _seen_term_keys: set = set()
-            top_terms: list = []
-            for _lang in _target_langs:
-                for _t in term_db.get_top_terms(_lang, _domain):
-                    _k = (_t.source_text, _t.target_text)
-                    if _k not in _seen_term_keys:
-                        _seen_term_keys.add(_k)
-                        top_terms.append(_t)
-            if top_terms:
-                term_block = build_terminology_block(top_terms)
-                # Phase 1: inject unless TranslateGemma (no system prompt support)
-                if not client._is_translategemma_model():
-                    client.system_prompt = (
-                        client.system_prompt.rstrip() + "\n\n" + term_block
-                        if client.system_prompt.strip()
-                        else term_block
+            if extraction_only:
+                # Standalone extraction: use 2K-char chunks from _extract_all_segments
+                phase0_segments = _extract_all_segments(src)
+                try:
+                    term_summary = run_phase0_multi(
+                        segments=phase0_segments,
+                        source_lang=_source_lang,
+                        target_langs=_target_langs,
+                        scenario=_scenario_name,
+                        document_context=doc_context,
+                        term_db=term_db,
+                        model=DEFAULT_MODEL,
+                        base_url=OLLAMA_BASE_URL,
+                        timeout=timeout_config,
+                        log=log,
                     )
-                # Phase 2 Refiner: always inject
-                if refine_client is not None:
-                    refine_client.system_prompt = (
-                        refine_client.system_prompt.rstrip() + "\n\n" + term_block
-                        if refine_client.system_prompt.strip()
-                        else term_block
-                    )
+                    for k in aggregate_term_summary:
+                        aggregate_term_summary[k] += term_summary.get(k, 0)
+                except Exception as _ph0_exc:
+                    log(f"[PHASE0] Unexpected error (non-fatal): {_ph0_exc}")
+                    logger.warning("[PHASE0] Unexpected error: %s", _ph0_exc)
+            else:
+                # Translation mode: build hook for processors to call with their actual segments
+                def _phase0_hook(uniq_texts: List[str]) -> None:
+                    """Phase 0 hook: extract terms from translation segments, inject into prompts."""
+                    try:
+                        _ts = run_phase0_multi(
+                            segments=uniq_texts,
+                            source_lang=_source_lang,
+                            target_langs=_target_langs,
+                            scenario=_scenario_name,
+                            document_context=doc_context,
+                            term_db=term_db,
+                            model=DEFAULT_MODEL,
+                            base_url=OLLAMA_BASE_URL,
+                            timeout=timeout_config,
+                            log=log,
+                        )
+                        for k in aggregate_term_summary:
+                            aggregate_term_summary[k] += _ts.get(k, 0)
+                    except Exception as _exc:
+                        log(f"[PHASE0] Unexpected error (non-fatal): {_exc}")
+                        logger.warning("[PHASE0] Unexpected error: %s", _exc)
+                        return
+
+                    # Retrieve approved/conf=1.0 terms for this document
+                    _doc_source_texts = _ts.get("extracted_source_texts", [])
+                    _seen_keys: set = set()
+                    _top_terms: list = []
+                    for _lang in _target_langs:
+                        for _t in term_db.get_document_terms(_lang, _domain, _doc_source_texts):
+                            _k = (_t.source_text, _t.target_text)
+                            if _k not in _seen_keys:
+                                _seen_keys.add(_k)
+                                _top_terms.append(_t)
+                    if not _top_terms:
+                        return
+
+                    # Phase 1: inject unless TranslateGemma
+                    if not client._is_translategemma_model():
+                        _p1_ctx = TRANSLATION_NUM_CTX if client._is_translation_dedicated() else GENERAL_NUM_CTX
+                        _p1_terms = _cap_terms_by_budget(_top_terms, _p1_ctx, client.system_prompt or "")
+                        if _p1_terms:
+                            _block = build_terminology_block(_p1_terms)
+                            client.system_prompt = (
+                                client.system_prompt.rstrip() + "\n\n" + _block
+                                if client.system_prompt.strip()
+                                else _block
+                            )
+                            log(f"[PHASE0] Injected {len(_p1_terms)}/{len(_top_terms)} terms into Phase 1 (budget: {_p1_ctx} ctx)")
+                        elif _top_terms:
+                            log(f"[PHASE0] WARNING: No room for terms in Phase 1 (ctx={_p1_ctx})")
+
+                    # Phase 2 Refiner: always inject
+                    if refine_client is not None:
+                        _p2_terms = _cap_terms_by_budget(_top_terms, GENERAL_NUM_CTX, refine_client.system_prompt or "")
+                        if _p2_terms:
+                            _block2 = build_terminology_block(_p2_terms)
+                            refine_client.system_prompt = (
+                                refine_client.system_prompt.rstrip() + "\n\n" + _block2
+                                if refine_client.system_prompt.strip()
+                                else _block2
+                            )
+                            log(f"[PHASE0] Injected {len(_p2_terms)}/{len(_top_terms)} terms into Phase 2 (budget: {GENERAL_NUM_CTX} ctx)")
 
         # extraction_only mode: skip translation
         if extraction_only:
@@ -528,6 +606,7 @@ def process_files(
                     log=log,
                     max_batch_chars=max_batch_chars,
                     refine_client=refine_client,
+                    pre_translate_hook=_phase0_hook,
                 )
             elif ext == ".doc":
                 tmp_docx = str(output_dir / f"{src.stem}__tmp.docx")
@@ -557,6 +636,7 @@ def process_files(
                         log=log,
                         max_batch_chars=max_batch_chars,
                         refine_client=refine_client,
+                        pre_translate_hook=_phase0_hook,
                     )
                 finally:
                     try:
@@ -574,6 +654,7 @@ def process_files(
                     log=log,
                     max_batch_chars=max_batch_chars,
                     refine_client=refine_client,
+                    pre_translate_hook=_phase0_hook,
                 )
             elif ext in (".xlsx", ".xls"):
                 stopped = translate_xlsx_xls(
@@ -586,6 +667,7 @@ def process_files(
                     log=log,
                     max_batch_chars=max_batch_chars,
                     refine_client=refine_client,
+                    pre_translate_hook=_phase0_hook,
                 )
             elif ext == ".pdf":
                 log(f"[PDF] Using output_format={output_format}, layout_mode={layout_mode}")
@@ -600,6 +682,7 @@ def process_files(
                     skip_header_footer=PDF_SKIP_HEADER_FOOTER,
                     output_format=output_format or "docx",
                     layout_mode=layout_mode,
+                    pre_translate_hook=_phase0_hook,
                 )
             else:
                 log(f"[SKIP] Unsupported file: {src.name}")

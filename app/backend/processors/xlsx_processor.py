@@ -50,6 +50,7 @@ def translate_xlsx_xls(
     max_text_length: int = MAX_TEXT_LENGTH,
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
     refine_client: Optional[OllamaClient] = None,
+    pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
 ) -> bool:
     ext = Path(in_path).suffix.lower()
     out_xlsx = Path(out_path).with_suffix(".xlsx")
@@ -130,6 +131,8 @@ def translate_xlsx_xls(
         if s[3] not in _seen:
             _seen.add(s[3])
             uniq.append(s[3])
+    if pre_translate_hook:
+        pre_translate_hook(uniq)
     tmap, _, fail_cnt, stopped = translate_texts(
         uniq,
         targets,

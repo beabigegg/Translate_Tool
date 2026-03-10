@@ -114,6 +114,33 @@ class TermDB:
             ).fetchall()
         return [_row_to_term(r) for r in rows]
 
+    def get_document_terms(
+        self,
+        target_lang: str,
+        domain: str,
+        source_texts: List[str],
+    ) -> List[Term]:
+        """Return injection-safe terms matching the given source_texts.
+
+        Only returns terms with status='approved' OR confidence=1.0,
+        scoped to the current document's extracted terms.
+        """
+        if not source_texts:
+            return []
+        with _DB_LOCK, self._connect() as conn:
+            placeholders = ",".join("?" for _ in source_texts)
+            rows = conn.execute(
+                f"""
+                SELECT * FROM terms
+                WHERE target_lang=? AND domain=?
+                  AND (status='approved' OR confidence=1.0)
+                  AND source_text IN ({placeholders})
+                ORDER BY confidence DESC, usage_count DESC
+                """,
+                [target_lang, domain] + list(source_texts),
+            ).fetchall()
+        return [_row_to_term(r) for r in rows]
+
     # ------------------------------------------------------------------
     # Write methods
     # ------------------------------------------------------------------

@@ -71,6 +71,7 @@ def translate_pdf(
     output_format: str = "docx",
     layout_mode: str = "inline",
     draw_mask: Optional[bool] = None,
+    pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
 ) -> bool:
     """Translate a PDF file.
 
@@ -116,6 +117,7 @@ def translate_pdf(
             skip_header_footer,
             layout_mode,
             draw_mask,
+            pre_translate_hook=pre_translate_hook,
         )
 
     # Try Windows COM conversion first (highest quality)
@@ -132,6 +134,7 @@ def translate_pdf(
                 include_headers_shapes_via_com=False,
                 stop_flag=stop_flag,
                 log=log,
+                pre_translate_hook=pre_translate_hook,
             )
             try:
                 os.remove(temp_docx)
@@ -155,6 +158,7 @@ def translate_pdf(
             stop_flag,
             log,
             skip_header_footer,
+            pre_translate_hook=pre_translate_hook,
         )
     else:
         return _translate_pdf_with_pypdf2(
@@ -165,6 +169,7 @@ def translate_pdf(
             client,
             stop_flag,
             log,
+            pre_translate_hook=pre_translate_hook,
         )
 
 
@@ -177,6 +182,7 @@ def _translate_pdf_with_pymupdf(
     stop_flag: Optional[threading.Event],
     log: Callable[[str], None],
     skip_header_footer: Optional[bool],
+    pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
 ) -> bool:
     """Translate PDF using PyMuPDF parser with bbox support.
 
@@ -225,6 +231,8 @@ def _translate_pdf_with_pymupdf(
         # Collect unique texts for batch translation
         unique_texts = list(set(e.content.strip() for e in translatable if e.content.strip()))
         log(f"[PDF] Translating {len(unique_texts)} unique texts")
+        if pre_translate_hook:
+            pre_translate_hook(unique_texts)
 
         # Batch translate for each target language
         stopped = False
@@ -310,6 +318,7 @@ def _translate_pdf_with_pypdf2(
     client: OllamaClient,
     stop_flag: Optional[threading.Event],
     log: Callable[[str], None],
+    pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
 ) -> bool:
     """Translate PDF using PyPDF2 (fallback method).
 
@@ -344,6 +353,8 @@ def _translate_pdf_with_pypdf2(
         # Collect unique texts for batch translation
         unique_texts = list(set(text for _, text in page_texts if text))
         log(f"[PDF] PyPDF2: {total_pages} pages, {len(unique_texts)} unique texts")
+        if pre_translate_hook:
+            pre_translate_hook(unique_texts)
 
         # Batch translate for each target language
         translations_by_target = {}
@@ -404,6 +415,7 @@ def _translate_pdf_to_pdf(
     skip_header_footer: Optional[bool],
     layout_mode: str,
     draw_mask: Optional[bool] = None,
+    pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
 ) -> bool:
     """Translate PDF to PDF with layout preservation.
 
@@ -468,6 +480,8 @@ def _translate_pdf_to_pdf(
         # The translation quality is improved by using paragraph-level granularity in translate_blocks_batch
         unique_texts = list(set(e.content.strip() for e in translatable))
         log(f"[PDF] Translating {len(unique_texts)} unique text blocks")
+        if pre_translate_hook:
+            pre_translate_hook(unique_texts)
 
         # Determine render mode
         mode_enum = RenderMode.OVERLAY if layout_mode == "overlay" else RenderMode.SIDE_BY_SIDE

@@ -25,6 +25,10 @@ from app.backend.api.schemas import (
     TermImportResult,
     TermItem,
     TermStatsResponse,
+    WikidataCandidate,
+    WikidataImportRequest,
+    WikidataSearchRequest,
+    WikidataSearchResponse,
 )
 from app.backend.clients.ollama_client import list_ollama_models
 from app.backend.config import ModelType, VRAM_METADATA
@@ -439,3 +443,42 @@ def terms_edit(body: TermEditRequest):
     if not found:
         raise HTTPException(status_code=404, detail="Term not found")
     return {"ok": True}
+
+
+# ------------------------------------------------------------------
+# Wikidata term lookup
+# ------------------------------------------------------------------
+
+@router.post("/terms/wikidata/search", response_model=WikidataSearchResponse)
+def wikidata_search(body: WikidataSearchRequest):
+    """Search Wikidata for a term and return multilingual translations."""
+    from app.backend.services.wikidata_lookup import search_wikidata
+
+    candidates = search_wikidata(
+        term=body.term,
+        source_lang=body.source_lang,
+        target_langs=body.target_langs,
+    )
+    return WikidataSearchResponse(
+        term=body.term,
+        candidates=[WikidataCandidate(**c) for c in candidates],
+    )
+
+
+@router.post("/terms/wikidata/import")
+def wikidata_import(body: WikidataImportRequest):
+    """Import a single Wikidata lookup result into the term database."""
+    from app.backend.models.term import Term
+
+    term = Term(
+        source_text=body.source_text,
+        target_text=body.target_text,
+        source_lang=body.source_lang,
+        target_lang=body.target_lang,
+        domain=body.domain,
+        context_snippet=f"wikidata:{body.entity_id}" if body.entity_id else "",
+        confidence=0.9,
+        status="unverified",
+    )
+    result = _term_db.insert(term, strategy="merge")
+    return {"ok": True, "result": result}

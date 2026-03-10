@@ -479,6 +479,7 @@ def translate_docx(
     log: Callable[[str], None] = lambda s: None,
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
     refine_client: Optional[OllamaClient] = None,
+    pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
 ) -> bool:
     from shutil import copyfile
 
@@ -502,6 +503,8 @@ def translate_docx(
         if s.text not in seen_texts and should_translate(s.text, (src_lang or "auto")):
             seen_texts.add(s.text)
             uniq_texts.append(s.text)
+    if pre_translate_hook:
+        pre_translate_hook(uniq_texts)
     tmap, _, fail_cnt, stopped = translate_texts(
         uniq_texts,
         targets,

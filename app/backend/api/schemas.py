@@ -69,6 +69,34 @@ class TermEditRequest(BaseModel):
     confidence: Optional[float] = None
 
 
+class WikidataSearchRequest(BaseModel):
+    term: str
+    source_lang: str = "Chinese"
+    target_langs: List[str] = ["English"]
+    domain: str = "general"
+
+
+class WikidataCandidate(BaseModel):
+    entity_id: str
+    source_label: str
+    description: str
+    labels: Dict[str, str]
+
+
+class WikidataSearchResponse(BaseModel):
+    term: str
+    candidates: List[WikidataCandidate]
+
+
+class WikidataImportRequest(BaseModel):
+    source_text: str
+    target_text: str
+    source_lang: str
+    target_lang: str
+    domain: str = "general"
+    entity_id: str = ""
+
+
 class ModelsResponse(BaseModel):
     models: List[str]
 

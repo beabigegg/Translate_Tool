@@ -46,16 +46,18 @@ SCENARIO_TO_DOMAIN: Dict[str, str] = {
 
 _EXTRACTION_PROMPT_TEMPLATE = """\
 你是術語提取專家。請從以下【{domain}】領域文本中，提取所有專有名詞。
-包含：品牌名稱、完整型號名稱、設備名稱、縮寫、製程術語、動作術語、品質術語。
+包含：品牌名稱、完整型號名稱、設備名稱、製程術語、動作術語、品質術語、行業縮寫（如 SPC、FMEA、ESD）。
 注意：
 - 型號名稱必須完整提取，例如「SMD C MAX」不要拆成「C MAX」
 - 代號+版本應完整提取，例如「OR128 A1」不要拆成「OR128」和「A1」
-排除：
+排除（非常重要，以下項目絕對不要提取）：
 - 一般動詞、形容詞、介詞
-- 數字、單位、數值範圍（如 100mm、±0.5）
-- 文件編號、表單編號、版本號（如 SOP-001、Rev.1、Form-A）
+- 數值、規格值、帶單位的數字（如 100mm、±0.5、65±30g、4~6kg/cm2、3ΦAC 380V、60A、30～60cm）
+- 文件編號、表單編號、版本號（如 SOP-001、Rev.1、Form-A、QC-OC063、F-QC1077、W-RD2228）
+- 版次代號（如 A0、A1、B0、B1、C0、D2）
 - 料號、品號（如 P/N: xxxxx）
 - 純代碼縮寫（如 OK、N/A、TBD）
+- 登入相關的欄位名稱（如 username、password、panjit 帳號）
 
 輸出格式為 JSON array，不要任何額外說明：
 [{{"term": "...", "context": "...（包含該術語的完整短語，20字以內）"}}, ...]
@@ -69,15 +71,55 @@ _TRANSLATION_PROMPT_TEMPLATE = """\
 
 規則：
 1. 根據 context 欄位判斷詞義，避免歧義
-2. 品牌名稱、型號、縮寫保留原文不翻譯（confidence=1.0）
-3. 優先使用目標語言業界標準術語，避免逐字直譯
-4. 輸出嚴格符合 JSON，不加任何說明
+2. 以下類型必須保留原文不翻譯，設 confidence=1.0：
+   - 品牌名稱（如 Panjit、SMD Clip）
+   - 型號名稱（如 SMD-C MAX、OR128 A1、Mfm1200L）
+   - 行業縮寫（如 SPC、FMEA、ESD、IPQC、FQC、IQC）
+   - 軟體名稱（如 SD2000、Ins-M、DigitalCameraViewer）
+   - 部門代碼（如 RD、MF、RM、QE、PE）
+3. 技術術語應使用目標語言的業界標準翻譯，不要逐字直譯
+4. 翻譯結果不可混入原文語言的文字（例如越南文翻譯不可夾雜中文字）
+5. 每個 source 必須有對應的 target，不可遺漏
+6. 輸出嚴格符合 JSON，不加任何說明
 
 術語列表：
 {terms_json}
 
 輸出格式：
 {{"translations": [{{"source": "...", "target": "...", "confidence": 0.0}}]}}"""
+
+
+# Regex patterns for post-extraction filtering (things the LLM might still extract)
+_SKIP_PATTERNS = [
+    # Pure numeric values, specs, ranges (65±30g, 4~6kg/cm2, 3ΦAC 380V, 60A, 30～60cm)
+    # Require numeric part ≥2 chars OR unit part ≥2 chars to avoid killing "5S"
+    re.compile(r'^[\d.,±~～<>≤≥]{2,}\s*[a-zA-Zμµ°Φ/%²³]*$'),
+    re.compile(r'^[\d.,±~～<>≤≥]+\s*[a-zA-Zμµ°Φ/%²³]{2,}$'),
+    # Numeric with units (100mm, 0.5mm)
+    re.compile(r'^\d+[\d.,]*\s*(mm|cm|um|μm|µm|kg|g|V|A|Hz|HZ|℃|°C|MPa|ppm)\b', re.IGNORECASE),
+    # Spec ranges like "4~6kg/cm2", "3ΦAC 380V 50HZ 60A"
+    re.compile(r'^\d+[~～]\d+\s*\w+'),  # 4~6kg/cm2
+    re.compile(r'^\d.*[VvAa]\s*$'),
+    re.compile(r'^\d+[ΦΦ]'),
+    # Version codes (A0, A1, B0, B1, C0, D2) — single letter + single digit, but NOT industry terms like 5S
+    re.compile(r'^[A-D]\d$'),
+    # Document numbers (QC-OC063, F-QC1077, W-RD2228, RD-OC019)
+    re.compile(r'^[A-Z]{1,3}-[A-Z]{1,4}\d{2,}', re.IGNORECASE),
+    # Login field names
+    re.compile(r'^(username|usename|password|panjit)$', re.IGNORECASE),
+    # Single characters or purely whitespace
+    re.compile(r'^.?$'),
+    # Profiling stopped / UI messages
+    re.compile(r'^Profiling\s', re.IGNORECASE),
+]
+
+
+def _should_skip_term(term: str) -> bool:
+    """Return True if a candidate term should be filtered out."""
+    for pat in _SKIP_PATTERNS:
+        if pat.search(term):
+            return True
+    return False
 
 
 class TermExtractor:
@@ -122,6 +164,8 @@ class TermExtractor:
                     term = (c.get("term") or "").strip()
                     if not term:
                         continue
+                    if _should_skip_term(term):
+                        continue
                     key = term.lower()
                     if key not in all_terms:
                         all_terms[key] = {"term": term, "context": c.get("context", "")[:60]}
@@ -130,6 +174,8 @@ class TermExtractor:
                 self.log(f"[PHASE0] Segment {idx} extraction error: {exc}")
 
         return list(all_terms.values())
+
+    _TRANSLATE_BATCH_SIZE = 25  # Max terms per translation call to avoid output truncation
 
     def translate_unknown(
         self,
@@ -143,25 +189,39 @@ class TermExtractor:
         if not terms:
             return []
 
-        terms_json = json.dumps(
-            [{"term": t["term"], "context": t.get("context", "")} for t in terms],
-            ensure_ascii=False,
-        )
-        prompt = _TRANSLATION_PROMPT_TEMPLATE.format(
-            domain=domain,
-            source_lang=source_lang,
-            target_lang=target_lang,
-            document_context=(document_context or "").strip()[:300],
-            terms_json=terms_json,
-        )
-        self.log(f"[PHASE0] Translating {len(terms)} unknown terms → {target_lang}")
-        try:
-            raw = self._call(prompt)
-            return _parse_translation_response(raw)
-        except Exception as exc:
-            logger.warning("[PHASE0] Term translation failed: %s", exc)
-            self.log(f"[PHASE0] Term translation error: {exc}")
-            return []
+        all_translations: List[Dict] = []
+        batch_size = self._TRANSLATE_BATCH_SIZE
+        total_batches = (len(terms) + batch_size - 1) // batch_size
+
+        for batch_idx in range(total_batches):
+            batch = terms[batch_idx * batch_size : (batch_idx + 1) * batch_size]
+            terms_json = json.dumps(
+                [{"term": t["term"], "context": t.get("context", "")} for t in batch],
+                ensure_ascii=False,
+            )
+            prompt = _TRANSLATION_PROMPT_TEMPLATE.format(
+                domain=domain,
+                source_lang=source_lang,
+                target_lang=target_lang,
+                document_context=(document_context or "").strip()[:300],
+                terms_json=terms_json,
+            )
+            self.log(
+                f"[PHASE0] Translating batch {batch_idx + 1}/{total_batches} "
+                f"({len(batch)} terms) → {target_lang}"
+            )
+            try:
+                raw = self._call(prompt)
+                batch_results = _parse_translation_response(raw)
+                all_translations.extend(batch_results)
+            except Exception as exc:
+                logger.warning(
+                    "[PHASE0] Term translation batch %d/%d failed: %s",
+                    batch_idx + 1, total_batches, exc,
+                )
+                self.log(f"[PHASE0] Batch {batch_idx + 1} translation error: {exc}")
+
+        return all_translations
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -429,4 +489,9 @@ def run_phase0_multi(
     finally:
         extractor.unload()
 
-    return {"extracted": extracted_count, "skipped": skipped_count, "added": added_count}
+    return {
+        "extracted": extracted_count,
+        "skipped": skipped_count,
+        "added": added_count,
+        "extracted_source_texts": [c["term"] for c in candidates] if candidates else [],
+    }
