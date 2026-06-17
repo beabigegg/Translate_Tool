@@ -9,3 +9,4 @@
 | p1-font-lru-cache | 2026 | 2026-06-17 | specs/archive/2026/p1-font-lru-cache/ |
 | p1-observability-metrics | 2026 | 2026-06-17 | specs/archive/2026/p1-observability-metrics/ |
 | p1-sentence-mode-fix | 2026 | 2026-06-17 | specs/archive/2026/p1-sentence-mode-fix/ |
+| p1-prompt-i18n-numctx | 2026 | 2026-06-17 | specs/archive/2026/p1-prompt-i18n-numctx/ |

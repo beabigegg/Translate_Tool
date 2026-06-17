@@ -3,8 +3,8 @@ artifact: project-map
 generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
-visible-dirs: 50
-visible-files: 169
+visible-dirs: 52
+visible-files: 173
 omitted-dirs: 8
 truncated-dirs: 0
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -43,6 +43,10 @@ Translate_Tool/
 |-- .github/
 |   \-- workflows/
 |       \-- contract-driven-gates.yml
+|-- .run/
+|   \-- logs/
+|       |-- backend.log
+|       \-- frontend.log
 |-- app/
 |   |-- backend/
 |   |   |-- api/
@@ -93,6 +97,7 @@ Translate_Tool/
 |   |   |   \-- text_region_renderer.py
 |   |   |-- services/
 |   |   |   |-- __init__.py
+|   |   |   |-- context_prompts.py
 |   |   |   |-- job_manager.py
 |   |   |   |-- metrics.py
 |   |   |   |-- model_router.py
@@ -230,6 +235,7 @@ Translate_Tool/
 |   |       \-- locust-example.py
 |   |-- __init__.py
 |   |-- test_bbox_utils.py
+|   |-- test_context_prompt_i18n.py
 |   |-- test_coordinate_renderer.py
 |   |-- test_docx_parser.py
 |   |-- test_font_utils.py
