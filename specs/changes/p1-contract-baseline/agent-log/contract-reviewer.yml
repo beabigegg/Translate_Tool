@@ -1,0 +1,19 @@
+agent: contract-reviewer
+change-id: p1-contract-baseline
+timestamp: 2026-06-17
+status: pass-with-notes
+verdict: PASS WITH NOTES — all AC-1..AC-8 pass
+artifacts:
+  - pointer: "contracts/api/api-contract.md"
+  - pointer: "contracts/api/api-inventory.md"
+  - pointer: "contracts/api/error-format.md"
+  - pointer: "contracts/business/business-rules.md"
+  - pointer: "contracts/data/data-shape-contract.md"
+notes: >
+  All 5 contracts accurately reflect current backend implementation.
+  Minor gaps (non-blocking): (1) JobStatus.term_summary optional field missing from schema table — pre-existing;
+  (2) TermStatsResponse by_target_lang/by_domain type listed as 'string' but actual type is Dict[str,int] JSON object — pre-existing schema entry inaccuracy;
+  (3) entity_id optionality precision in WikidataImportRequest (has default='', not Optional[str]).
+  Pre-existing failures in css/env/ci contracts are out-of-scope; run cdd-kit gate to confirm exit code.
+  breaking-changes: none
+  consumers-impacted: none (documentation-only change)

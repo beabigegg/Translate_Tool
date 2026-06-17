@@ -12,9 +12,12 @@ breaking-change-policy: deprecate-2-minors
 
 ## Token Source of Truth
 
+Design tokens are defined in `contracts/css/design-tokens.md` and implemented in `app/frontend/src/styles/`. CSS variables are the canonical runtime token form; hardcoded hex/px values in component files are forbidden.
+
 ## Component Rules
 | component | variants | states | responsive behavior | allowed overrides |
 |---|---|---|---|---|
+| TranslatePage | — | loading, error, complete | single-column, scrollable | none — layout via CSS vars only |
 
 ## Forbidden Practices
 - hard-coded visual tokens when token system exists

@@ -1,0 +1,13 @@
+- type: tier-floor-override
+  change-id: p1-contract-baseline
+  timestamp: '2026-06-17T04:07:31.225Z'
+  declared-tier: 4
+  floor-tier: 0
+  label: critical surface (auth / payments / data migration / concurrency / secrets)
+  matched:
+    - auth
+    - endpoint
+  reason: >-
+    Documentation-only change: records that API has NO auth (not implementing auth); 'endpoint'
+    refers to documenting pre-existing routes, not adding or changing them. No runtime code written;
+    tier 4 is correct.

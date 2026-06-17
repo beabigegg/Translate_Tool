@@ -1,0 +1,14 @@
+agent: qa-reviewer
+change-id: p1-contract-baseline
+timestamp: 2026-06-17
+status: approved-with-risk
+verdict: approved-with-risk
+artifacts:
+  - pointer: "specs/changes/p1-contract-baseline/qa-report.md"
+notes: >
+  All in-scope contracts accurate. Gate passes (exit 0). 21 routes verified.
+  JobStatus enum verified. 6 env vars verified as real. CSS component name
+  corrected (TranslationPage -> TranslatePage) before tick.
+  Pre-existing risks: TermStatsResponse type mismatch and term_summary omission
+  in original scaffold — not introduced by this change.
+  CI gate not independently re-runnable (node not found in QA env); CI run required before main merge.

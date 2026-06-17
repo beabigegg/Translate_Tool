@@ -13,6 +13,9 @@ breaking-change-policy: deprecate-2-minors
 ## Gate Inventory
 | gate | tier | trigger | required | command/workflow | owner | artifact |
 |---|---:|---|---:|---|---|---|
+| contract-validate | 2+ | pre-commit / PR | yes | cdd-kit validate --contracts | platform-team | exit code 0 |
+| change-gate | 2+ | pre-commit / PR | yes | cdd-kit gate <change-id> | platform-team | exit code 0 |
+| unit-tests | 2+ | PR | yes | pytest tests/ | application-team | junit XML |
 
 ## Required Check Policy
 

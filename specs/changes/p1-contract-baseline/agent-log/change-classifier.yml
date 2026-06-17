@@ -1,0 +1,12 @@
+agent: change-classifier
+status: complete
+tier: 4
+risk: low
+next-action: run-implementation-planner
+artifacts:
+  - pointer: "specs/changes/p1-contract-baseline/change-classification.md"
+  - pointer: "specs/changes/p1-contract-baseline/context-manifest.md"
+notes: >
+  Contracts-only change. No code written. Required agents: implementation-planner,
+  contract-reviewer, qa-reviewer. test-strategist not required (no new test code;
+  only conformance gate applies). AC-7 key gate: cdd-kit validate --contracts passes.

@@ -11,11 +11,11 @@ breaking-change-policy: deprecate-2-minors
 # API Contract
 
 ## API Style
-- response style:
-- error style:
-- auth style:
-- pagination style:
-- date/time style:
+- response style: JSON (Pydantic response models); binary endpoints return file streams (FileResponse / StreamingResponse).
+- error style: FastAPI default — `{"detail": "<string>"}` for handled errors; `{"detail": [{loc, msg, type}]}` for request-validation (422). See `contracts/api/error-format.md`.
+- auth style: none — API has no authentication; intentional local-tool design decision (no public network exposure expected).
+- pagination style: none — list endpoints return full arrays (terms, profiles, models).
+- date/time style: numeric float seconds (`elapsed_seconds`, `eta_seconds`) and float progress ratios in JobStatus; no ISO date strings on the public surface.
 
 ## Endpoint Requirements
 | method | path | auth | request schema | response schema | errors | tests |
@@ -212,8 +212,16 @@ The fence MUST be tagged `json-schema` (NOT `json`) or export fails fast:
 
 ## Error Format
 
+See `contracts/api/error-format.md`. Handled errors use `raise HTTPException(status_code, detail)` which produces `{"detail": "<human message>"}`. Request-validation failures (Pydantic / Form / File) produce HTTP 422 with `{"detail": [{loc, msg, type}]}`. No custom error envelope, no symbolic error code, no retry hints are emitted.
+
 ## Compatibility Policy
+
+All paths are served under the `/api` prefix (mounted in `app/backend/main.py`). The endpoint table above is the compatibility surface. Removing or renaming a path, changing a required method, or removing a required response field is a **breaking change**. Adding optional response fields or new endpoints is non-breaking.
 
 ## Endpoint Inventory Policy
 
+The endpoint table above plus `contracts/api/api-inventory.md` must list every route defined in `app/backend/api/routes.py`. Conformance (`.cdd/conformance.json`, currently `enabled: false`) can mechanically enforce this once enabled. Until then, route accuracy is verified manually during change classification.
+
 ## Breaking Change Policy
+
+Per frontmatter `breaking-change-policy: deprecate-2-minors`. Breaking changes require updating this contract in the same change, or the gate will fail on drift. A deprecation notice must precede removal by at least two minor releases.
