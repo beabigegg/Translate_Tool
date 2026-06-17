@@ -38,5 +38,5 @@ tasks:
   - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "test-evidence.yml: all phases passed; cdd-kit gate PASSED; openapi.yml regenerated; 389/0/0" }
   - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full regression 389/0/0 (baseline 367 + 22 new tests); 0 new failures" }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gates for Tier 2 change" }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done, note: "archived to specs/archive/2026/p1-observability-metrics/" }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "CLAUDE.md updated: tier-floor-override entry expanded (auth/endpoint/integration false positives); new cdd-kit contract schema/endpoint ordering rule added" }
