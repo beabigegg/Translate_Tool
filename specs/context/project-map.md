@@ -3,8 +3,8 @@ artifact: project-map
 generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
-visible-dirs: 47
-visible-files: 156
+visible-dirs: 50
+visible-files: 165
 omitted-dirs: 8
 truncated-dirs: 0
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -51,7 +51,9 @@ Translate_Tool/
 |   |   |   \-- schemas.py
 |   |   |-- clients/
 |   |   |   |-- __init__.py
-|   |   |   \-- ollama_client.py
+|   |   |   |-- base_llm_client.py
+|   |   |   |-- ollama_client.py
+|   |   |   \-- openai_compatible_client.py
 |   |   |-- fonts/
 |   |   |   |-- NotoSans-Regular.ttf
 |   |   |   |-- NotoSansArabic-Regular.ttf
@@ -143,6 +145,9 @@ Translate_Tool/
 |-- ci/
 |   |-- gate-policy.md
 |   \-- required-check-policy.md
+|-- config/
+|   |-- providers.yml
+|   \-- providers.yml.example
 |-- contracts/
 |   |-- api/
 |   |   |-- api-contract.md
@@ -164,6 +169,8 @@ Translate_Tool/
 |   |   \-- env.schema.json
 |   \-- CHANGELOG.md
 |-- docs/
+|   |-- adr/
+|   |   \-- 0001-config-driven-provider-registry.md
 |   \-- improvement-plan.md
 |-- scripts/
 |   |-- benchmark_full_factorial.py
@@ -200,6 +207,8 @@ Translate_Tool/
 |   |   |   \-- .gitkeep
 |   |   |-- README.md
 |   |   \-- response-samples.example.json
+|   |-- fixtures/
+|   |   \-- test.pdf
 |   |-- templates/
 |   |   |-- data-boundary/
 |   |   |   \-- malformed-data.spec.md
@@ -225,12 +234,15 @@ Translate_Tool/
 |   |-- test_font_utils.py
 |   |-- test_hy_mt_quality_refinement.py
 |   |-- test_inline_renderer.py
+|   |-- test_llm_client_protocol.py
 |   |-- test_model_config_api.py
 |   |-- test_model_router.py
 |   |-- test_ollama_client_dynamic_strategy.py
+|   |-- test_openai_compatible_client.py
 |   |-- test_pdf_generator.py
 |   |-- test_pdf_parser.py
 |   |-- test_pptx_parser.py
+|   |-- test_provider_fallback.py
 |   |-- test_term_api.py
 |   |-- test_term_db.py
 |   |-- test_term_extractor.py

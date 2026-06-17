@@ -115,4 +115,5 @@ write **outside** the markers is yours and is never edited or evicted.
 <!-- cdd-kit:learnings:start -->
 - MySQL ENUM contraction / any `ALGORITHM=COPY` DDL = high risk on large tables (row-count + online-migration/maintenance-window + rollback required) — see `contracts/data/` migration rules.
 - `cdd-kit gate` validates all contracts globally — pre-existing empty stubs outside your change scope will block the gate; ensure all contracts have minimal real content before gate run.
+- `cdd-kit gate` tier-floor detector false-positive: third-party provider API key env vars (e.g. `PANJIT_API`) match keyword `"api key"` and force Tier 0 — use `tier-floor-override` with written rationale if no auth system is involved; see `contracts/env/env-contract.md` Secret Policy.
 <!-- cdd-kit:learnings:end -->

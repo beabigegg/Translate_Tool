@@ -38,5 +38,5 @@ tasks:
   - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "test-evidence.yml: all 5 phases passed; contract-validate PASS; secret-scan clean; 346/4 pass/skip" }
   - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full regression 346 passed (vs 306 baseline, +40 new tests); 4 pre-existing PDF skips; no new failures" }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "deploy gate only — manual cloud smoke test required before first production deploy but is not a merge prerequisite; sign off separately at deploy time" }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done, note: "archived to specs/archive/2026/p1-cloud-providers/" }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "tier-floor-override false-positive pattern promoted to CLAUDE.md learnings region (line 3); evidence: agent-log/audit.yml" }
