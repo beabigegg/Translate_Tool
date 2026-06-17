@@ -1,0 +1,41 @@
+change-id: p1-provider-routing
+status: in-progress
+tier: 2
+context-governance: v1
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on:
+  - "p1-cloud-providers"
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done, note: "Tier 2; feature-enhancement + business-logic-change; backend-only; business-rules contract only" }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done, note: "business-rules 0.2.0→0.3.0; BR-4 clarified, BR-18 + BR-19 added, Table D added; validate PASS; CER-001 approved" }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: skipped, note: "no architecture review required; pattern established by p1-cloud-providers / ADR-0001" }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done, note: "ci-gates.md written; routing-unit + full-regression required; secret-scan required; no new workflow jobs needed" }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done, note: "implementation-plan.md written; IP-1..IP-6; CER-001 finding: real consumers are routes.py + job_manager.py, both multi-group safe" }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: skipped, note: "no API change" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no UI" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: skipped, note: "no env change; providers.yml is app config not env vars" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: skipped, note: "no data shape change" }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: done, note: "BR-4 revised, BR-18 + BR-19 added, Table D added; schema-version 0.3.0" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no CI/CD contract change" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done, note: "test-plan.md: TestProviderRoutingRules + TestResolveRouteGroupsPerLanguage + TestLegacyOllamaPath in tests/test_model_router.py; fixture yml with routing.rules" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: done, note: "light integration coverage in TestResolveRouteGroupsPerLanguage; no separate integration file required" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: skipped, note: "not required for Tier 2 module-level routing change" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "not required; routing config is internal, not user data import" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "not required; per-call routing resolution, no load surface" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: done, note: "model_router.py: routing.rules per-lang + resolve_route_groups per-target; providers.yml + example updated; 11 new tests; 361 passed 0 failed" }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no frontend" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: skipped, note: "no new env vars or deploy steps" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: skipped, note: "no new CI workflow files" }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI" }
+  - { id: "5.2", section: Review, title: "Visual review", status: skipped, note: "no UI" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done, note: "APPROVED-WITH-NOTES: business-rules 0.3.0 valid; BR-4 shape reconciled (lang-keyed map not list); BR-18/BR-19/Table D added; CER-001 approved; consumers (routes.py, job_manager.py) multi-group safe" }
+  - { id: "5.4", section: Review, title: "QA review", status: done, note: "APPROVED-WITH-NOTES: 361/0/0; all 7 ACs covered; secret-scan clean; Korean cloud-path divergence by design (BR-4/Table D); PyPDF2 warning pre-existing" }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done, note: "cdd-kit gate p1-provider-routing PASSED; all contract validators green" }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "test-evidence.yml: all phases passed; contract-validate PASS; secret-scan clean; 361/0/0" }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full regression 361 passed (vs 350 baseline, +11 new tests); 0 new failures; PyPDF2 warning pre-existing" }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gates for this change; routing is local config verification" }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: skipped, note: "All durable rules (BR-4 revised, BR-18, BR-19, Table D) were written directly to contracts/business/business-rules.md (schema-version 0.3.0) as task 2.5 during /cdd-new; no novel workflow lesson warranted a CLAUDE.md entry." }

@@ -1,0 +1,15 @@
+{
+  "change_id": "p1-provider-routing",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "cdd-kit validate --contracts",
+  "duration_ms": 230,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p1-provider-routing/test-runs/20260617-153424/summary.json",
+    "stdout": "specs/changes/p1-provider-routing/test-runs/20260617-153424/stdout.log",
+    "stderr": "specs/changes/p1-provider-routing/test-runs/20260617-153424/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}
