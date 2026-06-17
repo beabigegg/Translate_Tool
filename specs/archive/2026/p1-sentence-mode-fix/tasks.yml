@@ -37,5 +37,5 @@ tasks:
   - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "test-evidence.yml: collect/targeted/changed-area/full all passed; 396/0/0; cdd-kit validate --contracts passed" }
   - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full regression 396/0/0 (baseline 389 + 7 new tests); 0 new failures" }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gates for Tier 2 change" }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: skipped, note: "BR-25/26/27 already applied to contracts/business/business-rules.md v0.5.0 during implementation; R-1 deferred product bug, not generalizable workflow guidance" }

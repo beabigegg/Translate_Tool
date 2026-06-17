@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
 visible-dirs: 50
-visible-files: 168
+visible-files: 169
 omitted-dirs: 8
 truncated-dirs: 0
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -246,6 +246,7 @@ Translate_Tool/
 |   |-- test_pdf_parser.py
 |   |-- test_pptx_parser.py
 |   |-- test_provider_fallback.py
+|   |-- test_sentence_mode_consistency.py
 |   |-- test_term_api.py
 |   |-- test_term_db.py
 |   |-- test_term_extractor.py
