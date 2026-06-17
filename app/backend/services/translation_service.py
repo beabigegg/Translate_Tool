@@ -8,6 +8,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 from app.backend.clients.base_llm_client import LLMClient
 from app.backend.config import CROSS_MODEL_REFINEMENT_ENABLED, DEFAULT_MAX_BATCH_CHARS, REFINEMENT_MIN_CHARS, SENTENCE_MODE
+from app.backend.services.context_prompts import _get_context_detection_prompt
 from app.backend.services.metrics import record_translation
 from app.backend.services.translation_cache import get_cache
 from app.backend.utils.translation_helpers import translate_blocks_batch
@@ -242,10 +243,7 @@ def translate_texts(
         if _ctx_sample:
             _ctx_profile = getattr(refine_client, "_deferred_context_profile", "general")
             _ctx_target = getattr(refine_client, "_deferred_context_target", targets[0] if targets else "")
-            _detect_prompt = (
-                "以下是一份文件的開頭內容，請用一句話描述這份文件的類型、所屬領域和主題。"
-                "只輸出描述，不要解釋。\n\n" + _ctx_sample
-            )
+            _detect_prompt = _get_context_detection_prompt(_ctx_target).format(sample=_ctx_sample)
             # Temporarily clear system_prompt so the detection call is not
             # filtered through any refinement persona (best-effort: only
             # applies when the provider exposes the system_prompt attribute).

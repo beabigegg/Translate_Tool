@@ -23,6 +23,9 @@ breaking-change-policy: deprecate-2-minors
 | DEEPSEEK_BASE_URL | backend | all | no | no | https://api.deepseek.com | https://api.deepseek.com | platform-team | valid URL | yes | DeepSeek provider uses this base URL; required when DEEPSEEK_ENABLED=true |
 | DEEPSEEK_API | backend | all | no | yes | | <your-deepseek-api-key> | platform-team | non-empty string | yes | DeepSeek provider disabled if absent or blank; never log this value |
 | DEEPSEEK_ENABLED | backend | all | no | no | false | false | platform-team | boolean (true/false or 1/0) | yes | Enables DeepSeek provider in fallback chain; when false, DeepSeek is excluded regardless of DEEPSEEK_API presence |
+| OLLAMA_NUM_CTX | backend | all | no | no | (none) | 4096 | platform-team | positive int | yes | Backward-compat fallback for context window. If set and the specific var (GENERAL_NUM_CTX / TRANSLATION_NUM_CTX) is not set, both types use this value. New deployments should prefer the specific vars. |
+| GENERAL_NUM_CTX | backend | all | no | no | 4096 | 4096 | platform-team | positive int | yes | Context window for general-purpose model calls. Fallback chain: GENERAL_NUM_CTX → OLLAMA_NUM_CTX → 4096 |
+| TRANSLATION_NUM_CTX | backend | all | no | no | 3072 | 3072 | platform-team | positive int | yes | Context window for translation-dedicated model calls. Fallback chain: TRANSLATION_NUM_CTX → OLLAMA_NUM_CTX → 3072 |
 
 ## Public Frontend Env Policy
 

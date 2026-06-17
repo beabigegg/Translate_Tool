@@ -32,6 +32,10 @@ from app.backend.processors.libreoffice_helpers import doc_to_docx, is_libreoffi
 from app.backend.processors.pdf_processor import translate_pdf
 from app.backend.processors.pptx_processor import translate_pptx
 from app.backend.processors.xlsx_processor import translate_xlsx_xls
+from app.backend.services.context_prompts import (
+    _CONTEXT_DETECTION_PROMPTS,
+    _get_context_detection_prompt,
+)
 from app.backend.services.translation_strategy import (
     build_strategy,
     build_terminology_block,
@@ -292,13 +296,10 @@ def _detect_document_context(
     client: OllamaClient,
     sample: str,
     log: Callable[[str], None],
+    target_lang: str = "",
 ) -> str:
-    """Ask LLM to describe the document in one sentence (Chinese prompt)."""
-    prompt = (
-        "以下是一份文件的開頭內容，請用一句話描述這份文件的類型、所屬領域和主題。"
-        "只輸出描述，不要解釋。\n\n"
-        f"{sample}"
-    )
+    """Ask LLM to describe the document in one sentence (localized prompt)."""
+    prompt = _get_context_detection_prompt(target_lang).format(sample=sample)
     payload = client._build_no_system_payload(prompt)
     try:
         ok, result = client._call_ollama(payload)
@@ -533,7 +534,7 @@ def process_files(
             and not client._is_translation_dedicated()
             and sample
         ):
-            doc_context = _detect_document_context(ollama_client, sample, log)
+            doc_context = _detect_document_context(ollama_client, sample, log, target_lang=targets[0] if targets else "")
 
         # For dedicated primary models (e.g. HY-MT), defer context detection to
         # Phase 2 so it runs after HY-MT is evicted from VRAM.

@@ -1,0 +1,22 @@
+agent: test-strategist
+change-id: p1-prompt-i18n-numctx
+timestamp: 2026-06-17
+
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/p1-prompt-i18n-numctx/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_context_prompt_i18n.py → app/backend/processors/orchestrator.py + app/backend/config.py" }
+  - { type: coverage-tiers, pointer: "unit" }
+  - { type: mapping-completeness, pointer: "AC-1..AC-7 all covered by 7 unit tests; AC-8 covered by cdd-kit validate (command, not a test file)" }
+
+notes: |
+  - _get_context_detection_prompt imported via try/except: primary orchestrator.py,
+    fallback services/context_prompts.py (import-cycle risk noted in implementation-plan).
+  - AC-3 patches the helper at its definition site and asserts the immediate
+    _detect_document_context call passes target_lang through to the helper and
+    routes its return value into _build_no_system_payload.
+  - NUM_CTX tests use importlib.reload(app.backend.config) with a _clear/_restore
+    helper to avoid cross-test env leakage; teardown always reloads to reset constants.
+  - No live LLM calls anywhere in the file.
+  - test_num_ctx_fallback_chain_to_ollama_then_default covers two sub-cases (OLLAMA
+    set / none set) in one test function; kept together because they test the same
+    fallback chain direction and share teardown logic without mixing unrelated concerns.

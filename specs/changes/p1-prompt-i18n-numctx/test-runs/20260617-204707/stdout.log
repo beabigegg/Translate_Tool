@@ -1,0 +1,16 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0
+rootdir: /home/egg/Projects/Translate_Tool
+plugins: anyio-4.14.0
+collected 7 items
+
+tests/test_context_prompt_i18n.py .......                                [100%]
+
+=============================== warnings summary ===============================
+../../miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21: DeprecationWarning: PyPDF2 is deprecated. Please move to the pypdf library instead.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /home/egg/Projects/Translate_Tool/specs/changes/p1-prompt-i18n-numctx/test-runs/20260617-204707/junit.xml -
+========================= 7 passed, 1 warning in 0.21s =========================

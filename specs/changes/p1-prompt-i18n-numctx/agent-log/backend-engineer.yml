@@ -1,0 +1,63 @@
+agent: backend-engineer
+change-id: p1-prompt-i18n-numctx
+status: complete
+date: 2026-06-17
+
+files-read:
+  - specs/changes/p1-prompt-i18n-numctx/change-classification.md
+  - specs/changes/p1-prompt-i18n-numctx/implementation-plan.md
+  - specs/changes/p1-prompt-i18n-numctx/test-plan.md
+  - app/backend/config.py
+  - app/backend/processors/orchestrator.py (lines 1-45, 280-360, 520-580)
+  - app/backend/services/translation_service.py (lines 1-40, 230-269)
+  - contracts/env/env-contract.md
+  - contracts/env/.env.example.template
+  - contracts/env/env.schema.json
+  - tests/test_context_prompt_i18n.py
+
+fixes-applied:
+  - FIX-A: context-detection prompt i18n (IP-1 + IP-2)
+    - Circular import discovered when importing orchestrator in translation_service
+      (docx_processor imports translation_service at module level, creating a cycle)
+    - Resolution: created leaf module app/backend/services/context_prompts.py
+      containing _CONTEXT_DETECTION_PROMPTS and _get_context_detection_prompt
+    - Both orchestrator.py and translation_service.py import from context_prompts
+    - _detect_document_context gained target_lang parameter (default "")
+    - Immediate call site (process_files line ~536) passes targets[0] if targets else ""
+    - Deferred path (translation_service ~line 245) now uses the shared helper
+  - FIX-B: NUM_CTX split (IP-3)
+    - config.py lines 31-37 replaced: GENERAL_NUM_CTX and TRANSLATION_NUM_CTX now
+      resolve independently via specific env var -> OLLAMA_NUM_CTX -> default (4096/3072)
+    - OLLAMA_NUM_CTX backward-compat alias preserved (equals GENERAL_NUM_CTX)
+
+artifacts:
+  - { type: files-changed, pointer: "app/backend/services/context_prompts.py:1-41" }
+  - { type: files-changed, pointer: "app/backend/processors/orchestrator.py:35-40,291-315" }
+  - { type: files-changed, pointer: "app/backend/services/translation_service.py:11,245" }
+  - { type: files-changed, pointer: "app/backend/config.py:31-37" }
+  - { type: files-changed, pointer: "contracts/env/env-contract.md:24-27" }
+  - { type: files-changed, pointer: "contracts/env/.env.example.template:8-16" }
+  - { type: files-changed, pointer: "contracts/env/env.schema.json:60-82" }
+  - { type: tests-added, pointer: "tests/test_context_prompt_i18n.py (pre-created by test-strategist; all 7 tests pass)" }
+  - { type: test-output, pointer: "7 passed, 0 failed (full suite: all tests pass)" }
+  - { type: contracts-touched, pointer: "contracts/env/env-contract.md, contracts/env/.env.example.template, contracts/env/env.schema.json" }
+
+test-phases:
+  - phase: targeted
+    run-id: "20260617-204707"
+    result: passed
+  - phase: changed-area
+    run-id: "20260617-204713"
+    result: passed
+  - phase: full
+    run-id: "20260617-204720"
+    result: passed
+
+known-risks:
+  - Leaf module context_prompts.py is in app/backend/services/ (not processors/),
+    which differs from the initial IP-1 plan of placing in orchestrator.py.
+    This is the approved fallback per implementation-plan.md Known Risks.
+  - _CONTEXT_DETECTION_PROMPTS is re-exported from orchestrator for backward compat
+    (any code doing `from orchestrator import _CONTEXT_DETECTION_PROMPTS` still works).
+
+next-reviewer: contract-reviewer, qa-reviewer

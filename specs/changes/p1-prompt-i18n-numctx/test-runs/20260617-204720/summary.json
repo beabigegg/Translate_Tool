@@ -1,0 +1,16 @@
+{
+  "change_id": "p1-prompt-i18n-numctx",
+  "phase": "full",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/ -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-prompt-i18n-numctx/test-runs/20260617-204720/junit.xml' --maxfail=1 -ra",
+  "duration_ms": 2517,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p1-prompt-i18n-numctx/test-runs/20260617-204720/summary.json",
+    "stdout": "specs/changes/p1-prompt-i18n-numctx/test-runs/20260617-204720/stdout.log",
+    "stderr": "specs/changes/p1-prompt-i18n-numctx/test-runs/20260617-204720/stderr.log",
+    "junit": "specs/changes/p1-prompt-i18n-numctx/test-runs/20260617-204720/junit.xml"
+  },
+  "next_action": "all phases green"
+}

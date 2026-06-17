@@ -1,0 +1,1 @@
+/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/ -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-prompt-i18n-numctx/test-runs/20260617-204720/junit.xml' --maxfail=1 -ra

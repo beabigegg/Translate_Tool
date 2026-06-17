@@ -1,0 +1,11 @@
+agent: implementation-planner
+change-id: p1-prompt-i18n-numctx
+status: done
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/p1-prompt-i18n-numctx/implementation-plan.md" }
+  - { type: plan-written, pointer: "specs/changes/p1-prompt-i18n-numctx/test-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer (IP-1..IP-4), contract-reviewer (IP-4 review)" }
+  - { type: scope-summary, pointer: "4 IPs in scope (i18n helper, threaded target_lang, config NUM_CTX split, 3 env files); triggers/data-shapes/API/UID out of scope" }
+notes:
+  - "CER-001 (ollama_client read) not required: NUM_CTX consumed via MODEL_TYPE_OPTIONS from module constants."
+  - "Flagged import-cycle risk (translation_service<->orchestrator helper) with allowed fallback to leaf module."

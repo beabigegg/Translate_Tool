@@ -28,13 +28,11 @@ OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_NUM_GPU = int(os.environ.get("OLLAMA_NUM_GPU", "99"))
 OLLAMA_KV_CACHE_TYPE = os.environ.get("OLLAMA_KV_CACHE_TYPE", "q4_0")
 
-# OLLAMA_NUM_CTX env override applies to all model types for backward compatibility.
-_NUM_CTX_OVERRIDE = os.environ.get("OLLAMA_NUM_CTX")
-GENERAL_NUM_CTX = int(_NUM_CTX_OVERRIDE) if _NUM_CTX_OVERRIDE else 4096
-TRANSLATION_NUM_CTX = int(_NUM_CTX_OVERRIDE) if _NUM_CTX_OVERRIDE else 3072
-
-# Keep legacy constant name for downstream modules.
-OLLAMA_NUM_CTX = GENERAL_NUM_CTX
+# Per-type context window with backward-compatible OLLAMA_NUM_CTX fallback.
+_OLLAMA_NUM_CTX_RAW = os.environ.get("OLLAMA_NUM_CTX")
+GENERAL_NUM_CTX = int(os.environ.get("GENERAL_NUM_CTX") or _OLLAMA_NUM_CTX_RAW or 4096)
+TRANSLATION_NUM_CTX = int(os.environ.get("TRANSLATION_NUM_CTX") or _OLLAMA_NUM_CTX_RAW or 3072)
+OLLAMA_NUM_CTX = GENERAL_NUM_CTX  # backward-compat alias imported by ollama_client
 
 MODEL_TYPE_OPTIONS: Dict[ModelType, Dict[str, object]] = {
     ModelType.GENERAL: {

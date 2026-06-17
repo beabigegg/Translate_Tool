@@ -1,0 +1,25 @@
+agent: contract-reviewer
+change-id: p1-prompt-i18n-numctx
+date: 2026-06-17
+status: complete
+verdict: APPROVED
+
+artifacts:
+  - { type: contracts-reviewed, pointer: "contracts/env/env-contract.md:1-41" }
+  - { type: contracts-reviewed, pointer: "contracts/env/.env.example.template:1-37" }
+  - { type: contracts-reviewed, pointer: "contracts/env/env.schema.json:1-84" }
+  - { type: contracts-reviewed, pointer: "contracts/business/business-rules.md:1-108" }
+  - { type: version-bumps, pointer: "env-contract schema-version 0.1.0 → 0.2.0 (additive non-breaking)" }
+  - { type: breaking-changes, pointer: "none" }
+
+findings:
+  env-contract: PASS — GENERAL_NUM_CTX and TRANSLATION_NUM_CTX rows present with correct fallback chain, secret=no, required=no, restart=yes
+  env-example-template: PASS — new vars commented out with defaults 4096/3072; no real secrets
+  env-schema: PASS — all three vars present with positive-int pattern; OLLAMA_NUM_CTX intentionally has no default
+  business-rules: PASS (review only) — no existing rule documents context-detection prompt language; no update required
+  deployment-sync-policy: SATISFIED — all three env contract files updated in sync
+
+notes: >
+  All three env contract files correctly updated for GENERAL_NUM_CTX and TRANSLATION_NUM_CTX.
+  Existing deployments setting only OLLAMA_NUM_CTX continue to work identically (AC-7 satisfied).
+  schema-version bump on env-contract.md reflects the additive env inventory change.

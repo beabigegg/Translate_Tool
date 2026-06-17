@@ -1,0 +1,32 @@
+agent: qa-reviewer
+change-id: p1-prompt-i18n-numctx
+date: 2026-06-17
+status: complete
+verdict: APPROVED
+
+test-results:
+  total-passed: 403
+  new-tests: 7
+  baseline: 396
+  reproduced-locally: true
+  phases-passed: [collect, targeted, changed-area, full]
+  evidence-final-status: passed
+
+ac-coverage:
+  - { ac: AC-1, test: "test_template_selected_for_en_zhtw_ja", status: covered }
+  - { ac: AC-2, test: "test_unlisted_lang_falls_back_to_en", status: covered }
+  - { ac: AC-3, test: "test_immediate_and_deferred_use_same_template", status: covered }
+  - { ac: AC-4, test: "test_general_num_ctx_env_overrides_independently", status: covered }
+  - { ac: AC-5, test: "test_translation_num_ctx_env_overrides_independently", status: covered }
+  - { ac: AC-6, test: "test_num_ctx_fallback_chain_to_ollama_then_default", status: covered }
+  - { ac: AC-7, test: "test_only_ollama_num_ctx_set_backward_compat", status: covered }
+  - { ac: AC-8, test: "cdd-kit validate (14 env vars checked)", status: covered }
+
+artifacts:
+  - { type: gate-results, pointer: "validate: pass, gate: pass, full-suite: 403 passed/0 failed" }
+  - { type: circular-import-resolution, pointer: "app/backend/services/context_prompts.py leaf module — zero app.backend imports; clean resolution per implementation-plan approved fallback" }
+  - { type: backward-compat, pointer: "config.py:33-35 OLLAMA_NUM_CTX fallback verified; test_only_ollama_num_ctx_set_backward_compat passes" }
+  - { type: evidence-quality, pointer: "reviewer re-ran gate + full suite locally; 403 passed" }
+
+risks: []
+failure-routing: none
