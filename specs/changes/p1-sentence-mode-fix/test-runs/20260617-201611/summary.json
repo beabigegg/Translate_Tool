@@ -1,0 +1,16 @@
+{
+  "change_id": "p1-sentence-mode-fix",
+  "phase": "changed-area",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_sentence_mode_consistency.py tests/test_translation_strategy.py tests/test_translation_profiles_scenarios.py tests/test_metrics_counters.py -v --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-sentence-mode-fix/test-runs/20260617-201611/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 692,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p1-sentence-mode-fix/test-runs/20260617-201611/summary.json",
+    "stdout": "specs/changes/p1-sentence-mode-fix/test-runs/20260617-201611/stdout.log",
+    "stderr": "specs/changes/p1-sentence-mode-fix/test-runs/20260617-201611/stderr.log",
+    "junit": "specs/changes/p1-sentence-mode-fix/test-runs/20260617-201611/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

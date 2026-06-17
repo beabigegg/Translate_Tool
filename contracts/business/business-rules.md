@@ -3,7 +3,7 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.4.0
+schema-version: 0.5.0
 last-changed: 2026-06-17
 breaking-change-policy: deprecate-2-minors
 ---
@@ -37,6 +37,9 @@ breaking-change-policy: deprecate-2-minors
 | BR-22 | translation-latency-mean | application-team | `translation_latency_mean_ms` is the arithmetic mean of all per-call elapsed wall-clock latencies in milliseconds, measured from call dispatch to provider response at the service boundary. Computed incrementally: `new_mean = ((old_mean * (n-1)) + new_latency_ms) / n` where `n` is the updated `translation_count`. When `translation_count` is 0, `translation_latency_mean_ms` is 0.0 (float, not null). | — |
 | BR-23 | provider-failure-count-increment | application-team | `provider_failure_count` increments by 1 each time a provider call raises a connection exception, a timeout exception, or returns HTTP 401/403 (matching BR-15 offline-detection criteria). It does not increment on success. It increments once per failed provider attempt — a 3-provider fallback chain with all three failing increments `provider_failure_count` by 3. | — |
 | BR-24 | font-cache-hit-miss-increment | application-team | `font_cache_hits` increments by 1 each time a font buffer load returns a value already in the `lru_cache` (cache hit). `font_cache_misses` increments by 1 each time the font buffer is read from disk (cache miss). Exactly one of the two counters increments on each font buffer access. | — |
+| BR-25 | translation-failure-placeholder | application-team | When a segment translation fails (any translation mode, including `SENTENCE_MODE`), the value stored in `tmap` for that block is `[Translation failed|{tgt}] {original_text}` — a block-level string containing the target language tag and the unmodified original source text. This format applies regardless of whether `SENTENCE_MODE` is active. The format is the detection anchor for `verify_and_fill_tmap`; any deviation makes the block non-retryable. | tests/test_sentence_mode_consistency.py |
+| BR-26 | per-segment-done-fail-counting | application-team | `done` and `fail_cnt` are incremented once per segment inside the per-segment translation loop, regardless of translation mode. A mid-loop or mid-batch stop must not cause `done` to exceed the number of segments actually processed. `SENTENCE_MODE` and non-`SENTENCE_MODE` paths must produce identical `done`/`fail_cnt` values on identical input with identical stop timing. | tests/test_sentence_mode_consistency.py |
+| BR-27 | stop-flag-propagation | application-team | When a job cancellation stop flag is set, it must be passed into `translate_blocks_batch` (and threaded through `BatchTranslator`) so mid-batch work halts as soon as the flag is detected between individual translation calls. After a batch completes (or halts), the outer per-target loop must check the stop flag and break immediately — no further target languages are processed once the stop flag is set. This applies to both `SENTENCE_MODE` and non-`SENTENCE_MODE` paths. | tests/test_sentence_mode_consistency.py |
 
 ## Decision Tables
 
@@ -86,6 +89,18 @@ breaking-change-policy: deprecate-2-minors
 | Font buffer loaded from disk (cache miss) | `font_cache_misses` | +1 | — |
 | Process starts (or restarts) | all counters | reset to 0 | — |
 | `translation_count` is 0 | `translation_latency_mean_ms` | must read 0.0 (float, not null/undefined) | — |
+
+### Table F — translation failure placeholder and stop propagation (BR-25, BR-26, BR-27)
+| condition | behavior | test id |
+|---|---|---|
+| Segment translation fails in non-`SENTENCE_MODE` | `tmap[(tgt, text)]` set to `[Translation failed\|{tgt}] {text}` | tests/test_translation_strategy.py |
+| Segment translation fails in `SENTENCE_MODE` | `tmap[(tgt, text)]` set to `[Translation failed\|{tgt}] {text}` (same format; original text included) | tests/test_sentence_mode_consistency.py |
+| Segment translation succeeds | `done` incremented by 1 inside the per-segment loop | tests/test_metrics_counters.py |
+| Segment translation fails | `fail_cnt` incremented by 1 inside the per-segment loop | tests/test_sentence_mode_consistency.py |
+| Stop flag set before batch starts | `translate_blocks_batch` receives the flag; exits after the next per-sentence boundary | tests/test_sentence_mode_consistency.py |
+| Stop flag set mid-batch | `translate_blocks_batch` detects flag between per-sentence calls and halts remaining sentences | tests/test_sentence_mode_consistency.py |
+| Stop flag set; batch completes or halts | outer per-target loop breaks; no further target languages are translated | tests/test_sentence_mode_consistency.py |
+| `translate_blocks_batch` called with no stop_flag (legacy callers) | behaves as before; `stop_flag=None` default means no cancellation check | tests/test_translation_strategy.py |
 
 ## Change Policy
 

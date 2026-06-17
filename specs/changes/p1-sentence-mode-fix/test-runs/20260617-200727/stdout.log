@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0
+rootdir: /home/egg/Projects/Translate_Tool
+plugins: anyio-4.14.0
+collected 7 items
+
+tests/test_sentence_mode_consistency.py .......                          [100%]
+
+- generated xml file: /home/egg/Projects/Translate_Tool/specs/changes/p1-sentence-mode-fix/test-runs/20260617-200727/junit.xml -
+============================== 7 passed in 0.08s ===============================

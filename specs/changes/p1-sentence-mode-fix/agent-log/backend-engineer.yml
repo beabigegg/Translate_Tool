@@ -1,0 +1,51 @@
+change-id: p1-sentence-mode-fix
+timestamp: 2026-06-17T20:07:41Z
+agent: backend-engineer
+status: complete
+
+artifacts:
+  - { type: files-changed, pointer: "app/backend/services/translation_service.py:162-196" }
+  - { type: files-changed, pointer: "app/backend/utils/translation_helpers.py:316-332,369-376,389-401,453-454" }
+  - { type: tests-added, pointer: "tests/test_sentence_mode_consistency.py::test_sentence_mode_failure_placeholder_includes_original" }
+  - { type: tests-added, pointer: "tests/test_sentence_mode_consistency.py::test_sentence_mode_done_count_incremented_per_segment" }
+  - { type: tests-added, pointer: "tests/test_sentence_mode_consistency.py::test_sentence_mode_stop_flag_no_overcount" }
+  - { type: tests-added, pointer: "tests/test_sentence_mode_consistency.py::test_translate_blocks_batch_respects_stop_flag" }
+  - { type: tests-added, pointer: "tests/test_sentence_mode_consistency.py::test_sentence_mode_outer_loop_breaks_when_stopped" }
+  - { type: tests-added, pointer: "tests/test_sentence_mode_consistency.py::test_verify_and_fill_detects_sentence_mode_failures" }
+  - { type: tests-added, pointer: "tests/test_sentence_mode_consistency.py::test_translate_texts_signature_unchanged" }
+  - { type: test-output, pointer: "396 passed, 1 warning in 1.99s (389 baseline + 7 new regression tests)" }
+  - { type: contracts-touched, pointer: "n/a (no API/env/data/business contract changes required per implementation-plan.md)" }
+
+fixes-applied:
+  - id: FIX-1 (AC-1)
+    file: app/backend/services/translation_service.py
+    change: "In the SENTENCE_MODE result loop, added 'if not ok: res = f\"[Translation failed|{tgt}] {text}\"' before tmap assignment, producing block-level placeholder matching non-SENTENCE_MODE path."
+
+  - id: FIX-2 (AC-2)
+    file: app/backend/services/translation_service.py
+    change: "Replaced post-batch bulk increment 'done += len(texts_to_translate) + dedup_saved' with per-segment 'done += seen_texts.get(text, 1)' inside the result loop. Removed the bulk line entirely."
+
+  - id: FIX-3 (AC-3)
+    file: app/backend/utils/translation_helpers.py
+    change: "Added stop_flag=None to BatchTranslator.__init__ and translate_blocks_batch signature. Added stop_flag check at top of _fallback_individual loop. Threaded stop_flag=stop_flag into BatchTranslator constructor call inside translate_blocks_batch."
+
+  - id: FIX-4 (AC-4)
+    file: app/backend/services/translation_service.py
+    change: "After the SENTENCE_MODE result loop, added post-batch stop check: 'if stop_flag and stop_flag.is_set(): stopped = True' followed by 'if stopped: break', mirroring the non-SENTENCE_MODE pattern at lines 223-224. Also added stop_flag=stop_flag to the translate_blocks_batch() call."
+
+edge-cases:
+  - "AC-3 test: initial MagicMock(spec=[]) caused AttributeError since it had no translate_once attr; fixed to spec=['translate_once']. Pre-setting stop_flag before batch call was the clearest deterministic test for halt behavior."
+  - "AC-3 behavioral note: when _fallback_individual breaks early, the remaining indices have no entry in _results. BatchTranslator.get() calls flush() (which no-ops on empty _pending) then falls back to (False, '[Missing translation result]'). The translate_blocks_batch outer assembly loop treats these as ok=True (startswith check misses '[Missing') — the per-segment stop check is what matters for correctness, not the final result shape."
+  - "translate_texts signature unchanged: stop_flag was already a parameter on translate_texts; translate_blocks_batch gained stop_flag as an Optional kwarg with default None, preserving all existing callers."
+
+test-phases:
+  - phase: targeted
+    result: pass
+    run-id: "20260617-200727"
+  - phase: changed-area
+    result: pass
+    run-id: "20260617-200733"
+  - phase: full
+    result: pass
+    run-id: "20260617-200741"
+    count: "396 passed, 1 warning"

@@ -319,6 +319,7 @@ class BatchTranslator:
         max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
         tgt: str = "",
         src_lang: Optional[str] = None,
+        stop_flag=None,
     ) -> None:
         self.client = client
         self.max_batch_chars = max(MIN_MAX_BATCH_CHARS, min(max_batch_chars, MAX_MAX_BATCH_CHARS))
@@ -328,6 +329,7 @@ class BatchTranslator:
         self._pending_chars: int = 0
         self._results: Dict[int, Tuple[bool, str]] = {}
         self._next_index = 0
+        self._stop_flag = stop_flag
 
     def add(self, text: str) -> int:
         idx = self._next_index
@@ -366,6 +368,8 @@ class BatchTranslator:
 
     def _fallback_individual(self) -> None:
         for text, idx in self._pending:
+            if self._stop_flag and self._stop_flag.is_set():
+                break
             ok, ans = self.client.translate_once(text, self.tgt, self.src_lang)
             if not ok:
                 ans = f"[Translation failed|{self.tgt}] {text}"
@@ -393,6 +397,7 @@ def translate_blocks_batch(
     progress_log: Optional[Callable[[int], None]] = None,
     log: Optional[Callable[[str], None]] = None,
     on_segment_done: Optional[Callable[[str, str], None]] = None,
+    stop_flag=None,
 ) -> List[Tuple[bool, str]]:
     """Batch translate multiple text blocks.
 
@@ -446,7 +451,7 @@ def translate_blocks_batch(
         text_structures.append(lines_structure)
 
     if sentences_to_translate:
-        batch_translator = BatchTranslator(client, max_batch_chars, tgt, src_lang)
+        batch_translator = BatchTranslator(client, max_batch_chars, tgt, src_lang, stop_flag=stop_flag)
         sentence_texts = [s for _, _, _, s in sentences_to_translate]
         batch_results = batch_translator.translate_all(sentence_texts)
         for i, (text_idx, line_idx, sent_idx, _) in enumerate(sentences_to_translate):

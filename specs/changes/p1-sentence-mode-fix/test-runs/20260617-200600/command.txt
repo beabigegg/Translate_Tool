@@ -1,0 +1,1 @@
+python3 -m pytest tests/test_sentence_mode_consistency.py -v --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-sentence-mode-fix/test-runs/20260617-200600/junit.xml' -q --maxfail=1 --tb=short -ra

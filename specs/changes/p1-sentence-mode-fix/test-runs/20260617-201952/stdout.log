@@ -1,0 +1,23 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0
+rootdir: /home/egg/Projects/Translate_Tool
+plugins: anyio-4.14.0
+collected 7 items
+
+tests/test_sentence_mode_consistency.py F
+
+=================================== FAILURES ===================================
+___________ test_sentence_mode_failure_placeholder_includes_original ___________
+tests/test_sentence_mode_consistency.py:65: in test_sentence_mode_failure_placeholder_includes_original
+    assert tmap[(tgt, src_text)] == expected_placeholder, (
+E   AssertionError: Expected block-level placeholder, got: '[Translation failed|zh-TW]'
+E   assert '[Translation failed|zh-TW]' == '[Translation...] Hello world'
+E     
+E     - [Translation failed|zh-TW] Hello world
+E     ?                           ------------
+E     + [Translation failed|zh-TW]
+- generated xml file: /home/egg/Projects/Translate_Tool/specs/changes/p1-sentence-mode-fix/test-runs/20260617-201952/junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_sentence_mode_consistency.py::test_sentence_mode_failure_placeholder_includes_original
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+============================== 1 failed in 0.09s ===============================

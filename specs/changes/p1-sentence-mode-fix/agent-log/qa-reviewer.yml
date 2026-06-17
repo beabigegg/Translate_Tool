@@ -1,0 +1,64 @@
+agent: qa-reviewer
+change-id: p1-sentence-mode-fix
+status: complete
+verdict: CHANGES-REQUIRED
+reason: >-
+  Code and tests are reproducibly green (396 passed = 389 baseline + 7 new,
+  reproduced locally; all 7 new test names match test-plan.md exactly in junit).
+  Blocked solely on the evidence artifact: test-evidence.yml has
+  final-status: failed (must be passed) and is missing the required collect
+  phase. Regenerate via `cdd-kit test run` so it records a collect phase and
+  terminates with final-status: passed. Once evidence is clean and
+  contract-reviewer reports no contract changes, this converts to
+  APPROVED-WITH-RISK (R-1 accepted with follow-up).
+test-results:
+  total-passed: 396
+  new-tests: 7
+  baseline: 389
+  reproduced-locally: true
+  phases-passed: [targeted, changed-area, full]
+  phases-missing: [collect]
+  evidence-final-status: failed   # blocking: must be passed
+ac-coverage:
+  - { ac: AC-1, test: "test_sentence_mode_failure_placeholder_includes_original", status: covered }
+  - { ac: AC-2, test: "test_sentence_mode_done_count_incremented_per_segment", status: covered }
+  - { ac: AC-2, test: "test_sentence_mode_stop_flag_no_overcount", status: covered }
+  - { ac: AC-3, test: "test_translate_blocks_batch_respects_stop_flag", status: covered }
+  - { ac: AC-4, test: "test_sentence_mode_outer_loop_breaks_when_stopped", status: covered }
+  - { ac: AC-5, test: "test_verify_and_fill_detects_sentence_mode_failures", status: covered }
+  - { ac: AC-6, test: "test_translate_texts_signature_unchanged", status: covered }
+  - { ac: AC-7, test: "tests/test_translation_strategy.py + tests/test_translation_profiles_scenarios.py (396 passed)", status: covered }
+signature-check:
+  ac: AC-6
+  translate_texts-signature: unchanged
+  verified: "tests/test_sentence_mode_consistency.py::test_translate_texts_signature_unchanged passed; params == [texts, targets, src_lang, client, max_batch_chars, stop_flag, log, refine_client]"
+risks:
+  - id: R-1
+    description: >-
+      When _fallback_individual breaks mid-batch (translation_helpers.py:371-372),
+      unprocessed indices return (False, "[Missing translation result]") from
+      BatchTranslator.get() (line 381). Block assembly (lines 477-485) only checks
+      sent.startswith("[Translation failed"), which does NOT match
+      "[Missing translation result]", so block-level all_ok stays True and done is
+      counted optimistically on a mid-batch stop.
+    mitigating-factor: >-
+      Retry correctness is preserved: _FAILURE_PATTERNS in translation_verification.py
+      includes "Missing translation result]", so is_failed_translation() returns True
+      at value level and verify_and_fill_tmap detects/retries via the tmap KEY. Only
+      block-level ok/done accounting on the stop path is optimistic.
+    severity: low
+    disposition: accepted
+    follow-up: "Open tracked issue: block assembly at translation_helpers.py:481 should also treat '[Missing translation result]' as not-ok. Owner: backend-engineer + test-strategist."
+fixback-routing:
+  - "evidence-artifact (final-status: failed, missing collect phase) -> test-strategist / re-run cdd-kit test run"
+  - "R-1 mid-batch missing-result accounting (data-shape) -> backend-engineer + test-strategist (follow-up only)"
+dependency:
+  - "contract-reviewer running in parallel: if it reports no business-rules.md changes, verdict converts to APPROVED-WITH-RISK once evidence is regenerated. If it requires changes, re-review."
+evidence-quality: log+artifact (reproduced full suite locally: 396 passed; junit per-test names verified)
+notes: >-
+  Earlier failed test-runs (200554-200628) were environment/iteration failures
+  (pytest-not-found, mock spec) and are NOT referenced by test-evidence.yml; the
+  three referenced runs (200727 targeted, 200733 changed-area, 200741 full) all
+  passed and point at this change's test-runs/. The only defect is the evidence
+  file's terminal status and missing collect phase. Single-reviewer sign-off
+  appropriate (medium risk).

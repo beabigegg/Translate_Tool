@@ -1,0 +1,20 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0
+rootdir: /home/egg/Projects/Translate_Tool
+plugins: anyio-4.14.0
+collected 7 items
+
+tests/test_sentence_mode_consistency.py ...F
+
+=================================== FAILURES ===================================
+________________ test_translate_blocks_batch_respects_stop_flag ________________
+tests/test_sentence_mode_consistency.py:175: in test_translate_blocks_batch_respects_stop_flag
+    assert processed < len(texts), (
+E   AssertionError: Expected stop_flag to halt early; all 3 succeeded but should be fewer
+E   assert 3 < 3
+E    +  where 3 = len(['sentence one', 'sentence two', 'sentence three'])
+- generated xml file: /home/egg/Projects/Translate_Tool/specs/changes/p1-sentence-mode-fix/test-runs/20260617-200628/junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_sentence_mode_consistency.py::test_translate_blocks_batch_respects_stop_flag
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+========================= 1 failed, 3 passed in 0.10s ==========================

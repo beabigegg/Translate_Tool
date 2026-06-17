@@ -165,6 +165,7 @@ def translate_texts(
                 progress_log=_on_batch_progress,
                 log=log,
                 on_segment_done=_on_segment_done,
+                stop_flag=stop_flag,
             )
             _batch_elapsed_ms = (time.monotonic() - _batch_t0) * 1000.0
             # Flush remaining cache entries
@@ -176,6 +177,7 @@ def translate_texts(
             _per_item_ms = _batch_elapsed_ms / _batch_n
             for text, (ok, res) in zip(texts_to_translate, results):
                 if not ok:
+                    res = f"[Translation failed|{tgt}] {text}"
                     fail_cnt += 1
                 # Metrics hook (BR-21, BR-22, BR-23): one record per completed call.
                 # record_translation(failed=True) already increments provider_failure_count,
@@ -188,9 +190,11 @@ def translate_texts(
                 if ok and needs_s2t_conversion:
                     res = _convert_to_traditional(res)
                 tmap[(tgt, text)] = res
-
-            # Count all segments (unique + duplicates) as done
-            done += len(texts_to_translate) + dedup_saved
+                done += seen_texts.get(text, 1)  # Count duplicates per segment
+            if stop_flag and stop_flag.is_set():
+                stopped = True
+            if stopped:
+                break
         else:
             for text in texts_to_translate:
                 if stop_flag and stop_flag.is_set():

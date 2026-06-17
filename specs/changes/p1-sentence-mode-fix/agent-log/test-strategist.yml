@@ -1,0 +1,19 @@
+---
+agent: implementation-planner
+run-date: 2026-06-17
+status: done
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/p1-sentence-mode-fix/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer (IP-1..IP-4), test-strategist (IP-5)" }
+  - { type: scope-summary, pointer: "2 in scope (4 fixes across 2 files + 1 new test file), 4 out of scope" }
+---
+agent: test-strategist
+run-date: 2026-06-17
+status: done
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/p1-sentence-mode-fix/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_sentence_mode_consistency.py → app/backend/services/translation_service.py (SENTENCE_MODE branch, lines 138-224)" }
+  - { type: tdd-pairs, pointer: "tests/test_sentence_mode_consistency.py → app/backend/utils/translation_helpers.py (translate_blocks_batch, lines 385-484)" }
+  - { type: tdd-pairs, pointer: "tests/test_sentence_mode_consistency.py → app/backend/utils/translation_verification.py (verify_and_fill_tmap, lines 49-91)" }
+  - { type: coverage-tiers, pointer: "unit (tier 0), integration (tier 1)" }
+  - { type: mapping-completeness, pointer: "all 7 ACs mapped; AC-3 and AC-4 are red tests before implementation (stop_flag param and outer-loop break are missing)" }

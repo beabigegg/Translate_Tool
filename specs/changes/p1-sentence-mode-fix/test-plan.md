@@ -1,22 +1,33 @@
 ---
-change-id: <id>
+change-id: p1-sentence-mode-fix
 schema-version: 0.1.0
-last-changed: <date>
-risk: low | medium | high
-tier: 0 | 1 | 2 | 3 | 4 | 5
+last-changed: 2026-06-17
+risk: medium
+tier: 2
 ---
 
-# Test Plan: <change-id>
+# Test Plan: p1-sentence-mode-fix
 
 ## Acceptance Criteria → Test Mapping
 
 | criterion id | test family | test file path | tier |
 |---|---|---|---|
-| AC-1 | unit | tests/unit/test_xxx.py | 0 |
+| AC-1 | unit | tests/test_sentence_mode_consistency.py::test_sentence_mode_failure_placeholder_includes_original | 0 |
+| AC-2 | unit | tests/test_sentence_mode_consistency.py::test_sentence_mode_done_count_incremented_per_segment | 0 |
+| AC-2 | unit | tests/test_sentence_mode_consistency.py::test_sentence_mode_stop_flag_no_overcount | 0 |
+| AC-3 | unit | tests/test_sentence_mode_consistency.py::test_translate_blocks_batch_respects_stop_flag | 0 |
+| AC-4 | unit | tests/test_sentence_mode_consistency.py::test_sentence_mode_outer_loop_breaks_when_stopped | 0 |
+| AC-5 | integration | tests/test_sentence_mode_consistency.py::test_verify_and_fill_detects_sentence_mode_failures | 1 |
+| AC-6 | unit | tests/test_sentence_mode_consistency.py::test_translate_texts_signature_unchanged | 0 |
+| AC-7 | integration | tests/test_translation_strategy.py | 0 |
+| AC-7 | integration | tests/test_translation_profiles_scenarios.py | 0 |
 
 ## Test Families Required
 
-Mark all that apply: unit / contract / integration / e2e / data-boundary / resilience / monkey / stress / soak
+| family | tier | notes |
+|---|---|---|
+| unit | 0 | AC-1 to AC-4, AC-6: pure logic, mock `client.translate_once` and `translate_blocks_batch` at module boundary; use `threading.Event` for stop_flag |
+| integration | 1 | AC-5: real `verify_and_fill_tmap` with a pre-built failure tmap and mock client; AC-7: 389-test baseline |
 
 ## Test Execution Ladder
 
@@ -31,14 +42,9 @@ Mark all that apply: unit / contract / integration / e2e / data-boundary / resil
 
 ## Test Update Contract
 
-The approved place to record that an existing test must change because the
-accepted spec or contract changed. This is not a waiver: a still-valid test that
-fails must be fixed, not relisted here.
-
 | existing test | action | reason |
 |---|---|---|
-| tests/example/test_old_behavior.py::test_legacy_case | update | expected behavior changed by AC-2 |
-| tests/example/test_removed_behavior.py::test_removed_case | delete | behavior removed by accepted contract/spec change |
+| (none) | — | no existing test behavior changes; new file only |
 
 ## Stop Rules
 
@@ -49,6 +55,14 @@ fails must be fixed, not relisted here.
 
 ## Out of Scope
 
+- `verify_and_fill_dict` (PDF processor path) — explicitly excluded per change-classification.md.
+- E2E, visual, stress, monkey, and soak tests.
+- API route and HTTP response schema changes (no route changes in this fix).
+- Frontend surfaces.
+
 ## Notes
 
-(Keep this section under 10 lines. Implementation detail belongs in the test files themselves. Do not repeat full implementation-plan or CI-gate content here.)
+- AC-3 and AC-4 tests must fail before implementation: `translate_blocks_batch` has no `stop_flag` param yet and the outer loop has no `if stopped: break` in SENTENCE_MODE.
+- AC-1: assert `tmap[(tgt, src_text)]` starts with `[Translation failed|{tgt}]` and contains the original source text when batch returns `(False, ...)`.
+- AC-7 baseline: confirm `pytest --tb=short -q` reports 389 passed before merge; new tests add to that count.
+- Mock only at module boundary (`app.backend.services.translation_service.translate_blocks_batch`), not at internal class level.

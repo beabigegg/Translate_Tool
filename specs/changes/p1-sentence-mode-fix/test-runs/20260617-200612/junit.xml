@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="4" time="0.188" timestamp="2026-06-17T20:06:12.376042+08:00" hostname="EGG"><testcase classname="tests.test_sentence_mode_consistency" name="test_sentence_mode_failure_placeholder_includes_original" time="0.127" /><testcase classname="tests.test_sentence_mode_consistency" name="test_sentence_mode_done_count_incremented_per_segment" time="0.001" /><testcase classname="tests.test_sentence_mode_consistency" name="test_sentence_mode_stop_flag_no_overcount" time="0.001" /><testcase classname="tests.test_sentence_mode_consistency" name="test_translate_blocks_batch_respects_stop_flag" time="0.000"><failure message="AttributeError: Mock object has no attribute 'translate_once'">tests/test_sentence_mode_consistency.py:162: in test_translate_blocks_batch_respects_stop_flag
+    client.translate_once.side_effect = translate_once_side_effect
+    ^^^^^^^^^^^^^^^^^^^^^
+../../miniforge3/envs/translate-tool/lib/python3.11/unittest/mock.py:653: in __getattr__
+    raise AttributeError("Mock object has no attribute %r" % name)
+E   AttributeError: Mock object has no attribute 'translate_once'</failure></testcase></testsuite></testsuites>

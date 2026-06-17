@@ -1,0 +1,209 @@
+change-id: p1-sentence-mode-fix
+timestamp: 2026-06-17T00:00:00Z
+agent: bug-fix-engineer
+status: complete
+
+files-read:
+  - specs/changes/p1-sentence-mode-fix/change-classification.md
+  - specs/changes/p1-sentence-mode-fix/change-request.md
+  - app/backend/services/translation_service.py
+  - app/backend/utils/translation_helpers.py
+  - app/backend/utils/translation_verification.py
+
+artifacts:
+  - { type: root-cause, pointer: "app/backend/services/translation_service.py:177-193 — SENTENCE_MODE branch stores raw translate_blocks_batch output (inline sentence markers) rather than a block-level placeholder, and bulk-increments done after the batch with no per-segment stop check or post-batch break" }
+  - { type: root-cause, pointer: "app/backend/utils/translation_helpers.py:385-396 — translate_blocks_batch accepts no stop_flag parameter; BatchTranslator.translate_all/flush have no stop_flag threading; ok flag from batch_results[i] is silently discarded at line 453" }
+  - { type: residual-risk, pointer: "none beyond the documented fix scope; PDF verify_and_fill_dict path is explicitly out of scope" }
+
+bug-fix:
+  schema-version: 0.1.0
+
+  symptom: >
+    SENTENCE_MODE batch translation path in translate_texts() behaves inconsistently
+    with the non-SENTENCE_MODE per-sentence path on three axes: (1) block-level failure
+    placeholder content, (2) done/fail count granularity and over-count on stop, and
+    (3) absence of stop_flag support both inside translate_blocks_batch and in the outer
+    targets loop after the batch returns.
+
+  expected_behavior: >
+    (AC-1) On batch failure, tmap[(tgt, text)] is set to "[Translation failed|{tgt}] {original_text}"
+    at the block level, matching the non-SENTENCE_MODE path.
+    (AC-2) done and fail_cnt are incremented per segment inside the loop; a mid-batch stop produces
+    the same counts as non-SENTENCE_MODE on identical input.
+    (AC-3) translate_blocks_batch accepts a stop_flag and halts when it is set mid-batch.
+    (AC-4) After the SENTENCE_MODE batch block, an "if stopped: break" exits the outer targets loop.
+    (AC-5) Failed blocks remain detectable and retriable via verify_and_fill_tmap.
+
+  actual_behavior: >
+    (D1) When not ok in SENTENCE_MODE (line 178-190), tmap[(tgt, text)] is set to whatever
+    translate_blocks_batch returned — the joined inline sentence-level markers
+    (e.g. "[Translation failed|zh-TW][Translation failed|zh-TW]") with no original text at
+    the block level. The non-SENTENCE_MODE path (line 211) sets
+    "[Translation failed|{tgt}] {text}", which includes the original text.
+    (D2) Line 193 does "done += len(texts_to_translate) + dedup_saved" once after the full
+    batch regardless of whether stop_flag was set partway through. Non-SENTENCE_MODE
+    increments done inside the per-segment loop (line 219) so it accurately reflects only
+    segments actually processed.
+    (D3a) translate_blocks_batch() signature (line 385-396) has no stop_flag parameter.
+    Neither BatchTranslator.flush() nor BatchTranslator.translate_all() has stop_flag
+    threading, so no mid-batch cancellation is possible.
+    (D3b) After the SENTENCE_MODE block (lines 138-193) there is no "if stopped: break"
+    statement. The non-SENTENCE_MODE path has "if stopped: break" at line 223-224 which
+    exits the outer "for tgt in targets" loop. SENTENCE_MODE lacks this entirely, so all
+    remaining targets continue to be processed even after a stop is requested.
+
+  observed_surface: "SENTENCE_MODE branch of translate_texts(), app/backend/services/translation_service.py:138-193"
+
+  reproduction:
+    status: test-reproduced
+    command: "/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_sentence_mode_consistency.py -v"
+    failing_before_fix: true
+    summary: "specs/changes/p1-sentence-mode-fix/test-runs/20260617-201952/summary.json"
+
+  hypotheses:
+    - id: H-1
+      candidate: "app/backend/services/translation_service.py::translate_texts SENTENCE_MODE branch (lines 177-193)"
+      reason: >
+        The tmap assignment at line 190 uses the raw translate_blocks_batch result.
+        When not ok, that result is an inline joined marker string without original text,
+        unlike line 211 in non-SENTENCE_MODE which explicitly sets the block-level placeholder.
+      result: confirmed
+
+    - id: H-2
+      candidate: "app/backend/services/translation_service.py::translate_texts line 193"
+      reason: >
+        "done += len(texts_to_translate) + dedup_saved" is a single post-batch bulk
+        increment. If stop_flag is set after the batch starts (translate_blocks_batch runs
+        to completion — no stop_flag parameter), the increment still fires for all segments
+        even though the batch ran after a stop was conceptually requested. Non-SENTENCE_MODE
+        increments inside the per-segment loop (line 219) so done reflects only processed work.
+      result: confirmed
+
+    - id: H-3
+      candidate: "app/backend/utils/translation_helpers.py::translate_blocks_batch (lines 385-396)"
+      reason: >
+        Function signature has no stop_flag parameter. The inner BatchTranslator.translate_all()
+        calls flush() which calls client.translate_batch() or _fallback_individual(); neither
+        path checks any stop_flag. This makes mid-batch cancellation structurally impossible.
+      result: confirmed
+
+    - id: H-4
+      candidate: "app/backend/services/translation_service.py SENTENCE_MODE block — missing post-batch break (after line 193)"
+      reason: >
+        The non-SENTENCE_MODE block ends with "if stopped: break" (lines 223-224) so the
+        outer "for tgt in targets" loop exits when stopped is True. The SENTENCE_MODE block
+        has no such guard, so even if stop_flag is set, all remaining targets continue to
+        be processed.
+      result: confirmed
+
+    - id: H-5
+      candidate: "verify_and_fill_tmap (translation_verification.py:49) — failure detectability of SENTENCE_MODE output"
+      reason: >
+        If SENTENCE_MODE failure output does not match _FAILURE_PATTERNS, verify_and_fill_tmap
+        will silently skip it and the block will never be retried. Need to confirm that the
+        inline markers emitted by translate_blocks_batch are matched by is_failed_translation().
+      result: confirmed
+
+  root_cause:
+    pointer: "app/backend/services/translation_service.py:177-193"
+    summary: >
+      Four distinct root causes confirmed across two files:
+
+      ROOT CAUSE 1 (D1 / AC-1, AC-5):
+      At translation_service.py:190, tmap[(tgt, text)] = res stores the raw return value of
+      translate_blocks_batch(). When all_ok is False for a block, translate_blocks_batch
+      returns a string that is the join of per-sentence inline markers — e.g.
+      "[Translation failed|zh-TW] sentence1 [Translation failed|zh-TW] sentence2" or just
+      "[Translation failed|zh-TW]" for a single sentence. This string:
+        (a) Does NOT include the original block text as a suffix (unlike the non-SENTENCE_MODE
+            placeholder "[Translation failed|{tgt}] {text}" at line 211).
+        (b) IS matched by _FAILURE_PATTERNS (regex anchored to "^\[" with alternation including
+            "Translation failed\|"), so is_failed_translation() returns True and
+            verify_and_fill_tmap WILL detect and retry these entries — detectability holds.
+        (c) However, the KEY used by verify_and_fill_tmap is (tgt, src_text) from the tmap
+            key, not from the value, so retry uses the correct original source text regardless
+            of what placeholder content is stored. The inconsistency is therefore cosmetic for
+            retry correctness but IS a behavioral inconsistency vs AC-1 (no original text in
+            the block-level marker) and a readability/debugging gap.
+
+      Note on translate_blocks_batch line 453: "_, translated = batch_results[i]" — the ok
+      boolean from the sentence-level batch result is silently discarded. all_ok is only set
+      False through the downstream None check (line 473) or startswith("[Translation failed")
+      check (line 476). This is not an additional root cause since _fallback_individual always
+      sets the string to "[Translation failed|{tgt}] {text}" when not ok, which is caught by
+      the startswith check — but it is a latent code smell worth noting to the implementation
+      planner.
+
+      ROOT CAUSE 2 (D2 / AC-2):
+      At translation_service.py:193, "done += len(texts_to_translate) + dedup_saved" is
+      executed unconditionally after translate_blocks_batch() returns. Since translate_blocks_batch
+      accepts no stop_flag, it always runs to completion. The bulk increment then fires even if
+      stop_flag was set before the batch began but the outer loop guard at line 85 was not
+      re-checked between targets (i.e., stop_flag was set after the for-tgt guard passed but
+      before the batch finished). For the per-target case this means done is over-counted for
+      the last in-progress target. Non-SENTENCE_MODE at line 219 increments per segment inside
+      the loop, so a mid-loop stop leaves done accurate.
+
+      ROOT CAUSE 3 (D3a / AC-3):
+      translate_blocks_batch() at translation_helpers.py:385 has no stop_flag parameter.
+      BatchTranslator.translate_all() (line 379) calls flush() (line 381) which calls either
+      client.translate_batch() or _fallback_individual() — neither checks stop_flag. Adding
+      stop_flag as an optional parameter to translate_blocks_batch and threading it through
+      BatchTranslator.translate_all / flush / _fallback_individual is required for mid-batch
+      cancellation. The parameter should be optional (default None) to satisfy AC-6
+      (translate_texts signature unchanged; existing callers unmodified).
+
+      ROOT CAUSE 4 (D3b / AC-4):
+      After the SENTENCE_MODE block (line 193), there is no "if stopped: break" statement.
+      The equivalent exists for non-SENTENCE_MODE at lines 223-224. Without it, the outer
+      "for tgt in targets" loop continues iterating over remaining targets even after a stop
+      was requested (stop_flag.is_set() becomes True), because stop_flag is only checked at
+      the top of the outer loop (line 85). If targets = ["fr", "de", "ja"] and stop is
+      requested after the "fr" batch begins, the "de" and "ja" batches still execute.
+
+  fix:
+    files_changed:
+      - app/backend/services/translation_service.py
+      - app/backend/utils/translation_helpers.py
+    summary: >
+      Four targeted changes required:
+
+      FIX 1 (D1): In the SENTENCE_MODE result loop (translation_service.py ~lines 177-190),
+      after the per-text "for text, (ok, res) in zip(...):" loop, when not ok, overwrite res
+      with the block-level placeholder "[Translation failed|{tgt}] {text}" before assigning
+      to tmap. This matches the non-SENTENCE_MODE path at line 211. The existing tmap
+      assignment "tmap[(tgt, text)] = res" at line 190 then stores the correct placeholder.
+
+      FIX 2 (D2): Replace the post-batch bulk increment at line 193 with per-segment
+      increments inside the "for text, (ok, res) in zip(...):" loop, mirroring line 219.
+      Each iteration should do "done += seen_texts.get(text, 1)". The dedup_saved count is
+      already encoded in seen_texts values (seen_texts[t] includes duplicates), so the total
+      will be correct. Remove the bulk line 193 entirely.
+
+      FIX 3 (D3a): Add "stop_flag=None" as an optional keyword argument to
+      translate_blocks_batch() (translation_helpers.py:385). Thread it into BatchTranslator
+      as a constructor parameter, and check it in _fallback_individual() between per-sentence
+      iterations, and in flush() between batch items when falling back. This is additive and
+      does not change existing callers (AC-6 satisfied since translate_texts is unchanged;
+      translate_blocks_batch callers get the new param as optional).
+
+      FIX 4 (D3b): Add "if stopped: break" immediately after the SENTENCE_MODE block closes
+      (after line 193 / after the new per-segment done increment), before the else clause
+      of the "if SENTENCE_MODE:" branch. This mirrors lines 223-224 in the non-SENTENCE_MODE
+      path.
+
+  regression:
+    status: passed
+    command: "/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/ -q --tb=short"
+    summary: "specs/changes/p1-sentence-mode-fix/test-runs/20260617-201617/summary.json"
+
+  residual_risk: >
+    Low. All four fixes are contained within the SENTENCE_MODE branch and the
+    translate_blocks_batch helper. AC-6 is satisfied: translate_texts signature is unchanged;
+    stop_flag on translate_blocks_batch is optional (default None) so existing callers are
+    unaffected. The latent ok-flag discard at translation_helpers.py:453 is noted as a code
+    smell but does not affect correctness given the downstream string-pattern checks; it can
+    be addressed as a separate cleanup. verify_and_fill_tmap retry correctness is confirmed:
+    it uses the tmap KEY (tgt, src_text) for retry, not the placeholder value.
+
+next-action: "implementation-planner — produce implementation-plan.md and test-plan.md based on this root-cause analysis"
