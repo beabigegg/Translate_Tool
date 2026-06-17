@@ -1,0 +1,12 @@
+agent: test-strategist
+change-id: p1-llm-client-abstraction
+date: 2026-06-17
+status: complete
+
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/p1-llm-client-abstraction/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_llm_client_protocol.py → app/backend/clients/base_llm_client.py" }
+  - { type: tdd-pairs, pointer: "tests/test_llm_client_protocol.py → app/backend/clients/ollama_client.py (alias methods)" }
+  - { type: tdd-pairs, pointer: "tests/test_llm_client_protocol.py → app/backend/services/translation_service.py (private-method removal)" }
+  - { type: coverage-tiers, pointer: "unit (tier 0), contract (tier 0), regression (tier 1), integration (tier 1)" }
+  - { type: mapping-completeness, pointer: "all 7 ACs covered; 16 test rows mapped; 5 regression files guarded unchanged" }

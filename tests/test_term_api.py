@@ -158,7 +158,7 @@ def test_terms_import_json_insert(client, db):
 
 
 def test_terms_import_skip_duplicate(client, db):
-    db.insert(Term("Pin", "chân", "zh", "vi", "technical", confidence=0.9))
+    db.insert(Term("Pin", "chân", "zh", "vi", "technical", confidence=1.0))
     data = _json_import_bytes([{
         "source_text": "Pin",
         "target_text": "đinh",

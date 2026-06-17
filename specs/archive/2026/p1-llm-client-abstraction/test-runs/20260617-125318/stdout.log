@@ -1,0 +1,10 @@
+..........................................F............................. [ 93%]
+.....                                                                    [100%]
+=================================== FAILURES ===================================
+____ TestTranslateTextsRefinePhase.test_refined_output_not_written_to_cache ____
+tests/test_hy_mt_quality_refinement.py:247: in test_refined_output_not_written_to_cache
+    assert "refined result not for cache" not in entry
+E   AssertionError: assert 'refined result not for cache' not in ('This is a long enough source text', 'Vietnamese', 'English', 'qwen-model', 'refined result not for cache')
+=========================== short test summary info ============================
+FAILED tests/test_hy_mt_quality_refinement.py::TestTranslateTextsRefinePhase::test_refined_output_not_written_to_cache
+1 failed, 76 passed, 1 deselected in 0.12s

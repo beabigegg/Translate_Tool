@@ -1,0 +1,15 @@
+{
+  "change_id": "p1-llm-client-abstraction",
+  "phase": "full",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/python -m pytest -q --tb=short -ra --deselect tests/test_ollama_client_dynamic_strategy.py::test_runtime_options_override_is_merged --deselect 'tests/test_hy_mt_quality_refinement.py::TestTranslateTextsRefinePhase::test_refined_output_not_written_to_cache' --ignore=tests/test_model_config_api.py --ignore=tests/test_term_api.py --ignore=tests/test_term_db.py 2>&1",
+  "duration_ms": 1792,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p1-llm-client-abstraction/test-runs/20260617-125350/summary.json",
+    "stdout": "specs/changes/p1-llm-client-abstraction/test-runs/20260617-125350/stdout.log",
+    "stderr": "specs/changes/p1-llm-client-abstraction/test-runs/20260617-125350/stderr.log"
+  },
+  "next_action": "all phases green"
+}

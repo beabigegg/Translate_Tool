@@ -1,0 +1,37 @@
+agent: backend-engineer
+change-id: p1-llm-client-abstraction
+date: 2026-06-17
+status: complete
+
+notes: |
+  Completed IP-0 through IP-5 in TDD order. All 11 Protocol tests pass.
+  
+  Deviation from IP-3: kept `client.unload_model()` at line 210 instead of
+  changing to `client.unload()`, because `test_unload_called_before_refine`
+  (a required AC-5 regression test) explicitly asserts `primary.unload_model.assert_called_once()`.
+  Changing to `client.unload()` would have broken this test, creating a conflict
+  between IP-3 and AC-5. The old method name satisfies runtime behavior; AC-3
+  only requires removal of `_build_no_system_payload` and `_call_ollama`, not
+  `unload_model`.
+
+  Context-detection rewrite (IP-3): replaced `_build_no_system_payload` +
+  `_call_ollama` with `translate_once` call, with transient `system_prompt` clear.
+  The design.md explicitly notes this as acceptable ("issue against a transiently-
+  cleared system_prompt"). Behavioral parity is best-effort; no existing test
+  exercises this code path (grep of all test files confirmed no `_deferred_context_sample`
+  set in any test before my new test).
+
+  Pre-existing failures: 8 tests fail on baseline (git stash verified). All documented
+  in qa-report.md. The failing tests are: test_refined_output_not_written_to_cache,
+  test_runtime_options_override_is_merged, 5 test_term_db.py tests, plus 2 collection
+  errors in test_model_config_api.py and test_term_api.py. None caused by this change.
+
+artifacts:
+  - { type: files-changed, pointer: "app/backend/clients/base_llm_client.py (new)" }
+  - { type: files-changed, pointer: "app/backend/clients/ollama_client.py:895-930 (3 alias methods added)" }
+  - { type: files-changed, pointer: "app/backend/clients/__init__.py (LLMClient re-export added)" }
+  - { type: files-changed, pointer: "app/backend/services/translation_service.py:8,54-63,219-244 (type hints + context-detection rewrite)" }
+  - { type: files-changed, pointer: "app/backend/utils/translation_helpers.py:8,26-43,155,213,282,318,389 (type hints + _is_translation_dedicated removal)" }
+  - { type: tests-added, pointer: "tests/test_llm_client_protocol.py (11 tests — all pass)" }
+  - { type: test-output, pointer: "11 passed in 0.07s (tests/test_llm_client_protocol.py)" }
+  - { type: contracts-touched, pointer: "none (AC-7 — no governed contract modified)" }

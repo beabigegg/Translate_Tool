@@ -1,0 +1,18 @@
+agent: qa-reviewer
+change-id: p1-llm-client-abstraction
+timestamp: 2026-06-17
+status: approved-with-risk
+verdict: approved-with-risk
+artifacts:
+  - pointer: "specs/changes/p1-llm-client-abstraction/test-evidence.yml"
+  - pointer: "specs/changes/p1-llm-client-abstraction/qa-report.md"
+notes: >
+  All 5 phases passed (collect, targeted, changed-area, contract, full). All AC-1..7 satisfied.
+  unload_model()→unload() fix confirmed at translation_service.py:210.
+  Pre-existing exclusions: PF-1 (refined-cache policy), PF-2 (runtime-options override), PF-3..7
+  (term_db IndexError), 2 collection errors (httpx2) — all documented in qa-report.md with baseline
+  evidence (git stash on d45eaa1), scope rationale, owner, and follow-up.
+  Known risk: translation_service.py:235 still calls OllamaClient._build_refine_system_prompt (private
+  static). Not a gate-blocker for this change (AC-3 names only _build_no_system_payload and _call_ollama,
+  both removed). Must be addressed before p1-cloud-providers injects a non-Ollama provider.
+  Owner: spec-architect + backend-engineer in p1-cloud-providers scope.

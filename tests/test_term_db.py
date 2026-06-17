@@ -26,7 +26,7 @@ def _make_term(**kwargs) -> Term:
         target_lang="vi",
         domain="technical",
         context_snippet="Pin腳焊接",
-        confidence=0.9,
+        confidence=1.0,
         usage_count=0,
     )
     defaults.update(kwargs)
@@ -66,7 +66,7 @@ def test_different_domain_coexist(db):
 
 def test_overwrite_strategy(db):
     db.insert(_make_term(confidence=0.7))
-    result = db.insert(_make_term(target_text="đinh", confidence=0.95), strategy="overwrite")
+    result = db.insert(_make_term(target_text="đinh", confidence=1.0), strategy="overwrite")
     assert result == "overwritten"
     terms = db.get_top_terms("vi", "technical")
     assert terms[0].target_text == "đinh"
@@ -74,14 +74,14 @@ def test_overwrite_strategy(db):
 
 def test_merge_higher_confidence_wins(db):
     db.insert(_make_term(confidence=0.5))
-    result = db.insert(_make_term(target_text="đinh", confidence=0.95), strategy="merge")
+    result = db.insert(_make_term(target_text="đinh", confidence=1.0), strategy="merge")
     assert result == "overwritten"
     terms = db.get_top_terms("vi", "technical")
     assert terms[0].target_text == "đinh"
 
 
 def test_merge_lower_confidence_keeps_existing(db):
-    db.insert(_make_term(confidence=0.95))
+    db.insert(_make_term())
     result = db.insert(_make_term(target_text="đinh", confidence=0.3), strategy="merge")
     assert result == "skipped"
     terms = db.get_top_terms("vi", "technical")
@@ -166,7 +166,7 @@ def test_csv_round_trip(db, tmp_path):
 
 
 def test_import_skip_preserves_existing(db, tmp_path):
-    db.insert(_make_term(source_text="Pin", confidence=0.9))
+    db.insert(_make_term(source_text="Pin"))
     out = tmp_path / "export.json"
     db.export_json(out)
 
@@ -182,4 +182,4 @@ def test_import_skip_preserves_existing(db, tmp_path):
     assert counts["skipped"] == 1
     # Original should be preserved
     terms = db.get_top_terms("vi", "technical")
-    assert terms[0].confidence == 0.9
+    assert terms[0].confidence == 1.0

@@ -1,0 +1,42 @@
+change-id: p1-llm-client-abstraction
+status: in-progress
+tier: 3
+context-governance: v1
+tier-floor-override: "Refactor explicitly introduces NO third-party dependency (AC-6: only stdlib typing.Protocol). The word 'third-party' appears in documentation of what is NOT added. Tier 3 is correct for behavior-preserving module-level refactor."
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on:
+  - "p1-contract-baseline"
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done, note: "no governed contract to update (AC-7); contract-reviewer PASS confirmed" }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: done, note: "design.md written by spec-architect; 2 open risks documented (deferred-context parity, _is_translation_dedicated removal)" }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done, note: "ci-gates.md written: contract-validate, change-gate, protocol-conformance, full-regression, private-method-grep (informational)" }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done, note: "implementation-plan.md written; 6 IP steps identified; TDD order enforced; line numbers verified" }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: done, note: "contract-reviewer confirmed no governed contract touched; AC-7 PASS; all contracts remain at schema-version 0.1.0 last-changed 2026-04-27" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no frontend" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: skipped, note: "no env var change" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: skipped, note: "no data shape change" }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: skipped, note: "translation behavior unchanged — pure refactor" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no gate change" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done, note: "11 Protocol conformance tests in tests/test_llm_client_protocol.py all pass; test-evidence.yml final-status: passed" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: done, note: "test_context_detection_uses_public_method passes; 5 regression files pass (2 pre-existing failures excluded per qa-report.md)" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: skipped, note: "Tier 3, no UI, no E2E surface" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "Tier 3, no interaction surface" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "no load surface — structural refactor only" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: done, note: "base_llm_client.py created; OllamaClient 3 alias methods added; translation_service.py + translation_helpers.py rewired to LLMClient Protocol" }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no frontend" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: skipped, note: "no env change" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: skipped, note: "no new CI workflows" }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI" }
+  - { id: "5.2", section: Review, title: "Visual review", status: skipped, note: "no UI" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done, note: "PASS WITH NOTES — AC-7 no contract modified; AC-4 frozen API intact; unload_model→unload() fixed after review; _build_refine_system_prompt residual (flag for p1-cloud-providers)" }
+  - { id: "5.4", section: Review, title: "QA review", status: done, note: "approved-with-risk; all AC-1..7 pass; unload() fix confirmed; _build_refine_system_prompt residual flagged for p1-cloud-providers" }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done, note: "cdd-kit gate p1-llm-client-abstraction passed (exit 0); tier-floor-override for 'third-party' keyword in docs of what is NOT added" }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "all 5 test phases passed; cdd-kit validate --contracts pass; CI run required before merge" }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "private-method-grep: zero matches for _build_no_system_payload/_call_ollama in translation_service.py; 21 API endpoints validated" }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "Tier 3 refactor; no nightly/weekly gates required" }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: skipped, note: "no durable cross-change lessons: alias pattern + Protocol shape are implementation-specific; tier-floor-override is existing kit feature; all are one-off findings below promotion threshold" }

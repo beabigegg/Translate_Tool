@@ -114,4 +114,5 @@ write **outside** the markers is yours and is never edited or evicted.
 
 <!-- cdd-kit:learnings:start -->
 - MySQL ENUM contraction / any `ALGORITHM=COPY` DDL = high risk on large tables (row-count + online-migration/maintenance-window + rollback required) — see `contracts/data/` migration rules.
+- `cdd-kit gate` validates all contracts globally — pre-existing empty stubs outside your change scope will block the gate; ensure all contracts have minimal real content before gate run.
 <!-- cdd-kit:learnings:end -->

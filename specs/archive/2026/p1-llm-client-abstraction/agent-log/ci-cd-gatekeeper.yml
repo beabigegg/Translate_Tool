@@ -1,0 +1,11 @@
+change-id: p1-llm-client-abstraction
+agent: ci-cd-gatekeeper
+timestamp: "2026-06-17T00:00:00Z"
+status: complete
+artifacts:
+  - { type: tiers-modified, pointer: "1, 2 (no new tiers; existing Tier 2 gates retained, Tier 1 pytest steps added)" }
+  - { type: gate-promotions, pointer: "n/a (no gate moved between tiers)" }
+  - { type: workflow-files-changed, pointer: "n/a (no new workflow files; two named steps added to existing unit-tests job)" }
+  - { type: required-status-checks, pointer: "contract-validate, change-gate, protocol-conformance, full-regression" }
+next-action: none
+notes: "private-method-grep is informational in CI but a hard AC-3 requirement for merge eligibility per change-classification.md."

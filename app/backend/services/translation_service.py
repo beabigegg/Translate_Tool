@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Callable, Dict, List, Optional, Tuple
 
-from app.backend.clients.ollama_client import OllamaClient
+from app.backend.clients.base_llm_client import LLMClient
 from app.backend.config import CROSS_MODEL_REFINEMENT_ENABLED, DEFAULT_MAX_BATCH_CHARS, REFINEMENT_MIN_CHARS, SENTENCE_MODE
 from app.backend.services.translation_cache import get_cache
 from app.backend.utils.translation_helpers import translate_blocks_batch
@@ -55,11 +55,11 @@ def translate_texts(
     texts: List[str],
     targets: List[str],
     src_lang: Optional[str],
-    client: OllamaClient,
+    client: LLMClient,
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
     stop_flag=None,
     log: Callable[[str], None] = lambda s: None,
-    refine_client: Optional[OllamaClient] = None,
+    refine_client: Optional[LLMClient] = None,
 ) -> Tuple[Dict[Tuple[str, str], str], int, int, bool]:
     """Translate texts for all targets with character-based batching.
 
@@ -207,7 +207,7 @@ def translate_texts(
     # Phase 2: Cross-model refinement (HY-MT → Qwen polish pass)
     if refine_client is not None and CROSS_MODEL_REFINEMENT_ENABLED and not stopped:
         # Evict primary model from VRAM before loading refiner
-        client.unload_model()
+        client.unload()
 
         # Deferred context detection: run now that primary VRAM is free.
         # Orchestrator sets _deferred_context_sample on refine_client when the
@@ -220,18 +220,27 @@ def translate_texts(
                 "以下是一份文件的開頭內容，請用一句話描述這份文件的類型、所屬領域和主題。"
                 "只輸出描述，不要解釋。\n\n" + _ctx_sample
             )
-            _payload = refine_client._build_no_system_payload(_detect_prompt)
+            # Temporarily clear system_prompt so the detection call is not
+            # filtered through any refinement persona (best-effort: only
+            # applies when the provider exposes the system_prompt attribute).
+            _saved_system = getattr(refine_client, "system_prompt", "")
             try:
-                _ok, _ctx = refine_client._call_ollama(_payload)
+                if hasattr(refine_client, "system_prompt"):
+                    refine_client.system_prompt = ""  # type: ignore[attr-defined]
+                _ok, _ctx = refine_client.translate_once(_detect_prompt, _ctx_target, src_lang)
                 if _ok and _ctx.strip():
                     _ctx = _ctx.strip()[:200]
                     log(f"[REFINE] Context detected: {_ctx}")
                     from app.backend.clients.ollama_client import OllamaClient as _OC
                     _base = _OC._build_refine_system_prompt(_ctx_target, _ctx_profile)
-                    refine_client.system_prompt = f"{_base}\n\nDocument context: {_ctx}"
+                    refine_client.system_prompt = f"{_base}\n\nDocument context: {_ctx}"  # type: ignore[attr-defined]
+                else:
+                    if hasattr(refine_client, "system_prompt"):
+                        refine_client.system_prompt = _saved_system  # type: ignore[attr-defined]
             except Exception:
-                pass
-            refine_client._deferred_context_sample = None
+                if hasattr(refine_client, "system_prompt"):
+                    refine_client.system_prompt = _saved_system  # type: ignore[attr-defined]
+            refine_client._deferred_context_sample = None  # type: ignore[attr-defined]
 
         refine_total = sum(
             1 for tgt in targets

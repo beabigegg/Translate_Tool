@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Callable, Dict, List, Optional, Tuple
 
-from app.backend.clients.ollama_client import OllamaClient
+from app.backend.clients.base_llm_client import LLMClient
 from app.backend.config import (
     DEFAULT_MAX_BATCH_CHARS,
     MAX_MAX_BATCH_CHARS,
@@ -24,7 +24,7 @@ SEGMENT_MARKER_SUFFIX = ">>>"
 
 
 def _maybe_refine(
-    client: OllamaClient,
+    client: LLMClient,
     source_text: str,
     translation: str,
     tgt: str,
@@ -32,8 +32,6 @@ def _maybe_refine(
 ) -> str:
     """Apply refinement pass if enabled and text is long enough."""
     if not REFINEMENT_ENABLED:
-        return translation
-    if client._is_translation_dedicated():
         return translation
     if len(source_text) < REFINEMENT_MIN_CHARS:
         return translation
@@ -154,7 +152,7 @@ def translate_merged_paragraphs(
     texts: List[str],
     tgt: str,
     src_lang: Optional[str],
-    client: OllamaClient,
+    client: LLMClient,
     max_chars: int = MAX_PARAGRAPH_CHARS,
     progress_log: Optional[Callable[[int], None]] = None,
     log: Optional[Callable[[str], None]] = None,
@@ -170,7 +168,7 @@ def translate_merged_paragraphs(
         texts: List of texts to translate.
         tgt: Target language.
         src_lang: Source language.
-        client: Ollama client.
+        client: LLM client (LLMClient Protocol).
         max_chars: Maximum characters per translation unit.
         progress_log: Optional callback called with count of segments completed so far.
         log: Optional logging callback.
@@ -212,7 +210,7 @@ def translate_block_as_paragraph(
     text: str,
     tgt: str,
     src_lang: Optional[str],
-    client: OllamaClient,
+    client: LLMClient,
 ) -> Tuple[bool, str]:
     """Translate entire text block as a single unit, preserving context.
 
@@ -223,7 +221,7 @@ def translate_block_as_paragraph(
         text: Text to translate.
         tgt: Target language.
         src_lang: Source language (or None for auto-detect).
-        client: Ollama client.
+        client: LLM client (LLMClient Protocol).
 
     Returns:
         Tuple of (success, translated_text).
@@ -281,7 +279,7 @@ def translate_block_sentencewise(
     text: str,
     tgt: str,
     src_lang: Optional[str],
-    client: OllamaClient,
+    client: LLMClient,
 ) -> Tuple[bool, str]:
     """Translate text sentence by sentence."""
     if not text or not text.strip():
@@ -317,7 +315,7 @@ class BatchTranslator:
 
     def __init__(
         self,
-        client: OllamaClient,
+        client: LLMClient,
         max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
         tgt: str = "",
         src_lang: Optional[str] = None,
@@ -388,7 +386,7 @@ def translate_blocks_batch(
     texts: List[str],
     tgt: str,
     src_lang: Optional[str],
-    client: OllamaClient,
+    client: LLMClient,
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
     granularity: Optional[str] = None,
     use_merged_context: Optional[bool] = None,
@@ -402,7 +400,7 @@ def translate_blocks_batch(
         texts: List of texts to translate.
         tgt: Target language.
         src_lang: Source language.
-        client: Ollama client.
+        client: LLM client (LLMClient Protocol).
         max_batch_chars: Maximum characters per batch.
         granularity: Translation granularity ("sentence" or "paragraph").
                     None uses config default (TRANSLATION_GRANULARITY).

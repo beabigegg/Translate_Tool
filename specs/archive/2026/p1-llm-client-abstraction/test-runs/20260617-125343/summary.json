@@ -1,0 +1,15 @@
+{
+  "change_id": "p1-llm-client-abstraction",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "cdd-kit validate --contracts",
+  "duration_ms": 260,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p1-llm-client-abstraction/test-runs/20260617-125343/summary.json",
+    "stdout": "specs/changes/p1-llm-client-abstraction/test-runs/20260617-125343/stdout.log",
+    "stderr": "specs/changes/p1-llm-client-abstraction/test-runs/20260617-125343/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

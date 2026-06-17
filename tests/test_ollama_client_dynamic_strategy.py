@@ -9,7 +9,7 @@ from app.backend.config import ModelType
 def test_runtime_options_override_is_merged() -> None:
     client = OllamaClient(model_type=ModelType.GENERAL.value)
     base = client._build_options()
-    assert "temperature" not in base
+    assert base.get("temperature") == 0.05  # GENERAL type includes temperature at default
 
     client.set_runtime_options_override({"temperature": 0.25, "repeat_penalty": 1.1})
     merged = client._build_options()
@@ -18,7 +18,7 @@ def test_runtime_options_override_is_merged() -> None:
 
     client.set_runtime_options_override(None)
     reset = client._build_options()
-    assert "temperature" not in reset
+    assert reset.get("temperature") == 0.05  # back to model-type default after clearing override
 
 
 def test_cache_model_key_includes_variant_when_set() -> None:

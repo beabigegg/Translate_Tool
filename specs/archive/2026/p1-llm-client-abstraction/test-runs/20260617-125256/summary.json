@@ -1,0 +1,19 @@
+{
+  "change_id": "p1-llm-client-abstraction",
+  "phase": "targeted",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_llm_client_protocol.py tests/test_ollama_client_dynamic_strategy.py tests/test_translation_strategy.py tests/test_hy_mt_quality_refinement.py tests/test_translation_profiles_scenarios.py tests/test_model_router.py -q --maxfail=1 --tb=short -ra 2>&1",
+  "duration_ms": 240,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests/test_ollama_client_dynamic_strategy.py::test_runtime_options_override_is_merged",
+    "message": "1 failed, 11 passed in 0.09s"
+  },
+  "artifacts": {
+    "summary": "specs/changes/p1-llm-client-abstraction/test-runs/20260617-125256/summary.json",
+    "stdout": "specs/changes/p1-llm-client-abstraction/test-runs/20260617-125256/stdout.log",
+    "stderr": "specs/changes/p1-llm-client-abstraction/test-runs/20260617-125256/stderr.log"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

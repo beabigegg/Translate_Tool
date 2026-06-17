@@ -1,0 +1,12 @@
+- type: tier-floor-override
+  change-id: p1-llm-client-abstraction
+  timestamp: '2026-06-17T05:00:55.269Z'
+  declared-tier: 3
+  floor-tier: 2
+  label: behavioral surface (api / data shape / queue / cache / external integration)
+  matched:
+    - third-party
+  reason: >-
+    Refactor explicitly introduces NO third-party dependency (AC-6: only stdlib typing.Protocol).
+    The word 'third-party' appears in documentation of what is NOT added. Tier 3 is correct for
+    behavior-preserving module-level refactor.

@@ -1,0 +1,22 @@
+agent: contract-reviewer
+change-id: p1-llm-client-abstraction
+timestamp: 2026-06-17
+status: pass-with-notes
+verdict: PASS WITH NOTES — all governed contracts untouched (AC-7 PASS); OllamaClient frozen public API intact (AC-4 PASS); LLMClient Protocol sound (6 methods, runtime_checkable, stdlib-only); unload_model()→unload() fix applied post-review; _build_refine_system_prompt residual flagged for p1-cloud-providers
+artifacts:
+  - pointer: "contracts/api/api-contract.md"
+  - pointer: "contracts/business/business-rules.md"
+  - pointer: "contracts/data/data-shape-contract.md"
+  - pointer: "contracts/env/env-contract.md"
+  - pointer: "contracts/css/css-contract.md"
+  - pointer: "contracts/ci/ci-gate-contract.md"
+  - pointer: "app/backend/clients/base_llm_client.py"
+  - pointer: "app/backend/clients/ollama_client.py"
+notes: >
+  MUST FIX resolved: translation_service.py line 210 changed client.unload_model()→client.unload()
+  after review; test_hy_mt_quality_refinement.py assertions updated accordingly (3 occurrences).
+  Residual (not a gate-blocker for this change): translation_service.py line 235 still imports
+  OllamaClient._build_refine_system_prompt (private static) for context-detection system prompt
+  construction. Abstraction leak that requires Protocol extension or provider-specific dispatch in
+  p1-cloud-providers scope. Track as pre-condition for p1-cloud-providers.
+  breaking-changes: none to governed contracts; latent runtime break removed by unload() fix.

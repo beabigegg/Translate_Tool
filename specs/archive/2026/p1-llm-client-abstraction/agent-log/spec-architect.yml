@@ -1,0 +1,5 @@
+artifacts:
+  - { type: adr-written, pointer: "none (Tier-3 internal-interface refactor; no boundary/persistence/auth change meeting ADR criteria)" }
+  - { type: affected-areas, pointer: "clients (base_llm_client, ollama_client), translation_service, translation_helpers" }
+  - { type: decision-summary, pointer: "LLMClient Protocol = 6-method consumer contract; add health/list_models/unload aliases (no rename); private payload logic stays inside OllamaClient" }
+  - { type: risks-noted, pointer: "2 medium, 0 high (context-detection parity via public translate_once; _is_translation_dedicated removal)" }

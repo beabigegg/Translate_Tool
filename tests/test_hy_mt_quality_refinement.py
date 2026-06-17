@@ -148,7 +148,7 @@ class TestRouteGroupRefineModel:
 
 
 # ---------------------------------------------------------------------------
-# A.7.5 — translate_texts() calls client.unload_model() before first refine call
+# A.7.5 — translate_texts() calls client.unload() before first refine call
 # ---------------------------------------------------------------------------
 
 class TestTranslateTextsRefinePhase:
@@ -180,12 +180,12 @@ class TestTranslateTextsRefinePhase:
             refine_client=refiner,
         )
 
-        # unload_model must be called on the primary client before refine_translation
-        primary.unload_model.assert_called_once()
+        # unload() must be called on the primary client before refine_translation
+        primary.unload.assert_called_once()
         refiner.refine_translation.assert_called_once()
 
         # Verify order: unload happens before refine
-        unload_call_idx = [str(c) for c in primary.mock_calls].index(str(call.unload_model()))
+        unload_call_idx = [str(c) for c in primary.mock_calls].index(str(call.unload()))
         assert unload_call_idx >= 0
 
     @patch("app.backend.services.translation_service.CROSS_MODEL_REFINEMENT_ENABLED", True)
@@ -217,7 +217,7 @@ class TestTranslateTextsRefinePhase:
 
     @patch("app.backend.services.translation_service.CROSS_MODEL_REFINEMENT_ENABLED", True)
     @patch("app.backend.services.translation_service.translate_blocks_batch")
-    def test_refined_output_not_written_to_cache(self, mock_batch):
+    def test_refined_output_is_cached_under_refiner_key(self, mock_batch):
         from app.backend.services.translation_service import translate_texts
 
         mock_cache = MagicMock()
@@ -229,7 +229,7 @@ class TestTranslateTextsRefinePhase:
 
             primary = self._make_client("hymt-model")
             refiner = self._make_client("qwen-model")
-            refiner.refine_translation.return_value = (True, "refined result not for cache")
+            refiner.refine_translation.return_value = (True, "refined output cached")
 
             translate_texts(
                 texts=[long_text],
@@ -239,12 +239,14 @@ class TestTranslateTextsRefinePhase:
                 refine_client=refiner,
             )
 
-        # Cache put_batch may be called for the primary draft, but never with refined text
-        if mock_cache.put_batch.called:
-            for c in mock_cache.put_batch.call_args_list:
-                entries = c[0][0]  # first positional arg is list of (text, tgt, src, key, trans)
-                for entry in entries:
-                    assert "refined result not for cache" not in entry
+        # Refined result should be written to cache under the refiner's cache key
+        assert mock_cache.put_batch.called
+        all_entries = [
+            entry
+            for c in mock_cache.put_batch.call_args_list
+            for entry in c[0][0]
+        ]
+        assert any("refined output cached" in str(e) for e in all_entries)
 
     # ---------------------------------------------------------------------------
     # A.7.7 — translate_texts() skips Phase 2 when CROSS_MODEL_REFINEMENT_ENABLED=False
@@ -270,7 +272,7 @@ class TestTranslateTextsRefinePhase:
             refine_client=refiner,
         )
 
-        primary.unload_model.assert_not_called()
+        primary.unload.assert_not_called()
         refiner.refine_translation.assert_not_called()
 
     @patch("app.backend.services.translation_service.CROSS_MODEL_REFINEMENT_ENABLED", True)
@@ -292,5 +294,5 @@ class TestTranslateTextsRefinePhase:
             refine_client=None,
         )
 
-        primary.unload_model.assert_not_called()
+        primary.unload.assert_not_called()
         assert tmap[("Vietnamese", long_text)] == "draft here"

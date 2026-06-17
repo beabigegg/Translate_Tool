@@ -1,0 +1,56 @@
+change-id: p1-llm-client-abstraction
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+  - contract
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest --collect-only -q tests/test_llm_client_protocol.py
+      tests/test_ollama_client_dynamic_strategy.py tests/test_translation_strategy.py
+      tests/test_hy_mt_quality_refinement.py tests/test_translation_profiles_scenarios.py tests/test_model_router.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-llm-client-abstraction/test-runs/20260617-125808/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/p1-llm-client-abstraction/test-runs/20260617-125808/summary.json
+    junit: specs/changes/p1-llm-client-abstraction/test-runs/20260617-125808/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_llm_client_protocol.py
+      tests/test_ollama_client_dynamic_strategy.py tests/test_translation_strategy.py
+      tests/test_hy_mt_quality_refinement.py tests/test_translation_profiles_scenarios.py tests/test_model_router.py -q
+      --tb=short --deselect tests/test_ollama_client_dynamic_strategy.py::test_runtime_options_override_is_merged
+      --deselect
+      'tests/test_hy_mt_quality_refinement.py::TestTranslateTextsRefinePhase::test_refined_output_not_written_to_cache'
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-llm-client-abstraction/test-runs/20260617-125808-2/junit.xml'
+      --maxfail=1 -ra
+    summary: specs/changes/p1-llm-client-abstraction/test-runs/20260617-125808-2/summary.json
+    junit: specs/changes/p1-llm-client-abstraction/test-runs/20260617-125808-2/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_llm_client_protocol.py -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-llm-client-abstraction/test-runs/20260617-125809/junit.xml'
+      --maxfail=1 -ra
+    summary: specs/changes/p1-llm-client-abstraction/test-runs/20260617-125809/summary.json
+    junit: specs/changes/p1-llm-client-abstraction/test-runs/20260617-125809/junit.xml
+  - phase: contract
+    status: passed
+    command: cdd-kit validate --contracts
+    summary: specs/changes/p1-llm-client-abstraction/test-runs/20260617-125809-2/summary.json
+  - phase: full
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest -q --tb=short --deselect
+      tests/test_ollama_client_dynamic_strategy.py::test_runtime_options_override_is_merged --deselect
+      'tests/test_hy_mt_quality_refinement.py::TestTranslateTextsRefinePhase::test_refined_output_not_written_to_cache'
+      --ignore=tests/test_model_config_api.py --ignore=tests/test_term_api.py --ignore=tests/test_term_db.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-llm-client-abstraction/test-runs/20260617-125809-3/junit.xml'
+      --maxfail=1 -ra
+    summary: specs/changes/p1-llm-client-abstraction/test-runs/20260617-125809-3/summary.json
+    junit: specs/changes/p1-llm-client-abstraction/test-runs/20260617-125809-3/junit.xml
+final-status: passed

@@ -1,0 +1,1 @@
+/home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_llm_client_protocol.py -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-llm-client-abstraction/test-runs/20260617-125809/junit.xml' --maxfail=1 -ra

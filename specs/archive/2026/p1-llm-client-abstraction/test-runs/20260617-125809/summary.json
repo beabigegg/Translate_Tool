@@ -1,0 +1,16 @@
+{
+  "change_id": "p1-llm-client-abstraction",
+  "phase": "changed-area",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_llm_client_protocol.py -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-llm-client-abstraction/test-runs/20260617-125809/junit.xml' --maxfail=1 -ra",
+  "duration_ms": 198,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p1-llm-client-abstraction/test-runs/20260617-125809/summary.json",
+    "stdout": "specs/changes/p1-llm-client-abstraction/test-runs/20260617-125809/stdout.log",
+    "stderr": "specs/changes/p1-llm-client-abstraction/test-runs/20260617-125809/stderr.log",
+    "junit": "specs/changes/p1-llm-client-abstraction/test-runs/20260617-125809/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

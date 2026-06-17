@@ -913,6 +913,24 @@ class OllamaClient:
             logger.warning(msg)
             return False, msg
 
+    # ------------------------------------------------------------------
+    # LLMClient Protocol aliases (IP-2)
+    # These thin wrappers make OllamaClient a structural subtype of
+    # LLMClient without renaming any frozen public method.
+    # ------------------------------------------------------------------
+
+    def health(self) -> Tuple[bool, str]:
+        """LLMClient Protocol alias: delegates to health_check()."""
+        return self.health_check()
+
+    def list_models(self) -> List[str]:
+        """LLMClient Protocol alias: delegates to module-level list_ollama_models()."""
+        return list_ollama_models(self.base_url)
+
+    def unload(self) -> Tuple[bool, str]:
+        """LLMClient Protocol alias: delegates to unload_model()."""
+        return self.unload_model()
+
 
 def list_ollama_models(base_url: str = OLLAMA_BASE_URL, timeout: Optional[TimeoutConfig] = None) -> List[str]:
     timeout = timeout or TimeoutConfig()
