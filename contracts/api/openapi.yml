@@ -1,591 +1,905 @@
-openapi: "3.1.0"
-info:
-  title: "API behavior, compatibility rules, and endpoint contract requirements."
-  version: "0.1.0"
-  description: "- response style:"
-paths:
-  /health:
-    get:
-      summary: GET /health
-      responses:
-        200:
-          description: "Contract response: HealthResponse"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthResponse"
-      x-cdd-errors: "-"
-  /models:
-    get:
-      summary: GET /models
-      responses:
-        200:
-          description: "Contract response: ModelsResponse"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ModelsResponse"
-      x-cdd-errors: "-"
-  /profiles:
-    get:
-      summary: GET /profiles
-      responses:
-        200:
-          description: "Contract response: ProfileItem[]"
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ProfileItem"
-      x-cdd-errors: "-"
-  /model-config:
-    get:
-      summary: GET /model-config
-      responses:
-        200:
-          description: "Contract response: ModelConfigItem[]"
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ModelConfigItem"
-      x-cdd-errors: "-"
-  /route-info:
-    get:
-      summary: GET /route-info
-      responses:
-        200:
-          description: "Contract response: RouteInfoResponse"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RouteInfoResponse"
-      x-cdd-errors: "-"
-  /jobs:
-    post:
-      summary: POST /jobs
-      responses:
-        201:
-          description: "Contract response: JobCreateResponse"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/JobCreateResponse"
-        400:
-          description: Error response (see contract error format)
-        422:
-          description: Error response (see contract error format)
-      requestBody:
-        description: "Contract request: multipart/form-data (schema not machine-resolved; see contract)"
-        content: {}
-        x-cdd-unresolved: true
-      x-cdd-errors: "400, 422"
-  /jobs/{job_id}:
-    get:
-      summary: "GET /jobs/{job_id}"
-      responses:
-        200:
-          description: "Contract response: JobStatus"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/JobStatus"
-        404:
-          description: Error response (see contract error format)
-      parameters:
-        -
-          name: job_id
-          in: path
-          required: true
-          schema:
-            type: string
-      x-cdd-errors: "404"
-  /jobs/{job_id}/cancel:
-    post:
-      summary: "POST /jobs/{job_id}/cancel"
-      responses:
-        201:
-          description: "Contract response: -"
-        404:
-          description: Error response (see contract error format)
-      parameters:
-        -
-          name: job_id
-          in: path
-          required: true
-          schema:
-            type: string
-      x-cdd-response-contract: "-"
-      x-cdd-errors: "404"
-  /jobs/{job_id}/download:
-    get:
-      summary: "GET /jobs/{job_id}/download"
-      responses:
-        200:
-          description: "Contract response: file stream"
-        404:
-          description: Error response (see contract error format)
-      parameters:
-        -
-          name: job_id
-          in: path
-          required: true
-          schema:
-            type: string
-      x-cdd-response-contract: file stream
-      x-cdd-errors: "404"
-  /stats:
-    get:
-      summary: GET /stats
-      responses:
-        200:
-          description: "Contract response: -"
-      x-cdd-response-contract: "-"
-      x-cdd-errors: "-"
-  /cache/stats:
-    get:
-      summary: GET /cache/stats
-      responses:
-        200:
-          description: "Contract response: -"
-      x-cdd-response-contract: "-"
-      x-cdd-errors: "-"
-  /cache:
-    delete:
-      summary: DELETE /cache
-      responses:
-        200:
-          description: "Contract response: -"
-      x-cdd-response-contract: "-"
-      x-cdd-errors: "-"
-  /terms/stats:
-    get:
-      summary: GET /terms/stats
-      responses:
-        200:
-          description: "Contract response: TermStatsResponse"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TermStatsResponse"
-      x-cdd-errors: "-"
-  /terms/export:
-    get:
-      summary: GET /terms/export
-      responses:
-        200:
-          description: "Contract response: file stream"
-      x-cdd-response-contract: file stream
-      x-cdd-errors: "-"
-  /terms/import:
-    post:
-      summary: POST /terms/import
-      responses:
-        201:
-          description: "Contract response: TermImportResult"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TermImportResult"
-        400:
-          description: Error response (see contract error format)
-        422:
-          description: Error response (see contract error format)
-      requestBody:
-        description: "Contract request: multipart/form-data (schema not machine-resolved; see contract)"
-        content: {}
-        x-cdd-unresolved: true
-      x-cdd-errors: "400, 422"
-  /terms/unverified:
-    get:
-      summary: GET /terms/unverified
-      responses:
-        200:
-          description: "Contract response: TermItem[]"
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/TermItem"
-      x-cdd-errors: "-"
-  /terms/approve:
-    post:
-      summary: POST /terms/approve
-      responses:
-        201:
-          description: "Contract response: -"
-        404:
-          description: Error response (see contract error format)
-      requestBody:
-        description: "Contract request: TermApproveRequest"
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TermApproveRequest"
-      x-cdd-response-contract: "-"
-      x-cdd-errors: "404"
-  /terms/approved:
-    get:
-      summary: GET /terms/approved
-      responses:
-        200:
-          description: "Contract response: TermItem[]"
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/TermItem"
-      x-cdd-errors: "-"
-  /terms/edit:
-    patch:
-      summary: PATCH /terms/edit
-      responses:
-        200:
-          description: "Contract response: -"
-        404:
-          description: Error response (see contract error format)
-      requestBody:
-        description: "Contract request: TermEditRequest"
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TermEditRequest"
-      x-cdd-response-contract: "-"
-      x-cdd-errors: "404"
-  /terms/wikidata/search:
-    post:
-      summary: POST /terms/wikidata/search
-      responses:
-        201:
-          description: "Contract response: WikidataSearchResponse"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/WikidataSearchResponse"
-        422:
-          description: Error response (see contract error format)
-      requestBody:
-        description: "Contract request: WikidataSearchRequest"
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/WikidataSearchRequest"
-      x-cdd-errors: "422"
-  /terms/wikidata/import:
-    post:
-      summary: POST /terms/wikidata/import
-      responses:
-        201:
-          description: "Contract response: -"
-        422:
-          description: Error response (see contract error format)
-      requestBody:
-        description: "Contract request: WikidataImportRequest"
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/WikidataImportRequest"
-      x-cdd-response-contract: "-"
-      x-cdd-errors: "422"
-x-cdd-generated-from: contracts/api/api-contract.md
-x-cdd-note: "Generated by `cdd-kit openapi export` from the markdown API contract (the source of truth). Partial by design: request/response bodies are free-form prose in the contract and are marked unresolved. Do not hand-edit; regenerate from the contract."
-components:
-  schemas:
-    HealthResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          description: "always 'ok'"
-      required:
-        - status
-    ModelsResponse:
-      type: object
-      properties:
-        models:
-          type: array
-          items:
-            type: string
-          description: list of available Ollama model names
-      required:
-        - models
-    ProfileItem:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-        model_type:
-          type: string
-      required:
-        - id
-        - name
-        - description
-        - model_type
-    ModelConfigItem:
-      type: object
-      properties:
-        model_type:
-          type: string
-        model_size_gb:
-          type: number
-        kv_per_1k_ctx_gb:
-          type: number
-        default_num_ctx:
-          type: integer
-        min_num_ctx:
-          type: integer
-        max_num_ctx:
-          type: integer
-      required:
-        - model_type
-        - model_size_gb
-        - kv_per_1k_ctx_gb
-        - default_num_ctx
-        - min_num_ctx
-        - max_num_ctx
-    RouteInfoEntry:
-      type: object
-      properties:
-        target:
-          type: string
-        model:
-          type: string
-        profile_id:
-          type: string
-        model_type:
-          type: string
-        is_primary:
-          type: boolean
-      required:
-        - target
-        - model
-        - profile_id
-        - model_type
-        - is_primary
-    RouteInfoResponse:
-      type: object
-      properties:
-        routes:
-          type: array
-          items:
-            $ref: "#/components/schemas/RouteInfoEntry"
-      required:
-        - routes
-    JobCreateResponse:
-      type: object
-      properties:
-        job_id:
-          type: string
-      required:
-        - job_id
-    JobStatus:
-      type: object
-      properties:
-        job_id:
-          type: string
-        status:
-          type: string
-        processed_files:
-          type: integer
-        total_files:
-          type: integer
-        error:
-          type: string
-        output_ready:
-          type: boolean
-        current_file:
-          type: string
-        segments_done:
-          type: integer
-        segments_total:
-          type: integer
-        file_segments_done:
-          type: integer
-        file_segments_total:
-          type: integer
-        elapsed_seconds:
-          type: number
-        overall_progress:
-          type: number
-        segments_per_second:
-          type: number
-        eta_seconds:
-          type: number
-      required:
-        - job_id
-        - status
-        - processed_files
-        - total_files
-        - output_ready
-        - elapsed_seconds
-        - overall_progress
-        - segments_per_second
-    TermStatsResponse:
-      type: object
-      properties:
-        total:
-          type: integer
-        unverified:
-          type: integer
-        by_target_lang:
-          type: string
-          description: "serialized as JSON map of lang -> count"
-        by_domain:
-          type: string
-          description: "serialized as JSON map of domain -> count"
-      required:
-        - total
-        - unverified
-        - by_target_lang
-        - by_domain
-    TermItem:
-      type: object
-      properties:
-        source_text:
-          type: string
-        target_text:
-          type: string
-        source_lang:
-          type: string
-        target_lang:
-          type: string
-        domain:
-          type: string
-        context_snippet:
-          type: string
-        confidence:
-          type: number
-        usage_count:
-          type: integer
-        status:
-          type: string
-      required:
-        - source_text
-        - target_text
-        - source_lang
-        - target_lang
-        - domain
-        - context_snippet
-        - confidence
-        - usage_count
-        - status
-    TermImportResult:
-      type: object
-      properties:
-        inserted:
-          type: integer
-        skipped:
-          type: integer
-        overwritten:
-          type: integer
-      required:
-        - inserted
-        - skipped
-        - overwritten
-    TermApproveRequest:
-      type: object
-      properties:
-        source_text:
-          type: string
-        target_lang:
-          type: string
-        domain:
-          type: string
-      required:
-        - source_text
-        - target_lang
-        - domain
-    TermEditRequest:
-      type: object
-      properties:
-        source_text:
-          type: string
-        target_lang:
-          type: string
-        domain:
-          type: string
-        target_text:
-          type: string
-        confidence:
-          type: number
-      required:
-        - source_text
-        - target_lang
-        - domain
-        - target_text
-    WikidataSearchRequest:
-      type: object
-      properties:
-        term:
-          type: string
-        source_lang:
-          type: string
-          description: default Chinese
-        target_langs:
-          type: array
-          items:
-            type: string
-          description: default English
-        domain:
-          type: string
-          description: default general
-      required:
-        - term
-    WikidataCandidate:
-      type: object
-      properties:
-        entity_id:
-          type: string
-        source_label:
-          type: string
-        description:
-          type: string
-        labels:
-          type: string
-          description: "serialized as JSON map of lang -> label"
-      required:
-        - entity_id
-        - source_label
-        - description
-        - labels
-    WikidataSearchResponse:
-      type: object
-      properties:
-        term:
-          type: string
-        candidates:
-          type: array
-          items:
-            $ref: "#/components/schemas/WikidataCandidate"
-      required:
-        - term
-        - candidates
-    WikidataImportRequest:
-      type: object
-      properties:
-        source_text:
-          type: string
-        target_text:
-          type: string
-        source_lang:
-          type: string
-        target_lang:
-          type: string
-        domain:
-          type: string
-          description: default general
-        entity_id:
-          type: string
-      required:
-        - source_text
-        - target_text
-        - source_lang
-        - target_lang
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "API behavior, compatibility rules, and endpoint contract requirements.",
+    "version": "0.2.0",
+    "description": "- response style: JSON (Pydantic response models); binary endpoints return file streams (FileResponse / StreamingResponse)."
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "GET /health",
+        "responses": {
+          "200": {
+            "description": "Contract response: HealthResponse",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-cdd-errors": "-"
+      }
+    },
+    "/models": {
+      "get": {
+        "summary": "GET /models",
+        "responses": {
+          "200": {
+            "description": "Contract response: ModelsResponse",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelsResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-cdd-errors": "-"
+      }
+    },
+    "/profiles": {
+      "get": {
+        "summary": "GET /profiles",
+        "responses": {
+          "200": {
+            "description": "Contract response: ProfileItem[]",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProfileItem"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-cdd-errors": "-"
+      }
+    },
+    "/model-config": {
+      "get": {
+        "summary": "GET /model-config",
+        "responses": {
+          "200": {
+            "description": "Contract response: ModelConfigItem[]",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelConfigItem"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-cdd-errors": "-"
+      }
+    },
+    "/route-info": {
+      "get": {
+        "summary": "GET /route-info",
+        "responses": {
+          "200": {
+            "description": "Contract response: RouteInfoResponse",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteInfoResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-cdd-errors": "-"
+      }
+    },
+    "/jobs": {
+      "post": {
+        "summary": "POST /jobs",
+        "responses": {
+          "201": {
+            "description": "Contract response: JobCreateResponse",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobCreateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error response (see contract error format)"
+          },
+          "422": {
+            "description": "Error response (see contract error format)"
+          }
+        },
+        "requestBody": {
+          "description": "Contract request: multipart/form-data (schema not machine-resolved; see contract)",
+          "content": {},
+          "x-cdd-unresolved": true
+        },
+        "x-cdd-errors": "400, 422"
+      }
+    },
+    "/jobs/{job_id}": {
+      "get": {
+        "summary": "GET /jobs/{job_id}",
+        "responses": {
+          "200": {
+            "description": "Contract response: JobStatus",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error response (see contract error format)"
+          }
+        },
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-cdd-errors": "404"
+      }
+    },
+    "/jobs/{job_id}/cancel": {
+      "post": {
+        "summary": "POST /jobs/{job_id}/cancel",
+        "responses": {
+          "201": {
+            "description": "Contract response: -"
+          },
+          "404": {
+            "description": "Error response (see contract error format)"
+          }
+        },
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-cdd-response-contract": "-",
+        "x-cdd-errors": "404"
+      }
+    },
+    "/jobs/{job_id}/download": {
+      "get": {
+        "summary": "GET /jobs/{job_id}/download",
+        "responses": {
+          "200": {
+            "description": "Contract response: file stream"
+          },
+          "404": {
+            "description": "Error response (see contract error format)"
+          }
+        },
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-cdd-response-contract": "file stream",
+        "x-cdd-errors": "404"
+      }
+    },
+    "/stats": {
+      "get": {
+        "summary": "GET /stats",
+        "responses": {
+          "200": {
+            "description": "Contract response: -"
+          }
+        },
+        "x-cdd-response-contract": "-",
+        "x-cdd-errors": "-"
+      }
+    },
+    "/cache/stats": {
+      "get": {
+        "summary": "GET /cache/stats",
+        "responses": {
+          "200": {
+            "description": "Contract response: -"
+          }
+        },
+        "x-cdd-response-contract": "-",
+        "x-cdd-errors": "-"
+      }
+    },
+    "/cache": {
+      "delete": {
+        "summary": "DELETE /cache",
+        "responses": {
+          "200": {
+            "description": "Contract response: -"
+          }
+        },
+        "x-cdd-response-contract": "-",
+        "x-cdd-errors": "-"
+      }
+    },
+    "/terms/stats": {
+      "get": {
+        "summary": "GET /terms/stats",
+        "responses": {
+          "200": {
+            "description": "Contract response: TermStatsResponse",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TermStatsResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-cdd-errors": "-"
+      }
+    },
+    "/terms/export": {
+      "get": {
+        "summary": "GET /terms/export",
+        "responses": {
+          "200": {
+            "description": "Contract response: file stream"
+          }
+        },
+        "x-cdd-response-contract": "file stream",
+        "x-cdd-errors": "-"
+      }
+    },
+    "/terms/import": {
+      "post": {
+        "summary": "POST /terms/import",
+        "responses": {
+          "201": {
+            "description": "Contract response: TermImportResult",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TermImportResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error response (see contract error format)"
+          },
+          "422": {
+            "description": "Error response (see contract error format)"
+          }
+        },
+        "requestBody": {
+          "description": "Contract request: multipart/form-data (schema not machine-resolved; see contract)",
+          "content": {},
+          "x-cdd-unresolved": true
+        },
+        "x-cdd-errors": "400, 422"
+      }
+    },
+    "/terms/unverified": {
+      "get": {
+        "summary": "GET /terms/unverified",
+        "responses": {
+          "200": {
+            "description": "Contract response: TermItem[]",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TermItem"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-cdd-errors": "-"
+      }
+    },
+    "/terms/approve": {
+      "post": {
+        "summary": "POST /terms/approve",
+        "responses": {
+          "201": {
+            "description": "Contract response: -"
+          },
+          "404": {
+            "description": "Error response (see contract error format)"
+          }
+        },
+        "requestBody": {
+          "description": "Contract request: TermApproveRequest",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TermApproveRequest"
+              }
+            }
+          }
+        },
+        "x-cdd-response-contract": "-",
+        "x-cdd-errors": "404"
+      }
+    },
+    "/terms/approved": {
+      "get": {
+        "summary": "GET /terms/approved",
+        "responses": {
+          "200": {
+            "description": "Contract response: TermItem[]",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TermItem"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-cdd-errors": "-"
+      }
+    },
+    "/terms/edit": {
+      "patch": {
+        "summary": "PATCH /terms/edit",
+        "responses": {
+          "200": {
+            "description": "Contract response: -"
+          },
+          "404": {
+            "description": "Error response (see contract error format)"
+          }
+        },
+        "requestBody": {
+          "description": "Contract request: TermEditRequest",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TermEditRequest"
+              }
+            }
+          }
+        },
+        "x-cdd-response-contract": "-",
+        "x-cdd-errors": "404"
+      }
+    },
+    "/terms/wikidata/search": {
+      "post": {
+        "summary": "POST /terms/wikidata/search",
+        "responses": {
+          "201": {
+            "description": "Contract response: WikidataSearchResponse",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikidataSearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error response (see contract error format)"
+          }
+        },
+        "requestBody": {
+          "description": "Contract request: WikidataSearchRequest",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WikidataSearchRequest"
+              }
+            }
+          }
+        },
+        "x-cdd-errors": "422"
+      }
+    },
+    "/terms/wikidata/import": {
+      "post": {
+        "summary": "POST /terms/wikidata/import",
+        "responses": {
+          "201": {
+            "description": "Contract response: -"
+          },
+          "422": {
+            "description": "Error response (see contract error format)"
+          }
+        },
+        "requestBody": {
+          "description": "Contract request: WikidataImportRequest",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WikidataImportRequest"
+              }
+            }
+          }
+        },
+        "x-cdd-response-contract": "-",
+        "x-cdd-errors": "422"
+      }
+    }
+  },
+  "x-cdd-generated-from": "contracts/api/api-contract.md",
+  "x-cdd-note": "Generated by `cdd-kit openapi export` from the markdown API contract (the source of truth). Partial by design: request/response bodies are free-form prose in the contract and are marked unresolved. Do not hand-edit; regenerate from the contract.",
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "always 'ok'"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "ModelsResponse": {
+        "type": "object",
+        "properties": {
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "list of available Ollama model names"
+          }
+        },
+        "required": [
+          "models"
+        ]
+      },
+      "ProfileItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "model_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "model_type"
+        ]
+      },
+      "ModelConfigItem": {
+        "type": "object",
+        "properties": {
+          "model_type": {
+            "type": "string"
+          },
+          "model_size_gb": {
+            "type": "number"
+          },
+          "kv_per_1k_ctx_gb": {
+            "type": "number"
+          },
+          "default_num_ctx": {
+            "type": "integer"
+          },
+          "min_num_ctx": {
+            "type": "integer"
+          },
+          "max_num_ctx": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model_type",
+          "model_size_gb",
+          "kv_per_1k_ctx_gb",
+          "default_num_ctx",
+          "min_num_ctx",
+          "max_num_ctx"
+        ]
+      },
+      "RouteInfoEntry": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "description": ":"
+          },
+          "model": {
+            "type": "string",
+            "description": ":"
+          },
+          "profile_id": {
+            "type": "string",
+            "description": ":"
+          },
+          "model_type": {
+            "type": "string",
+            "description": ":"
+          },
+          "is_primary": {
+            "type": "boolean",
+            "description": ":"
+          },
+          "provider": {
+            "type": "string",
+            "description": "provider ID used for this route group (e.g. panjit, deepseek, ollama-local); null if providers.yml absent or Ollama-only path"
+          }
+        },
+        "required": [
+          "target",
+          "model",
+          "profile_id",
+          "model_type",
+          "is_primary"
+        ]
+      },
+      "RouteInfoResponse": {
+        "type": "object",
+        "properties": {
+          "routes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RouteInfoEntry"
+            }
+          }
+        },
+        "required": [
+          "routes"
+        ]
+      },
+      "JobCreateResponse": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      },
+      "JobStatus": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "processed_files": {
+            "type": "integer"
+          },
+          "total_files": {
+            "type": "integer"
+          },
+          "error": {
+            "type": "string"
+          },
+          "output_ready": {
+            "type": "boolean"
+          },
+          "current_file": {
+            "type": "string"
+          },
+          "segments_done": {
+            "type": "integer"
+          },
+          "segments_total": {
+            "type": "integer"
+          },
+          "file_segments_done": {
+            "type": "integer"
+          },
+          "file_segments_total": {
+            "type": "integer"
+          },
+          "elapsed_seconds": {
+            "type": "number"
+          },
+          "overall_progress": {
+            "type": "number"
+          },
+          "segments_per_second": {
+            "type": "number"
+          },
+          "eta_seconds": {
+            "type": "number"
+          },
+          "term_summary": {
+            "type": "string",
+            "description": "per-language/domain term extraction counts as JSON-serialized map; null when mode != extraction_only"
+          },
+          "provider": {
+            "type": "string",
+            "description": "provider ID that successfully processed this job (e.g. panjit, deepseek, ollama-local); null if not yet determined or Ollama-only legacy job"
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "processed_files",
+          "total_files",
+          "output_ready",
+          "elapsed_seconds",
+          "overall_progress",
+          "segments_per_second"
+        ]
+      },
+      "TermStatsResponse": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "unverified": {
+            "type": "integer"
+          },
+          "by_target_lang": {
+            "type": "string",
+            "description": "serialized as JSON map of lang -> count"
+          },
+          "by_domain": {
+            "type": "string",
+            "description": "serialized as JSON map of domain -> count"
+          }
+        },
+        "required": [
+          "total",
+          "unverified",
+          "by_target_lang",
+          "by_domain"
+        ]
+      },
+      "TermItem": {
+        "type": "object",
+        "properties": {
+          "source_text": {
+            "type": "string"
+          },
+          "target_text": {
+            "type": "string"
+          },
+          "source_lang": {
+            "type": "string"
+          },
+          "target_lang": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "context_snippet": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number"
+          },
+          "usage_count": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_text",
+          "target_text",
+          "source_lang",
+          "target_lang",
+          "domain",
+          "context_snippet",
+          "confidence",
+          "usage_count",
+          "status"
+        ]
+      },
+      "TermImportResult": {
+        "type": "object",
+        "properties": {
+          "inserted": {
+            "type": "integer"
+          },
+          "skipped": {
+            "type": "integer"
+          },
+          "overwritten": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "inserted",
+          "skipped",
+          "overwritten"
+        ]
+      },
+      "TermApproveRequest": {
+        "type": "object",
+        "properties": {
+          "source_text": {
+            "type": "string"
+          },
+          "target_lang": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_text",
+          "target_lang",
+          "domain"
+        ]
+      },
+      "TermEditRequest": {
+        "type": "object",
+        "properties": {
+          "source_text": {
+            "type": "string"
+          },
+          "target_lang": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "target_text": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "source_text",
+          "target_lang",
+          "domain",
+          "target_text"
+        ]
+      },
+      "WikidataSearchRequest": {
+        "type": "object",
+        "properties": {
+          "term": {
+            "type": "string"
+          },
+          "source_lang": {
+            "type": "string",
+            "description": "default Chinese"
+          },
+          "target_langs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "default English"
+          },
+          "domain": {
+            "type": "string",
+            "description": "default general"
+          }
+        },
+        "required": [
+          "term"
+        ]
+      },
+      "WikidataCandidate": {
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "type": "string"
+          },
+          "source_label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "labels": {
+            "type": "string",
+            "description": "serialized as JSON map of lang -> label"
+          }
+        },
+        "required": [
+          "entity_id",
+          "source_label",
+          "description",
+          "labels"
+        ]
+      },
+      "WikidataSearchResponse": {
+        "type": "object",
+        "properties": {
+          "term": {
+            "type": "string"
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WikidataCandidate"
+            }
+          }
+        },
+        "required": [
+          "term",
+          "candidates"
+        ]
+      },
+      "WikidataImportRequest": {
+        "type": "object",
+        "properties": {
+          "source_text": {
+            "type": "string"
+          },
+          "target_text": {
+            "type": "string"
+          },
+          "source_lang": {
+            "type": "string"
+          },
+          "target_lang": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string",
+            "description": "default general"
+          },
+          "entity_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_text",
+          "target_text",
+          "source_lang",
+          "target_lang"
+        ]
+      }
+    }
+  }
+}
