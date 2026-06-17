@@ -1,0 +1,26 @@
+{
+  "provider": "claude",
+  "generated_at": "2026-06-17T02:16:13.936Z",
+  "schema-version": "0.2.0",
+  "roles": {
+    "change-classifier": "opus",
+    "implementation-planner": "opus",
+    "spec-architect": "opus",
+    "qa-reviewer": "opus",
+    "contract-reviewer": "sonnet",
+    "test-strategist": "sonnet",
+    "bug-fix-engineer": "sonnet",
+    "backend-engineer": "sonnet",
+    "frontend-engineer": "sonnet",
+    "ci-cd-gatekeeper": "sonnet",
+    "e2e-resilience-engineer": "sonnet",
+    "monkey-test-engineer": "sonnet",
+    "stress-soak-engineer": "sonnet",
+    "ui-ux-reviewer": "sonnet",
+    "visual-reviewer": "sonnet",
+    "dependency-security-reviewer": "sonnet",
+    "spec-drift-auditor": "opus",
+    "repo-context-scanner": "haiku"
+  },
+  "_notes": "Roles map agent name -> model class (opus, sonnet, haiku), not provider release IDs. Provider adapters may map these classes to concrete Claude or Codex model names. Override per-project as needed. cdd-kit doctor warns when an installed agent's frontmatter `model:` does not match this policy."
+}

@@ -1,0 +1,25 @@
+{
+  "forbiddenPaths": [
+    ".claude/worktrees/**",
+    ".git/**",
+    "node_modules/**",
+    "dist/**",
+    "build/**",
+    "assets/**",
+    "specs/archive/**",
+    "specs/changes/*"
+  ],
+  "contextExpansion": {
+    "mode": "auto-safe",
+    "autoApprovePatterns": [
+      "src/**",
+      "tests/**",
+      "contracts/**",
+      "specs/changes/<current-change-id>/**"
+    ]
+  },
+  "audit": {
+    "requireFilesRead": true,
+    "unknownFilesRead": "warn-for-legacy-fail-for-new"
+  }
+}

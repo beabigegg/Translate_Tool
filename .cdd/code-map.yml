@@ -1,0 +1,2323 @@
+# generated: 2026-06-17T02:16:08Z by cdd-kit 3.3.0
+# files: 118, src-lines: 20127, map-lines: 2323, compression: 8.7x
+# sources-digest: f3b6b10e99489a676188a6225cd75f6999a937473b3d76588179466a9c0cfbba
+app/__init__.py:  # 0 lines
+
+app/backend/__init__.py:  # 0 lines
+
+app/backend/api/__init__.py:  # 0 lines
+
+app/backend/api/routes.py:  # 484 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: io, items: [], line: 5 }
+    - { module: shutil, items: [], line: 6 }
+    - { module: tempfile, items: [], line: 7 }
+    - { module: time, items: [], line: 8 }
+    - { module: pathlib, items: [Path], line: 9 }
+    - { module: typing, items: [List, Optional], line: 10 }
+    - { module: fastapi, items: [APIRouter, File, Form, HTTPException, UploadFile], line: 12 }
+    - { module: fastapi.responses, items: [FileResponse, StreamingResponse], line: 13 }
+    - { module: app.backend.api.schemas, items: [JobCreateResponse, JobStatus, ModelConfigItem, ModelsResponse, ProfileItem, RouteInfoEntry, RouteInfoResponse, TermApproveRequest, TermEditRequest, TermImportResult, TermItem, TermStatsResponse, WikidataCandidate, WikidataImportRequest, WikidataSearchRequest, WikidataSearchResponse], line: 15 }
+    - { module: app.backend.clients.ollama_client, items: [list_ollama_models], line: 33 }
+    - { module: app.backend.config, items: [ModelType, VRAM_METADATA], line: 34 }
+    - { module: app.backend.services.model_router, items: [RouteGroup, get_route_info, resolve_route_groups], line: 35 }
+    - { module: app.backend.translation_profiles, items: [get_profile, list_profiles], line: 36 }
+    - { module: app.backend.services.job_manager, items: [JobManager], line: 37 }
+    - { module: app.backend.services.translation_cache, items: [get_cache], line: 38 }
+    - { module: app.backend.services.term_db, items: [TermDB], line: 39 }
+  functions:
+    - { name: _sanitize_filename, lines: 47-48 }
+    - { name: health, lines: 52-53 }  # @router.get('/health')
+    - { name: models, lines: 57-58 }  # @router.get('/models', response_model=ModelsResponse)
+    - { name: profiles, lines: 62-71 }  # @router.get('/profiles', response_model=List[ProfileItem])
+    - { name: model_config, lines: 75-91 }  # @router.get('/model-config', response_model=List[ModelConfigItem])
+    - { name: route_info, lines: 95-99 }  # @router.get('/route-info', response_model=RouteInfoResponse)
+    - { name: async create_job, lines: 103-179 }  # @router.post('/jobs', response_model=JobCreateResponse)
+    - { name: job_status, lines: 183-241 }  # @router.get('/jobs/{job_id}', response_model=JobStatus)
+    - { name: cancel_job, lines: 245-248 }  # @router.post('/jobs/{job_id}/cancel')
+    - { name: download, lines: 252-262 }  # @router.get('/jobs/{job_id}/download')
+    - { name: get_stats, lines: 267-271 }  # @router.get('/stats')
+    - { name: cache_stats, lines: 275-281 }  # @router.get('/cache/stats')
+    - { name: clear_cache, lines: 285-291 }  # @router.delete('/cache')
+    - { name: terms_stats, lines: 299-302 }  # @router.get('/terms/stats', response_model=TermStatsResponse)
+    - { name: terms_export, lines: 306-336 }  # @router.get('/terms/export')
+    - { name: async terms_import, lines: 340-375 }  # @router.post('/terms/import', response_model=TermImportResult)
+    - { name: terms_unverified, lines: 379-398 }  # @router.get('/terms/unverified', response_model=List[TermItem])
+    - { name: terms_approve, lines: 402-407 }  # @router.post('/terms/approve')
+    - { name: terms_approved, lines: 411-430 }  # @router.get('/terms/approved', response_model=List[TermItem])
+    - { name: terms_edit, lines: 434-445 }  # @router.patch('/terms/edit')
+    - { name: wikidata_search, lines: 453-465 }  # @router.post('/terms/wikidata/search', response_model=WikidataSearchResponse)
+    - { name: wikidata_import, lines: 469-484 }  # @router.post('/terms/wikidata/import')
+
+app/backend/api/schemas.py:  # 129 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: typing, items: [Any, Dict, List, Optional], line: 5 }
+    - { module: pydantic, items: [BaseModel], line: 7 }
+  classes:
+    - name: JobCreateResponse
+      lines: 10-11
+    - name: JobStatus
+      lines: 14-30
+    - name: TermImportResult
+      lines: 33-36
+    - name: TermStatsResponse
+      lines: 39-43
+    - name: TermItem
+      lines: 46-55
+    - name: TermApproveRequest
+      lines: 58-61
+    - name: TermEditRequest
+      lines: 64-69
+    - name: WikidataSearchRequest
+      lines: 72-76
+    - name: WikidataCandidate
+      lines: 79-83
+    - name: WikidataSearchResponse
+      lines: 86-88
+    - name: WikidataImportRequest
+      lines: 91-97
+    - name: ModelsResponse
+      lines: 100-101
+    - name: ProfileItem
+      lines: 104-108
+    - name: ModelConfigItem
+      lines: 111-117
+    - name: RouteInfoEntry
+      lines: 120-125
+    - name: RouteInfoResponse
+      lines: 128-129
+
+app/backend/clients/__init__.py:  # 0 lines
+
+app/backend/clients/ollama_client.py:  # 926 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: json, items: [], line: 5 }
+    - { module: re, items: [], line: 6 }
+    - { module: threading, items: [], line: 7 }
+    - { module: time, items: [], line: 8 }
+    - { module: typing, items: [Callable, ClassVar, Dict, List, Optional, Tuple], line: 9 }
+    - { module: requests, items: [], line: 11 }
+    - { module: requests.adapters, items: [HTTPAdapter], line: 12 }
+    - { module: urllib3.util.retry, items: [Retry], line: 13 }
+    - { module: app.backend.config, items: [API_ATTEMPTS, API_BACKOFF_BASE, BATCH_SEPARATOR, DEFAULT_MAX_BATCH_CHARS, DEFAULT_MODEL, HTTP_POOL_CONNECTIONS, HTTP_POOL_MAXSIZE, LANG_CODE_MAP, MODEL_TYPE_OPTIONS, ModelType, OLLAMA_BASE_URL, TimeoutConfig], line: 15 }
+    - { module: app.backend.utils.logging_utils, items: [logger], line: 29 }
+  classes:
+    - name: OllamaClient
+      lines: 92-914
+      methods:
+        - { name: __init__, lines: 98-126 }
+        - { name: _get_session, lines: 129-153 }
+        - { name: close_session, lines: 156-162 }
+        - { name: _gen_url, lines: 164-165 }
+        - { name: _normalize_model_type, lines: 168-175 }
+        - { name: _build_options, lines: 177-185 }
+        - { name: set_runtime_options_override, lines: 187-189 }
+        - { name: set_cache_variant, lines: 191-194 }
+        - { name: _is_translation_dedicated, lines: 196-197 }
+        - { name: cache_model_key, lines: 200-213 }
+        - { name: _build_payload, lines: 215-224 }
+        - { name: _build_no_system_payload, lines: 226-227 }
+        - { name: _is_translategemma_model, lines: 229-230 }
+        - { name: _normalize_source_language, lines: 233-239 }
+        - { name: _is_auto_source, lines: 242-243 }
+        - { name: _call_ollama, lines: 245-315 }
+        - { name: health_check, lines: 317-327 }
+        - { name: _build_translategemma_prompt, lines: 330-340 }
+        - { name: _build_generic_prompt, lines: 343-352 }
+        - { name: _involves_chinese, lines: 355-362 }
+        - { name: _build_translation_dedicated_prompt, lines: 365-370 }
+        - { name: _build_user_prompt, lines: 373-378 }
+        - { name: _build_batch_user_prompt, lines: 381-396 }
+        - { name: _build_single_translate_payload, lines: 398-411 }
+        - { name: _build_batch_translate_payload, lines: 413-440 }
+        - { name: translate_once, lines: 442-470 }
+        - { name: translate_merged_text, lines: 472-488 }
+        - { name: _build_merged_prompt, lines: 491-508 }
+        - { name: refine_translation, lines: 510-531 }
+        - { name: _build_refine_prompt, lines: 534-541 }
+        - { name: _build_refine_system_prompt, lines: 544-592 }
+        - { name: _smart_retry, lines: 594-624 }
+        - { name: _translate_chunked, lines: 626-678 }
+        - { name: _translate_with_extended_retry, lines: 680-707 }
+        - { name: _build_batch_translategemma_prompt, lines: 710-731 }
+        - { name: translate_batch, lines: 733-771 }
+        - { name: _strip_seg_markers, lines: 774-776 }
+        - { name: _sanitize_translation, lines: 779-830 }
+        - { name: _parse_batch_response, lines: 832-893 }
+        - { name: unload_model, lines: 895-914 }
+  functions:
+    - { name: _is_latin_only, lines: 52-56 }
+    - { name: _has_non_latin, lines: 59-64 }
+    - { name: _drop_english_preamble, lines: 67-89 }
+    - { name: list_ollama_models, lines: 917-926 }
+
+app/backend/config.py:  # 321 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 5 }
+    - { module: os, items: [], line: 7 }
+    - { module: dataclasses, items: [dataclass], line: 8 }
+    - { module: enum, items: [Enum], line: 9 }
+    - { module: pathlib, items: [Path], line: 10 }
+    - { module: typing, items: [Dict, Optional, Tuple], line: 11 }
+  constants:
+    - { name: APP_NAME, line: 20 }
+    - { name: DEFAULT_MODEL, line: 21 }
+    - { name: HYMT_DEFAULT_MODEL, line: 22 }
+    - { name: OLLAMA_BASE_URL, line: 23 }
+    - { name: OLLAMA_NUM_GPU, line: 24 }
+    - { name: OLLAMA_KV_CACHE_TYPE, line: 25 }
+    - { name: GENERAL_NUM_CTX, line: 29 }
+    - { name: TRANSLATION_NUM_CTX, line: 30 }
+    - { name: OLLAMA_NUM_CTX, line: 33 }
+    - { name: MODEL_TYPE_OPTIONS, line: 35 }
+    - { name: VRAM_METADATA, line: 60 }
+    - { name: DEFAULT_CONNECT_TIMEOUT_S, line: 77 }
+    - { name: DEFAULT_READ_TIMEOUT_S, line: 78 }
+    - { name: API_ATTEMPTS, line: 80 }
+    - { name: API_BACKOFF_BASE, line: 81 }
+    - { name: SENTENCE_MODE, line: 82 }
+    - { name: INSERT_FONT_SIZE_PT, line: 83 }
+    - { name: DEFAULT_BATCH_SIZE, line: 85 }
+    - { name: MIN_BATCH_SIZE, line: 86 }
+    - { name: MAX_BATCH_SIZE, line: 87 }
+    - { name: BATCH_SEPARATOR, line: 88 }
+    - { name: MAX_MAX_BATCH_CHARS, line: 91 }
+    - { name: MIN_MAX_BATCH_CHARS, line: 94 }
+    - { name: DEFAULT_MAX_BATCH_CHARS, line: 95 }
+    - { name: TRANSLATION_GRANULARITY, line: 98 }
+    - { name: MAX_PARAGRAPH_CHARS, line: 99 }
+    - { name: MAX_MERGE_SEGMENTS, line: 100 }
+    - { name: CONTEXT_WINDOW_SEGMENTS, line: 103 }
+    - { name: CONTEXT_MAX_CHARS, line: 104 }
+    - { name: REFINEMENT_ENABLED, line: 106 }
+    - { name: REFINEMENT_MIN_CHARS, line: 107 }
+    - { name: CROSS_MODEL_REFINEMENT_ENABLED, line: 110 }
+    - { name: CONTEXT_DETECTION_ENABLED, line: 113 }
+    - { name: CONTEXT_SAMPLE_CHARS, line: 114 }
+    - { name: DYNAMIC_SCENARIO_STRATEGY_ENABLED, line: 120 }
+    - { name: QWEN_CONTEXT_FLOW_ENABLED, line: 121 }
+    - { name: SCENARIO_CACHE_VARIANT_ENABLED, line: 122 }
+    - { name: EXCEL_FORMULA_MODE, line: 124 }
+    - { name: MAX_SHAPE_CHARS, line: 125 }
+    - { name: PDF_PARSER_ENGINE, line: 128 }
+    - { name: PDF_SKIP_HEADER_FOOTER, line: 129 }
+    - { name: PDF_HEADER_FOOTER_MARGIN_PT, line: 130 }
+    - { name: LAYOUT_PRESERVATION_MODE, line: 133 }
+    - { name: DEFAULT_FONT_FAMILY, line: 134 }
+    - { name: MIN_FONT_SIZE_PT, line: 135 }
+    - { name: MAX_FONT_SIZE_PT, line: 136 }
+    - { name: FONT_SIZE_SHRINK_FACTOR, line: 137 }
+    - { name: PDF_DRAW_MASK, line: 138 }
+    - { name: PDF_MASK_MARGIN_PT, line: 139 }
+    - { name: PDF_SHOW_MISSING_PLACEHOLDER, line: 140 }
+    - { name: FONT_SIZE_CONFIG, line: 144 }
+    - { name: MAX_SEGMENTS, line: 157 }
+    - { name: MAX_TEXT_LENGTH, line: 158 }
+    - { name: MAX_JOBS_IN_MEMORY, line: 161 }
+    - { name: JOB_TTL_HOURS, line: 162 }
+    - { name: CLEANUP_INTERVAL_MINUTES, line: 163 }
+    - { name: HTTP_POOL_CONNECTIONS, line: 166 }
+    - { name: HTTP_POOL_MAXSIZE, line: 167 }
+    - { name: ENV_CONNECT_TIMEOUT, line: 169 }
+    - { name: ENV_READ_TIMEOUT, line: 170 }
+    - { name: LIBREOFFICE_PATH, line: 173 }
+    - { name: LIBREOFFICE_TIMEOUT, line: 174 }
+    - { name: VERIFY_MAX_RETRIES, line: 176 }
+    - { name: SUPPORTED_EXTENSIONS, line: 178 }
+    - { name: LANG_CODE_MAP, line: 180 }
+    - { name: DATA_DIR, line: 252 }
+    - { name: JOBS_DIR, line: 253 }
+    - { name: LOG_DIR, line: 254 }
+    - { name: TRANSLATION_CACHE_ENABLED, line: 255 }
+    - { name: CACHE_DIR, line: 256 }
+    - { name: DEFAULT_HOST, line: 258 }
+    - { name: DEFAULT_PORT, line: 259 }
+    - { name: ALLOWED_ORIGINS, line: 261 }
+  classes:
+    - name: ModelType
+      lines: 14-18
+    - name: TimeoutConfig
+      lines: 268-321
+      methods:
+        - { name: set_from_config, lines: 276-278 }
+        - { name: set_timeouts, lines: 280-282 }
+        - { name: clear_runtime_overrides, lines: 284-286 }
+        - { name: connect_timeout, lines: 289-302 }
+        - { name: read_timeout, lines: 305-318 }
+        - { name: get_timeout_tuple, lines: 320-321 }
+
+app/backend/main.py:  # 51 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: logging, items: [], line: 5 }
+    - { module: pathlib, items: [Path], line: 6 }
+    - { module: fastapi, items: [FastAPI], line: 8 }
+    - { module: fastapi.middleware.cors, items: [CORSMiddleware], line: 9 }
+    - { module: fastapi.staticfiles, items: [StaticFiles], line: 10 }
+    - { module: app.backend.api.routes, items: [router], line: 12 }
+    - { module: app.backend.config, items: [ALLOWED_ORIGINS, DEFAULT_HOST, DEFAULT_PORT, LOG_DIR], line: 13 }
+    - { module: app.backend.utils.font_utils, items: [get_font_check_message], line: 14 }
+    - { module: app.backend.utils.logging_utils, items: [setup_logging], line: 15 }
+  functions:
+    - { name: run, lines: 44-47 }
+
+app/backend/models/__init__.py:  # 23 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: app.backend.models.translatable_document, items: [BoundingBox, DocumentMetadata, ElementType, PageInfo, StyleInfo, TranslatableDocument, TranslatableElement], line: 5 }
+
+app/backend/models/term.py:  # 25 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: dataclasses, items: [dataclass, field], line: 5 }
+    - { module: datetime, items: [datetime, timezone], line: 6 }
+    - { module: typing, items: [Optional], line: 7 }
+  classes:
+    - name: Term
+      lines: 11-25
+      methods:
+        - { name: __post_init__, lines: 23-25 }
+
+app/backend/models/translatable_document.py:  # 320 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 7 }
+    - { module: dataclasses, items: [dataclass, field], line: 9 }
+    - { module: enum, items: [Enum], line: 10 }
+    - { module: typing, items: [Any, Dict, List, Optional], line: 11 }
+  classes:
+    - name: ElementType
+      lines: 14-24
+    - name: BoundingBox
+      lines: 28-82
+      methods:
+        - { name: width, lines: 41-43 }
+        - { name: height, lines: 46-48 }
+        - { name: center_x, lines: 51-53 }
+        - { name: center_y, lines: 56-58 }
+        - { name: to_dict, lines: 60-67 }
+        - { name: from_dict, lines: 70-77 }
+        - { name: from_tuple, lines: 80-82 }
+    - name: StyleInfo
+      lines: 86-117
+      methods:
+        - { name: to_dict, lines: 96-105 }
+        - { name: from_dict, lines: 108-117 }
+    - name: TranslatableElement
+      lines: 121-161
+      methods:
+        - { name: to_dict, lines: 134-146 }
+        - { name: from_dict, lines: 149-161 }
+    - name: PageInfo
+      lines: 165-190
+      methods:
+        - { name: to_dict, lines: 173-180 }
+        - { name: from_dict, lines: 183-190 }
+    - name: DocumentMetadata
+      lines: 194-234
+      methods:
+        - { name: to_dict, lines: 207-219 }
+        - { name: from_dict, lines: 222-234 }
+    - name: TranslatableDocument
+      lines: 238-320
+      methods:
+        - { name: get_translatable_elements, lines: 247-249 }
+        - { name: get_elements_by_page, lines: 251-253 }
+        - { name: get_all_elements_by_page, lines: 255-266 }
+        - { name: get_elements_in_reading_order, lines: 268-276 }
+        - { name: get_unique_texts, lines: 278-287 }
+        - { name: apply_translations, lines: 289-299 }
+        - { name: to_dict, lines: 301-309 }
+        - { name: from_dict, lines: 312-320 }
+
+app/backend/parsers/__init__.py:  # 15 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: app.backend.parsers.base, items: [BaseParser], line: 5 }
+    - { module: app.backend.parsers.docx_parser, items: [DocxParser], line: 6 }
+    - { module: app.backend.parsers.pdf_parser, items: [PyMuPDFParser], line: 7 }
+    - { module: app.backend.parsers.pptx_parser, items: [PptxParser], line: 8 }
+
+app/backend/parsers/base.py:  # 39 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: abc, items: [ABC, abstractmethod], line: 5 }
+    - { module: typing, items: [TYPE_CHECKING], line: 6 }
+  classes:
+    - name: BaseParser
+      lines: 12-39
+      methods:
+        - { name: parse, lines: 20-33 }
+        - { name: supported_extensions, lines: 37-39 }
+
+app/backend/parsers/docx_parser.py:  # 473 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 7 }
+    - { module: logging, items: [], line: 9 }
+    - { module: uuid, items: [], line: 10 }
+    - { module: pathlib, items: [Path], line: 11 }
+    - { module: typing, items: [Any, Iterator, List, Optional, Set, Tuple], line: 12 }
+    - { module: docx, items: [], line: 14 }
+    - { module: docx.oxml.ns, items: [qn], line: 15 }
+    - { module: docx.table, items: [Table], line: 16 }
+    - { module: docx.text.paragraph, items: [Paragraph], line: 17 }
+    - { module: app.backend.config, items: [MAX_SEGMENTS, MAX_TEXT_LENGTH], line: 19 }
+    - { module: app.backend.models.translatable_document, items: [DocumentMetadata, ElementType, PageInfo, TranslatableDocument, TranslatableElement], line: 20 }
+    - { module: app.backend.parsers.base, items: [BaseParser], line: 27 }
+    - { module: app.backend.utils.exceptions, items: [check_document_size_limits], line: 28 }
+    - { module: app.backend.utils.text_utils, items: [has_cjk, should_translate], line: 29 }
+  constants:
+    - { name: INSERT_MARKER, line: 34 }
+  classes:
+    - name: DocxParser
+      lines: 37-473
+      methods:
+        - { name: __init__, lines: 44-60 }
+        - { name: supported_extensions, lines: 63-65 }
+        - { name: parse, lines: 67-132 }
+        - { name: _extract_from_container, lines: 134-191 }
+        - { name: _extract_paragraph, lines: 193-237 }
+        - { name: _extract_from_sdt, lines: 239-312 }
+        - { name: _extract_from_textboxes, lines: 314-357 }
+        - { name: _iter_textbox_texts, lines: 359-382 }
+        - { name: _get_paragraph_text, lines: 384-402 }
+        - { name: _get_textbox_paragraph_text, lines: 404-422 }
+        - { name: _is_inserted_translation, lines: 424-433 }
+        - { name: _get_paragraph_key, lines: 435-449 }
+        - { name: _classify_paragraph_type, lines: 451-473 }
+
+app/backend/parsers/pdf_parser.py:  # 415 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 7 }
+    - { module: logging, items: [], line: 9 }
+    - { module: uuid, items: [], line: 10 }
+    - { module: pathlib, items: [Path], line: 11 }
+    - { module: typing, items: [Any, Dict, List, Optional, Tuple], line: 12 }
+    - { module: app.backend.models.translatable_document, items: [BoundingBox, DocumentMetadata, ElementType, PageInfo, StyleInfo, TranslatableDocument, TranslatableElement], line: 19 }
+    - { module: app.backend.parsers.base, items: [BaseParser], line: 28 }
+    - { module: app.backend.utils.bbox_utils, items: [is_header_footer_region, normalize_bbox], line: 29 }
+  classes:
+    - name: PyMuPDFParser
+      lines: 34-402
+      methods:
+        - { name: __init__, lines: 45-65 }
+        - { name: supported_extensions, lines: 68-70 }
+        - { name: parse, lines: 72-133 }
+        - { name: _extract_page_elements, lines: 135-232 }
+        - { name: _extract_style_info, lines: 234-277 }
+        - { name: _color_to_hex, lines: 279-291 }
+        - { name: _detect_and_mark_tables, lines: 293-336 }
+        - { name: _is_inside, lines: 338-346 }
+        - { name: _sort_by_reading_order, lines: 348-368 }
+        - { name: _extract_metadata, lines: 370-402 }
+  functions:
+    - { name: extract_text_with_bbox, lines: 405-415 }
+
+app/backend/parsers/pptx_parser.py:  # 375 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 7 }
+    - { module: logging, items: [], line: 9 }
+    - { module: uuid, items: [], line: 10 }
+    - { module: pathlib, items: [Path], line: 11 }
+    - { module: typing, items: [Any, List, Optional, Set], line: 12 }
+    - { module: pptx, items: [], line: 14 }
+    - { module: pptx.shapes.base, items: [BaseShape], line: 15 }
+    - { module: pptx.slide, items: [Slide], line: 16 }
+    - { module: app.backend.config, items: [MAX_SEGMENTS, MAX_TEXT_LENGTH], line: 18 }
+    - { module: app.backend.models.translatable_document, items: [BoundingBox, DocumentMetadata, ElementType, PageInfo, TranslatableDocument, TranslatableElement], line: 19 }
+    - { module: app.backend.parsers.base, items: [BaseParser], line: 27 }
+    - { module: app.backend.utils.exceptions, items: [check_document_size_limits], line: 28 }
+    - { module: app.backend.utils.text_utils, items: [should_translate], line: 29 }
+  classes:
+    - name: PptxParser
+      lines: 34-375
+      methods:
+        - { name: __init__, lines: 41-53 }
+        - { name: supported_extensions, lines: 56-58 }
+        - { name: parse, lines: 60-132 }
+        - { name: _extract_from_slide, lines: 134-162 }
+        - { name: _extract_from_shape, lines: 164-246 }
+        - { name: _extract_from_table, lines: 248-297 }
+        - { name: _get_text_frame_text, lines: 299-308 }
+        - { name: _get_shape_bbox, lines: 310-335 }
+        - { name: _classify_shape_type, lines: 337-375 }
+
+app/backend/processors/__init__.py:  # 0 lines
+
+app/backend/processors/com_helpers.py:  # 145 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: os, items: [], line: 5 }
+    - { module: typing, items: [Any, Callable, Iterator, List, Optional], line: 6 }
+    - { module: app.backend.config, items: [MAX_SHAPE_CHARS], line: 8 }
+    - { module: app.backend.utils.logging_utils, items: [logger], line: 9 }
+    - { module: app.backend.utils.translation_helpers, items: [translate_block_sentencewise], line: 10 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 11 }
+  functions:
+    - { name: is_win32com_available, lines: 22-23 }
+    - { name: _com_iter, lines: 26-32 }
+    - { name: word_convert, lines: 35-47 }
+    - { name: excel_convert, lines: 50-66 }
+    - { name: postprocess_docx_shapes_with_word, lines: 69-145 }
+
+app/backend/processors/docx_processor.py:  # 538 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: os, items: [], line: 5 }
+    - { module: threading, items: [], line: 6 }
+    - { module: pathlib, items: [Path], line: 7 }
+    - { module: typing, items: [Any, Callable, Dict, Iterator, List, Optional, Tuple, TYPE_CHECKING], line: 8 }
+    - { module: docx, items: [], line: 10 }
+    - { module: docx.oxml, items: [OxmlElement], line: 11 }
+    - { module: docx.oxml.ns, items: [qn], line: 12 }
+    - { module: docx.shared, items: [Pt], line: 13 }
+    - { module: docx.table, items: [Table, _Cell], line: 14 }
+    - { module: docx.text.paragraph, items: [Paragraph], line: 15 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 17 }
+    - { module: app.backend.config, items: [DEFAULT_MAX_BATCH_CHARS, INSERT_FONT_SIZE_PT, MAX_SEGMENTS, MAX_TEXT_LENGTH], line: 18 }
+    - { module: app.backend.processors.com_helpers, items: [is_win32com_available, postprocess_docx_shapes_with_word], line: 24 }
+    - { module: app.backend.services.translation_service, items: [translate_texts], line: 25 }
+    - { module: app.backend.utils.exceptions, items: [ApiError, check_document_size_limits], line: 26 }
+    - { module: app.backend.utils.logging_utils, items: [logger], line: 27 }
+    - { module: app.backend.utils.text_utils, items: [has_cjk, normalize_text, should_translate], line: 28 }
+  constants:
+    - { name: INSERT_MARKER, line: 33 }
+  classes:
+    - name: Segment
+      lines: 187-194
+      methods:
+        - { name: __init__, lines: 190-194 }
+  functions:
+    - { name: _p_text_with_breaks, lines: 36-46 }
+    - { name: _append_after, lines: 49-67 }
+    - { name: _is_our_insert_block, lines: 70-71 }
+    - { name: _find_last_inserted_after, lines: 74-87 }
+    - { name: _scan_our_tail_texts, lines: 90-103 }
+    - { name: _txbx_iter_texts, lines: 106-142 }
+    - { name: _txbx_append_paragraph, lines: 145-169 }
+    - { name: _txbx_tail_equals, lines: 172-184 }
+    - { name: _get_paragraph_key, lines: 197-205 }
+    - { name: _collect_docx_segments, lines: 208-288 }
+    - { name: _insert_docx_translations, lines: 291-468 }
+    - { name: translate_docx, lines: 471-538 }
+
+app/backend/processors/libreoffice_helpers.py:  # 185 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: os, items: [], line: 5 }
+    - { module: platform, items: [], line: 6 }
+    - { module: shutil, items: [], line: 7 }
+    - { module: subprocess, items: [], line: 8 }
+    - { module: tempfile, items: [], line: 9 }
+    - { module: pathlib, items: [Path], line: 10 }
+    - { module: typing, items: [Optional], line: 11 }
+    - { module: app.backend.config, items: [LIBREOFFICE_PATH, LIBREOFFICE_TIMEOUT], line: 13 }
+    - { module: app.backend.utils.logging_utils, items: [logger], line: 14 }
+  functions:
+    - { name: _find_libreoffice_binary, lines: 24-68 }
+    - { name: is_libreoffice_available, lines: 71-81 }
+    - { name: _get_binary, lines: 84-89 }
+    - { name: _libreoffice_convert, lines: 97-150 }
+    - { name: doc_to_docx, lines: 158-170 }
+    - { name: xls_to_xlsx, lines: 173-185 }
+
+app/backend/processors/orchestrator.py:  # 705 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: logging, items: [], line: 5 }
+    - { module: os, items: [], line: 6 }
+    - { module: threading, items: [], line: 7 }
+    - { module: pathlib, items: [Path], line: 8 }
+    - { module: typing, items: [Callable, Dict, List, Optional, Tuple], line: 9 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 11 }
+    - { module: app.backend.config, items: [CONTEXT_DETECTION_ENABLED, CONTEXT_SAMPLE_CHARS, CROSS_MODEL_REFINEMENT_ENABLED, DEFAULT_MAX_BATCH_CHARS, DEFAULT_MODEL, DYNAMIC_SCENARIO_STRATEGY_ENABLED, GENERAL_NUM_CTX, LAYOUT_PRESERVATION_MODE, OLLAMA_BASE_URL, PDF_SKIP_HEADER_FOOTER, QWEN_CONTEXT_FLOW_ENABLED, SCENARIO_CACHE_VARIANT_ENABLED, SUPPORTED_EXTENSIONS, TRANSLATION_NUM_CTX, TimeoutConfig], line: 12 }
+    - { module: app.backend.processors.com_helpers, items: [is_win32com_available, word_convert], line: 29 }
+    - { module: app.backend.processors.docx_processor, items: [translate_docx], line: 30 }
+    - { module: app.backend.processors.libreoffice_helpers, items: [doc_to_docx, is_libreoffice_available, xls_to_xlsx], line: 31 }
+    - { module: app.backend.processors.pdf_processor, items: [translate_pdf], line: 32 }
+    - { module: app.backend.processors.pptx_processor, items: [translate_pptx], line: 33 }
+    - { module: app.backend.processors.xlsx_processor, items: [translate_xlsx_xls], line: 34 }
+    - { module: app.backend.services.translation_strategy, items: [build_strategy, build_terminology_block, detect_translation_scenario, scenario_from_profile], line: 35 }
+  functions:
+    - { name: _cap_terms_by_budget, lines: 45-59 }
+    - { name: _sample_file_text, lines: 62-137 }
+    - { name: _group_into_chunks, lines: 143-162 }
+    - { name: _split_paragraphs_to_sentences, lines: 165-175 }
+    - { name: _extract_spreadsheet_rows, lines: 178-204 }
+    - { name: _extract_all_segments, lines: 207-288 }
+    - { name: _detect_document_context, lines: 291-311 }
+    - { name: _output_name, lines: 314-336 }
+    - { name: process_files, lines: 339-705 }
+
+app/backend/processors/pdf_processor.py:  # 589 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 8 }
+    - { module: logging, items: [], line: 10 }
+    - { module: os, items: [], line: 11 }
+    - { module: threading, items: [], line: 12 }
+    - { module: pathlib, items: [Path], line: 13 }
+    - { module: typing, items: [TYPE_CHECKING, Callable, List, Optional], line: 14 }
+    - { module: docx, items: [], line: 16 }
+    - { module: PyPDF2, items: [PdfReader], line: 17 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 19 }
+    - { module: app.backend.config, items: [MAX_SEGMENTS, MAX_TEXT_LENGTH, PDF_DRAW_MASK, PDF_HEADER_FOOTER_MARGIN_PT, PDF_PARSER_ENGINE, PDF_SKIP_HEADER_FOOTER], line: 20 }
+    - { module: app.backend.processors.com_helpers, items: [is_win32com_available, word_convert], line: 28 }
+    - { module: app.backend.processors.docx_processor, items: [translate_docx], line: 29 }
+    - { module: app.backend.utils.exceptions, items: [check_document_size_limits], line: 30 }
+    - { module: app.backend.utils.translation_helpers, items: [translate_blocks_batch], line: 31 }
+  functions:
+    - { name: _get_pymupdf_parser, lines: 44-58 }
+    - { name: translate_pdf, lines: 61-173 }
+    - { name: _translate_pdf_with_pymupdf, lines: 176-310 }
+    - { name: _translate_pdf_with_pypdf2, lines: 313-404 }
+    - { name: _translate_pdf_to_pdf, lines: 407-560 }
+    - { name: parse_pdf_to_document, lines: 563-589 }
+
+app/backend/processors/pptx_processor.py:  # 319 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: os, items: [], line: 5 }
+    - { module: re, items: [], line: 6 }
+    - { module: threading, items: [], line: 7 }
+    - { module: zipfile, items: [], line: 8 }
+    - { module: typing, items: [Any, Callable, Dict, List, Optional, Tuple, Union], line: 9 }
+    - { module: xml.etree, items: [ET], line: 10 }
+    - { module: pptx, items: [], line: 12 }
+    - { module: pptx.table, items: [_Cell], line: 13 }
+    - { module: pptx.util, items: [PPTPt], line: 14 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 16 }
+    - { module: app.backend.config, items: [DEFAULT_MAX_BATCH_CHARS, MAX_SEGMENTS, MAX_TEXT_LENGTH], line: 17 }
+    - { module: app.backend.services.translation_service, items: [translate_texts], line: 18 }
+    - { module: app.backend.utils.exceptions, items: [check_document_size_limits], line: 19 }
+    - { module: app.backend.utils.text_utils, items: [normalize_text, should_translate], line: 20 }
+  constants:
+    - { name: SEGMENT_TEXT_FRAME, line: 24 }
+    - { name: SEGMENT_TABLE_CELL, line: 25 }
+    - { name: SEGMENT_SMARTART, line: 26 }
+    - { name: SMARTART_NS, line: 29 }
+  functions:
+    - { name: _ppt_text_of_tf, lines: 35-36 }
+    - { name: _ppt_tail_equals, lines: 39-48 }
+    - { name: _ppt_append, lines: 51-56 }
+    - { name: _cell_text, lines: 59-61 }
+    - { name: _cell_tail_equals, lines: 64-75 }
+    - { name: _cell_append, lines: 78-85 }
+    - { name: _extract_smartart_texts, lines: 88-118 }
+    - { name: _update_smartart_texts, lines: 121-179 }
+    - { name: translate_pptx, lines: 182-319 }
+
+app/backend/processors/xlsx_processor.py:  # 192 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: os, items: [], line: 5 }
+    - { module: threading, items: [], line: 6 }
+    - { module: pathlib, items: [Path], line: 7 }
+    - { module: typing, items: [Any, Callable, Dict, List, Optional, Tuple], line: 8 }
+    - { module: openpyxl, items: [], line: 10 }
+    - { module: openpyxl.comments, items: [Comment], line: 11 }
+    - { module: openpyxl.styles, items: [Alignment], line: 12 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 14 }
+    - { module: app.backend.config, items: [DEFAULT_MAX_BATCH_CHARS, EXCEL_FORMULA_MODE, MAX_SEGMENTS, MAX_TEXT_LENGTH], line: 15 }
+    - { module: app.backend.processors.com_helpers, items: [excel_convert, is_win32com_available], line: 16 }
+    - { module: app.backend.processors.libreoffice_helpers, items: [is_libreoffice_available, xls_to_xlsx], line: 17 }
+    - { module: app.backend.services.translation_service, items: [translate_texts], line: 18 }
+    - { module: app.backend.utils.exceptions, items: [check_document_size_limits], line: 19 }
+    - { module: app.backend.utils.logging_utils, items: [logger], line: 20 }
+    - { module: app.backend.utils.text_utils, items: [normalize_text, should_translate], line: 21 }
+  functions:
+    - { name: _get_display_text_for_translation, lines: 24-37 }
+    - { name: translate_xlsx_xls, lines: 40-192 }
+
+app/backend/renderers/__init__.py:  # 16 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: app.backend.renderers.base, items: [BaseRenderer, RenderMode], line: 5 }
+    - { module: app.backend.renderers.coordinate_renderer, items: [CoordinateRenderer], line: 6 }
+    - { module: app.backend.renderers.inline_renderer, items: [InlineRenderer], line: 7 }
+    - { module: app.backend.renderers.pdf_generator, items: [PDFGenerator], line: 8 }
+
+app/backend/renderers/base.py:  # 64 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: abc, items: [ABC, abstractmethod], line: 5 }
+    - { module: enum, items: [Enum], line: 6 }
+    - { module: typing, items: [TYPE_CHECKING, Dict], line: 7 }
+  classes:
+    - name: RenderMode
+      lines: 13-18
+    - name: BaseRenderer
+      lines: 21-64
+      methods:
+        - { name: render, lines: 29-48 }
+        - { name: supported_modes, lines: 52-54 }
+        - { name: output_extension, lines: 58-60 }
+        - { name: supports_mode, lines: 62-64 }
+
+app/backend/renderers/coordinate_renderer.py:  # 306 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 7 }
+    - { module: logging, items: [], line: 9 }
+    - { module: pathlib, items: [Path], line: 10 }
+    - { module: typing, items: [TYPE_CHECKING, Callable, Dict, List, Optional], line: 11 }
+    - { module: reportlab.lib.colors, items: [white], line: 13 }
+    - { module: reportlab.lib.pagesizes, items: [letter], line: 14 }
+    - { module: reportlab.pdfgen.canvas, items: [Canvas], line: 15 }
+    - { module: app.backend.renderers.base, items: [BaseRenderer, RenderMode], line: 17 }
+    - { module: app.backend.renderers.text_region_renderer, items: [TextRegion, create_text_regions_from_elements, render_text_regions], line: 18 }
+    - { module: app.backend.utils.font_utils, items: [get_font_for_language, register_fonts], line: 23 }
+  classes:
+    - name: CoordinateRenderer
+      lines: 31-282
+      methods:
+        - { name: __init__, lines: 41-56 }
+        - { name: supported_modes, lines: 59-61 }
+        - { name: output_extension, lines: 64-66 }
+        - { name: render, lines: 68-98 }
+        - { name: _render_overlay, lines: 100-162 }
+        - { name: _render_side_by_side, lines: 164-282 }
+  functions:
+    - { name: render_to_pdf, lines: 285-306 }
+
+app/backend/renderers/inline_renderer.py:  # 303 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 7 }
+    - { module: logging, items: [], line: 9 }
+    - { module: typing, items: [TYPE_CHECKING, Callable, Dict, List, Optional], line: 10 }
+    - { module: docx, items: [], line: 12 }
+    - { module: docx.oxml, items: [OxmlElement], line: 13 }
+    - { module: docx.oxml.ns, items: [qn], line: 14 }
+    - { module: docx.shared, items: [Pt], line: 15 }
+    - { module: docx.text.paragraph, items: [Paragraph], line: 16 }
+    - { module: app.backend.config, items: [INSERT_FONT_SIZE_PT], line: 18 }
+    - { module: app.backend.renderers.base, items: [BaseRenderer, RenderMode], line: 19 }
+  constants:
+    - { name: INSERT_MARKER, line: 27 }
+  classes:
+    - name: InlineRenderer
+      lines: 30-303
+      methods:
+        - { name: __init__, lines: 38-53 }
+        - { name: supported_modes, lines: 56-58 }
+        - { name: output_extension, lines: 61-63 }
+        - { name: render, lines: 65-132 }
+        - { name: _add_translation_paragraph, lines: 134-163 }
+        - { name: render_from_segments, lines: 165-224 }
+        - { name: _insert_after_paragraph, lines: 226-260 }
+        - { name: _insert_into_textbox, lines: 262-303 }
+
+app/backend/renderers/pdf_generator.py:  # 668 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 7 }
+    - { module: io, items: [], line: 9 }
+    - { module: logging, items: [], line: 10 }
+    - { module: tempfile, items: [], line: 11 }
+    - { module: pathlib, items: [Path], line: 12 }
+    - { module: typing, items: [TYPE_CHECKING, Callable, Dict, List, Optional], line: 13 }
+    - { module: reportlab.lib.colors, items: [white], line: 15 }
+    - { module: reportlab.pdfgen.canvas, items: [Canvas], line: 16 }
+    - { module: app.backend.config, items: [FONT_SIZE_CONFIG, LANG_CODE_MAP, PDF_MASK_MARGIN_PT, PDF_SHOW_MISSING_PLACEHOLDER], line: 18 }
+    - { module: app.backend.renderers.base, items: [RenderMode], line: 24 }
+    - { module: app.backend.renderers.text_region_renderer, items: [TextRegion, create_text_regions_from_elements, render_text_region], line: 25 }
+    - { module: app.backend.utils.font_utils, items: [register_fonts], line: 30 }
+  classes:
+    - name: PDFGenerator
+      lines: 83-642
+      methods:
+        - { name: __init__, lines: 94-111 }
+        - { name: missing_translation_count, lines: 114-116 }
+        - { name: missing_translations, lines: 119-121 }
+        - { name: _get_font_config, lines: 123-137 }
+        - { name: generate, lines: 139-176 }
+        - { name: _generate_overlay, lines: 178-317 }
+        - { name: _get_font_file, lines: 319-351 }
+        - { name: _wrap_text, lines: 353-393 }
+        - { name: _insert_text_in_rect, lines: 395-503 }
+        - { name: _generate_side_by_side, lines: 505-590 }
+        - { name: _create_page_overlay, lines: 592-642 }
+  functions:
+    - { name: _get_lang_code, lines: 41-65 }
+    - { name: _ensure_fitz, lines: 68-80 }
+    - { name: generate_translated_pdf, lines: 645-668 }
+
+app/backend/renderers/text_region_renderer.py:  # 312 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 7 }
+    - { module: logging, items: [], line: 9 }
+    - { module: math, items: [], line: 10 }
+    - { module: dataclasses, items: [dataclass], line: 11 }
+    - { module: typing, items: [TYPE_CHECKING, List, Optional, Tuple], line: 12 }
+    - { module: reportlab.lib.colors, items: [Color, white], line: 14 }
+    - { module: reportlab.pdfgen.canvas, items: [Canvas], line: 15 }
+    - { module: app.backend.config, items: [MIN_FONT_SIZE_PT], line: 17 }
+    - { module: app.backend.utils.font_utils, items: [calculate_text_width, detect_text_direction, fit_text_to_bbox, get_font_for_language, register_fonts], line: 18 }
+  classes:
+    - name: TextRegion
+      lines: 33-96
+      methods:
+        - { name: width, lines: 47-49 }
+        - { name: height, lines: 52-54 }
+        - { name: center_x, lines: 57-59 }
+        - { name: center_y, lines: 62-64 }
+        - { name: from_bbox, lines: 67-96 }
+  functions:
+    - { name: calculate_rotation_from_bbox, lines: 99-122 }
+    - { name: render_text_region, lines: 125-229 }
+    - { name: render_text_regions, lines: 232-269 }
+    - { name: create_text_regions_from_elements, lines: 272-312 }
+
+app/backend/services/__init__.py:  # 0 lines
+
+app/backend/services/job_manager.py:  # 388 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: atexit, items: [], line: 5 }
+    - { module: re, items: [], line: 6 }
+    - { module: shutil, items: [], line: 7 }
+    - { module: threading, items: [], line: 8 }
+    - { module: time, items: [], line: 9 }
+    - { module: uuid, items: [], line: 10 }
+    - { module: collections, items: [OrderedDict], line: 11 }
+    - { module: dataclasses, items: [dataclass, field], line: 12 }
+    - { module: pathlib, items: [Path], line: 13 }
+    - { module: typing, items: [Any, Dict, List, Optional], line: 14 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 16 }
+    - { module: app.backend.config, items: [CLEANUP_INTERVAL_MINUTES, DEFAULT_MAX_BATCH_CHARS, DEFAULT_MODEL, JOB_TTL_HOURS, JOBS_DIR, MAX_JOBS_IN_MEMORY, TimeoutConfig], line: 17 }
+    - { module: app.backend.processors.orchestrator, items: [process_files], line: 26 }
+    - { module: app.backend.services.model_router, items: [RouteGroup], line: 27 }
+    - { module: app.backend.translation_profiles, items: [_get_translation_profile], line: 28 }
+    - { module: app.backend.utils.logging_utils, items: [logger], line: 29 }
+    - { module: app.backend.utils.resource_utils, items: [release_resources], line: 30 }
+  classes:
+    - name: JobRecord
+      lines: 34-56
+    - name: JobLogger
+      lines: 59-115
+      methods:
+        - { name: __init__, lines: 64-67 }
+        - { name: advance_processed_offset, lines: 69-71 }
+        - { name: log, lines: 73-80 }
+        - { name: _parse_progress, lines: 82-115 }
+    - name: JobManager
+      lines: 118-388
+      methods:
+        - { name: __init__, lines: 119-133 }
+        - { name: _shutdown, lines: 135-139 }
+        - { name: _start_cleanup_thread, lines: 141-153 }
+        - { name: _cleanup_orphaned_dirs, lines: 155-170 }
+        - { name: _cleanup_expired_jobs, lines: 172-186 }
+        - { name: _cleanup_by_capacity, lines: 188-203 }
+        - { name: _remove_job, lines: 205-215 }
+        - { name: create_job, lines: 217-348 }
+        - { name: _archive_outputs, lines: 350-355 }
+        - { name: get_job, lines: 357-358 }
+        - { name: cancel_job, lines: 360-367 }
+        - { name: list_jobs, lines: 369-370 }
+        - { name: get_stats, lines: 372-388 }
+
+app/backend/services/model_router.py:  # 131 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: dataclasses, items: [dataclass, field], line: 5 }
+    - { module: typing, items: [Dict, List, Optional, Tuple], line: 6 }
+    - { module: app.backend.config, items: [DEFAULT_MODEL, HYMT_DEFAULT_MODEL], line: 8 }
+    - { module: os, items: [], line: 11 }
+  constants:
+    - { name: TGEMMA_DEFAULT_MODEL, line: 12 }
+    - { name: GREEDY_PRESET, line: 15 }
+  classes:
+    - name: RouteDecision
+      lines: 40-46
+    - name: RouteGroup
+      lines: 50-57
+  functions:
+    - { name: resolve_route, lines: 60-76 }
+    - { name: resolve_route_groups, lines: 79-112 }
+    - { name: get_route_info, lines: 115-131 }
+
+app/backend/services/term_db.py:  # 554 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: csv, items: [], line: 5 }
+    - { module: json, items: [], line: 6 }
+    - { module: logging, items: [], line: 7 }
+    - { module: sqlite3, items: [], line: 8 }
+    - { module: threading, items: [], line: 9 }
+    - { module: datetime, items: [datetime, timezone], line: 10 }
+    - { module: pathlib, items: [Path], line: 11 }
+    - { module: typing, items: [Dict, List, Optional], line: 12 }
+    - { module: app.backend.models.term, items: [Term], line: 14 }
+  classes:
+    - name: TermDB
+      lines: 42-501
+      methods:
+        - { name: __init__, lines: 45-52 }
+        - { name: _connect, lines: 58-61 }
+        - { name: _init_db, lines: 63-72 }
+        - { name: exists, lines: 78-85 }
+        - { name: get_unknown, lines: 87-98 }
+        - { name: get_top_terms, lines: 100-115 }
+        - { name: get_document_terms, lines: 117-142 }
+        - { name: insert, lines: 148-259 }
+        - { name: edit_term, lines: 261-292 }
+        - { name: approve, lines: 294-302 }
+        - { name: get_unverified, lines: 304-321 }
+        - { name: increment_usage, lines: 323-333 }
+        - { name: get_stats, lines: 339-357 }
+        - { name: get_approved, lines: 363-380 }
+        - { name: export_json, lines: 382-393 }
+        - { name: export_csv, lines: 395-408 }
+        - { name: export_xlsx, lines: 410-442 }
+        - { name: import_file, lines: 448-472 }
+        - { name: _all_terms, lines: 478-487 }
+        - { name: _parse_json_import, lines: 489-493 }
+        - { name: _parse_csv_import, lines: 495-501 }
+  functions:
+    - { name: _now_iso, lines: 508-509 }
+    - { name: _row_to_term, lines: 512-524 }
+    - { name: _term_to_dict, lines: 527-538 }
+    - { name: _dict_to_term, lines: 541-554 }
+
+app/backend/services/term_extractor.py:  # 497 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: json, items: [], line: 5 }
+    - { module: logging, items: [], line: 6 }
+    - { module: re, items: [], line: 7 }
+    - { module: typing, items: [Callable, Dict, List, Optional], line: 8 }
+    - { module: app.backend.config, items: [DEFAULT_MODEL, OLLAMA_BASE_URL, TimeoutConfig], line: 16 }
+    - { module: app.backend.models.term, items: [Term], line: 17 }
+    - { module: app.backend.services.term_db, items: [TermDB], line: 18 }
+  constants:
+    - { name: SCENARIO_TO_DOMAIN, line: 23 }
+  classes:
+    - name: TermExtractor
+      lines: 125-291
+      methods:
+        - { name: __init__, lines: 128-138 }
+        - { name: extract_from_segments, lines: 144-176 }
+        - { name: translate_unknown, lines: 180-224 }
+        - { name: _call, lines: 230-270 }
+        - { name: unload, lines: 272-291 }
+  functions:
+    - { name: _should_skip_term, lines: 117-122 }
+    - { name: _robust_loads, lines: 298-303 }
+    - { name: _parse_json_list, lines: 306-329 }
+    - { name: _parse_translation_response, lines: 332-369 }
+    - { name: run_phase0, lines: 372-396 }
+    - { name: run_phase0_multi, lines: 399-497 }
+
+app/backend/services/translation_cache.py:  # 230 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 7 }
+    - { module: hashlib, items: [], line: 9 }
+    - { module: logging, items: [], line: 10 }
+    - { module: os, items: [], line: 11 }
+    - { module: sqlite3, items: [], line: 12 }
+    - { module: threading, items: [], line: 13 }
+    - { module: time, items: [], line: 14 }
+    - { module: pathlib, items: [Path], line: 15 }
+    - { module: typing, items: [Dict, List, Optional, Tuple], line: 16 }
+    - { module: app.backend.config, items: [CACHE_DIR, TRANSLATION_CACHE_ENABLED], line: 18 }
+  classes:
+    - name: TranslationCache
+      lines: 37-205
+      methods:
+        - { name: __init__, lines: 40-47 }
+        - { name: _get_conn, lines: 49-58 }
+        - { name: _ensure_schema, lines: 60-84 }
+        - { name: get_batch, lines: 90-126 }
+        - { name: put_batch, lines: 128-155 }
+        - { name: put, lines: 157-166 }
+        - { name: clear, lines: 168-187 }
+        - { name: stats, lines: 189-205 }
+  functions:
+    - { name: _make_key, lines: 26-34 }
+    - { name: get_cache, lines: 216-230 }
+
+app/backend/services/translation_service.py:  # 271 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: logging, items: [], line: 5 }
+    - { module: typing, items: [Callable, Dict, List, Optional, Tuple], line: 6 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 8 }
+    - { module: app.backend.config, items: [CROSS_MODEL_REFINEMENT_ENABLED, DEFAULT_MAX_BATCH_CHARS, REFINEMENT_MIN_CHARS, SENTENCE_MODE], line: 9 }
+    - { module: app.backend.services.translation_cache, items: [get_cache], line: 10 }
+    - { module: app.backend.utils.translation_helpers, items: [translate_blocks_batch], line: 11 }
+  functions:
+    - { name: _ensure_opencc_s2t, lines: 19-30 }
+    - { name: _convert_to_traditional, lines: 33-45 }
+    - { name: _is_traditional_chinese_target, lines: 48-51 }
+    - { name: translate_texts, lines: 54-271 }
+
+app/backend/services/translation_strategy.py:  # 305 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: dataclasses, items: [dataclass], line: 5 }
+    - { module: enum, items: [Enum], line: 6 }
+    - { module: typing, items: [Dict, Iterable, List, Optional, TYPE_CHECKING], line: 7 }
+    - { module: app.backend.config, items: [ModelType], line: 9 }
+  classes:
+    - name: TranslationScenario
+      lines: 15-28
+    - name: StrategyDecision
+      lines: 32-38
+  functions:
+    - { name: _canonicalize_scenario, lines: 203-204 }
+    - { name: scenario_from_profile, lines: 207-211 }
+    - { name: _lower_texts, lines: 214-215 }
+    - { name: _score_keywords, lines: 218-223 }
+    - { name: detect_translation_scenario, lines: 226-245 }
+    - { name: build_strategy, lines: 248-291 }
+    - { name: build_terminology_block, lines: 294-305 }
+
+app/backend/services/wikidata_lookup.py:  # 184 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: logging, items: [], line: 5 }
+    - { module: typing, items: [Dict, List, Optional], line: 6 }
+    - { module: requests, items: [], line: 8 }
+  functions:
+    - { name: _wikidata_search_lang, lines: 41-46 }
+    - { name: _wikidata_label_langs, lines: 49-57 }
+    - { name: search_wikidata, lines: 60-184 }
+
+app/backend/translation_profiles.py:  # 205 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: dataclasses, items: [dataclass], line: 5 }
+    - { module: typing, items: [Dict, List, Optional], line: 6 }
+    - { module: app.backend.config, items: [DEFAULT_MODEL, HYMT_DEFAULT_MODEL, ModelType], line: 8 }
+  constants:
+    - { name: PROFILES, line: 41 }
+  classes:
+    - name: TranslationProfile
+      lines: 12-18
+  functions:
+    - { name: _build_system_prompt, lines: 21-38 }
+    - { name: get_profile, lines: 198-201 }
+    - { name: list_profiles, lines: 204-205 }
+
+app/backend/utils/__init__.py:  # 0 lines
+
+app/backend/utils/bbox_utils.py:  # 206 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 7 }
+    - { module: typing, items: [List, Tuple], line: 9 }
+    - { module: app.backend.models.translatable_document, items: [BoundingBox], line: 11 }
+  functions:
+    - { name: normalize_bbox, lines: 14-46 }
+    - { name: calculate_iou, lines: 49-78 }
+    - { name: is_bbox_inside, lines: 81-97 }
+    - { name: merge_bboxes, lines: 100-120 }
+    - { name: bbox_distance, lines: 123-149 }
+    - { name: is_header_footer_region, lines: 152-172 }
+    - { name: sort_bboxes_by_reading_order, lines: 175-206 }
+
+app/backend/utils/exceptions.py:  # 54 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: dataclasses, items: [dataclass], line: 5 }
+    - { module: app.backend.config, items: [MAX_SEGMENTS, MAX_TEXT_LENGTH], line: 7 }
+  classes:
+    - name: ApiError
+      lines: 10-11
+    - name: DocumentSizeLimitExceeded
+      lines: 15-26
+      methods:
+        - { name: __str__, lines: 25-26 }
+  functions:
+    - { name: check_document_size_limits, lines: 29-54 }
+
+app/backend/utils/font_utils.py:  # 538 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 7 }
+    - { module: logging, items: [], line: 9 }
+    - { module: pathlib, items: [Path], line: 10 }
+    - { module: typing, items: [Dict, List, Optional, Tuple], line: 11 }
+    - { module: reportlab.lib.fonts, items: [addMapping], line: 13 }
+    - { module: reportlab.pdfbase, items: [pdfmetrics], line: 14 }
+    - { module: reportlab.pdfbase.ttfonts, items: [TTFont], line: 15 }
+    - { module: app.backend.config, items: [DEFAULT_FONT_FAMILY, FONT_SIZE_SHRINK_FACTOR, LANG_CODE_MAP, MAX_FONT_SIZE_PT, MIN_FONT_SIZE_PT], line: 17 }
+  constants:
+    - { name: SYSTEM_FONT_PATHS, line: 31 }
+    - { name: LANGUAGE_FONT_MAP, line: 47 }
+    - { name: CJK_TTC_INDICES, line: 86 }
+    - { name: REQUIRED_FONTS, line: 419 }
+  functions:
+    - { name: find_font_file, lines: 95-116 }
+    - { name: register_fonts, lines: 119-191 }
+    - { name: _normalize_lang_code, lines: 194-218 }
+    - { name: get_font_for_language, lines: 221-267 }
+    - { name: calculate_text_width, lines: 270-287 }
+    - { name: calculate_text_height, lines: 290-301 }
+    - { name: estimate_font_size_from_bbox, lines: 304-322 }
+    - { name: fit_text_to_bbox, lines: 325-379 }
+    - { name: detect_text_direction, lines: 382-415 }
+    - { name: check_required_fonts, lines: 463-510 }
+    - { name: get_font_check_message, lines: 513-538 }
+
+app/backend/utils/logging_utils.py:  # 82 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: logging, items: [], line: 5 }
+    - { module: logging.handlers, items: [RotatingFileHandler], line: 6 }
+    - { module: pathlib, items: [Path], line: 7 }
+    - { module: typing, items: [Optional], line: 8 }
+  constants:
+    - { name: LOG_FORMAT, line: 10 }
+    - { name: LOG_DATE_FORMAT, line: 11 }
+    - { name: DEFAULT_LOG_LEVEL, line: 12 }
+    - { name: LOG_FILE_NAME, line: 13 }
+  classes:
+    - name: QueueHandler
+      lines: 47-59
+      methods:
+        - { name: __init__, lines: 50-52 }
+        - { name: emit, lines: 54-59 }
+    - name: JobLogger
+      lines: 62-82
+      methods:
+        - { name: __init__, lines: 65-67 }
+        - { name: log, lines: 69-71 }
+        - { name: info, lines: 73-74 }
+        - { name: warning, lines: 76-78 }
+        - { name: error, lines: 80-82 }
+  functions:
+    - { name: setup_logging, lines: 18-44 }
+
+app/backend/utils/resource_utils.py:  # 76 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: atexit, items: [], line: 5 }
+    - { module: gc, items: [], line: 6 }
+    - { module: typing, items: [Callable, Optional], line: 7 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 9 }
+    - { module: app.backend.utils.logging_utils, items: [logger], line: 10 }
+  functions:
+    - { name: release_resources, lines: 13-47 }
+    - { name: full_shutdown_cleanup, lines: 50-72 }
+
+app/backend/utils/text_utils.py:  # 223 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: re, items: [], line: 5 }
+    - { module: typing, items: [Any, List, Optional], line: 6 }
+    - { module: app.backend.utils.logging_utils, items: [logger], line: 8 }
+  functions:
+    - { name: normalize_text, lines: 23-24 }
+    - { name: has_cjk, lines: 27-29 }
+    - { name: is_cjk_language, lines: 32-49 }
+    - { name: should_translate, lines: 52-110 }
+    - { name: _is_cjk_lang, lines: 113-119 }
+    - { name: _get_pysbd_lang, lines: 122-146 }
+    - { name: split_sentences, lines: 149-190 }
+    - { name: _split_cjk_sentences, lines: 193-209 }
+    - { name: _split_by_punctuation, lines: 212-223 }
+
+app/backend/utils/translation_helpers.py:  # 486 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: re, items: [], line: 5 }
+    - { module: typing, items: [Callable, Dict, List, Optional, Tuple], line: 6 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 8 }
+    - { module: app.backend.config, items: [DEFAULT_MAX_BATCH_CHARS, MAX_MAX_BATCH_CHARS, MAX_PARAGRAPH_CHARS, MIN_MAX_BATCH_CHARS, REFINEMENT_ENABLED, REFINEMENT_MIN_CHARS, TRANSLATION_GRANULARITY], line: 9 }
+    - { module: app.backend.utils.logging_utils, items: [logger], line: 18 }
+    - { module: app.backend.utils.text_utils, items: [is_cjk_language, split_sentences], line: 19 }
+  constants:
+    - { name: SEGMENT_MARKER_PREFIX, line: 22 }
+    - { name: SEGMENT_MARKER_SUFFIX, line: 23 }
+  classes:
+    - name: BatchTranslator
+      lines: 312-384
+      methods:
+        - { name: __init__, lines: 318-332 }
+        - { name: add, lines: 334-348 }
+        - { name: flush, lines: 350-367 }
+        - { name: _fallback_individual, lines: 369-374 }
+        - { name: get, lines: 376-379 }
+        - { name: translate_all, lines: 381-384 }
+  functions:
+    - { name: _maybe_refine, lines: 26-43 }
+    - { name: _get_sentence_joiner, lines: 46-51 }
+    - { name: _build_segment_marker, lines: 54-56 }
+    - { name: _merge_texts_with_markers, lines: 59-108 }
+    - { name: _strip_seg_markers, lines: 111-113 }
+    - { name: _parse_merged_response, lines: 116-150 }
+    - { name: translate_merged_paragraphs, lines: 153-208 }
+    - { name: translate_block_as_paragraph, lines: 211-277 }
+    - { name: translate_block_sentencewise, lines: 280-309 }
+    - { name: translate_blocks_batch, lines: 387-486 }
+
+app/backend/utils/translation_verification.py:  # 135 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 7 }
+    - { module: re, items: [], line: 9 }
+    - { module: dataclasses, items: [dataclass], line: 10 }
+    - { module: typing, items: [Callable, Dict, List, Optional, Tuple], line: 11 }
+    - { module: app.backend.config, items: [VERIFY_MAX_RETRIES], line: 13 }
+    - { module: app.backend.services.translation_service, items: [_convert_to_traditional, _is_traditional_chinese_target], line: 14 }
+  classes:
+    - name: VerificationResult
+      lines: 41-46
+  functions:
+    - { name: is_failed_translation, lines: 35-37 }
+    - { name: verify_and_fill_tmap, lines: 49-91 }
+    - { name: verify_and_fill_dict, lines: 94-135 }
+
+app/frontend/src/App.jsx:  # 38 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+    - { module: react-router-dom, items: [BrowserRouter, Routes, Route, Navigate], line: 2 }
+    - { module: './components/layout/AppShell.jsx', items: [AppShell], line: 3 }
+    - { module: './contexts/SettingsContext.jsx', items: [SettingsProvider], line: 4 }
+    - { module: './components/feedback/ErrorBoundary.jsx', items: [ErrorBoundary], line: 5 }
+  functions:
+    - { name: TranslatePage, lines: 7-7 }
+    - { name: TermsPage, lines: 8-8 }
+    - { name: TermsReviewPage, lines: 9-9 }
+    - { name: SettingsPage, lines: 10-10 }
+    - { name: HistoryPage, lines: 11-11 }
+    - { name: LazyPage, lines: 13-19 }
+    - { name: App, lines: 21-38 }
+
+app/frontend/src/api/client.js:  # 19 lines
+  constants:
+    - { name: BASE, line: 1 }
+  functions:
+    - { name: async request, lines: 3-10 }
+    - { name: get, lines: 12-12 }
+    - { name: post, lines: 13-13 }
+    - { name: del, lines: 14-14 }
+    - { name: patch, lines: 15-19 }
+
+app/frontend/src/api/config.js:  # 21 lines
+  imports:
+    - { module: './client.js', items: [get], line: 1 }
+  constants:
+    - { name: MODEL_CONFIG_FALLBACK, line: 3 }
+  functions:
+    - { name: fetchProfiles, lines: 8-8 }
+    - { name: fetchRouteInfo, lines: 9-12 }
+    - { name: async fetchModelConfig, lines: 13-21 }
+
+app/frontend/src/api/jobs.js:  # 4 lines
+  imports:
+    - { module: './client.js', items: [get, post], line: 1 }
+  functions:
+    - { name: createJob, lines: 2-2 }
+    - { name: fetchJobStatus, lines: 3-3 }
+    - { name: cancelJob, lines: 4-4 }
+
+app/frontend/src/api/system.js:  # 5 lines
+  imports:
+    - { module: './client.js', items: [get, del], line: 1 }
+  functions:
+    - { name: fetchHealth, lines: 2-2 }
+    - { name: fetchStats, lines: 3-3 }
+    - { name: fetchCacheStats, lines: 4-4 }
+    - { name: clearCache, lines: 5-5 }
+
+app/frontend/src/api/terms.js:  # 50 lines
+  imports:
+    - { module: './client.js', items: [get, post, patch], line: 1 }
+  functions:
+    - { name: fetchTermStats, lines: 3-3 }
+    - { name: getTermExportUrl, lines: 5-9 }
+    - { name: fetchApprovedTerms, lines: 11-17 }
+    - { name: fetchUnverifiedTerms, lines: 19-25 }
+    - { name: approveTerm, lines: 27-31 }
+    - { name: editTerm, lines: 33-37 }
+    - { name: async importTerms, lines: 39-50 }
+
+app/frontend/src/components/domain/FileCard.jsx:  # 21 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+    - { module: lucide-react, items: [FileText, X], line: 2 }
+  functions:
+    - { name: formatSize, lines: 4-8 }
+    - { name: FileCard, lines: 10-21 }
+
+app/frontend/src/components/domain/FileDropZone.jsx:  # 30 lines
+  imports:
+    - { module: react, items: ['default:React', useRef, useState], line: 1 }
+    - { module: lucide-react, items: [Upload], line: 2 }
+    - { module: '../../constants/fileTypes.js', items: [ACCEPTED_EXTENSIONS], line: 3 }
+  functions:
+    - { name: FileDropZone, lines: 5-30 }
+
+app/frontend/src/components/domain/LanguageGrid.jsx:  # 31 lines
+  imports:
+    - { module: react, items: ['default:React', useState], line: 1 }
+    - { module: '../../constants/languages.js', items: [TARGET_LANGUAGES, LANG_GROUPS], line: 2 }
+    - { module: '../ui/Checkbox.jsx', items: [Checkbox], line: 3 }
+  functions:
+    - { name: LanguageGrid, lines: 5-31 }
+
+app/frontend/src/components/domain/RouteInfoDisplay.jsx:  # 25 lines
+  imports:
+    - { module: react, items: ['default:React', useEffect, useState], line: 1 }
+    - { module: '../../api/config.js', items: [fetchRouteInfo], line: 2 }
+  functions:
+    - { name: RouteInfoDisplay, lines: 4-25 }
+
+app/frontend/src/components/domain/StepWizard.jsx:  # 29 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+    - { module: lucide-react, items: [Check], line: 2 }
+  functions:
+    - { name: StepWizard, lines: 4-29 }
+
+app/frontend/src/components/domain/TranslationProgress.jsx:  # 25 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+  functions:
+    - { name: TranslationProgress, lines: 3-25 }
+
+app/frontend/src/components/domain/VramCalculator.jsx:  # 37 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+    - { module: '../../contexts/SettingsContext.jsx', items: [useSettings], line: 2 }
+  functions:
+    - { name: VramCalculator, lines: 4-37 }
+
+app/frontend/src/components/feedback/ErrorBoundary.jsx:  # 17 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+  classes:
+    - name: ErrorBoundary
+      lines: 2-17
+      methods:
+        - { name: constructor, lines: 3-3 }
+        - { name: getDerivedStateFromError, lines: 4-4 }
+        - { name: render, lines: 5-16 }
+
+app/frontend/src/components/feedback/Spinner.jsx:  # 4 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+  functions:
+    - { name: Spinner, lines: 2-4 }
+
+app/frontend/src/components/feedback/StatusDot.jsx:  # 5 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+  functions:
+    - { name: StatusDot, lines: 2-5 }
+
+app/frontend/src/components/layout/AppShell.jsx:  # 20 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+    - { module: react-router-dom, items: [Outlet], line: 2 }
+    - { module: sonner, items: [Toaster], line: 3 }
+    - { module: './Sidebar.jsx', items: [Sidebar], line: 4 }
+    - { module: './TopBar.jsx', items: [TopBar], line: 5 }
+  functions:
+    - { name: AppShell, lines: 7-20 }
+
+app/frontend/src/components/layout/PageHeader.jsx:  # 12 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+  functions:
+    - { name: PageHeader, lines: 2-12 }
+
+app/frontend/src/components/layout/Sidebar.jsx:  # 42 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+    - { module: react-router-dom, items: [NavLink], line: 2 }
+    - { module: lucide-react, items: [Languages, BookOpen, History, Settings], line: 3 }
+    - { module: '../../hooks/useHealthCheck.js', items: [useHealthCheck], line: 4 }
+  constants:
+    - { name: NAV_ITEMS, line: 6 }
+  functions:
+    - { name: Sidebar, lines: 13-42 }
+
+app/frontend/src/components/layout/TopBar.jsx:  # 20 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+    - { module: react-router-dom, items: [useLocation], line: 2 }
+  constants:
+    - { name: PAGE_TITLES, line: 4 }
+  functions:
+    - { name: TopBar, lines: 12-20 }
+
+app/frontend/src/components/ui/Badge.jsx:  # 4 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+  functions:
+    - { name: Badge, lines: 2-4 }
+
+app/frontend/src/components/ui/Button.jsx:  # 18 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+  functions:
+    - { name: Button, lines: 3-18 }
+
+app/frontend/src/components/ui/Card.jsx:  # 10 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+  functions:
+    - { name: Card, lines: 2-4 }
+    - { name: CardHeader, lines: 5-7 }
+    - { name: CardBody, lines: 8-10 }
+
+app/frontend/src/components/ui/Checkbox.jsx:  # 9 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+  functions:
+    - { name: Checkbox, lines: 2-9 }
+
+app/frontend/src/components/ui/Input.jsx:  # 10 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+  functions:
+    - { name: Input, lines: 2-10 }
+
+app/frontend/src/components/ui/Select.jsx:  # 15 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+  functions:
+    - { name: Select, lines: 2-15 }
+
+app/frontend/src/components/ui/Tabs.jsx:  # 16 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+  functions:
+    - { name: Tabs, lines: 2-16 }
+
+app/frontend/src/constants/defaults.js:  # 4 lines
+  constants:
+    - { name: DEFAULT_GPU_VRAM, line: 1 }
+    - { name: DEFAULT_SRC_LANG, line: 2 }
+    - { name: DEFAULT_PROFILE, line: 3 }
+    - { name: HISTORY_MAX_ENTRIES, line: 4 }
+
+app/frontend/src/constants/fileTypes.js:  # 8 lines
+  constants:
+    - { name: ACCEPTED_EXTENSIONS, line: 1 }
+    - { name: ACCEPTED_MIME_TYPES, line: 2 }
+
+app/frontend/src/constants/languages.js:  # 23 lines
+  constants:
+    - { name: TARGET_LANGUAGES, line: 1 }
+    - { name: LANG_GROUPS, line: 12 }
+    - { name: ALL_LANGUAGES, line: 23 }
+
+app/frontend/src/contexts/SettingsContext.jsx:  # 77 lines
+  imports:
+    - { module: react, items: ['default:React', createContext, useContext, useEffect, useReducer], line: 1 }
+    - { module: sonner, items: [toast], line: 2 }
+    - { module: '../api/config.js', items: [fetchProfiles, fetchModelConfig], line: 3 }
+    - { module: '../constants/defaults.js', items: [DEFAULT_GPU_VRAM], line: 4 }
+  constants:
+    - { name: PROFILE_FALLBACK, line: 6 }
+  functions:
+    - { name: SettingsContext, lines: 8-8 }
+    - { name: settingsReducer, lines: 10-22 }
+    - { name: loadFromStorage, lines: 24-26 }
+    - { name: SettingsProvider, lines: 28-71 }
+    - { name: useSettings, lines: 73-77 }
+
+app/frontend/src/hooks/useHealthCheck.js:  # 32 lines
+  imports:
+    - { module: react, items: [useState, useEffect, useRef], line: 1 }
+    - { module: sonner, items: [toast], line: 2 }
+    - { module: '../api/system.js', items: [fetchHealth], line: 3 }
+  functions:
+    - { name: useHealthCheck, lines: 5-32 }
+
+app/frontend/src/hooks/useJobPolling.js:  # 28 lines
+  imports:
+    - { module: react, items: [useEffect, useRef, useCallback], line: 1 }
+    - { module: '../api/jobs.js', items: [fetchJobStatus], line: 2 }
+  functions:
+    - { name: useJobPolling, lines: 4-28 }
+
+app/frontend/src/hooks/useLocalStorage.js:  # 8 lines
+  imports:
+    - { module: react, items: [useState, useEffect], line: 1 }
+  functions:
+    - { name: useLocalStorage, lines: 2-8 }
+
+app/frontend/src/hooks/useNotification.js:  # 9 lines
+  imports:
+    - { module: sonner, items: [toast], line: 1 }
+  functions:
+    - { name: useNotification, lines: 2-9 }
+
+app/frontend/src/hooks/useTheme.js:  # 8 lines
+  imports:
+    - { module: '../contexts/SettingsContext.jsx', items: [useSettings], line: 1 }
+  functions:
+    - { name: useTheme, lines: 2-8 }
+
+app/frontend/src/i18n/en.js:  # 100 lines
+
+app/frontend/src/i18n/index.js:  # 11 lines
+  imports:
+    - { module: '../contexts/SettingsContext.jsx', items: [useSettings], line: 1 }
+    - { module: './zh-TW.js', items: ['default:zhTW'], line: 2 }
+    - { module: './en.js', items: ['default:en'], line: 3 }
+  constants:
+    - { name: TRANSLATIONS, line: 5 }
+  functions:
+    - { name: useTranslation, lines: 7-11 }
+
+app/frontend/src/i18n/zh-TW.js:  # 100 lines
+
+app/frontend/src/main.jsx:  # 14 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+    - { module: react-dom/client, items: ['default:ReactDOM'], line: 2 }
+    - { module: './styles/tokens.css', items: [], line: 3 }
+    - { module: './styles/reset.css', items: [], line: 4 }
+    - { module: './styles/base.css', items: [], line: 5 }
+    - { module: './styles/theme-dark.css', items: [], line: 6 }
+    - { module: './styles/components.css', items: [], line: 7 }
+    - { module: './App.jsx', items: ['default:App'], line: 8 }
+
+app/frontend/src/pages/HistoryPage.jsx:  # 51 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+    - { module: react-router-dom, items: [Link], line: 2 }
+    - { module: '../hooks/useLocalStorage.js', items: [useLocalStorage], line: 3 }
+    - { module: '../components/ui/Card.jsx', items: [Card, CardBody], line: 4 }
+  functions:
+    - { name: formatDate, lines: 6-8 }
+    - { name: HistoryPage, lines: 10-51 }
+
+app/frontend/src/pages/SettingsPage.jsx:  # 94 lines
+  imports:
+    - { module: react, items: ['default:React', useEffect, useState], line: 1 }
+    - { module: sonner, items: [toast], line: 2 }
+    - { module: '../components/ui/Card.jsx', items: [Card, CardBody], line: 3 }
+    - { module: '../components/ui/Button.jsx', items: [Button], line: 4 }
+    - { module: '../components/domain/VramCalculator.jsx', items: [VramCalculator], line: 5 }
+    - { module: '../contexts/SettingsContext.jsx', items: [useSettings], line: 6 }
+    - { module: '../hooks/useTheme.js', items: [useTheme], line: 7 }
+    - { module: '../api/system.js', items: [fetchHealth, fetchCacheStats, clearCache], line: 8 }
+  functions:
+    - { name: SettingsPage, lines: 10-94 }
+
+app/frontend/src/pages/TermsPage.jsx:  # 122 lines
+  imports:
+    - { module: react, items: ['default:React', useEffect, useState], line: 1 }
+    - { module: react-router-dom, items: [Link], line: 2 }
+    - { module: sonner, items: [toast], line: 3 }
+    - { module: '../components/ui/Tabs.jsx', items: [Tabs], line: 4 }
+    - { module: '../components/ui/Card.jsx', items: [Card, CardBody], line: 5 }
+    - { module: '../components/ui/Button.jsx', items: [Button], line: 6 }
+    - { module: '../components/feedback/Spinner.jsx', items: [Spinner], line: 7 }
+    - { module: '../api/terms.js', items: [fetchTermStats, getTermExportUrl, fetchApprovedTerms, importTerms], line: 8 }
+  functions:
+    - { name: TermsPage, lines: 10-100 }
+    - { name: ApprovedTermsTab, lines: 102-122 }
+
+app/frontend/src/pages/TermsReviewPage.jsx:  # 123 lines
+  imports:
+    - { module: react, items: ['default:React', useEffect, useState, useRef], line: 1 }
+    - { module: sonner, items: [toast], line: 2 }
+    - { module: '../components/ui/Button.jsx', items: [Button], line: 3 }
+    - { module: '../components/feedback/Spinner.jsx', items: [Spinner], line: 4 }
+    - { module: '../api/terms.js', items: [fetchUnverifiedTerms, approveTerm, editTerm], line: 5 }
+  functions:
+    - { name: TermCard, lines: 7-56 }
+    - { name: TermsReviewPage, lines: 58-123 }
+
+app/frontend/src/pages/TranslatePage.jsx:  # 183 lines
+  imports:
+    - { module: react, items: ['default:React', useReducer], line: 1 }
+    - { module: sonner, items: [toast], line: 2 }
+    - { module: '../components/domain/StepWizard.jsx', items: [StepWizard], line: 3 }
+    - { module: '../components/domain/FileDropZone.jsx', items: [FileDropZone], line: 4 }
+    - { module: '../components/domain/FileCard.jsx', items: [FileCard], line: 5 }
+    - { module: '../components/domain/LanguageGrid.jsx', items: [LanguageGrid], line: 6 }
+    - { module: '../components/domain/RouteInfoDisplay.jsx', items: [RouteInfoDisplay], line: 7 }
+    - { module: '../components/domain/TranslationProgress.jsx', items: [TranslationProgress], line: 8 }
+    - { module: '../components/ui/Button.jsx', items: [Button], line: 9 }
+    - { module: '../components/ui/Select.jsx', items: [Select], line: 10 }
+    - { module: '../hooks/useJobPolling.js', items: [useJobPolling], line: 11 }
+    - { module: '../hooks/useLocalStorage.js', items: [useLocalStorage], line: 12 }
+    - { module: '../contexts/SettingsContext.jsx', items: [useSettings], line: 13 }
+    - { module: '../api/jobs.js', items: [createJob, cancelJob], line: 14 }
+    - { module: '../constants/languages.js', items: [ALL_LANGUAGES], line: 15 }
+    - { module: '../constants/defaults.js', items: [DEFAULT_SRC_LANG, DEFAULT_PROFILE, HISTORY_MAX_ENTRIES], line: 16 }
+  constants:
+    - { name: STEPS, line: 18 }
+  functions:
+    - { name: reducer, lines: 37-53 }
+    - { name: TranslatePage, lines: 55-183 }
+
+app/frontend/vite.config.js:  # 12 lines
+  imports:
+    - { module: vite, items: [defineConfig], line: 1 }
+    - { module: '@vitejs/plugin-react', items: ['default:react'], line: 2 }
+
+scripts/benchmark_full_factorial.py:  # 837 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 15 }
+    - { module: os, items: [], line: 17 }
+    - { module: argparse, items: [], line: 21 }
+    - { module: csv, items: [], line: 22 }
+    - { module: json, items: [], line: 23 }
+    - { module: random, items: [], line: 24 }
+    - { module: sys, items: [], line: 25 }
+    - { module: time, items: [], line: 26 }
+    - { module: collections, items: [defaultdict], line: 27 }
+    - { module: dataclasses, items: [dataclass], line: 28 }
+    - { module: pathlib, items: [Path], line: 29 }
+    - { module: typing, items: [Dict, List, Optional, Tuple], line: 30 }
+    - { module: requests, items: [], line: 32 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 48 }
+    - { module: app.backend.translation_profiles, items: [PROFILES], line: 49 }
+    - { module: app.backend.services.translation_strategy, items: [TranslationScenario, _PROMPT_APPENDIX_BY_SCENARIO], line: 50 }
+  constants:
+    - { name: PROJECT_ROOT, line: 44 }
+    - { name: OUTPUT_BASE, line: 59 }
+    - { name: OLLAMA_NUM_GPU, line: 61 }
+    - { name: OLLAMA_KV_CACHE_TYPE, line: 62 }
+    - { name: LANG_INFO, line: 64 }
+    - { name: DEFAULT_PAIRS, line: 73 }
+    - { name: PROFILE_ID, line: 82 }
+    - { name: SCENARIO, line: 85 }
+    - { name: MODELS, line: 100 }
+    - { name: MODEL_DECODE_PRESETS, line: 111 }
+    - { name: DECODE_PRESET_NAMES, line: 166 }
+    - { name: TOTAL_SETTINGS, line: 182 }
+  classes:
+    - name: ModelDef
+      lines: 93-97
+    - name: Setting
+      lines: 174-179
+    - name: TestCase
+      lines: 202-209
+  functions:
+    - { name: generate_settings, lines: 185-193 }
+    - { name: _sample, lines: 212-218 }
+    - { name: load_flores_cases, lines: 221-251 }
+    - { name: detect_base_url, lines: 259-282 }
+    - { name: warm_up, lines: 285-302 }
+    - { name: call_ollama, lines: 305-331 }
+    - { name: build_user_prompt, lines: 339-374 }
+    - { name: build_system_prompt, lines: 377-391 }
+    - { name: compute_metrics, lines: 399-411 }
+    - { name: _mean, lines: 419-420 }
+    - { name: generate_analysis, lines: 423-618 }
+    - { name: main, lines: 626-833 }
+
+scripts/benchmark_realfile_pipeline.py:  # 510 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 22 }
+    - { module: os, items: [], line: 24 }
+    - { module: json, items: [], line: 28 }
+    - { module: random, items: [], line: 29 }
+    - { module: requests, items: [], line: 30 }
+    - { module: shutil, items: [], line: 31 }
+    - { module: sys, items: [], line: 32 }
+    - { module: time, items: [], line: 33 }
+    - { module: dataclasses, items: [dataclass], line: 34 }
+    - { module: pathlib, items: [Path], line: 35 }
+    - { module: typing, items: [Dict, List, Optional, Tuple], line: 36 }
+    - { module: app.backend.config, items: [TimeoutConfig], line: 73 }
+    - { module: app.backend.processors.orchestrator, items: [process_files], line: 74 }
+    - { module: app.backend.translation_profiles, items: [PROFILES, get_profile], line: 75 }
+  constants:
+    - { name: PROJECT_ROOT, line: 38 }
+    - { name: SCRIPTS_DIR, line: 81 }
+    - { name: OUTPUT_BASE, line: 82 }
+    - { name: TEST_FILES, line: 84 }
+    - { name: TARGET_LANGUAGES, line: 89 }
+    - { name: SETTINGS, line: 108 }
+  classes:
+    - name: PipelineSetting
+      lines: 97-105
+  functions:
+    - { name: _detect_and_set_ollama_url, lines: 43-67 }
+    - { name: _extract_docx_segments, lines: 152-171 }
+    - { name: _extract_xlsx_segments, lines: 174-191 }
+    - { name: _extract_translated_segments, lines: 194-201 }
+    - { name: generate_sampling_report, lines: 209-283 }
+    - { name: _find_translation_for_source, lines: 286-300 }
+    - { name: main, lines: 308-506 }
+
+tests/__init__.py:  # 1 lines
+
+tests/test_bbox_utils.py:  # 253 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: pytest, items: [], line: 5 }
+    - { module: app.backend.models.translatable_document, items: [BoundingBox], line: 7 }
+    - { module: app.backend.utils.bbox_utils, items: [bbox_distance, calculate_iou, is_bbox_inside, is_header_footer_region, merge_bboxes, normalize_bbox, sort_bboxes_by_reading_order], line: 8 }
+  classes:
+    - name: TestNormalizeBbox
+      lines: 19-52
+      methods:
+        - { name: test_from_pdf_coords, lines: 22-33 }
+        - { name: test_already_internal_coords, lines: 35-42 }
+        - { name: test_swapped_coords, lines: 44-52 }
+    - name: TestCalculateIou
+      lines: 55-94
+      methods:
+        - { name: test_identical_boxes, lines: 58-64 }
+        - { name: test_no_overlap, lines: 66-72 }
+        - { name: test_partial_overlap, lines: 74-83 }
+        - { name: test_one_inside_other, lines: 85-94 }
+    - name: TestIsBboxInside
+      lines: 97-123
+      methods:
+        - { name: test_fully_inside, lines: 100-105 }
+        - { name: test_not_inside, lines: 107-112 }
+        - { name: test_with_tolerance, lines: 114-123 }
+    - name: TestMergeBboxes
+      lines: 126-154
+      methods:
+        - { name: test_merge_two_boxes, lines: 129-141 }
+        - { name: test_merge_single_box, lines: 143-149 }
+        - { name: test_empty_list_raises, lines: 151-154 }
+    - name: TestBboxDistance
+      lines: 157-193
+      methods:
+        - { name: test_overlapping_boxes, lines: 160-166 }
+        - { name: test_horizontal_separation, lines: 168-174 }
+        - { name: test_vertical_separation, lines: 176-182 }
+        - { name: test_diagonal_separation, lines: 184-193 }
+    - name: TestIsHeaderFooterRegion
+      lines: 196-221
+      methods:
+        - { name: test_header_region, lines: 199-205 }
+        - { name: test_footer_region, lines: 207-213 }
+        - { name: test_body_region, lines: 215-221 }
+    - name: TestSortBboxesByReadingOrder
+      lines: 224-253
+      methods:
+        - { name: test_simple_vertical_order, lines: 227-237 }
+        - { name: test_left_to_right_same_line, lines: 239-248 }
+        - { name: test_empty_list, lines: 250-253 }
+
+tests/test_coordinate_renderer.py:  # 405 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: os, items: [], line: 5 }
+    - { module: tempfile, items: [], line: 6 }
+    - { module: pytest, items: [], line: 8 }
+    - { module: app.backend.renderers.base, items: [RenderMode], line: 10 }
+    - { module: app.backend.renderers.coordinate_renderer, items: [CoordinateRenderer, render_to_pdf], line: 11 }
+    - { module: app.backend.models.translatable_document, items: [BoundingBox, DocumentMetadata, ElementType, PageInfo, TranslatableDocument, TranslatableElement], line: 15 }
+  classes:
+    - name: TestCoordinateRenderer
+      lines: 74-222
+      methods:
+        - { name: test_init_default, lines: 77-81 }
+        - { name: test_init_custom, lines: 83-90 }
+        - { name: test_supported_modes, lines: 92-98 }
+        - { name: test_output_extension, lines: 100-103 }
+        - { name: test_render_overlay_mode, lines: 105-125 }
+        - { name: test_render_side_by_side_mode, lines: 127-147 }
+        - { name: test_render_unsupported_mode, lines: 149-164 }
+        - { name: test_render_empty_translations, lines: 166-182 }
+        - { name: test_render_partial_translations, lines: 184-203 }
+        - { name: test_render_with_log_callback, lines: 205-222 }
+    - name: TestRenderToPdf
+      lines: 225-276
+      methods:
+        - { name: test_render_to_pdf_overlay, lines: 228-246 }
+        - { name: test_render_to_pdf_side_by_side, lines: 248-261 }
+        - { name: test_render_to_pdf_invalid_mode, lines: 263-276 }
+    - name: TestCoordinateRendererEdgeCases
+      lines: 279-405
+      methods:
+        - { name: test_document_without_pages_info, lines: 282-316 }
+        - { name: test_elements_without_bbox, lines: 318-362 }
+        - { name: test_multipage_document, lines: 364-405 }
+  functions:
+    - { name: create_test_document, lines: 25-71 }
+
+tests/test_docx_parser.py:  # 226 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: tempfile, items: [], line: 5 }
+    - { module: pathlib, items: [Path], line: 6 }
+    - { module: docx, items: [], line: 8 }
+    - { module: pytest, items: [], line: 9 }
+    - { module: app.backend.models.translatable_document, items: [ElementType], line: 11 }
+    - { module: app.backend.parsers.docx_parser, items: [DocxParser], line: 12 }
+  classes:
+    - name: TestDocxParser
+      lines: 15-185
+      methods:
+        - { name: parser, lines: 19-21 }
+        - { name: simple_docx, lines: 24-37 }
+        - { name: table_docx, lines: 40-60 }
+        - { name: test_supported_extensions, lines: 62-64 }
+        - { name: test_file_not_found, lines: 66-69 }
+        - { name: test_invalid_extension, lines: 71-82 }
+        - { name: test_parse_simple_docx, lines: 84-95 }
+        - { name: test_parse_heading_type, lines: 97-104 }
+        - { name: test_parse_table, lines: 106-116 }
+        - { name: test_parse_deduplication, lines: 118-139 }
+        - { name: test_parse_empty_paragraphs_skipped, lines: 141-160 }
+        - { name: test_element_ids_unique, lines: 162-167 }
+        - { name: test_metadata_extraction, lines: 169-185 }
+    - name: TestDocxParserInsertMarker
+      lines: 188-226
+      methods:
+        - { name: parser_skip_inserts, lines: 192-194 }
+        - { name: parser_include_inserts, lines: 197-199 }
+        - { name: test_skip_inserted_translation, lines: 201-226 }
+
+tests/test_font_utils.py:  # 277 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: pytest, items: [], line: 5 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 6 }
+    - { module: app.backend.utils.font_utils, items: [find_font_file, register_fonts, get_font_for_language, calculate_text_width, calculate_text_height, estimate_font_size_from_bbox, fit_text_to_bbox, detect_text_direction, LANGUAGE_FONT_MAP], line: 8 }
+  classes:
+    - name: TestFindFontFile
+      lines: 21-34
+      methods:
+        - { name: test_find_font_file_not_found, lines: 24-29 }
+        - { name: test_find_font_file_with_empty_patterns, lines: 31-34 }
+    - name: TestRegisterFonts
+      lines: 37-49
+      methods:
+        - { name: test_register_fonts_returns_bool, lines: 40-43 }
+        - { name: test_register_fonts_idempotent, lines: 45-49 }
+    - name: TestGetFontForLanguage
+      lines: 52-92
+      methods:
+        - { name: test_get_font_for_default, lines: 55-58 }
+        - { name: test_get_font_for_english, lines: 60-65 }
+        - { name: test_get_font_for_chinese_traditional, lines: 67-71 }
+        - { name: test_get_font_for_chinese_simplified, lines: 73-76 }
+        - { name: test_get_font_for_japanese, lines: 78-81 }
+        - { name: test_get_font_for_korean, lines: 83-86 }
+        - { name: test_get_font_family_match, lines: 88-92 }
+    - name: TestCalculateTextWidth
+      lines: 95-118
+      methods:
+        - { name: test_calculate_text_width_basic, lines: 98-102 }
+        - { name: test_calculate_text_width_empty_string, lines: 104-107 }
+        - { name: test_calculate_text_width_scales_with_size, lines: 109-113 }
+        - { name: test_calculate_text_width_invalid_font_fallback, lines: 115-118 }
+    - name: TestCalculateTextHeight
+      lines: 121-135
+      methods:
+        - { name: test_calculate_text_height_basic, lines: 124-129 }
+        - { name: test_calculate_text_height_scales_with_size, lines: 131-135 }
+    - name: TestEstimateFontSizeFromBbox
+      lines: 138-164
+      methods:
+        - { name: test_estimate_font_size_single_line, lines: 141-145 }
+        - { name: test_estimate_font_size_multiple_lines, lines: 147-152 }
+        - { name: test_estimate_font_size_respects_min, lines: 154-158 }
+        - { name: test_estimate_font_size_respects_max, lines: 160-164 }
+    - name: TestFitTextToBbox
+      lines: 167-215
+      methods:
+        - { name: test_fit_text_to_bbox_basic, lines: 170-179 }
+        - { name: test_fit_text_to_bbox_small_box, lines: 181-192 }
+        - { name: test_fit_text_to_bbox_multiline, lines: 194-203 }
+        - { name: test_fit_text_to_bbox_with_initial_size, lines: 205-215 }
+    - name: TestDetectTextDirection
+      lines: 218-255
+      methods:
+        - { name: test_detect_ltr_english, lines: 221-224 }
+        - { name: test_detect_ltr_chinese, lines: 226-229 }
+        - { name: test_detect_rtl_arabic, lines: 231-234 }
+        - { name: test_detect_rtl_hebrew, lines: 236-239 }
+        - { name: test_detect_mixed_text, lines: 241-245 }
+        - { name: test_detect_empty_string, lines: 247-250 }
+        - { name: test_detect_numbers_only, lines: 252-255 }
+    - name: TestLanguageFontMap
+      lines: 258-277
+      methods:
+        - { name: test_language_font_map_has_default, lines: 261-263 }
+        - { name: test_language_font_map_has_cjk, lines: 265-270 }
+        - { name: test_language_font_map_structure, lines: 272-277 }
+
+tests/test_hy_mt_quality_refinement.py:  # 296 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: unittest.mock, items: [MagicMock, call, patch], line: 5 }
+    - { module: pytest, items: [], line: 7 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 9 }
+    - { module: app.backend.config, items: [DEFAULT_MODEL, HYMT_DEFAULT_MODEL], line: 10 }
+    - { module: app.backend.services.model_router, items: [resolve_route_groups], line: 11 }
+  classes:
+    - name: TestBuildRefineSystemPrompt
+      lines: 18-61
+      methods:
+        - { name: test_technical_process_vietnamese_contains_persona, lines: 19-23 }
+        - { name: test_technical_process_contains_four_rules, lines: 25-31 }
+        - { name: test_technical_process_rule1_cross_references_source, lines: 33-35 }
+        - { name: test_technical_process_rule4_output_only, lines: 37-39 }
+        - { name: test_japanese_technical_process_persona, lines: 41-43 }
+        - { name: test_german_technical_process_persona, lines: 45-47 }
+        - { name: test_generic_profile_fallback, lines: 49-56 }
+        - { name: test_unknown_language_fallback_no_crash, lines: 58-61 }
+    - name: TestBuildRefinePrompt
+      lines: 68-94
+      methods:
+        - { name: test_source_label_present, lines: 69-71 }
+        - { name: test_draft_label_present, lines: 73-75 }
+        - { name: test_corrected_label_present, lines: 77-79 }
+        - { name: test_source_text_included, lines: 81-83 }
+        - { name: test_draft_text_included, lines: 85-87 }
+        - { name: test_correct_order, lines: 89-94 }
+    - name: TestRouteGroupRefineModel
+      lines: 101-147
+      methods:
+        - { name: test_vietnamese_group_has_refine_model, lines: 102-107 }
+        - { name: test_japanese_group_has_refine_model, lines: 109-112 }
+        - { name: test_german_group_has_refine_model, lines: 114-117 }
+        - { name: test_korean_tgemma_group_has_refine_model, lines: 119-123 }
+        - { name: test_english_qwen_group_has_no_refine_model, lines: 129-134 }
+        - { name: test_unlisted_language_qwen_group_has_no_refine_model, lines: 136-139 }
+        - { name: test_mixed_targets_correct_refine_models, lines: 141-147 }
+    - name: TestTranslateTextsRefinePhase
+      lines: 154-296
+      methods:
+        - { name: _make_client, lines: 155-160 }
+        - { name: test_unload_called_before_refine, lines: 165-189 }
+        - { name: test_refine_updates_tmap, lines: 194-212 }
+        - { name: test_refined_output_not_written_to_cache, lines: 220-247 }
+        - { name: test_phase2_skipped_when_disabled, lines: 256-274 }
+        - { name: test_no_refine_when_refine_client_is_none, lines: 279-296 }
+
+tests/test_inline_renderer.py:  # 242 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: tempfile, items: [], line: 5 }
+    - { module: pathlib, items: [Path], line: 6 }
+    - { module: unittest.mock, items: [MagicMock], line: 7 }
+    - { module: pytest, items: [], line: 9 }
+    - { module: app.backend.models.translatable_document, items: [DocumentMetadata, ElementType, PageInfo, TranslatableDocument, TranslatableElement], line: 11 }
+    - { module: app.backend.renderers.base, items: [RenderMode], line: 18 }
+    - { module: app.backend.renderers.inline_renderer, items: [InlineRenderer], line: 19 }
+  classes:
+    - name: TestInlineRenderer
+      lines: 22-195
+      methods:
+        - { name: renderer, lines: 26-28 }
+        - { name: sample_document, lines: 31-64 }
+        - { name: test_supported_modes, lines: 66-69 }
+        - { name: test_output_extension, lines: 71-73 }
+        - { name: test_render_invalid_mode, lines: 75-89 }
+        - { name: test_render_basic, lines: 91-125 }
+        - { name: test_render_missing_translation, lines: 127-155 }
+        - { name: test_render_non_translatable_elements, lines: 157-195 }
+    - name: TestInlineRendererFromSegments
+      lines: 198-242
+      methods:
+        - { name: renderer, lines: 202-204 }
+        - { name: test_render_from_segments_paragraph, lines: 206-223 }
+        - { name: test_render_from_segments_no_translation, lines: 225-242 }
+
+tests/test_model_config_api.py:  # 135 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: importlib, items: [], line: 5 }
+    - { module: io, items: [], line: 6 }
+    - { module: sys, items: [], line: 7 }
+    - { module: types, items: [], line: 8 }
+    - { module: asyncio, items: [run_async], line: 9 }
+    - { module: types, items: [SimpleNamespace], line: 10 }
+    - { module: pytest, items: [], line: 12 }
+    - { module: fastapi, items: [FastAPI], line: 13 }
+    - { module: fastapi, items: [HTTPException], line: 14 }
+    - { module: fastapi.testclient, items: [TestClient], line: 15 }
+    - { module: starlette.datastructures, items: [UploadFile], line: 16 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 18 }
+    - { module: app.backend.config, items: [GENERAL_NUM_CTX, MODEL_TYPE_OPTIONS, TRANSLATION_NUM_CTX, ModelType], line: 19 }
+  functions:
+    - { name: routes_module, lines: 23-45 }  # @pytest.fixture
+    - { name: client, lines: 49-52 }  # @pytest.fixture
+    - { name: _upload_file_obj, lines: 55-56 }
+    - { name: test_model_config_endpoint_returns_all_model_types, lines: 59-72 }
+    - { name: test_create_job_rejects_out_of_range_num_ctx, lines: 75-99 }
+    - { name: test_create_job_passes_valid_num_ctx_override, lines: 102-124 }
+    - { name: test_ollama_num_ctx_override_priority, lines: 127-135 }
+
+tests/test_model_router.py:  # 185 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: pytest, items: [], line: 5 }
+    - { module: app.backend.services.model_router, items: [RouteGroup, resolve_route_groups, GREEDY_PRESET, TGEMMA_DEFAULT_MODEL, RouteDecision, get_route_info, resolve_route], line: 7 }
+    - { module: app.backend.config, items: [DEFAULT_MODEL, HYMT_DEFAULT_MODEL], line: 16 }
+  classes:
+    - name: TestResolveRoute
+      lines: 19-74
+      methods:
+        - { name: test_vietnamese_routes_to_hymt, lines: 20-25 }
+        - { name: test_english_routes_to_qwen, lines: 27-32 }
+        - { name: test_japanese_routes_to_hymt, lines: 34-37 }
+        - { name: test_korean_routes_to_tgemma, lines: 39-43 }
+        - { name: test_unlisted_language_defaults_to_qwen, lines: 45-49 }
+        - { name: test_empty_targets_defaults_to_qwen, lines: 51-54 }
+        - { name: test_multi_target_routes_by_first, lines: 56-60 }
+        - { name: test_manual_override_returns_none, lines: 62-64 }
+        - { name: test_auto_override_routes_normally, lines: 66-69 }
+        - { name: test_no_override_routes_normally, lines: 71-74 }
+    - name: TestGreedyPreset
+      lines: 77-91
+      methods:
+        - { name: test_greedy_temperature, lines: 78-79 }
+        - { name: test_greedy_top_p, lines: 81-82 }
+        - { name: test_greedy_top_k, lines: 84-85 }
+        - { name: test_greedy_repeat_penalty, lines: 87-88 }
+        - { name: test_greedy_frequency_penalty, lines: 90-91 }
+    - name: TestGetRouteInfo
+      lines: 94-119
+      methods:
+        - { name: test_single_target, lines: 95-100 }
+        - { name: test_multiple_targets, lines: 102-110 }
+        - { name: test_response_fields, lines: 112-119 }
+    - name: TestResolveRouteGroups
+      lines: 122-185
+      methods:
+        - { name: test_english_vietnamese_gives_two_groups, lines: 123-129 }
+        - { name: test_english_group_targets, lines: 131-135 }
+        - { name: test_vietnamese_group_targets, lines: 137-141 }
+        - { name: test_vietnamese_japanese_german_gives_one_group, lines: 143-148 }
+        - { name: test_mixed_three_languages_two_groups, lines: 150-153 }
+        - { name: test_insertion_order_preserved, lines: 155-159 }
+        - { name: test_manual_override_returns_none, lines: 161-163 }
+        - { name: test_auto_override_routes_normally, lines: 165-168 }
+        - { name: test_empty_targets_returns_empty_list, lines: 170-172 }
+        - { name: test_route_group_has_correct_profile_id, lines: 174-178 }
+        - { name: test_unlisted_language_uses_default_route, lines: 180-185 }
+
+tests/test_ollama_client_dynamic_strategy.py:  # 50 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 5 }
+    - { module: app.backend.config, items: [ModelType], line: 6 }
+  functions:
+    - { name: test_runtime_options_override_is_merged, lines: 9-21 }
+    - { name: test_cache_model_key_includes_variant_when_set, lines: 24-32 }
+    - { name: test_translation_dedicated_payload_uses_system_prompt_when_present, lines: 35-50 }
+
+tests/test_pdf_generator.py:  # 563 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: os, items: [], line: 5 }
+    - { module: tempfile, items: [], line: 6 }
+    - { module: pathlib, items: [Path], line: 7 }
+    - { module: pytest, items: [], line: 9 }
+    - { module: app.backend.renderers.base, items: [RenderMode], line: 11 }
+    - { module: app.backend.renderers.pdf_generator, items: [PDFGenerator, generate_translated_pdf, _ensure_fitz], line: 12 }
+    - { module: app.backend.models.translatable_document, items: [BoundingBox, DocumentMetadata, ElementType, PageInfo, TranslatableDocument, TranslatableElement], line: 17 }
+  classes:
+    - name: TestEnsureFitz
+      lines: 108-115
+      methods:
+        - { name: test_ensure_fitz_returns_module, lines: 111-115 }
+    - name: TestPDFGenerator
+      lines: 119-343
+      methods:
+        - { name: test_init_default, lines: 122-126 }
+        - { name: test_init_custom, lines: 128-135 }
+        - { name: test_generate_overlay_mode, lines: 137-167 }
+        - { name: test_generate_side_by_side_mode, lines: 169-202 }
+        - { name: test_generate_inline_mode_raises, lines: 204-224 }
+        - { name: test_generate_source_not_found, lines: 226-247 }
+        - { name: test_generate_with_log_callback, lines: 249-272 }
+        - { name: test_generate_empty_translations, lines: 274-295 }
+        - { name: test_generate_partial_translations, lines: 297-321 }
+        - { name: test_generate_without_mask, lines: 323-343 }
+    - name: TestGenerateTranslatedPdf
+      lines: 347-450
+      methods:
+        - { name: test_generate_translated_pdf_overlay, lines: 350-377 }
+        - { name: test_generate_translated_pdf_side_by_side, lines: 379-401 }
+        - { name: test_generate_translated_pdf_invalid_mode, lines: 403-424 }
+        - { name: test_generate_translated_pdf_with_log, lines: 426-450 }
+    - name: TestPDFGeneratorEdgeCases
+      lines: 454-563
+      methods:
+        - { name: test_page_with_no_elements, lines: 457-479 }
+        - { name: test_elements_on_second_page_only, lines: 481-503 }
+        - { name: test_multiline_text, lines: 505-541 }
+        - { name: test_different_target_languages, lines: 543-563 }
+  functions:
+    - { name: create_test_pdf, lines: 35-56 }
+    - { name: create_test_document, lines: 59-104 }
+
+tests/test_pdf_parser.py:  # 281 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: tempfile, items: [], line: 5 }
+    - { module: pathlib, items: [Path], line: 6 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 7 }
+    - { module: pytest, items: [], line: 9 }
+  classes:
+    - name: TestPyMuPDFParser
+      lines: 12-65
+      methods:
+        - { name: mock_fitz, lines: 16-22 }
+        - { name: test_import_error_handling, lines: 24-31 }
+        - { name: test_supported_extensions, lines: 36-41 }
+        - { name: test_file_not_found, lines: 43-50 }
+        - { name: test_invalid_extension, lines: 52-65 }
+    - name: TestPyMuPDFParserIntegration
+      lines: 68-154
+      methods:
+        - { name: test_pdf_path, lines: 76-88 }
+        - { name: parser, lines: 91-98 }
+        - { name: test_parse_pdf, lines: 100-107 }
+        - { name: test_elements_have_bbox, lines: 109-120 }
+        - { name: test_reading_order, lines: 122-136 }
+        - { name: test_header_footer_detection, lines: 138-154 }
+    - name: TestTableDetection
+      lines: 157-250
+      methods:
+        - { name: test_is_inside_true, lines: 160-170 }
+        - { name: test_is_inside_false, lines: 172-182 }
+        - { name: test_is_inside_with_tolerance, lines: 184-195 }
+        - { name: test_detect_and_mark_tables_marks_elements, lines: 197-250 }
+    - name: TestColorConversion
+      lines: 253-281
+      methods:
+        - { name: test_color_to_hex_black, lines: 256-263 }
+        - { name: test_color_to_hex_white, lines: 265-272 }
+        - { name: test_color_to_hex_red, lines: 274-281 }
+
+tests/test_pptx_parser.py:  # 255 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: tempfile, items: [], line: 5 }
+    - { module: pathlib, items: [Path], line: 6 }
+    - { module: pptx, items: [], line: 8 }
+    - { module: pytest, items: [], line: 9 }
+    - { module: app.backend.models.translatable_document, items: [ElementType], line: 11 }
+    - { module: app.backend.parsers.pptx_parser, items: [PptxParser], line: 12 }
+  classes:
+    - name: TestPptxParser
+      lines: 15-226
+      methods:
+        - { name: parser, lines: 19-21 }
+        - { name: simple_pptx, lines: 24-43 }
+        - { name: multi_slide_pptx, lines: 46-68 }
+        - { name: table_pptx, lines: 71-95 }
+        - { name: test_supported_extensions, lines: 97-99 }
+        - { name: test_file_not_found, lines: 101-104 }
+        - { name: test_invalid_extension, lines: 106-117 }
+        - { name: test_parse_simple_pptx, lines: 119-129 }
+        - { name: test_parse_multi_slide, lines: 131-143 }
+        - { name: test_parse_table, lines: 145-160 }
+        - { name: test_title_classification, lines: 162-167 }
+        - { name: test_element_ids_unique, lines: 169-174 }
+        - { name: test_empty_text_skipped, lines: 176-205 }
+        - { name: test_bbox_extraction, lines: 207-217 }
+        - { name: test_page_info, lines: 219-226 }
+    - name: TestPptxParserMetadata
+      lines: 229-255
+      methods:
+        - { name: parser, lines: 233-235 }
+        - { name: test_metadata_extraction, lines: 237-255 }
+
+tests/test_term_api.py:  # 197 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: io, items: [], line: 5 }
+    - { module: json, items: [], line: 6 }
+    - { module: tempfile, items: [], line: 7 }
+    - { module: types, items: [], line: 8 }
+    - { module: pathlib, items: [Path], line: 9 }
+    - { module: types, items: [SimpleNamespace], line: 10 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 11 }
+    - { module: pytest, items: [], line: 13 }
+    - { module: fastapi.testclient, items: [TestClient], line: 14 }
+    - { module: app.backend.models.term, items: [Term], line: 16 }
+    - { module: app.backend.services.term_db, items: [TermDB], line: 17 }
+  functions:
+    - { name: db, lines: 21-22 }  # @pytest.fixture()
+    - { name: client, lines: 26-72 }  # @pytest.fixture()
+    - { name: test_terms_stats_empty, lines: 79-85 }
+    - { name: test_terms_stats_with_data, lines: 88-96 }
+    - { name: test_terms_export_json, lines: 103-111 }
+    - { name: test_terms_export_csv, lines: 114-121 }
+    - { name: test_terms_export_invalid_format, lines: 124-126 }
+    - { name: _json_import_bytes, lines: 133-135 }
+    - { name: test_terms_import_json_insert, lines: 138-157 }
+    - { name: test_terms_import_skip_duplicate, lines: 160-181 }
+    - { name: test_terms_import_invalid_strategy, lines: 184-189 }
+    - { name: test_terms_import_invalid_file_type, lines: 192-197 }
+
+tests/test_term_db.py:  # 185 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: json, items: [], line: 5 }
+    - { module: tempfile, items: [], line: 6 }
+    - { module: pathlib, items: [Path], line: 7 }
+    - { module: pytest, items: [], line: 9 }
+    - { module: app.backend.models.term, items: [Term], line: 11 }
+    - { module: app.backend.services.term_db, items: [TermDB], line: 12 }
+  functions:
+    - { name: db, lines: 16-18 }  # @pytest.fixture()
+    - { name: _make_term, lines: 21-33 }
+    - { name: test_insert_and_exists, lines: 40-44 }
+    - { name: test_skip_duplicate, lines: 47-51 }
+    - { name: test_different_domain_coexist, lines: 54-60 }
+    - { name: test_overwrite_strategy, lines: 67-72 }
+    - { name: test_merge_higher_confidence_wins, lines: 75-80 }
+    - { name: test_merge_lower_confidence_keeps_existing, lines: 83-88 }
+    - { name: test_get_unknown_filters_known, lines: 95-100 }
+    - { name: test_increment_usage, lines: 107-112 }
+    - { name: test_get_top_terms_ordered_by_usage, lines: 119-123 }
+    - { name: test_get_stats, lines: 130-137 }
+    - { name: test_json_round_trip, lines: 144-154 }
+    - { name: test_csv_round_trip, lines: 157-165 }
+    - { name: test_import_skip_preserves_existing, lines: 168-185 }
+
+tests/test_term_extractor.py:  # 233 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 5 }
+    - { module: pytest, items: [], line: 7 }
+    - { module: app.backend.services.term_extractor, items: [_parse_json_list, _parse_translation_response, run_phase0, TermExtractor, SCENARIO_TO_DOMAIN], line: 9 }
+    - { module: app.backend.services.term_db, items: [TermDB], line: 16 }
+  functions:
+    - { name: test_parse_json_list_valid, lines: 23-27 }
+    - { name: test_parse_json_list_with_surrounding_text, lines: 30-34 }
+    - { name: test_parse_json_list_invalid_returns_empty, lines: 37-39 }
+    - { name: test_parse_translation_response_valid, lines: 46-52 }
+    - { name: test_parse_translation_response_with_surrounding_text, lines: 55-58 }
+    - { name: test_parse_translation_response_invalid_returns_empty, lines: 61-63 }
+    - { name: test_parse_translation_response_missing_source_skipped, lines: 66-69 }
+    - { name: test_scenario_to_domain_mappings, lines: 76-80 }
+    - { name: test_extract_from_segments_deduplicates, lines: 87-100 }
+    - { name: test_extract_from_segments_handles_parse_failure, lines: 103-118 }
+    - { name: test_translate_unknown_returns_parsed_results, lines: 125-134 }
+    - { name: test_translate_unknown_empty_input_skips_call, lines: 137-142 }
+    - { name: test_run_phase0_normal_flow, lines: 149-178 }
+    - { name: test_run_phase0_failure_does_not_abort, lines: 181-201 }
+    - { name: test_run_phase0_extraction_only_skips_known_terms, lines: 204-233 }
+
+tests/test_text_region_renderer.py:  # 452 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: io, items: [], line: 5 }
+    - { module: pytest, items: [], line: 6 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 7 }
+    - { module: reportlab.pdfgen.canvas, items: [Canvas], line: 9 }
+    - { module: reportlab.lib.colors, items: [white], line: 10 }
+    - { module: app.backend.renderers.text_region_renderer, items: [TextRegion, calculate_rotation_from_bbox, render_text_region, render_text_regions, create_text_regions_from_elements], line: 12 }
+    - { module: app.backend.models.translatable_document, items: [BoundingBox, TranslatableElement, ElementType], line: 19 }
+  classes:
+    - name: TestTextRegion
+      lines: 22-120
+      methods:
+        - { name: test_text_region_creation, lines: 25-38 }
+        - { name: test_text_region_width, lines: 40-43 }
+        - { name: test_text_region_height, lines: 45-48 }
+        - { name: test_text_region_center_x, lines: 50-53 }
+        - { name: test_text_region_center_y, lines: 55-58 }
+        - { name: test_text_region_rotation, lines: 60-63 }
+        - { name: test_text_region_font_name, lines: 65-72 }
+        - { name: test_text_region_font_size, lines: 74-81 }
+        - { name: test_text_region_text_color, lines: 83-90 }
+        - { name: test_text_region_from_bbox, lines: 92-101 }
+        - { name: test_text_region_from_bbox_with_rotation, lines: 103-108 }
+        - { name: test_text_region_from_bbox_with_font, lines: 110-120 }
+    - name: TestCalculateRotationFromBbox
+      lines: 123-144
+      methods:
+        - { name: test_normal_box_no_rotation, lines: 126-130 }
+        - { name: test_tall_narrow_box_rotation, lines: 132-137 }
+        - { name: test_short_text_no_rotation, lines: 139-144 }
+    - name: TestRenderTextRegion
+      lines: 147-261
+      methods:
+        - { name: test_render_text_region_basic, lines: 150-168 }
+        - { name: test_render_text_region_with_background, lines: 170-185 }
+        - { name: test_render_text_region_without_background, lines: 187-202 }
+        - { name: test_render_text_region_with_rotation, lines: 204-222 }
+        - { name: test_render_text_region_multiline, lines: 224-241 }
+        - { name: test_render_text_region_cjk, lines: 243-261 }
+    - name: TestRenderTextRegions
+      lines: 264-300
+      methods:
+        - { name: test_render_multiple_regions, lines: 267-286 }
+        - { name: test_render_empty_regions_list, lines: 288-300 }
+    - name: TestCreateTextRegionsFromElements
+      lines: 303-452
+      methods:
+        - { name: test_create_regions_basic, lines: 306-336 }
+        - { name: test_create_regions_skip_non_translatable, lines: 338-367 }
+        - { name: test_create_regions_skip_no_bbox, lines: 369-398 }
+        - { name: test_create_regions_skip_missing_translation, lines: 400-429 }
+        - { name: test_create_regions_preserves_coordinates, lines: 431-452 }
+
+tests/test_translatable_document.py:  # 394 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: pytest, items: [], line: 5 }
+    - { module: app.backend.models.translatable_document, items: [BoundingBox, DocumentMetadata, ElementType, PageInfo, StyleInfo, TranslatableDocument, TranslatableElement], line: 7 }
+  classes:
+    - name: TestBoundingBox
+      lines: 18-61
+      methods:
+        - { name: test_basic_properties, lines: 21-28 }
+        - { name: test_to_dict, lines: 30-35 }
+        - { name: test_from_dict, lines: 37-45 }
+        - { name: test_from_tuple, lines: 47-54 }
+        - { name: test_roundtrip, lines: 56-61 }
+    - name: TestStyleInfo
+      lines: 64-106
+      methods:
+        - { name: test_default_values, lines: 67-75 }
+        - { name: test_with_values, lines: 77-90 }
+        - { name: test_roundtrip, lines: 92-106 }
+    - name: TestTranslatableElement
+      lines: 109-188
+      methods:
+        - { name: test_basic_element, lines: 112-127 }
+        - { name: test_element_with_bbox, lines: 129-141 }
+        - { name: test_header_footer_types, lines: 143-163 }
+        - { name: test_roundtrip, lines: 165-188 }
+    - name: TestTranslatableDocument
+      lines: 191-330
+      methods:
+        - { name: sample_document, lines: 195-261 }
+        - { name: test_get_translatable_elements, lines: 263-270 }
+        - { name: test_get_elements_by_page, lines: 272-280 }
+        - { name: test_get_elements_in_reading_order, lines: 282-293 }
+        - { name: test_get_unique_texts, lines: 295-303 }
+        - { name: test_apply_translations, lines: 305-319 }
+        - { name: test_roundtrip, lines: 321-330 }
+    - name: TestDocumentMetadata
+      lines: 333-366
+      methods:
+        - { name: test_default_values, lines: 336-342 }
+        - { name: test_scanned_pdf_detection, lines: 344-351 }
+        - { name: test_roundtrip, lines: 353-366 }
+    - name: TestPageInfo
+      lines: 369-394
+      methods:
+        - { name: test_standard_page, lines: 372-379 }
+        - { name: test_rotated_page, lines: 381-385 }
+        - { name: test_roundtrip, lines: 387-394 }
+
+tests/test_translation_profiles_scenarios.py:  # 29 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: app.backend.config, items: [ModelType], line: 5 }
+    - { module: app.backend.translation_profiles, items: [get_profile, list_profiles], line: 6 }
+  functions:
+    - { name: test_user_scenario_profiles_exist, lines: 9-18 }
+    - { name: test_technical_process_profile_uses_translation_model_type, lines: 21-24 }
+    - { name: test_business_finance_and_marketing_profiles_use_translation_model_type, lines: 27-29 }
+
+tests/test_translation_strategy.py:  # 74 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 3 }
+    - { module: app.backend.config, items: [ModelType], line: 5 }
+    - { module: app.backend.services.translation_strategy, items: [TranslationScenario, build_strategy, detect_translation_scenario, scenario_from_profile], line: 6 }
+  functions:
+    - { name: test_detect_translation_scenario_technical_keywords, lines: 14-20 }
+    - { name: test_detect_translation_scenario_business_finance_keywords, lines: 23-29 }
+    - { name: test_build_strategy_adds_context_and_options_for_general_model, lines: 32-43 }
+    - { name: test_build_strategy_for_translation_model_technical_process_includes_glossary_hint, lines: 46-56 }
+    - { name: test_scenario_from_profile_supports_new_and_legacy_profile_ids, lines: 59-63 }
+    - { name: test_build_strategy_legacy_scenario_is_canonicalized, lines: 66-74 }

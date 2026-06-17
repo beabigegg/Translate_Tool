@@ -1,0 +1,27 @@
+# Run:  npx artillery run tests/templates/stress/artillery-example.yml
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 30
+      arrivalRate: 5
+      name: warm-up
+    - duration: 120
+      arrivalRate: 20
+      name: sustain
+    - duration: 30
+      arrivalRate: 5
+      name: cool-down
+  ensure:
+    p95: 500       # 95% under 500ms
+    maxErrorRate: 1  # < 1% errors
+
+scenarios:
+  - name: health-then-list
+    flow:
+      - get:
+          url: "/api/health"
+          expect:
+            - statusCode: 200
+      - think: 1
+      - get:
+          url: "/api/items"

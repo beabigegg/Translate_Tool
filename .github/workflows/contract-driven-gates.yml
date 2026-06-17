@@ -1,0 +1,74 @@
+# Contract-driven gates baseline (provided by cdd-kit).
+# Application/test commands MUST be customized for your stack.
+# See ci/gate-policy.md for tier semantics and promotion policy.
+
+name: contract-driven-gates
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 18 * * 1'
+
+jobs:
+  contract-and-fast-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install cdd-kit
+        run: npm install -g contract-driven-delivery
+
+      - name: Validate contracts and gates
+        run: cdd-kit validate
+
+      - name: OpenAPI sync gate
+        run: cdd-kit openapi export --check --out contracts/api/openapi.yml
+
+      - name: Repository-specific fast gate (unconfigured)
+        run: |
+          # TODO: cdd-kit could not detect a stack. Add lint/typecheck/test here.
+          echo "No stack detected — fill this step in manually."
+  e2e-critical:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Critical E2E
+        run: |
+          # TODO: add your critical E2E command here (Tier 1 — blocks merge).
+          # This step is intentionally left as a placeholder — cdd-kit does not assume your stack.
+          # Examples:
+          #   Playwright:  npx playwright test --project=critical
+          #   Cypress:     npx cypress run --spec "cypress/e2e/critical/**"
+          #   pytest:      python -m pytest tests/e2e/critical/ -x
+          echo "No critical E2E command configured — add your runner command above."
+
+  scheduled-stress-soak:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stress and soak tests
+        run: |
+          # TODO: add your stress/soak workflow here (Tier 4 — weekly long-run gate).
+          # This step is intentionally left as a placeholder — cdd-kit does not assume your stack.
+          # Examples:
+          #   pytest soak:  python -m pytest tests/stress/ --soak-hours=4
+          #   k6 load:      k6 run --vus=50 --duration=4h tests/load/scenario.js
+          #   locust:       locust -f tests/stress/locustfile.py --headless -u 100 -r 10 --run-time 4h
+          echo "No stress/soak command configured — add your runner command above."

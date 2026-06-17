@@ -36,3 +36,9 @@ scripts/*.docx
 
 # Unused / staging fonts
 app/backend/fonts/NotoSansTC-Regular-NEW.ttf
+
+# cdd-kit local cache (do not commit)
+.cdd/code-map.index.json
+
+# cdd-kit local cache (do not commit)
+.cdd/code-graph.index.json

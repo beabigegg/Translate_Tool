@@ -1,0 +1,7 @@
+{
+  "GET /health": "samples/health.json",
+  "POST /api/hold-overview/summary": {
+    "sample": "samples/hold_overview_summary.json",
+    "dataPath": "data"
+  }
+}

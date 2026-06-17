@@ -1,0 +1,35 @@
+{
+  "_README": "Mechanical risk-tier floor. A classifier (or any agent) proposes a tier in change-classification.md / tasks.yml; this policy is the safety net that prevents a high-risk surface from being silently under-classified. `cdd-kit gate` and `cdd-kit classify-check` scan change-request.md against ALL rules, and the change's git paths against the critical (maxTier 0) rules only (file paths are noisier than prose) — gate scans the STAGED change (what is about to be committed), classify-check scans the whole worktree (the in-progress change is not yet committed) — then require the declared tier to be at least as strict as the matched floor. Lower tier number = stricter. Set enabled:false to disable, or record `tier-floor-override: \"<reason>\"` in a change's tasks.yml frontmatter to bypass for one change with an audit trail.",
+  "enabled": true,
+  "schema-version": "0.1.0",
+  "rules": [
+    {
+      "maxTier": 0,
+      "label": "critical surface (auth / payments / data migration / concurrency / secrets)",
+      "patterns": [
+        "auth", "authn", "authz",
+        "authentication", "authorization", "authenticate", "authorize",
+        "authenticated", "authorized",
+        "login", "logout", "sign-?in", "sign-?up",
+        "passwords?", "passwd", "credentials?", "secrets?", "api[- ]?keys?",
+        "(access|api|auth|session|bearer|refresh|csrf|id|reset)[- ]?tokens?",
+        "jwt", "oauth", "oidc", "saml", "sessions?", "cookies?",
+        "payments?", "billing", "invoices?", "charges?", "refunds?", "checkout", "stripe", "paypal",
+        "migrations?", "migrate", "alter table", "drop table", "drop column", "schema change",
+        "concurrency", "race condition", "mutex", "deadlock", "transaction isolation",
+        "encrypt", "decrypt", "crypto", "hashing", "rbac", "permissions?", "access control",
+        "privileges?", "pii", "gdpr", "hipaa", "rate limit", "csrf", "xss", "sql injection"
+      ]
+    },
+    {
+      "maxTier": 2,
+      "label": "behavioral surface (api / data shape / queue / cache / external integration)",
+      "patterns": [
+        "endpoint", "route", "api contract", "request schema", "response schema",
+        "pagination", "queue", "worker", "cron", "scheduler", "webhook",
+        "cache", "redis", "database", "query", "index", "external service",
+        "third[- ]?party", "integration", "data shape", "nullable", "breaking change"
+      ]
+    }
+  ]
+}

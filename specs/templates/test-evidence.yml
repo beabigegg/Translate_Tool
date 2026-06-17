@@ -1,0 +1,47 @@
+# Test evidence for an implementation change (ADR 0005 section 6).
+#
+# Generated and updated by `cdd-kit test run` -- this is the durable, machine-
+# readable proof that the change's required test phases ran and passed. The gate
+# validates this evidence, not assistant claims. Do not hand-author it as a
+# scaffold; the values below are an illustrative example that `cdd-kit test run`
+# overwrites with this change's real runs and artifact paths.
+#
+# Validated by src/schemas/test-evidence.schema.ts. Waiver fields are PROHIBITED
+# (ADR 0005 section 7): `known-failures`, `pre-existing-failures`,
+# `allowed-failures`, `waived-failures`, and `ignored-failures` are rejected by
+# the schema. A required test failure blocks the gate -- fix it, expand this
+# change's scope to cover the fix, or open a separate tracked change.
+
+change-id: add-order-filter
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+  - contract
+
+runs:
+  - phase: collect
+    status: passed
+    command: python -m pytest --collect-only -q tests/orders/test_filter.py::test_status_filter_options
+    summary: specs/changes/add-order-filter/test-runs/20260605-101301/summary.json
+
+  - phase: targeted
+    status: passed
+    command: python -m pytest tests/orders/test_filter.py::test_status_filter_options -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/add-order-filter/test-runs/20260605-101522/summary.json
+    junit: specs/changes/add-order-filter/test-runs/20260605-101522/junit.xml
+
+  - phase: changed-area
+    status: passed
+    command: python -m pytest tests/orders/ -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/add-order-filter/test-runs/20260605-101731/summary.json
+
+  - phase: contract
+    status: passed
+    command: cdd-kit validate --contracts
+    summary: specs/changes/add-order-filter/test-runs/20260605-101802/summary.json
+
+final-status: passed
