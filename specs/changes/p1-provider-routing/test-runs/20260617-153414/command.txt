@@ -1,1 +1,0 @@
-/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_model_router.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-provider-routing/test-runs/20260617-153414/junit.xml' -ra

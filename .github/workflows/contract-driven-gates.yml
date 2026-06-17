@@ -1,6 +1,6 @@
 # Contract-driven gates
 # Tier semantics: ci/gate-policy.md
-# Active change gates: p1-font-lru-cache (archived: p1-cloud-providers, p1-provider-routing)
+# Active change gates: none (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache)
 
 name: contract-driven-gates
 
@@ -45,7 +45,7 @@ jobs:
 
       - name: Change gate (Tier 1 — blocks merge)
         run: |
-          cdd-kit gate p1-font-lru-cache
+          echo "No active change gates — all current changes are in specs/archive/."
 
       - name: OpenAPI sync gate
         run: cdd-kit openapi export --check --out contracts/api/openapi.yml

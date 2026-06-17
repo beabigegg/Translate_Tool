@@ -115,5 +115,7 @@ write **outside** the markers is yours and is never edited or evicted.
 <!-- cdd-kit:learnings:start -->
 - MySQL ENUM contraction / any `ALGORITHM=COPY` DDL = high risk on large tables (row-count + online-migration/maintenance-window + rollback required) — see `contracts/data/` migration rules.
 - `cdd-kit gate` validates all contracts globally — pre-existing empty stubs outside your change scope will block the gate; ensure all contracts have minimal real content before gate run.
-- `cdd-kit gate` tier-floor detector false-positive: third-party provider API key env vars (e.g. `PANJIT_API`) match keyword `"api key"` and force Tier 0 — use `tier-floor-override` with written rationale if no auth system is involved; see `contracts/env/env-contract.md` Secret Policy.
+- `cdd-kit gate` tier-floor false-positives: `"api key"` keyword forces Tier 0 for provider env vars (no auth system); `"cache"` keyword forces Tier 2 for in-process `lru_cache` — use `tier-floor-override` with written rationale; see `contracts/env/env-contract.md` Secret Policy.
+- At `/cdd-close`: remove the archived change's `cdd-kit gate <id>` line from `.github/workflows/contract-driven-gates.yml` — archived dirs no longer exist under `specs/changes/` and CI fails with "change not found".
+- After modifying `contracts/api/api-contract.md`: run `cdd-kit openapi export --out contracts/api/openapi.yml` and commit — the CI `openapi export --check` gate fails if `openapi.yml` is stale.
 <!-- cdd-kit:learnings:end -->

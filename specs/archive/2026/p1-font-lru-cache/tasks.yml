@@ -38,5 +38,5 @@ tasks:
   - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "test-evidence.yml: all phases passed; contract-validate PASS; 367/0/0" }
   - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full regression 367 passed (vs 361 baseline, +6 new tests); 0 new failures; PyPDF2 warning pre-existing" }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gates for Tier 4 change" }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "Expanded tier-floor-override entry (cache keyword); added CI gate cleanup on archive rule; added openapi.yml sync rule — all in CLAUDE.md cdd-kit:learnings" }
