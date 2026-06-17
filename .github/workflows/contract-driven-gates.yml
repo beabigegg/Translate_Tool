@@ -47,6 +47,7 @@ jobs:
         run: |
           cdd-kit gate p1-cloud-providers
           cdd-kit gate p1-provider-routing
+          cdd-kit gate p1-font-lru-cache
 
       - name: OpenAPI sync gate
         run: cdd-kit openapi export --check --out contracts/api/openapi.yml

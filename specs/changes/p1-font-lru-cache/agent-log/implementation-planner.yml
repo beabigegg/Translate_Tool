@@ -1,0 +1,12 @@
+agent: implementation-planner
+change-id: p1-font-lru-cache
+status: done
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/p1-font-lru-cache/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer" }
+  - { type: scope-summary, pointer: "2 files in scope (pdf_generator.py, test_pdf_generator.py); 4 explicit out-of-scope items" }
+notes: >
+  Font read site confirmed at pdf_generator.py lines 423-425 inside
+  _insert_text_in_rect. Plan: functools.lru_cache-backed _load_font_buffer keyed
+  on realpath, plus clear_font_cache() reset hook. TDD: tests first (IP-2),
+  implement (IP-3). No contracts touched.

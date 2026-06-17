@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import tempfile
 from pathlib import Path
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
@@ -13,6 +14,8 @@ from app.backend.renderers.pdf_generator import (
     PDFGenerator,
     generate_translated_pdf,
     _ensure_fitz,
+    _load_font_buffer,
+    clear_font_cache,
 )
 from app.backend.models.translatable_document import (
     BoundingBox,
@@ -561,3 +564,139 @@ class TestPDFGeneratorEdgeCases:
         finally:
             if os.path.exists(pdf_path):
                 os.unlink(pdf_path)
+
+
+class TestFontBufferCache:
+    """Tests for the module-level font-buffer LRU cache (_load_font_buffer / clear_font_cache)."""
+
+    def setup_method(self):
+        """Reset the cache before every test to prevent cross-test state bleed."""
+        clear_font_cache()
+
+    # ------------------------------------------------------------------
+    # AC-1: first call reads disk exactly once
+    # ------------------------------------------------------------------
+
+    def test_first_call_reads_disk_once(self):
+        """A single call to _load_font_buffer reads the font file exactly once."""
+        fake_bytes = b"FONT_DATA_FIRST"
+        with patch(
+            "app.backend.renderers.pdf_generator.open",
+            mock_open(read_data=fake_bytes),
+        ) as mocked_open:
+            result = _load_font_buffer("/fake/font.ttf")
+            assert result == fake_bytes
+            assert mocked_open.call_count == 1
+
+    # ------------------------------------------------------------------
+    # AC-2: second call for same path hits cache, not disk
+    # ------------------------------------------------------------------
+
+    def test_second_call_hits_cache_not_disk(self):
+        """A second call with the same path does NOT read the file again."""
+        fake_bytes = b"FONT_DATA_CACHED"
+        with patch(
+            "app.backend.renderers.pdf_generator.open",
+            mock_open(read_data=fake_bytes),
+        ) as mocked_open:
+            result1 = _load_font_buffer("/fake/font.ttf")
+            result2 = _load_font_buffer("/fake/font.ttf")
+            assert result1 == fake_bytes
+            assert result2 == fake_bytes
+            # open() must have been called exactly once despite two calls
+            assert mocked_open.call_count == 1
+
+    # ------------------------------------------------------------------
+    # AC-3: distinct paths cached independently (open called twice)
+    # ------------------------------------------------------------------
+
+    def test_distinct_paths_cached_independently(self):
+        """Two distinct paths each trigger one disk read (total two reads)."""
+        def side_effect(path, mode="r", *args, **kwargs):
+            content = b"DATA_A" if "a.ttf" in path else b"DATA_B"
+            m = mock_open(read_data=content)()
+            return m
+
+        with patch(
+            "app.backend.renderers.pdf_generator.open",
+            side_effect=side_effect,
+        ) as mocked_open:
+            result_a = _load_font_buffer("/fake/a.ttf")
+            result_b = _load_font_buffer("/fake/b.ttf")
+            assert mocked_open.call_count == 2
+            assert result_a == b"DATA_A"
+            assert result_b == b"DATA_B"
+
+    # ------------------------------------------------------------------
+    # AC-4: warm-cache and reset-cache return identical bytes
+    # ------------------------------------------------------------------
+
+    def test_cached_and_uncached_render_output_equivalent(self):
+        """Bytes returned from a warm cache equal bytes from a fresh read."""
+        fake_bytes = b"FONT_DATA_EQUIV"
+        with patch(
+            "app.backend.renderers.pdf_generator.open",
+            mock_open(read_data=fake_bytes),
+        ):
+            warm_result = _load_font_buffer("/fake/font.ttf")
+
+        # Reset cache, then call again with the same mock
+        clear_font_cache()
+        with patch(
+            "app.backend.renderers.pdf_generator.open",
+            mock_open(read_data=fake_bytes),
+        ):
+            cold_result = _load_font_buffer("/fake/font.ttf")
+
+        assert warm_result == cold_result
+
+    # ------------------------------------------------------------------
+    # Error path: failed read must not poison the cache
+    # ------------------------------------------------------------------
+
+    def test_error_path_does_not_cache_bad_buffer(self):
+        """An IOError on the first call leaves no cache entry; next call retries disk."""
+        fake_bytes = b"FONT_DATA_RETRY"
+
+        # First call: simulate a read failure
+        with patch(
+            "app.backend.renderers.pdf_generator.open",
+            side_effect=IOError("disk error"),
+        ):
+            with pytest.raises(IOError):
+                _load_font_buffer("/fake/font.ttf")
+
+        # Second call: the exception must NOT have been cached; file is now readable
+        with patch(
+            "app.backend.renderers.pdf_generator.open",
+            mock_open(read_data=fake_bytes),
+        ) as mocked_open:
+            result = _load_font_buffer("/fake/font.ttf")
+            assert result == fake_bytes
+            # open() called again (not skipped by cache)
+            assert mocked_open.call_count == 1
+
+    # ------------------------------------------------------------------
+    # Reset hook: clear_font_cache() forces re-read on next call
+    # ------------------------------------------------------------------
+
+    def test_cache_reset_between_tests(self):
+        """clear_font_cache() causes the next call to re-read from disk."""
+        fake_bytes = b"FONT_DATA_RESET"
+        with patch(
+            "app.backend.renderers.pdf_generator.open",
+            mock_open(read_data=fake_bytes),
+        ) as mocked_open:
+            _load_font_buffer("/fake/font.ttf")
+            assert mocked_open.call_count == 1
+
+        clear_font_cache()
+
+        # After reset, a new open() call must happen
+        with patch(
+            "app.backend.renderers.pdf_generator.open",
+            mock_open(read_data=fake_bytes),
+        ) as mocked_open2:
+            result = _load_font_buffer("/fake/font.ttf")
+            assert result == fake_bytes
+            assert mocked_open2.call_count == 1

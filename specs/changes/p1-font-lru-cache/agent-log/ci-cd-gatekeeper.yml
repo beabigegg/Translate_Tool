@@ -1,0 +1,10 @@
+agent: ci-cd-gatekeeper
+change-id: p1-font-lru-cache
+date: 2026-06-17
+status: complete
+
+artifacts:
+  - { type: tiers-modified, pointer: "1, 2, 4" }
+  - { type: gate-promotions, pointer: "n/a (no gates moved between tiers; existing tiers sufficient)" }
+  - { type: workflow-files-changed, pointer: ".github/workflows/contract-driven-gates.yml:47-50" }
+  - { type: required-status-checks, pointer: "contract-and-fast-tests" }

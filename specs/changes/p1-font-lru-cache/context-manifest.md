@@ -5,60 +5,70 @@ this change. The forbidden-paths baseline lives in `.cdd/context-policy.json`
 and is automatically applied by `cdd-kit gate` — do not duplicate it here.
 
 ## Affected Surfaces
--
+- PDF rendering — font buffer loading in `app/backend/renderers/pdf_generator.py`
 
 ## Allowed Paths
-<!-- UNION of all repo-relative paths (or globs) any agent may read for this change.
-     cdd-kit gate validates every agent's files-read log against this list.
-     If an agent legitimately read a path, add that path here; do not remove it
-     from files-read just to pass gate.
-     Be specific — wide globs (e.g. src/) defeat read-scope governance.
-     Always include the three defaults below; add change-specific paths beneath them. -->
-- specs/changes/<change-id>/
+- specs/changes/p1-font-lru-cache/
 - specs/context/project-map.md
 - specs/context/contracts-index.md
+- app/backend/renderers/pdf_generator.py
+- app/backend/utils/font_utils.py
+- app/backend/fonts/
+- tests/test_pdf_generator.py
+- contracts/
+- .github/workflows/contract-driven-gates.yml
 
 ## Required Contracts
--
+- none
 
 ## Required Tests
--
+- tests/test_pdf_generator.py
 
 ## Agent Work Packets
-<!-- One sub-section per required agent. Each path list must be a subset of Allowed Paths above.
-     Add or remove sub-sections to match Required Agents in change-classification.md.
-     These sub-sections are documentation only — gate enforces Allowed Paths, not individual packets. -->
 
 ### change-classifier
-- specs/changes/<change-id>/
+- specs/changes/p1-font-lru-cache/
 - specs/context/project-map.md
 - specs/context/contracts-index.md
 
-### <implementation-agent>
-<!-- Replace with actual agent name, e.g. backend-engineer, frontend-engineer -->
-- specs/changes/<change-id>/
+### contract-reviewer
+- specs/changes/p1-font-lru-cache/
 - contracts/
-- src/
-- tests/
 
-### <review-agent>
-<!-- Replace with actual agent name, e.g. contract-reviewer, qa-reviewer -->
-- specs/changes/<change-id>/
-- contracts/
+### test-strategist
+- specs/changes/p1-font-lru-cache/
+- app/backend/renderers/pdf_generator.py
+- tests/test_pdf_generator.py
+
+### ci-cd-gatekeeper
+- specs/changes/p1-font-lru-cache/
+- .github/workflows/contract-driven-gates.yml
+
+### implementation-planner
+- specs/changes/p1-font-lru-cache/
+- app/backend/renderers/pdf_generator.py
+- app/backend/utils/font_utils.py
+- tests/test_pdf_generator.py
+
+### backend-engineer
+- specs/changes/p1-font-lru-cache/
+- app/backend/renderers/pdf_generator.py
+- app/backend/utils/font_utils.py
+- app/backend/fonts/
+- tests/test_pdf_generator.py
+
+### qa-reviewer
+- specs/changes/p1-font-lru-cache/
+- tests/test_pdf_generator.py
 
 ## Context Expansion Requests
 
-<!--
-Agents must request context expansion instead of reading outside their work
-packet. Format example for real requests:
-
 - request-id: CER-001
   requested_paths:
-    - src/example.ts
-  reason: why this file is required
-  status: pending
--->
--
+    - app/backend/renderers/pdf_generator.py
+    - app/backend/utils/font_utils.py
+  reason: Implementation and planning agents need to confirm the actual _insert_text_in_rect location and any existing font-loading helper before implementing the cache.
+  status: approved
 
 ## Approved Expansions
--
+- CER-001 approved: app/backend/renderers/pdf_generator.py + app/backend/utils/font_utils.py added to Allowed Paths.

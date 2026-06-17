@@ -1,0 +1,27 @@
+tests/test_pdf_generator.py::TestEnsureFitz::test_ensure_fitz_returns_module
+tests/test_pdf_generator.py::TestPDFGenerator::test_init_default
+tests/test_pdf_generator.py::TestPDFGenerator::test_init_custom
+tests/test_pdf_generator.py::TestPDFGenerator::test_generate_overlay_mode
+tests/test_pdf_generator.py::TestPDFGenerator::test_generate_side_by_side_mode
+tests/test_pdf_generator.py::TestPDFGenerator::test_generate_inline_mode_raises
+tests/test_pdf_generator.py::TestPDFGenerator::test_generate_source_not_found
+tests/test_pdf_generator.py::TestPDFGenerator::test_generate_with_log_callback
+tests/test_pdf_generator.py::TestPDFGenerator::test_generate_empty_translations
+tests/test_pdf_generator.py::TestPDFGenerator::test_generate_partial_translations
+tests/test_pdf_generator.py::TestPDFGenerator::test_generate_without_mask
+tests/test_pdf_generator.py::TestGenerateTranslatedPdf::test_generate_translated_pdf_overlay
+tests/test_pdf_generator.py::TestGenerateTranslatedPdf::test_generate_translated_pdf_side_by_side
+tests/test_pdf_generator.py::TestGenerateTranslatedPdf::test_generate_translated_pdf_invalid_mode
+tests/test_pdf_generator.py::TestGenerateTranslatedPdf::test_generate_translated_pdf_with_log
+tests/test_pdf_generator.py::TestPDFGeneratorEdgeCases::test_page_with_no_elements
+tests/test_pdf_generator.py::TestPDFGeneratorEdgeCases::test_elements_on_second_page_only
+tests/test_pdf_generator.py::TestPDFGeneratorEdgeCases::test_multiline_text
+tests/test_pdf_generator.py::TestPDFGeneratorEdgeCases::test_different_target_languages
+tests/test_pdf_generator.py::TestFontBufferCache::test_first_call_reads_disk_once
+tests/test_pdf_generator.py::TestFontBufferCache::test_second_call_hits_cache_not_disk
+tests/test_pdf_generator.py::TestFontBufferCache::test_distinct_paths_cached_independently
+tests/test_pdf_generator.py::TestFontBufferCache::test_cached_and_uncached_render_output_equivalent
+tests/test_pdf_generator.py::TestFontBufferCache::test_error_path_does_not_cache_bad_buffer
+tests/test_pdf_generator.py::TestFontBufferCache::test_cache_reset_between_tests
+
+25 tests collected in 0.19s

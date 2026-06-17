@@ -1,0 +1,16 @@
+{
+  "change_id": "p1-font-lru-cache",
+  "phase": "collect",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_pdf_generator.py --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-font-lru-cache/test-runs/20260617-182127/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 484,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p1-font-lru-cache/test-runs/20260617-182127/summary.json",
+    "stdout": "specs/changes/p1-font-lru-cache/test-runs/20260617-182127/stdout.log",
+    "stderr": "specs/changes/p1-font-lru-cache/test-runs/20260617-182127/stderr.log",
+    "junit": "specs/changes/p1-font-lru-cache/test-runs/20260617-182127/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

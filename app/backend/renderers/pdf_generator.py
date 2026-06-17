@@ -6,8 +6,10 @@ onto the original PDF, preserving images, backgrounds, and formatting.
 
 from __future__ import annotations
 
+import functools
 import io
 import logging
+import os
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional
@@ -36,6 +38,37 @@ logger = logging.getLogger(__name__)
 
 # Lazy import for fitz (PyMuPDF)
 fitz = None
+
+
+# ---------------------------------------------------------------------------
+# Font-buffer LRU cache
+# No locking is applied here deliberately: the PDF render pipeline is
+# single-threaded (one job at a time), so concurrent cache access is not
+# expected.  If that assumption ever changes, add a threading.Lock guard.
+# ---------------------------------------------------------------------------
+
+@functools.lru_cache(maxsize=None)
+def _load_font_buffer(font_path: str) -> bytes:
+    """Load and return the raw bytes of a font file, caching the result.
+
+    The cache key is always the absolute resolved path produced by
+    ``os.path.realpath``, so that relative and absolute references to the
+    same file share a single cache entry.
+
+    Exceptions from ``open()`` propagate unchanged.  ``lru_cache`` does NOT
+    cache exceptions, so a failing call leaves no stale entry in the cache.
+    """
+    resolved = os.path.realpath(font_path)
+    with open(resolved, "rb") as f:
+        return f.read()
+
+
+def clear_font_cache() -> None:
+    """Clear all entries from the font-buffer cache.
+
+    Call this in test fixtures to prevent cross-test state bleed.
+    """
+    _load_font_buffer.cache_clear()
 
 
 def _get_lang_code(lang: str) -> str:
@@ -420,9 +453,9 @@ class PDFGenerator:
         # Note: Using fontbuffer instead of fontfile ensures CJK fonts are embedded in the PDF
         try:
             if font_file:
-                # Read font file into buffer for proper embedding
-                with open(font_file, "rb") as f:
-                    font_buffer = f.read()
+                # Load font bytes through the module-level LRU cache so repeated
+                # calls for the same font path avoid redundant disk reads.
+                font_buffer = _load_font_buffer(font_file)
                 font = fitz.Font(fontbuffer=font_buffer)
             else:
                 # Fallback to built-in font

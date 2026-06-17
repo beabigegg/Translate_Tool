@@ -1,0 +1,17 @@
+agent: test-strategist
+run-date: 2026-06-17
+status: complete
+
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/p1-font-lru-cache/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_pdf_generator.py::TestFontBufferCache → app/backend/renderers/pdf_generator.py (cache + clear_font_cache)" }
+  - { type: coverage-tiers, pointer: "unit, regression" }
+  - { type: mapping-completeness, pointer: "all 5 AC covered; 6 concrete test names recorded" }
+
+notes: >
+  The font-read hot path is inside _insert_text_in_rect (lines 395-503).
+  The open() call at line 424 is the sole disk-read site to be spied on.
+  Cache must be module-level with a clear_font_cache() reset hook to prevent
+  cross-test bleed (identified as the primary risk in change-classification.md).
+  Error-path non-caching (AC implied by risk factor 3 in classification) is
+  covered by test_error_path_does_not_cache_bad_buffer.

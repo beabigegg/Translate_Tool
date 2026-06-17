@@ -1,7 +1,8 @@
 change-id: p1-font-lru-cache
 status: in-progress
-tier: null
+tier: 4
 context-governance: v1
+tier-floor-override: "Module-level functools.lru_cache is a process-internal memory optimisation with no external service, shared data store, queue, or API surface — the 'cache' keyword match is a false positive."
 archive-tasks:
   - "7.1"
   - "7.2"
@@ -9,33 +10,33 @@ depends-on: []
 
 tasks:
   # status: pending | done | skipped   (optional: note: "reason or context")
-  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: pending }
-  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: pending }
-  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: pending }
-  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: pending }
-  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: pending }
-  - { id: "2.1", section: "Contract Updates", title: "API contract", status: pending }
-  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: pending }
-  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: pending }
-  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: pending }
-  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: pending }
-  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: pending }
-  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: pending }
-  - { id: "3.2", section: "Tests First", title: "Integration tests", status: pending }
-  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: pending }
-  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: pending }
-  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: pending }
-  - { id: "4.1", section: Implementation, title: "Backend", status: pending }
-  - { id: "4.2", section: Implementation, title: "Frontend", status: pending }
-  - { id: "4.3", section: Implementation, title: "Env/deploy", status: pending }
-  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: pending }
-  - { id: "5.1", section: Review, title: "UI/UX review", status: pending }
-  - { id: "5.2", section: Review, title: "Visual review", status: pending }
-  - { id: "5.3", section: Review, title: "Contract review", status: pending }
-  - { id: "5.4", section: Review, title: "QA review", status: pending }
-  - { id: "6.1", section: Verification, title: "Local gates", status: pending }
-  - { id: "6.2", section: Verification, title: "PR required gates", status: pending }
-  - { id: "6.3", section: Verification, title: "Informational gates", status: pending }
-  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: pending }
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done, note: "Tier 4; performance-optimization + refactor; module-level; no contracts touched" }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done, note: "APPROVED: no contracts touched; internal I/O optimization only" }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: skipped, note: "no architecture review; module-local LRU cache pattern; no design.md" }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done, note: "ci-gates.md written; routing-unit-tests + full-regression; workflow updated with p1-font-lru-cache gate" }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done, note: "implementation-plan.md written; IP-1..IP-5; lru_cache on _load_font_buffer; clear_font_cache() test helper; os.path.realpath cache key; no-lock single-thread stance" }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: skipped, note: "no API change" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no UI" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: skipped, note: "no env change" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: skipped, note: "no data shape change" }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: skipped, note: "no behavior change; pure internal I/O optimization" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no CI/CD contract change" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done, note: "test-plan.md written; TestFontBufferCache (7 tests AC-1..AC-5 + error-path + cache-reset); file tests/test_pdf_generator.py" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: skipped, note: "not required; module-local change" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: skipped, note: "not required for Tier 4 perf change" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "not applicable" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "not required" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: done, note: "Implemented _load_font_buffer (lru_cache) + clear_font_cache() in pdf_generator.py; rerouted open() in _insert_text_in_rect; 6 new TestFontBufferCache tests all passing" }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no frontend" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: skipped, note: "no env/deploy changes" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: done, note: "contract-driven-gates.yml updated: cdd-kit gate p1-font-lru-cache added alongside existing gates" }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI" }
+  - { id: "5.2", section: Review, title: "Visual review", status: skipped, note: "no UI" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done, note: "APPROVED: no contracts touched" }
+  - { id: "5.4", section: Review, title: "QA review", status: done, note: "APPROVED: 367/0/0; all 5 ACs covered; error-path verified; cache-reset hook confirmed; no contract changes" }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done, note: "cdd-kit gate p1-font-lru-cache PASSED; tier-floor-override accepted; all validators green" }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "test-evidence.yml: all phases passed; contract-validate PASS; 367/0/0" }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full regression 367 passed (vs 361 baseline, +6 new tests); 0 new failures; PyPDF2 warning pre-existing" }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gates for Tier 4 change" }
   - { id: "7.1", section: Archive, title: "Archive change", status: pending }
   - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
