@@ -3,8 +3,8 @@ contract: api
 summary: API behavior, compatibility rules, and endpoint contract requirements.
 owner: application-team
 surface: api
-schema-version: 0.1.0
-last-changed: 2026-04-27
+schema-version: 0.2.0
+last-changed: 2026-06-17
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -99,11 +99,12 @@ The fence MUST be tagged `json-schema` (NOT `json`) or export fails fast:
 ### RouteInfoEntry
 | field | type | required | format | notes |
 |---|---|---|---|---|
-| target | string | yes |  |  |
-| model | string | yes |  |  |
-| profile_id | string | yes |  |  |
-| model_type | string | yes |  |  |
-| is_primary | boolean | yes |  |  |
+| target | string | yes |  | : |
+| model | string | yes |  | : |
+| profile_id | string | yes |  | : |
+| model_type | string | yes |  | : |
+| is_primary | boolean | yes |  | : |
+| provider | string | no |  | provider ID used for this route group (e.g. panjit, deepseek, ollama-local); null if providers.yml absent or Ollama-only path |
 
 ### RouteInfoResponse
 | field | type | required | format | notes |
@@ -133,6 +134,8 @@ The fence MUST be tagged `json-schema` (NOT `json`) or export fails fast:
 | overall_progress | number | yes |  |  |
 | segments_per_second | number | yes |  |  |
 | eta_seconds | number | no |  |  |
+| term_summary | string | no |  | per-language/domain term extraction counts as JSON-serialized map; null when mode != extraction_only |
+| provider | string | no |  | provider ID that successfully processed this job (e.g. panjit, deepseek, ollama-local); null if not yet determined or Ollama-only legacy job |
 
 ### TermStatsResponse
 | field | type | required | format | notes |

@@ -1,0 +1,5 @@
+artifacts:
+  - { type: adr-written, pointer: "docs/adr/0001-config-driven-provider-registry.md" }
+  - { type: affected-areas, pointer: "llm-clients, model-router, config, job-status, route-info-api" }
+  - { type: decision-summary, pointer: "config/providers.yml-driven routing + OpenAICompatibleClient + ordered fallback_chain with provider attribution on JobStatus" }
+  - { type: risks-noted, pointer: "0 high, 4 medium (code-map unverified, sync-fallback timeout, env-vars not yet in contract, routing.rules drift)" }

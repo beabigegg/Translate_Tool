@@ -1,0 +1,20 @@
+{
+  "change_id": "p1-cloud-providers",
+  "phase": "targeted",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_openai_compatible_client.py tests/test_provider_fallback.py -x --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-cloud-providers/test-runs/20260617-134906/junit.xml' -q -ra",
+  "duration_ms": 168,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests.test_openai_compatible_client.TestProtocolConformance::test_openai_compatible_client_satisfies_protocol",
+    "message": "ModuleNotFoundError: No module named 'app.backend.clients.openai_compatible_client'"
+  },
+  "artifacts": {
+    "summary": "specs/changes/p1-cloud-providers/test-runs/20260617-134906/summary.json",
+    "stdout": "specs/changes/p1-cloud-providers/test-runs/20260617-134906/stdout.log",
+    "stderr": "specs/changes/p1-cloud-providers/test-runs/20260617-134906/stderr.log",
+    "junit": "specs/changes/p1-cloud-providers/test-runs/20260617-134906/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

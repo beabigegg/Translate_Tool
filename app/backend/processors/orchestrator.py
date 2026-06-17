@@ -358,7 +358,8 @@ def process_files(
     refiner_num_ctx: Optional[int] = None,
     mode: str = "translation",
     term_db=None,
-) -> Tuple[int, int, bool, Optional[OllamaClient], Dict]:
+    provider_id: Optional[str] = None,
+) -> Tuple[int, int, bool, Optional[OllamaClient], Dict, Optional[str]]:
     """Process files for translation.
 
     Args:
@@ -380,9 +381,11 @@ def process_files(
         output_format: Output format for PDF (docx|pdf).
         mode: Job mode: 'translation' (default) or 'extraction_only'.
         term_db: Optional TermDB instance for terminology extraction and injection.
+        provider_id: Optional provider ID from routing config (p1-cloud-providers).
 
     Returns:
-        Tuple of (processed_count, total_count, stopped, client, term_summary).
+        Tuple of (processed_count, total_count, stopped, client, term_summary,
+        winning_provider_id).
     """
     # Use defaults from config if not specified
     if layout_mode is None:
@@ -392,7 +395,79 @@ def process_files(
     extraction_only = mode == "extraction_only"
     aggregate_term_summary: Dict = {"extracted": 0, "skipped": 0, "added": 0}
 
-    client = OllamaClient(
+    # ── p1-cloud-providers: build primary client from config or fall back to Ollama ──
+    winning_provider: Optional[str] = None
+    _provider_id = provider_id  # may be None → Ollama path
+
+    # Try to build an OpenAICompatibleClient if the provider_id is not "ollama-local"
+    # and providers.yml has config for it.
+    _cloud_client = None
+    if _provider_id and _provider_id != "ollama-local":
+        try:
+            from app.backend.config import load_providers_config
+            from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+            _cfg = load_providers_config()
+            if _cfg:
+                _providers = {p["id"]: p for p in _cfg.get("providers", [])}
+                _prov = _providers.get(_provider_id)
+                if _prov and _prov.get("enabled") is True:
+                    _models = _prov.get("models", {})
+                    _model_name = _models.get("translate") or ollama_model
+                    _cloud_client = OpenAICompatibleClient(
+                        base_url=_prov["base_url"],
+                        api_key=_prov["api_key"],
+                        model=_model_name,
+                        provider_id=_provider_id,
+                    )
+                    log(f"[PROVIDER] Using cloud provider: {_provider_id} model={_model_name}")
+        except Exception as _exc:
+            log(f"[PROVIDER] Failed to build cloud client for {_provider_id}: {_exc}; falling back to Ollama")
+            _cloud_client = None
+
+    # If cloud client could not be built, walk fallback_chain from config
+    if _cloud_client is None and _provider_id and _provider_id != "ollama-local":
+        try:
+            from app.backend.config import load_providers_config
+            from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+            _cfg = load_providers_config()
+            if _cfg:
+                _chain = _cfg.get("fallback_chain", [])
+                _providers = {p["id"]: p for p in _cfg.get("providers", [])}
+                for _fb_id in _chain:
+                    if _fb_id == "ollama-local":
+                        break  # Fall through to OllamaClient below
+                    _prov = _providers.get(_fb_id)
+                    if _prov and _prov.get("enabled") is True:
+                        _models = _prov.get("models", {})
+                        _model_name = _models.get("translate") or ollama_model
+                        try:
+                            _fb_client = OpenAICompatibleClient(
+                                base_url=_prov["base_url"],
+                                api_key=_prov["api_key"],
+                                model=_model_name,
+                                provider_id=_fb_id,
+                            )
+                            # Quick health probe to verify reachability
+                            _fb_ok, _ = _fb_client.health()
+                            if _fb_ok:
+                                _cloud_client = _fb_client
+                                _provider_id = _fb_id
+                                log(f"[PROVIDER] Fallback to: {_fb_id}")
+                                break
+                        except Exception:
+                            continue
+        except Exception:
+            pass
+
+    # Build the primary translation client (OllamaClient or cloud passthrough).
+    # Always build OllamaClient as ollama_client so the orchestrator scenario
+    # machinery (system_prompt, model_type, _is_translation_dedicated, etc.) has
+    # a valid Ollama handle.  When a cloud client was resolved, use it as the
+    # primary ``client`` passed to translate_docx/pptx/etc. so translation
+    # requests actually reach the cloud endpoint (AC-5, AC-6 — BR-16).
+    ollama_client = OllamaClient(
         model=ollama_model,
         model_type=model_type,
         system_prompt=system_prompt,
@@ -401,6 +476,16 @@ def process_files(
         timeout=timeout_config,
         log=log,
     )
+    if _cloud_client is not None:
+        # Cloud provider selected: use it for translation dispatch.
+        # OpenAICompatibleClient carries compatibility stubs for the
+        # orchestrator attributes (system_prompt, model_type, etc.).
+        client = _cloud_client
+        log(f"[PROVIDER] Primary translation client: {_provider_id} (cloud)")
+    else:
+        client = ollama_client
+        _provider_id = "ollama-local"  # BR-16: record the provider that will actually process the job
+        log("[PROVIDER] Primary translation client: ollama-local")
 
     # Build cross-model refine client (Qwen) for HY-MT/TranslateGemma jobs
     refine_client: Optional[OllamaClient] = None
@@ -448,7 +533,7 @@ def process_files(
             and not client._is_translation_dedicated()
             and sample
         ):
-            doc_context = _detect_document_context(client, sample, log)
+            doc_context = _detect_document_context(ollama_client, sample, log)
 
         # For dedicated primary models (e.g. HY-MT), defer context detection to
         # Phase 2 so it runs after HY-MT is evicted from VRAM.
@@ -702,4 +787,6 @@ def process_files(
         log(f"[STOP] job stopped after {processed_count}/{total_count} files")
     else:
         log(f"[DONE] job complete: {processed_count}/{total_count} files")
-    return processed_count, total_count, stopped, client, aggregate_term_summary
+    # p1-cloud-providers: record winning provider (ollama-local or cloud ID)
+    winning_provider = _provider_id or "ollama-local"
+    return processed_count, total_count, stopped, client, aggregate_term_summary, winning_provider

@@ -28,6 +28,7 @@ class JobStatus(BaseModel):
     segments_per_second: float = 0.0
     eta_seconds: Optional[float] = None
     term_summary: Optional[Dict[str, Any]] = None
+    provider: Optional[str] = None  # p1-cloud-providers: winning provider ID (AC-6)
 
 
 class TermImportResult(BaseModel):
@@ -123,6 +124,7 @@ class RouteInfoEntry(BaseModel):
     profile_id: str
     model_type: str
     is_primary: bool
+    provider: Optional[str] = None  # p1-cloud-providers: resolved provider ID (AC-7)
 
 
 class RouteInfoResponse(BaseModel):

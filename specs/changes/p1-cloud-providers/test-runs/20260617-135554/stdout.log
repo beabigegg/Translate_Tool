@@ -1,0 +1,11 @@
+........................................................................ [ 20%]
+........................................................................ [ 41%]
+........................................................................ [ 62%]
+.ssss................................................................... [ 82%]
+............................................................             [100%]
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_pdf_parser.py:100: No test PDF file available
+SKIPPED [1] tests/test_pdf_parser.py:109: No test PDF file available
+SKIPPED [1] tests/test_pdf_parser.py:122: No test PDF file available
+SKIPPED [1] tests/test_pdf_parser.py:138: No test PDF file available
+344 passed, 4 skipped in 1.87s

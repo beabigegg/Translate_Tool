@@ -1,6 +1,6 @@
-# Contract-driven gates baseline (provided by cdd-kit).
-# Application/test commands MUST be customized for your stack.
-# See ci/gate-policy.md for tier semantics and promotion policy.
+# Contract-driven gates — p1-cloud-providers and beyond.
+# Tier semantics: ci/gate-policy.md
+# Gate authority: specs/changes/p1-cloud-providers/ci-gates.md
 
 name: contract-driven-gates
 
@@ -12,8 +12,13 @@ on:
   schedule:
     - cron: '0 18 * * 1'
 
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   contract-and-fast-tests:
+    name: contract-and-fast-tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,53 +27,84 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+          cache: pip
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
+      - name: Install Python dependencies
+        run: pip install -r app/backend/requirements.txt
+
       - name: Install cdd-kit
         run: npm install -g contract-driven-delivery
 
-      - name: Validate contracts and gates
-        run: cdd-kit validate
+      - name: Validate contracts (Tier 1 — blocks merge)
+        run: cdd-kit validate --contracts
+
+      - name: Change gate (Tier 1 — blocks merge)
+        run: cdd-kit gate p1-cloud-providers
 
       - name: OpenAPI sync gate
         run: cdd-kit openapi export --check --out contracts/api/openapi.yml
 
-      - name: Repository-specific fast gate (unconfigured)
+      - name: Secret scan — no literal API keys in source (Tier 1 — blocks merge)
         run: |
-          # TODO: cdd-kit could not detect a stack. Add lint/typecheck/test here.
-          echo "No stack detected — fill this step in manually."
-  e2e-critical:
+          ! grep -rn \
+            --include="*.py" --include="*.yml" --include="*.yaml" \
+            -E "(PANJIT_API|DEEPSEEK_API)\s*[:=]\s*[A-Za-z0-9+/]{20,}" \
+            . --exclude-dir=.git
+
+      - name: Unit, contract, integration, resilience, data-boundary tests (Tier 1 — blocks merge)
+        run: pytest tests/ -x -q --tb=short --junitxml=test-results/junit.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/junit.xml
+          retention-days: 14
+
+  full-regression:
+    name: full-regression
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Critical E2E
-        run: |
-          # TODO: add your critical E2E command here (Tier 1 — blocks merge).
-          # This step is intentionally left as a placeholder — cdd-kit does not assume your stack.
-          # Examples:
-          #   Playwright:  npx playwright test --project=critical
-          #   Cypress:     npx cypress run --spec "cypress/e2e/critical/**"
-          #   pytest:      python -m pytest tests/e2e/critical/ -x
-          echo "No critical E2E command configured — add your runner command above."
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install -r app/backend/requirements.txt
+
+      - name: Full regression suite (Tier 2 — informational; new failures escalate to blocker)
+        run: pytest tests/ -q --tb=short --junitxml=test-results/full-regression.xml
+
+      - name: Env template check (Tier 2 — informational)
+        run: grep -l "PANJIT_API\|DEEPSEEK_API" contracts/env/.env.example.template
+
+      - name: Upload full regression results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-regression-results
+          path: test-results/full-regression.xml
+          retention-days: 14
 
   scheduled-stress-soak:
+    name: scheduled-stress-soak
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Stress and soak tests
+      - name: Stress and soak tests (Tier 4 — weekly; not applicable to p1-cloud-providers)
         run: |
-          # TODO: add your stress/soak workflow here (Tier 4 — weekly long-run gate).
-          # This step is intentionally left as a placeholder — cdd-kit does not assume your stack.
-          # Examples:
-          #   pytest soak:  python -m pytest tests/stress/ --soak-hours=4
-          #   k6 load:      k6 run --vus=50 --duration=4h tests/load/scenario.js
-          #   locust:       locust -f tests/stress/locustfile.py --headless -u 100 -r 10 --run-time 4h
-          echo "No stress/soak command configured — add your runner command above."
+          # Stress/soak deferred to p1-observability-metrics per change-classification.md §Tasks Not Applicable 3.5
+          echo "No stress/soak targets configured for this change — skipping."

@@ -1,0 +1,37 @@
+# providers.yml.example — secret-free template; copy to providers.yml and fill in real values.
+# Real providers.yml is gitignored — never commit it with actual keys.
+#
+# ${VAR}           — required env var; provider disabled if unset
+# ${VAR:-default}  — optional env var; falls back to the literal default
+
+providers:
+  - id: panjit
+    type: openai
+    enabled: true
+    base_url: ${PANJIT_LLM_BASE_URL}
+    api_key: ${PANJIT_API}
+    models:
+      translate: gpt-oss:120b
+      long_doc: mlx-community/Qwen3.6-35B-A3B-4bit
+
+  - id: deepseek
+    type: openai
+    enabled: ${DEEPSEEK_ENABLED:-false}
+    base_url: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+    api_key: ${DEEPSEEK_API}
+    models:
+      translate: deepseek-v4-flash
+
+  - id: ollama-local
+    type: ollama
+    enabled: true
+    base_url: ${OLLAMA_BASE_URL:-http://localhost:11434}
+    role: layout_assist_only
+
+routing:
+  default:
+    model: gpt-oss:120b
+    provider: panjit
+    profile: general
+
+fallback_chain: [panjit, ollama-local]

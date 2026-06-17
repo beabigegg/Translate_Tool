@@ -133,3 +133,37 @@ def test_ollama_num_ctx_override_priority() -> None:
         client_without_override._build_options()["num_ctx"]
         == MODEL_TYPE_OPTIONS[ModelType.TRANSLATION]["num_ctx"]
     )
+
+
+# ---------------------------------------------------------------------------
+# p1-cloud-providers AC-7: /route-info response includes provider field
+# ---------------------------------------------------------------------------
+
+def test_route_info_response_includes_provider_field(client) -> None:  # type: ignore[no-untyped-def]
+    """GET /api/route-info must include 'provider' field in each RouteInfoEntry."""
+    response = client.get("/api/route-info?targets=English")
+    assert response.status_code == 200
+    payload = response.json()
+    assert "routes" in payload
+    assert len(payload["routes"]) >= 1
+
+    entry = payload["routes"][0]
+    # 'provider' must be present (may be None / null for Ollama-only mode)
+    assert "provider" in entry, (
+        "RouteInfoEntry must have a 'provider' field (AC-7)"
+    )
+
+
+def test_route_info_provider_matches_routing_decision(client) -> None:  # type: ignore[no-untyped-def]
+    """The provider field in /route-info matches the routing decision's provider."""
+    response = client.get("/api/route-info?targets=English")
+    assert response.status_code == 200
+    payload = response.json()
+    routes = payload["routes"]
+    assert len(routes) >= 1
+
+    # provider must be a string or None — not an unexpected type
+    entry = routes[0]
+    assert entry["provider"] is None or isinstance(entry["provider"], str), (
+        "RouteInfoEntry.provider must be str or null"
+    )

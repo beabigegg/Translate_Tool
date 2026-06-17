@@ -1,0 +1,14 @@
+agent: test-strategist
+change-id: p1-cloud-providers
+date: 2026-06-17
+status: complete
+
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/p1-cloud-providers/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_openai_compatible_client.py → app/backend/clients/openai_compatible_client.py" }
+  - { type: tdd-pairs, pointer: "tests/test_provider_fallback.py → app/backend/processors/orchestrator.py + app/backend/services/job_manager.py" }
+  - { type: tdd-pairs, pointer: "tests/test_model_router.py (extended) → app/backend/services/model_router.py" }
+  - { type: tdd-pairs, pointer: "tests/test_model_config_api.py (extended) → app/backend/api/routes.py + schemas.py" }
+  - { type: tdd-pairs, pointer: "tests/test_llm_client_protocol.py (extended) → app/backend/clients/openai_compatible_client.py + schemas.py" }
+  - { type: coverage-tiers, pointer: "unit (tier-0), contract (tier-0), data-boundary (tier-0), integration (tier-1), resilience (tier-1)" }
+  - { type: mapping-completeness, pointer: "AC-1 through AC-8 all mapped; AC-8 (no frontend/DB/env changes) covered by contract source-check tests in test_llm_client_protocol.py" }

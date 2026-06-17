@@ -183,3 +183,115 @@ class TestResolveRouteGroups:
         assert len(groups) == 1
         assert groups[0].model == DEFAULT_MODEL
         assert groups[0].profile_id == "general"
+
+
+# ---------------------------------------------------------------------------
+# p1-cloud-providers AC-4: Config-driven routing (providers.yml replaces
+# hardcoded _ROUTING_TABLE).  These tests must FAIL before IP-3 is implemented.
+# ---------------------------------------------------------------------------
+
+class TestConfigDrivenRouting:
+    """Verify that model_router reads routing from ProviderConfig / providers.yml."""
+
+    def test_resolve_route_uses_providers_yml(self, tmp_path, monkeypatch):
+        """resolve_route honours routing.default.model from providers.yml."""
+        import importlib
+        import app.backend.services.model_router as mr_module
+
+        yml_content = (
+            "providers:\n"
+            "  - id: panjit\n"
+            "    type: openai\n"
+            "    enabled: true\n"
+            "    base_url: http://example.com\n"
+            "    api_key: testkey\n"
+            "    models:\n"
+            "      translate: cloud-model-xl\n"
+            "routing:\n"
+            "  default:\n"
+            "    model: cloud-model-xl\n"
+            "    provider: panjit\n"
+            "    profile: general\n"
+            "fallback_chain: [panjit]\n"
+        )
+        yml = tmp_path / "providers.yml"
+        yml.write_text(yml_content)
+
+        from app.backend.config import load_providers_config
+        config = load_providers_config(config_path=yml)
+        assert config is not None
+
+        # resolve_route must accept provider config and use it
+        decision = resolve_route(["English"], provider_config=config)
+        assert decision is not None
+        assert decision.model == "cloud-model-xl"
+        assert decision.provider == "panjit"
+
+    def test_hardcoded_routing_table_removed(self):
+        """_ROUTING_TABLE must no longer be a module-level dict in model_router."""
+        import app.backend.services.model_router as mr_module
+
+        # After IP-3 the hardcoded _ROUTING_TABLE is removed
+        assert not hasattr(mr_module, "_ROUTING_TABLE"), (
+            "_ROUTING_TABLE must be removed from model_router (hardcoded table gone)"
+        )
+
+    def test_default_route_from_config(self, tmp_path, monkeypatch):
+        """Routing default falls back to config's routing.default when target is unlisted."""
+        yml_content = (
+            "providers:\n"
+            "  - id: panjit\n"
+            "    type: openai\n"
+            "    enabled: true\n"
+            "    base_url: http://example.com\n"
+            "    api_key: testkey\n"
+            "    models:\n"
+            "      translate: cloud-model-xl\n"
+            "routing:\n"
+            "  default:\n"
+            "    model: cloud-model-xl\n"
+            "    provider: panjit\n"
+            "    profile: general\n"
+            "fallback_chain: [panjit]\n"
+        )
+        yml = tmp_path / "providers.yml"
+        yml.write_text(yml_content)
+
+        from app.backend.config import load_providers_config
+        config = load_providers_config(config_path=yml)
+
+        decision = resolve_route(["Swahili"], provider_config=config)
+        assert decision is not None
+        assert decision.model == "cloud-model-xl"
+        assert decision.provider == "panjit"
+
+    def test_provider_field_present_in_route_decision(self, tmp_path):
+        """RouteDecision must have a 'provider' field after IP-3."""
+        yml_content = (
+            "providers:\n"
+            "  - id: panjit\n"
+            "    type: openai\n"
+            "    enabled: true\n"
+            "    base_url: http://example.com\n"
+            "    api_key: testkey\n"
+            "    models:\n"
+            "      translate: cloud-model-xl\n"
+            "routing:\n"
+            "  default:\n"
+            "    model: cloud-model-xl\n"
+            "    provider: panjit\n"
+            "    profile: general\n"
+            "fallback_chain: [panjit]\n"
+        )
+        yml = tmp_path / "providers.yml"
+        yml.write_text(yml_content)
+
+        from app.backend.config import load_providers_config
+        config = load_providers_config(config_path=yml)
+
+        decision = resolve_route(["English"], provider_config=config)
+        assert decision is not None
+        assert hasattr(decision, "provider"), (
+            "RouteDecision must have a 'provider' field (AC-4)"
+        )
+        assert decision.provider is not None

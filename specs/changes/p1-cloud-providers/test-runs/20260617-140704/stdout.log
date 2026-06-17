@@ -1,0 +1,22 @@
+............................F
+=================================== FAILURES ===================================
+__ TestOrchestratorProviderWiring.test_cloud_client_used_when_provider_id_set __
+tests/test_provider_fallback.py:377: in test_cloud_client_used_when_provider_id_set
+    result = process_files(
+app/backend/processors/orchestrator.py:535: in process_files
+    doc_context = _detect_document_context(client, sample, log)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app/backend/processors/orchestrator.py:302: in _detect_document_context
+    payload = client._build_no_system_payload(prompt)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OpenAICompatibleClient' object has no attribute '_build_no_system_payload'
+=============================== warnings summary ===============================
+tests/test_provider_fallback.py::TestOrchestratorProviderWiring::test_cloud_client_used_when_provider_id_set
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21: DeprecationWarning: PyPDF2 is deprecated. Please move to the pypdf library instead.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_provider_fallback.py::TestOrchestratorProviderWiring::test_cloud_client_used_when_provider_id_set
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 28 passed, 1 warning in 0.43s

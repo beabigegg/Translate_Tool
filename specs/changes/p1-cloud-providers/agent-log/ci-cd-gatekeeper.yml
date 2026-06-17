@@ -1,0 +1,26 @@
+change-id: p1-cloud-providers
+agent: ci-cd-gatekeeper
+timestamp: "2026-06-17T00:00:00Z"
+status: complete
+artifacts:
+  - { type: tiers-modified, pointer: "1, 2, 5" }
+  - { type: gate-promotions, pointer: "n/a (all gates newly specified; no existing gates promoted)" }
+  - { type: workflow-files-changed, pointer: ".github/workflows/contract-driven-gates.yml" }
+  - { type: required-status-checks, pointer: "contract-and-fast-tests (contract-validate, change-gate, secret-scan, unit+contract+integration+resilience+data-boundary)" }
+next-action: none
+files-read:
+  - specs/changes/p1-cloud-providers/change-classification.md
+  - specs/changes/p1-cloud-providers/design.md
+  - specs/context/project-map.md
+  - .github/workflows/contract-driven-gates.yml
+  - contracts/ci/ci-gate-contract.md
+  - ci/gate-policy.md
+  - specs/changes/p1-cloud-providers/test-plan.md
+notes: >
+  Replaced all placeholder steps in contract-driven-gates.yml with concrete pytest and
+  cdd-kit commands. Added concurrency cancel-in-progress for PR workflows. Secret scan
+  uses grep negation to exit non-zero on any literal API key match. Full-regression job
+  is informational (Tier 2) and runs in parallel; new failures must be escalated to blocker
+  by the reviewer. Cloud smoke test is Tier 5 manual-only; not automatable without real
+  env vars in CI. Downstream changes p1-provider-routing and p1-observability-metrics
+  are blocked until this change's contract-and-fast-tests job passes on the merge commit.

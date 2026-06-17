@@ -31,8 +31,12 @@ from app.backend.api.schemas import (
     WikidataSearchResponse,
 )
 from app.backend.clients.ollama_client import list_ollama_models
-from app.backend.config import ModelType, VRAM_METADATA
+from app.backend.config import ModelType, VRAM_METADATA, load_providers_config
 from app.backend.services.model_router import RouteGroup, get_route_info, resolve_route_groups
+
+# Load provider config once at module initialisation.  Returns None when
+# providers.yml is absent/malformed — callers fall back to Ollama table.
+_providers_config = load_providers_config()
 from app.backend.translation_profiles import get_profile, list_profiles
 from app.backend.services.job_manager import JobManager
 from app.backend.services.translation_cache import get_cache
@@ -95,7 +99,10 @@ def model_config() -> List[ModelConfigItem]:
 def route_info(targets: str = "") -> RouteInfoResponse:
     """Return auto-routing model info for each requested target language."""
     target_list = [t.strip() for t in targets.split(",") if t.strip()]
-    entries = [RouteInfoEntry(**entry) for entry in get_route_info(target_list)]
+    entries = [
+        RouteInfoEntry(**entry)
+        for entry in get_route_info(target_list, provider_config=_providers_config)
+    ]
     return RouteInfoResponse(routes=entries)
 
 
@@ -119,7 +126,9 @@ async def create_job(
         raise HTTPException(status_code=400, detail="No target languages provided")
 
     # Auto-routing: group targets by benchmark-optimal model, or use manual override
-    route_groups_result = resolve_route_groups(target_list, profile_override=profile)
+    route_groups_result = resolve_route_groups(
+        target_list, profile_override=profile, provider_config=_providers_config
+    )
     if route_groups_result is None:
         # Manual profile override: all targets in one group with explicit profile's model
         explicit_profile = get_profile(profile)
@@ -199,6 +208,7 @@ def job_status(job_id: str) -> JobStatus:
         file_seg_total = job.file_segments_total
         started_at = job.started_at
         term_summary = job.term_summary
+        job_provider = getattr(job, "provider", None)  # p1-cloud-providers (AC-6)
 
     output_ready = output_zip is not None and output_zip.exists()
 
@@ -238,6 +248,7 @@ def job_status(job_id: str) -> JobStatus:
         segments_per_second=round(speed, 2),
         eta_seconds=round(eta, 1) if eta is not None else None,
         term_summary=term_summary,
+        provider=job_provider,  # p1-cloud-providers (AC-6)
     )
 
 

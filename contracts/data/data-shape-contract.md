@@ -3,8 +3,8 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.1.0
-last-changed: 2026-04-27
+schema-version: 0.2.0
+last-changed: 2026-06-17
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -24,6 +24,13 @@ breaking-change-policy: deprecate-2-minors
 | targets | string | no | comma-separated language codes | — | HTTP 400 if none parse to non-empty after split |
 
 ## Optional Columns
+
+### JobStatus / JobRecord — provider field (added in p1-cloud-providers)
+| column | type | nullable | allowed values | fallback | validation |
+|---|---|---:|---|---|---|
+| provider | string | yes | any provider ID from `config/providers.yml` (e.g. `panjit`, `deepseek`, `ollama-local`) | null | Set by orchestrator only at point of successful provider call; never supplied by clients. Null for pre-existing jobs and Ollama-only jobs. Additive optional field — backward-compatible. |
+
+See `contracts/api/api-contract.md > ## Schemas > JobStatus` for the authoritative full field table.
 
 ### POST /api/jobs — multipart/form-data optional fields
 | column | type | default | notes |
@@ -46,6 +53,7 @@ breaking-change-policy: deprecate-2-minors
 | `num_ctx` out of range | reject | HTTP 422 range message (BR-2) | — |
 | over max segment/text limit | not rejected at upload; job transitions to `status: "failed"` | job error field | — |
 | unexpected `JobStatus.status` | n/a — status is server-set only, never client input | — | — |
+| `provider` field set by client | ignored — field is server-set only; not in POST /api/jobs input schema | — | — |
 
 ## Export / Import Format
 

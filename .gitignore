@@ -30,6 +30,9 @@ app/backend/__pycache__/
 .env.local
 .env.*.local
 
+# Provider config with real keys (only providers.yml.example is committed)
+config/providers.yml
+
 # CLAUDE.md is tracked (project instructions for Claude Code)
 
 # Test documents and output artifacts

@@ -1,0 +1,1 @@
+/home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_openai_compatible_client.py tests/test_provider_fallback.py tests/test_model_router.py tests/test_model_config_api.py tests/test_llm_client_protocol.py -x --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-cloud-providers/test-runs/20260617-135528/junit.xml' -q -ra

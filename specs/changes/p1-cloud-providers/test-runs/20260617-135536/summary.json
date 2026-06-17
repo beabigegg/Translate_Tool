@@ -1,0 +1,16 @@
+{
+  "change_id": "p1-cloud-providers",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_llm_client_protocol.py -x --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-cloud-providers/test-runs/20260617-135536/junit.xml' -q -ra",
+  "duration_ms": 338,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p1-cloud-providers/test-runs/20260617-135536/summary.json",
+    "stdout": "specs/changes/p1-cloud-providers/test-runs/20260617-135536/stdout.log",
+    "stderr": "specs/changes/p1-cloud-providers/test-runs/20260617-135536/stderr.log",
+    "junit": "specs/changes/p1-cloud-providers/test-runs/20260617-135536/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

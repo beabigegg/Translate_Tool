@@ -4,11 +4,15 @@ Backend configuration for Translate Tool.
 
 from __future__ import annotations
 
+import logging
 import os
+import re
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
+_cfg_logger = logging.getLogger(__name__)
 
 
 class ModelType(str, Enum):
@@ -319,3 +323,143 @@ class TimeoutConfig:
 
     def get_timeout_tuple(self) -> Tuple[float, float]:
         return (self.connect_timeout, self.read_timeout)
+
+
+# ---------------------------------------------------------------------------
+# Provider config loader (p1-cloud-providers)
+# ---------------------------------------------------------------------------
+
+# Default location for the providers registry relative to the repo root.
+# Tests can override via the `config_path` argument.
+_DEFAULT_PROVIDERS_YML = Path(__file__).parent.parent.parent / "config" / "providers.yml"
+
+_ENV_VAR_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-(.*?))?\}")
+
+
+def _expand_env_vars(value: str) -> Tuple[str, bool]:
+    """Expand ``${VAR}`` and ``${VAR:-default}`` in *value*.
+
+    Returns:
+        (expanded_value, all_resolved) — all_resolved is False when at least one
+        required ``${VAR}`` (no default) was unset in the environment.
+    """
+    all_resolved = True
+
+    def _replace(m: "re.Match[str]") -> str:
+        nonlocal all_resolved
+        var_name = m.group(1)
+        default = m.group(2)  # None when no ``:-default``
+        env_val = os.environ.get(var_name)
+        if env_val is not None:
+            return env_val
+        if default is not None:
+            return default
+        # Required var is unset → mark as unresolved, return empty string
+        _cfg_logger.warning(
+            "[providers] Required env var ${%s} is unset — provider will be disabled.",
+            var_name,
+        )
+        all_resolved = False
+        return ""
+
+    expanded = _ENV_VAR_RE.sub(_replace, value)
+    return expanded, all_resolved
+
+
+def _expand_node(node: Any) -> Tuple[Any, bool]:
+    """Recursively expand env vars in a parsed YAML node.
+
+    Returns:
+        (expanded_node, all_resolved)
+    """
+    if isinstance(node, str):
+        return _expand_env_vars(node)
+    if isinstance(node, dict):
+        result: Dict[str, Any] = {}
+        all_ok = True
+        for k, v in node.items():
+            expanded_v, ok = _expand_node(v)
+            result[k] = expanded_v
+            if not ok:
+                all_ok = False
+        return result, all_ok
+    if isinstance(node, list):
+        result_list: List[Any] = []
+        all_ok = True
+        for item in node:
+            expanded_item, ok = _expand_node(item)
+            result_list.append(expanded_item)
+            if not ok:
+                all_ok = False
+        return result_list, all_ok
+    # bool / int / float / None — pass through unchanged
+    return node, True
+
+
+def load_providers_config(
+    config_path: Optional[Path] = None,
+) -> Optional[Dict[str, Any]]:
+    """Load and parse ``providers.yml``, expanding ``${VAR:-default}`` env vars.
+
+    Behavior per BR-13, BR-17:
+    - File absent / unreadable / malformed → return None (caller falls back to Ollama).
+    - Provider whose required env var is unresolved → that provider's ``enabled``
+      is forced to False (not removed; BR-17).
+    - All providers disabled (after resolution) → return config with the
+      ``_all_disabled`` sentinel so callers can fall back to Ollama (BR-13).
+
+    Args:
+        config_path: Override path for testing; defaults to ``config/providers.yml``.
+
+    Returns:
+        Parsed + interpolated config dict, or None on load failure.
+    """
+    try:
+        import yaml  # PyYAML is a project dependency
+    except ImportError:
+        _cfg_logger.error("[providers] PyYAML not installed; cannot load providers.yml")
+        return None
+
+    path = Path(config_path) if config_path is not None else _DEFAULT_PROVIDERS_YML
+
+    if not path.exists():
+        _cfg_logger.info("[providers] providers.yml not found at %s — using Ollama fallback", path)
+        return None
+
+    try:
+        raw_text = path.read_text(encoding="utf-8")
+        raw_config = yaml.safe_load(raw_text)
+    except Exception as exc:
+        _cfg_logger.warning("[providers] Failed to load providers.yml: %s — using Ollama fallback", exc)
+        return None
+
+    if not isinstance(raw_config, dict):
+        _cfg_logger.warning("[providers] providers.yml is not a mapping — using Ollama fallback")
+        return None
+
+    # Expand env vars recursively; track per-provider resolution failures.
+    providers_raw: List[Dict[str, Any]] = raw_config.get("providers", [])
+    expanded_providers: List[Dict[str, Any]] = []
+    for provider in providers_raw:
+        expanded_provider, all_resolved = _expand_node(provider)
+        if not all_resolved:
+            # BR-17: unresolved required var → disable the provider
+            _cfg_logger.warning(
+                "[providers] Provider '%s' has unresolved env vars — disabling.",
+                provider.get("id", "<unknown>"),
+            )
+            expanded_provider["enabled"] = False
+        else:
+            # Expand the enabled field independently (it may be a bool string like "false")
+            enabled_raw = expanded_provider.get("enabled", True)
+            if isinstance(enabled_raw, str):
+                expanded_provider["enabled"] = enabled_raw.lower() not in ("false", "0", "no")
+        expanded_providers.append(expanded_provider)
+
+    # Expand the rest of the config (routing, fallback_chain, etc.)
+    rest = {k: v for k, v in raw_config.items() if k != "providers"}
+    expanded_rest, _ = _expand_node(rest)
+
+    config: Dict[str, Any] = {**expanded_rest, "providers": expanded_providers}
+
+    return config

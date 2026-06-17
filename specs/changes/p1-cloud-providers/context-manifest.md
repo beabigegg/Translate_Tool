@@ -1,64 +1,136 @@
-# Context Manifest
+# Context Manifest — p1-cloud-providers
 
 This manifest defines the approved context boundaries for agents working on
 this change. The forbidden-paths baseline lives in `.cdd/context-policy.json`
 and is automatically applied by `cdd-kit gate` — do not duplicate it here.
 
 ## Affected Surfaces
--
+- backend LLM clients (`app/backend/clients/`)
+- backend services routing/translation (`app/backend/services/model_router.py`, `translation_service.py`, `job_manager.py`)
+- backend config (`app/backend/config.py`, new `config/providers.yml`)
+- backend API (`app/backend/api/routes.py`, `app/backend/api/schemas.py` — `/route-info`, JobStatus)
+- contracts: api, env, data, business
 
 ## Allowed Paths
-<!-- UNION of all repo-relative paths (or globs) any agent may read for this change.
-     cdd-kit gate validates every agent's files-read log against this list.
-     If an agent legitimately read a path, add that path here; do not remove it
-     from files-read just to pass gate.
-     Be specific — wide globs (e.g. src/) defeat read-scope governance.
-     Always include the three defaults below; add change-specific paths beneath them. -->
-- specs/changes/<change-id>/
+- specs/changes/p1-cloud-providers/
 - specs/context/project-map.md
 - specs/context/contracts-index.md
+- app/backend/clients/
+- app/backend/clients/base_llm_client.py
+- app/backend/clients/ollama_client.py
+- app/backend/clients/openai_compatible_client.py
+- app/backend/clients/__init__.py
+- app/backend/services/model_router.py
+- app/backend/services/translation_service.py
+- app/backend/services/job_manager.py
+- app/backend/processors/orchestrator.py
+- app/backend/config.py
+- app/backend/api/routes.py
+- app/backend/api/schemas.py
+- config/providers.yml
+- contracts/api/api-contract.md
+- contracts/api/api-inventory.md
+- contracts/env/env-contract.md
+- contracts/env/.env.example.template
+- contracts/env/env.schema.json
+- contracts/data/data-shape-contract.md
+- contracts/business/business-rules.md
+- docs/improvement-plan.md
+- tests/test_model_router.py
+- tests/test_model_config_api.py
+- tests/test_openai_compatible_client.py
+- tests/test_provider_fallback.py
+- tests/contract/
 
 ## Required Contracts
--
+- contracts/api/api-contract.md
+- contracts/api/api-inventory.md
+- contracts/env/env-contract.md
+- contracts/env/.env.example.template
+- contracts/env/env.schema.json
+- contracts/data/data-shape-contract.md
+- contracts/business/business-rules.md
 
 ## Required Tests
--
+- tests/test_model_router.py (update for config-driven routing)
+- tests/test_model_config_api.py (update for provider field in /route-info)
+- tests/test_openai_compatible_client.py (new — Protocol conformance + request/response)
+- tests/test_provider_fallback.py (new — resilience/fallback tests)
+- tests/contract/ (Protocol conformance + JobStatus shape)
 
 ## Agent Work Packets
-<!-- One sub-section per required agent. Each path list must be a subset of Allowed Paths above.
-     Add or remove sub-sections to match Required Agents in change-classification.md.
-     These sub-sections are documentation only — gate enforces Allowed Paths, not individual packets. -->
 
-### change-classifier
-- specs/changes/<change-id>/
+### spec-architect
+- specs/changes/p1-cloud-providers/
 - specs/context/project-map.md
 - specs/context/contracts-index.md
+- app/backend/clients/base_llm_client.py
+- app/backend/services/model_router.py
+- app/backend/services/translation_service.py
+- app/backend/config.py
+- docs/improvement-plan.md
+- contracts/api/api-contract.md
+- contracts/env/env-contract.md
+- contracts/data/data-shape-contract.md
+- contracts/business/business-rules.md
 
-### <implementation-agent>
-<!-- Replace with actual agent name, e.g. backend-engineer, frontend-engineer -->
-- specs/changes/<change-id>/
-- contracts/
-- src/
+### contract-reviewer
+- specs/changes/p1-cloud-providers/
+- contracts/api/api-contract.md
+- contracts/api/api-inventory.md
+- contracts/env/env-contract.md
+- contracts/env/.env.example.template
+- contracts/env/env.schema.json
+- contracts/data/data-shape-contract.md
+- contracts/business/business-rules.md
+
+### test-strategist
+- specs/changes/p1-cloud-providers/
+- app/backend/clients/
+- app/backend/services/
+- app/backend/config.py
+- app/backend/api/
 - tests/
 
-### <review-agent>
-<!-- Replace with actual agent name, e.g. contract-reviewer, qa-reviewer -->
-- specs/changes/<change-id>/
+### ci-cd-gatekeeper
+- specs/changes/p1-cloud-providers/
+- specs/context/project-map.md
 - contracts/
 
+### implementation-planner
+- specs/changes/p1-cloud-providers/
+- app/backend/clients/
+- app/backend/services/model_router.py
+- app/backend/services/translation_service.py
+- app/backend/services/job_manager.py
+- app/backend/processors/orchestrator.py
+- app/backend/config.py
+- app/backend/api/routes.py
+- app/backend/api/schemas.py
+- contracts/
+- docs/improvement-plan.md
+
+### backend-engineer
+- specs/changes/p1-cloud-providers/
+- app/backend/clients/
+- app/backend/services/model_router.py
+- app/backend/services/translation_service.py
+- app/backend/services/job_manager.py
+- app/backend/processors/orchestrator.py
+- app/backend/config.py
+- app/backend/api/routes.py
+- app/backend/api/schemas.py
+- config/providers.yml
+- contracts/
+- tests/
+
+### qa-reviewer
+- specs/changes/p1-cloud-providers/
+- contracts/
+- tests/
+
 ## Context Expansion Requests
-
-<!--
-Agents must request context expansion instead of reading outside their work
-packet. Format example for real requests:
-
-- request-id: CER-001
-  requested_paths:
-    - src/example.ts
-  reason: why this file is required
-  status: pending
--->
--
+- (none at time of classification; if backend-engineer needs additional files during implementation, file CER-001 before reading)
 
 ## Approved Expansions
 -

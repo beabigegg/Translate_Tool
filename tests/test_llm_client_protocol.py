@@ -272,3 +272,70 @@ class TestNoGovernedContractModified:
             assert "class LLMClient(Protocol)" not in content, (
                 f"LLMClient Protocol definition found in governed contract: {path}"
             )
+
+
+# ---------------------------------------------------------------------------
+# p1-cloud-providers AC-1: OpenAICompatibleClient satisfies LLMClient Protocol
+# ---------------------------------------------------------------------------
+
+class TestOpenAICompatibleClientConformance:
+    def test_openai_compatible_client_satisfies_protocol(self):
+        """OpenAICompatibleClient must have all 6 Protocol methods."""
+        from app.backend.clients.base_llm_client import LLMClient
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        for method_name in [
+            "translate_once", "translate_batch", "refine_translation",
+            "health", "list_models", "unload",
+        ]:
+            assert hasattr(OpenAICompatibleClient, method_name), (
+                f"OpenAICompatibleClient missing Protocol method: {method_name}"
+            )
+            assert callable(getattr(OpenAICompatibleClient, method_name)), (
+                f"OpenAICompatibleClient.{method_name} is not callable"
+            )
+
+    def test_openai_compatible_client_isinstance_llm_client(self):
+        """runtime_checkable isinstance must pass for OpenAICompatibleClient instances."""
+        from app.backend.clients.base_llm_client import LLMClient
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        client = OpenAICompatibleClient(
+            base_url="http://fake-host:8080",
+            api_key="test-key",
+            model="gpt-oss:120b",
+        )
+        assert isinstance(client, LLMClient), (
+            "OpenAICompatibleClient() is not an instance of LLMClient Protocol"
+        )
+
+
+# ---------------------------------------------------------------------------
+# p1-cloud-providers AC-6/AC-8: JobStatus.provider field shape + backward compat
+# ---------------------------------------------------------------------------
+
+class TestJobStatusProviderField:
+    def test_job_status_schema_has_provider_field(self):
+        """JobStatus Pydantic model must have a 'provider' field."""
+        from app.backend.api.schemas import JobStatus
+        import inspect
+
+        fields = JobStatus.model_fields
+        assert "provider" in fields, (
+            "JobStatus must have a 'provider' field (AC-6, AC-8)"
+        )
+
+    def test_job_status_provider_defaults_to_none(self):
+        """JobStatus.provider must default to None for backward compatibility."""
+        from app.backend.api.schemas import JobStatus
+
+        status = JobStatus(
+            job_id="legacy-job",
+            status="completed",
+            processed_files=1,
+            total_files=1,
+            output_ready=True,
+        )
+        assert status.provider is None, (
+            "JobStatus.provider must default to None (AC-8 backward compatibility)"
+        )

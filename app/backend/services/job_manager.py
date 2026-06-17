@@ -54,6 +54,7 @@ class JobRecord:
     output_zip: Optional[Path] = None
     mode: str = "translation"
     term_summary: Optional[Dict] = None
+    provider: Optional[str] = None  # p1-cloud-providers: winning provider ID
 
 
 class JobLogger:
@@ -266,6 +267,7 @@ class JobManager:
             overall_stopped = False
             last_client: Optional[OllamaClient] = None
             agg_term_summary: Dict = {"extracted": 0, "skipped": 0, "added": 0}
+            winning_provider: Optional[str] = None
             try:
                 timeout_config = TimeoutConfig()
                 multi_group = len(route_groups) > 1
@@ -287,7 +289,7 @@ class JobManager:
                         f"[GROUP] model={group.model}, profile={group.profile_id}, "
                         f"targets={group.targets}"
                     )
-                    processed, _total, stopped, last_client, grp_term_summary = process_files(
+                    result_tuple = process_files(
                         stored_files,
                         output_dir,
                         group.targets,
@@ -308,7 +310,16 @@ class JobManager:
                         refine_model=group.refine_model,
                         mode=mode,
                         term_db=term_db,
+                        provider_id=group.provider,
                     )
+                    # process_files returns (processed, total, stopped, last_client,
+                    # term_summary[, winning_provider]) — unpack flexibly for forward compat
+                    if len(result_tuple) >= 6:
+                        processed, _total, stopped, last_client, grp_term_summary, grp_provider = result_tuple[:6]
+                        if grp_provider and winning_provider is None:
+                            winning_provider = grp_provider
+                    else:
+                        processed, _total, stopped, last_client, grp_term_summary = result_tuple[:5]
                     for k in agg_term_summary:
                         agg_term_summary[k] += grp_term_summary.get(k, 0)
                     total_processed += processed
@@ -331,6 +342,7 @@ class JobManager:
                     job.output_zip = archive_path
                     job.status = "stopped" if overall_stopped else "completed"
                     job.term_summary = agg_term_summary
+                    job.provider = winning_provider  # p1-cloud-providers: BR-16
                     job.updated_at = time.time()
 
             except Exception as exc:

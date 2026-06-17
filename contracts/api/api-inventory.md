@@ -15,7 +15,7 @@ All routes are served under the `/api` prefix (mounted in `app/backend/main.py`)
 | GET | /api/models | standard-json | application-team | — | Ollama model list |
 | GET | /api/profiles | standard-json | application-team | — | translation profiles |
 | GET | /api/model-config | standard-json | application-team | — | per-model VRAM/ctx config |
-| GET | /api/route-info | standard-json | application-team | — | query `targets` (csv) → RouteInfoResponse |
+| GET | /api/route-info | standard-json | application-team | — | query `targets` (csv) → RouteInfoResponse; each entry includes `provider` (ID of selected provider, nullable) |
 | POST | /api/jobs | file-upload-exception | application-team | — | multipart; creates async job; 400, 422 |
 | GET | /api/jobs/{job_id} | standard-json | application-team | — | job status + progress; 404 |
 | POST | /api/jobs/{job_id}/cancel | standard-json | application-team | — | sets stop flag; 404 |

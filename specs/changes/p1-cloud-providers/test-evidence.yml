@@ -1,0 +1,55 @@
+change-id: p1-cloud-providers
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+  - contract
+  - full
+runs:
+  - phase: targeted
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_openai_compatible_client.py
+      tests/test_provider_fallback.py -x --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-cloud-providers/test-runs/20260617-141353/junit.xml'
+      -q -ra
+    summary: specs/changes/p1-cloud-providers/test-runs/20260617-141353/summary.json
+    junit: specs/changes/p1-cloud-providers/test-runs/20260617-141353/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_model_router.py
+      tests/test_model_config_api.py tests/contract/ -x --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-cloud-providers/test-runs/20260617-141359/junit.xml'
+      -q -ra
+    summary: specs/changes/p1-cloud-providers/test-runs/20260617-141359/summary.json
+    junit: specs/changes/p1-cloud-providers/test-runs/20260617-141359/junit.xml
+  - phase: contract
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_llm_client_protocol.py -x --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-cloud-providers/test-runs/20260617-140859/junit.xml'
+      -q -ra
+    summary: specs/changes/p1-cloud-providers/test-runs/20260617-140859/summary.json
+    junit: specs/changes/p1-cloud-providers/test-runs/20260617-140859/junit.xml
+  - phase: full
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/ -x --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-cloud-providers/test-runs/20260617-141404/junit.xml'
+      -q -ra
+    summary: specs/changes/p1-cloud-providers/test-runs/20260617-141404/summary.json
+    junit: specs/changes/p1-cloud-providers/test-runs/20260617-141404/junit.xml
+  - phase: collect
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest --collect-only
+      tests/test_openai_compatible_client.py tests/test_provider_fallback.py tests/test_model_router.py
+      tests/test_model_config_api.py tests/test_llm_client_protocol.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-cloud-providers/test-runs/20260617-135624/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/p1-cloud-providers/test-runs/20260617-135624/summary.json
+    junit: specs/changes/p1-cloud-providers/test-runs/20260617-135624/junit.xml
+final-status: passed

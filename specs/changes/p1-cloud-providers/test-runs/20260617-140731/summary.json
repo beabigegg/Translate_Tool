@@ -1,0 +1,20 @@
+{
+  "change_id": "p1-cloud-providers",
+  "phase": "targeted",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_openai_compatible_client.py tests/test_provider_fallback.py -x --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-cloud-providers/test-runs/20260617-140731/junit.xml' -q -ra",
+  "duration_ms": 688,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests.test_provider_fallback.TestOrchestratorProviderWiring::test_cloud_client_used_when_provider_id_set",
+    "message": "AssertionError: translate_docx received NoneType, expected OpenAICompatibleClient\nassert False\n +  where False = isinstance(None, <class 'app.backend.clients.openai_compatible_client.OpenAICompatibleClient'>)"
+  },
+  "artifacts": {
+    "summary": "specs/changes/p1-cloud-providers/test-runs/20260617-140731/summary.json",
+    "stdout": "specs/changes/p1-cloud-providers/test-runs/20260617-140731/stdout.log",
+    "stderr": "specs/changes/p1-cloud-providers/test-runs/20260617-140731/stderr.log",
+    "junit": "specs/changes/p1-cloud-providers/test-runs/20260617-140731/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}
