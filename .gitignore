@@ -24,7 +24,13 @@ app/backend/__pycache__/
 # IDE / local tool config
 .claude/
 .vscode/
-CLAUDE.md
+
+# Sensitive credentials (never commit)
+.env
+.env.local
+.env.*.local
+
+# CLAUDE.md is tracked (project instructions for Claude Code)
 
 # Test documents and output artifacts
 test_document/
