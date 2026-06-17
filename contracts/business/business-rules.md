@@ -3,7 +3,7 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.3.0
+schema-version: 0.4.0
 last-changed: 2026-06-17
 breaking-change-policy: deprecate-2-minors
 ---
@@ -32,6 +32,11 @@ breaking-change-policy: deprecate-2-minors
 | BR-17 | provider-secret-safety | application-team | API keys (`PANJIT_API`, `DEEPSEEK_API`) must not appear in `config/providers.yml` as literals; they must be referenced via `${VAR}` interpolation resolved at load time. An unresolved reference must disable the provider, not pass the literal string to the endpoint. | — |
 | BR-18 | per-target-language-dispatch | application-team | `resolve_route_groups()` resolves each `target_lang` in a batch independently. A mixed-language batch (e.g. `[vi, de, ko, ja]`) produces one `RouteGroup` per distinct (model, profile_id, model_type, provider) tuple; each language is matched against `routing.rules` before falling back to `routing.default`. The whole batch is never routed by `targets[0]` alone. | — |
 | BR-19 | unmapped-language-fallback | application-team | A `target_lang` not matched by any entry in `routing.rules` (or when `routing.rules` is absent) falls back to `routing.default`. This must not raise an exception and must produce a deterministic result identical to a single-language job using the default route. | — |
+| BR-20 | metrics-counter-lifetime | application-team | All counters (`translation_count`, `translation_latency_mean_ms`, `provider_failure_count`, `font_cache_hits`, `font_cache_misses`) are held in process memory only. They initialize to zero at process start. No external store is read or written. Counters are lost on process restart. | — |
+| BR-21 | translation-count-increment | application-team | `translation_count` increments by 1 each time a translation call completes — whether the result is a success or a failure. Increment happens after the call returns, regardless of outcome. | — |
+| BR-22 | translation-latency-mean | application-team | `translation_latency_mean_ms` is the arithmetic mean of all per-call elapsed wall-clock latencies in milliseconds, measured from call dispatch to provider response at the service boundary. Computed incrementally: `new_mean = ((old_mean * (n-1)) + new_latency_ms) / n` where `n` is the updated `translation_count`. When `translation_count` is 0, `translation_latency_mean_ms` is 0.0 (float, not null). | — |
+| BR-23 | provider-failure-count-increment | application-team | `provider_failure_count` increments by 1 each time a provider call raises a connection exception, a timeout exception, or returns HTTP 401/403 (matching BR-15 offline-detection criteria). It does not increment on success. It increments once per failed provider attempt — a 3-provider fallback chain with all three failing increments `provider_failure_count` by 3. | — |
+| BR-24 | font-cache-hit-miss-increment | application-team | `font_cache_hits` increments by 1 each time a font buffer load returns a value already in the `lru_cache` (cache hit). `font_cache_misses` increments by 1 each time the font buffer is read from disk (cache miss). Exactly one of the two counters increments on each font buffer access. | — |
 
 ## Decision Tables
 
@@ -68,6 +73,19 @@ breaking-change-policy: deprecate-2-minors
 | `target_lang` not in `routing.rules` (or `routing.rules` absent) | falls back to `routing.default`; no exception | — |
 | mixed batch `[vi, de, ko, ja]` with distinct per-language rules | each language resolves independently; 1–4 RouteGroups possible | — |
 | `provider_config` is None | legacy `_OLLAMA_ROUTING_TABLE` path used; behavior unchanged | — |
+
+### Table E — metrics counter semantics (BR-20 through BR-24)
+| condition | counter affected | delta | test id |
+|---|---|---|---|
+| Translation call completes (success) | `translation_count`, `translation_latency_mean_ms` | count +1; mean updated per BR-22 | — |
+| Translation call completes (failure / exception) | `translation_count`, `translation_latency_mean_ms`, `provider_failure_count` | count +1; mean updated per BR-22; failure +1 | — |
+| Provider raises connection or timeout exception | `provider_failure_count` | +1 per failed attempt | — |
+| Provider returns HTTP 401 or 403 | `provider_failure_count` | +1 per failed attempt | — |
+| Provider returns non-error response | `provider_failure_count` | no change | — |
+| Font buffer returned from lru_cache (cache hit) | `font_cache_hits` | +1 | — |
+| Font buffer loaded from disk (cache miss) | `font_cache_misses` | +1 | — |
+| Process starts (or restarts) | all counters | reset to 0 | — |
+| `translation_count` is 0 | `translation_latency_mean_ms` | must read 0.0 (float, not null/undefined) | — |
 
 ## Change Policy
 

@@ -1,0 +1,16 @@
+{
+  "change_id": "p1-observability-metrics",
+  "phase": "targeted",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_metrics_counters.py tests/test_metrics_endpoint.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-observability-metrics/test-runs/20260617-192325/junit.xml' -ra",
+  "duration_ms": 568,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p1-observability-metrics/test-runs/20260617-192325/summary.json",
+    "stdout": "specs/changes/p1-observability-metrics/test-runs/20260617-192325/stdout.log",
+    "stderr": "specs/changes/p1-observability-metrics/test-runs/20260617-192325/stderr.log",
+    "junit": "specs/changes/p1-observability-metrics/test-runs/20260617-192325/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

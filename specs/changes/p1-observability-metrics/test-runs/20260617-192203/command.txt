@@ -1,0 +1,1 @@
+/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/ -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-observability-metrics/test-runs/20260617-192203/junit.xml' -ra

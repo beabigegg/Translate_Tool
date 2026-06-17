@@ -1,0 +1,17 @@
+- type: tier-floor-override
+  change-id: p1-observability-metrics
+  timestamp: '2026-06-17T11:24:26.018Z'
+  declared-tier: 2
+  floor-tier: 0
+  label: critical surface (auth / payments / data migration / concurrency / secrets)
+  matched:
+    - authentication
+    - cache
+    - endpoint
+    - integration
+  reason: >-
+    Keyword matches (authentication, cache, endpoint, integration) are false positives:
+    'authentication' appears only in the no-auth note (endpoint is explicitly unauthenticated by
+    design BR-1); 'cache' refers to in-process lru_cache observation (no shared data store, no
+    external cache); 'endpoint' and 'integration' are routine feature-add terms. No auth system,
+    payments, data migration, or shared-state concurrency is introduced.

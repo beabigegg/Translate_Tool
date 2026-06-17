@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Callable, Dict, List, Optional, Tuple
 
 from app.backend.clients.base_llm_client import LLMClient
 from app.backend.config import CROSS_MODEL_REFINEMENT_ENABLED, DEFAULT_MAX_BATCH_CHARS, REFINEMENT_MIN_CHARS, SENTENCE_MODE
+from app.backend.services.metrics import record_translation
 from app.backend.services.translation_cache import get_cache
 from app.backend.utils.translation_helpers import translate_blocks_batch
 
@@ -156,6 +158,7 @@ def translate_texts(
                     incremental_cache_entries.clear()
 
             # Use character-based batching - translate_blocks_batch handles batching internally
+            _batch_t0 = time.monotonic()
             results = translate_blocks_batch(
                 texts_to_translate, tgt, src_lang, client,
                 max_batch_chars=max_batch_chars,
@@ -163,14 +166,24 @@ def translate_texts(
                 log=log,
                 on_segment_done=_on_segment_done,
             )
+            _batch_elapsed_ms = (time.monotonic() - _batch_t0) * 1000.0
             # Flush remaining cache entries
             if cache is not None and incremental_cache_entries:
                 cache.put_batch(incremental_cache_entries)
 
             # Build map from unique translated texts
+            _batch_n = max(len(texts_to_translate), 1)
+            _per_item_ms = _batch_elapsed_ms / _batch_n
             for text, (ok, res) in zip(texts_to_translate, results):
                 if not ok:
                     fail_cnt += 1
+                # Metrics hook (BR-21, BR-22, BR-23): one record per completed call.
+                # record_translation(failed=True) already increments provider_failure_count,
+                # so no separate record_provider_failure() call is needed here.
+                try:
+                    record_translation(_per_item_ms, failed=not ok)
+                except Exception:
+                    pass  # instrumentation must never break translation
                 # Convert Simplified to Traditional if needed
                 if ok and needs_s2t_conversion:
                     res = _convert_to_traditional(res)
@@ -184,7 +197,16 @@ def translate_texts(
                     log(f"[STOP] Translation stopped at {done}/{total} segments")
                     stopped = True
                     break
+                _t0 = time.monotonic()
                 ok, res = client.translate_once(text, tgt, src_lang)
+                _elapsed_ms = (time.monotonic() - _t0) * 1000.0
+                # Metrics hook (BR-21, BR-22, BR-23): one record per completed call.
+                # record_translation(failed=True) already increments provider_failure_count,
+                # so no separate record_provider_failure() call is needed here.
+                try:
+                    record_translation(_elapsed_ms, failed=not ok)
+                except Exception:
+                    pass  # instrumentation must never break translation
                 if not ok:
                     res = f"[Translation failed|{tgt}] {text}"
                     fail_cnt += 1

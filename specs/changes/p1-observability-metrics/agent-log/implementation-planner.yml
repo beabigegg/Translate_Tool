@@ -1,0 +1,7 @@
+agent: implementation-planner
+change-id: p1-observability-metrics
+status: done
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/p1-observability-metrics/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer (IP-1..IP-7)" }
+  - { type: scope-summary, pointer: "in: metrics.py module, MetricsResponse schema, GET /api/metrics route, 2 increment hook sites, 2 test files, openapi regen; out: persistence, auth, external store, frontend, thread-safety" }

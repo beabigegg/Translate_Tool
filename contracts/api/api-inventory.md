@@ -2,6 +2,8 @@
 contract: api-inventory
 summary: Endpoint inventory categories and ownership map for non-standard API surfaces.
 owner: application-team
+schema-version: 0.1.0
+last-changed: 2026-06-17
 surface: api
 ---
 
@@ -32,6 +34,7 @@ All routes are served under the `/api` prefix (mounted in `app/backend/main.py`)
 | PATCH | /api/terms/edit | standard-json | application-team | — | body: TermEditRequest; 404 |
 | POST | /api/terms/wikidata/search | standard-json | application-team | — | external Wikidata lookup |
 | POST | /api/terms/wikidata/import | standard-json | application-team | — | insert lookup result (confidence 0.9, unverified) |
+| GET | /api/metrics | standard-json | application-team | — | in-process operational counters; unauthenticated by design (see BR-1, BR-20) |
 
 ## Categories
 

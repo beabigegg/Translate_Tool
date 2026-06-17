@@ -3,7 +3,7 @@ contract: api
 summary: API behavior, compatibility rules, and endpoint contract requirements.
 owner: application-team
 surface: api
-schema-version: 0.2.0
+schema-version: 0.3.0
 last-changed: 2026-06-17
 breaking-change-policy: deprecate-2-minors
 ---
@@ -41,6 +41,7 @@ breaking-change-policy: deprecate-2-minors
 | PATCH | /terms/edit | none | TermEditRequest | - | 404 | tests/contract/ |
 | POST | /terms/wikidata/search | none | WikidataSearchRequest | WikidataSearchResponse | 422 | tests/contract/ |
 | POST | /terms/wikidata/import | none | WikidataImportRequest | - | 422 | tests/contract/ |
+| GET | /api/metrics | none | - | MetricsResponse | - | tests/contract/ |
 
 ## Schemas
 
@@ -212,6 +213,15 @@ The fence MUST be tagged `json-schema` (NOT `json`) or export fails fast:
 | target_lang | string | yes |  |  |
 | domain | string | no |  | default general |
 | entity_id | string | no |  |  |
+
+### MetricsResponse
+| field | type | required | format | notes |
+|---|---|---|---|---|
+| translation_count | integer | yes |  | total translation calls since process start; initializes to 0 |
+| translation_latency_mean_ms | number | yes |  | running arithmetic mean of per-call latency in ms; 0.0 when translation_count is 0; always serialized as float |
+| provider_failure_count | integer | yes |  | total provider call failures since process start; initializes to 0; see BR-23 |
+| font_cache_hits | integer | yes |  | total font buffer cache hits since process start; initializes to 0 |
+| font_cache_misses | integer | yes |  | total font buffer cache misses since process start; initializes to 0 |
 
 ## Error Format
 

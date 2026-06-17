@@ -1,0 +1,8 @@
+agent: ci-cd-gatekeeper
+run-date: 2026-06-17
+status: complete
+artifacts:
+  - { type: tiers-modified, pointer: "none — existing Tier 1 and Tier 2 jobs unchanged" }
+  - { type: gate-promotions, pointer: "n/a (no tier moves; all gates already at correct tier)" }
+  - { type: workflow-files-changed, pointer: "n/a (no workflow changes required)" }
+  - { type: required-status-checks, pointer: "contract-and-fast-tests (name: contract-and-fast-tests in contract-driven-gates.yml)" }

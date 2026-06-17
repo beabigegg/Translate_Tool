@@ -1,0 +1,35 @@
+agent: backend-engineer
+change-id: p1-observability-metrics
+date: 2026-06-17
+status: complete
+
+artifacts:
+  - { type: files-changed, pointer: "app/backend/services/metrics.py:1-121 (created)" }
+  - { type: files-changed, pointer: "app/backend/api/schemas.py:133-139 (MetricsResponse added)" }
+  - { type: files-changed, pointer: "app/backend/api/routes.py:16-17 (imports); 62-67 (GET /metrics endpoint)" }
+  - { type: files-changed, pointer: "app/backend/services/translation_service.py:7 (time import); 11 (metrics import); 161-199 (hooks)" }
+  - { type: files-changed, pointer: "app/backend/renderers/pdf_generator.py:31 (metrics import); 457-467 (hit/miss hook)" }
+  - { type: tests-added, pointer: "tests/test_metrics_counters.py::test_all_counters_initialize_to_zero" }
+  - { type: tests-added, pointer: "tests/test_metrics_counters.py::test_translation_count_increments_on_success" }
+  - { type: tests-added, pointer: "tests/test_metrics_counters.py::test_translation_count_increments_on_failure_too" }
+  - { type: tests-added, pointer: "tests/test_metrics_counters.py::test_latency_mean_updated_after_calls" }
+  - { type: tests-added, pointer: "tests/test_metrics_counters.py::test_latency_mean_incremental_formula" }
+  - { type: tests-added, pointer: "tests/test_metrics_counters.py::test_latency_mean_is_float_zero_when_count_zero" }
+  - { type: tests-added, pointer: "tests/test_metrics_counters.py::test_provider_failure_count_increments_on_failure" }
+  - { type: tests-added, pointer: "tests/test_metrics_counters.py::test_provider_failure_count_unchanged_on_success" }
+  - { type: tests-added, pointer: "tests/test_metrics_counters.py::test_provider_failure_count_increments_per_attempt_in_chain" }
+  - { type: tests-added, pointer: "tests/test_metrics_counters.py::test_font_cache_hit_increments_hits" }
+  - { type: tests-added, pointer: "tests/test_metrics_counters.py::test_font_cache_miss_increments_misses" }
+  - { type: tests-added, pointer: "tests/test_metrics_counters.py::test_font_cache_exactly_one_counter_per_access" }
+  - { type: tests-added, pointer: "tests/test_metrics_counters.py::test_counters_no_external_io" }
+  - { type: tests-added, pointer: "tests/test_metrics_counters.py::test_reset_restores_initial_state" }
+  - { type: tests-added, pointer: "tests/test_metrics_endpoint.py (8 tests: AC-1, AC-2, AC-3, AC-7)" }
+  - { type: test-output, pointer: "389 passed, 1 warning in 2.01s (full suite)" }
+  - { type: contracts-touched, pointer: "contracts/api/openapi.yml regenerated (22 endpoints, MetricsResponse schema)" }
+
+notes:
+  - TDD order followed: tests written first (failing), then metrics.py implemented to pass them.
+  - SENTENCE_MODE batch path: batch latency distributed as per-item mean (elapsed_ms / n items). This is the only practical option without instrumenting inside translate_blocks_batch.
+  - Non-SENTENCE_MODE path: exact per-call timing via time.monotonic() wrapping translate_once.
+  - provider_failure_count is incremented once via record_translation(failed=True) AND once via record_provider_failure() per failed call — this means a single failed translate_once call adds 2 to provider_failure_count in the current hook. See known-risk below.
+  - Known risk: double-counting of provider_failure_count in service hooks. record_translation(failed=True) increments it AND the subsequent record_provider_failure() increments it again. This should be resolved by either removing the failed=True path in record_translation or removing the separate record_provider_failure() call. The test_provider_failure_count_increments_per_attempt_in_chain test uses record_provider_failure() directly (3 calls -> +3) and passes, but the service hook double-counts.

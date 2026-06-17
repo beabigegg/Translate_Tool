@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from app.backend.api.schemas import (
     JobCreateResponse,
     JobStatus,
+    MetricsResponse,
     ModelConfigItem,
     ModelsResponse,
     ProfileItem,
@@ -30,6 +31,7 @@ from app.backend.api.schemas import (
     WikidataSearchRequest,
     WikidataSearchResponse,
 )
+from app.backend.services.metrics import get_metrics as _get_metrics_snapshot
 from app.backend.clients.ollama_client import list_ollama_models
 from app.backend.config import ModelType, VRAM_METADATA, load_providers_config
 from app.backend.services.model_router import RouteGroup, get_route_info, resolve_route_groups
@@ -55,6 +57,12 @@ def _sanitize_filename(name: str) -> str:
 @router.get("/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+@router.get("/metrics", response_model=MetricsResponse)
+def get_metrics_endpoint() -> MetricsResponse:
+    """Return current observability counter snapshot (BR-20..BR-24)."""
+    return MetricsResponse(**_get_metrics_snapshot())
 
 
 @router.get("/models", response_model=ModelsResponse)

@@ -1,6 +1,7 @@
 change-id: p1-observability-metrics
 status: in-progress
-tier: null
+tier: 2
+tier-floor-override: "Keyword matches (authentication, cache, endpoint, integration) are false positives: 'authentication' appears only in the no-auth note (endpoint is explicitly unauthenticated by design BR-1); 'cache' refers to in-process lru_cache observation (no shared data store, no external cache); 'endpoint' and 'integration' are routine feature-add terms. No auth system, payments, data migration, or shared-state concurrency is introduced."
 context-governance: v1
 archive-tasks:
   - "7.1"
@@ -9,33 +10,33 @@ depends-on:
   - "p1-provider-routing"
 tasks:
   # status: pending | done | skipped   (optional: note: "reason or context")
-  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: pending }
-  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: pending }
-  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: pending }
-  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: pending }
-  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: pending }
-  - { id: "2.1", section: "Contract Updates", title: "API contract", status: pending }
-  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: pending }
-  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: pending }
-  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: pending }
-  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: pending }
-  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: pending }
-  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: pending }
-  - { id: "3.2", section: "Tests First", title: "Integration tests", status: pending }
-  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: pending }
-  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: pending }
-  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: pending }
-  - { id: "4.1", section: Implementation, title: "Backend", status: pending }
-  - { id: "4.2", section: Implementation, title: "Frontend", status: pending }
-  - { id: "4.3", section: Implementation, title: "Env/deploy", status: pending }
-  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: pending }
-  - { id: "5.1", section: Review, title: "UI/UX review", status: pending }
-  - { id: "5.2", section: Review, title: "Visual review", status: pending }
-  - { id: "5.3", section: Review, title: "Contract review", status: pending }
-  - { id: "5.4", section: Review, title: "QA review", status: pending }
-  - { id: "6.1", section: Verification, title: "Local gates", status: pending }
-  - { id: "6.2", section: Verification, title: "PR required gates", status: pending }
-  - { id: "6.3", section: Verification, title: "Informational gates", status: pending }
-  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: pending }
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done, note: "Tier 2 feature-add; new GET /api/metrics endpoint + in-process counter module; AC-1..AC-7 defined" }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done, note: "api-contract.md v0.3.0: GET /api/metrics + MetricsResponse schema; api-inventory.md: added metrics row + schema-version; business-rules.md v0.4.0: BR-20..24 + Table E" }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: skipped, note: "Architecture review not required; no design.md" }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done, note: "ci-gates.md written; no new workflow step needed; existing contract-validate + openapi-sync + pytest gates cover this Tier 2 change" }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done, note: "implementation-plan.md written; IP-1..IP-7; metrics.py singleton, routes.py endpoint, translation_service.py hooks, pdf_generator.py cache-delta hooks, two new test files; test phases: collect/targeted/changed-area/contract + full smoke" }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: done, note: "GET /api/metrics row added; MetricsResponse schema added; version bumped to 0.3.0" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no UI surface" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: skipped, note: "no env vars added" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: skipped, note: "counter response documented in API contract, not a persisted data contract" }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: done, note: "business-rules.md v0.4.0: BR-20..24 (counter lifetime, increment rules, latency mean, failure attribution, cache hit/miss); Table E" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no new pipeline gate; existing gates apply" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done, note: "test-plan.md written; test_metrics_counters.py (14 unit tests AC-3..AC-6) + test_metrics_endpoint.py (contract: AC-1, AC-2)" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: done, note: "test_metrics_endpoint.py integration tests: AC-3, AC-7; mocked at HTTP boundary" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: skipped, note: "not applicable at Tier 2; additive change" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "no interactive UI or adversarial input surface" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "in-process counters; no external store; no load introduced" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: done, note: "metrics.py singleton + reset(); schemas.py MetricsResponse; routes.py GET /metrics; translation_service.py + pdf_generator.py hooks; 22 new tests; 389/0/0 full pass; openapi.yml regenerated" }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "backend-only change" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: skipped, note: "no env/deploy changes" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: done, note: "no workflow changes needed; existing contract-and-fast-tests gates cover this change" }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI surface" }
+  - { id: "5.2", section: Review, title: "Visual review", status: skipped, note: "no visual surface" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done, note: "contract-reviewer APPROVED with changes-required; all changes applied; no breaking changes; openapi.yml regeneration deferred to backend-engineer step" }
+  - { id: "5.4", section: Review, title: "QA review", status: done, note: "APPROVED-WITH-RISK: 389/0/0; all 7 ACs covered; all required phases passed; R1 response-shape harness unadopted repo-wide (not a regression); openapi.yml confirmed regenerated" }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done, note: "cdd-kit gate PASSED; tier-floor-override accepted; all contract validators green; 22 endpoints" }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "test-evidence.yml: all phases passed; cdd-kit gate PASSED; openapi.yml regenerated; 389/0/0" }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full regression 389/0/0 (baseline 367 + 22 new tests); 0 new failures" }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gates for Tier 2 change" }
   - { id: "7.1", section: Archive, title: "Archive change", status: pending }
   - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "API behavior, compatibility rules, and endpoint contract requirements.",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": "- response style: JSON (Pydantic response models); binary endpoints return file streams (FileResponse / StreamingResponse)."
   },
   "paths": {
@@ -454,6 +454,24 @@
         "x-cdd-response-contract": "-",
         "x-cdd-errors": "422"
       }
+    },
+    "/api/metrics": {
+      "get": {
+        "summary": "GET /api/metrics",
+        "responses": {
+          "200": {
+            "description": "Contract response: MetricsResponse",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-cdd-errors": "-"
+      }
     }
   },
   "x-cdd-generated-from": "contracts/api/api-contract.md",
@@ -898,6 +916,38 @@
           "target_text",
           "source_lang",
           "target_lang"
+        ]
+      },
+      "MetricsResponse": {
+        "type": "object",
+        "properties": {
+          "translation_count": {
+            "type": "integer",
+            "description": "total translation calls since process start; initializes to 0"
+          },
+          "translation_latency_mean_ms": {
+            "type": "number",
+            "description": "running arithmetic mean of per-call latency in ms; 0.0 when translation_count is 0; always serialized as float"
+          },
+          "provider_failure_count": {
+            "type": "integer",
+            "description": "total provider call failures since process start; initializes to 0; see BR-23"
+          },
+          "font_cache_hits": {
+            "type": "integer",
+            "description": "total font buffer cache hits since process start; initializes to 0"
+          },
+          "font_cache_misses": {
+            "type": "integer",
+            "description": "total font buffer cache misses since process start; initializes to 0"
+          }
+        },
+        "required": [
+          "translation_count",
+          "translation_latency_mean_ms",
+          "provider_failure_count",
+          "font_cache_hits",
+          "font_cache_misses"
         ]
       }
     }

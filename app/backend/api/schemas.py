@@ -129,3 +129,11 @@ class RouteInfoEntry(BaseModel):
 
 class RouteInfoResponse(BaseModel):
     routes: List[RouteInfoEntry]
+
+
+class MetricsResponse(BaseModel):
+    translation_count: int
+    translation_latency_mean_ms: float
+    provider_failure_count: int
+    font_cache_hits: int
+    font_cache_misses: int

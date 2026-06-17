@@ -29,6 +29,7 @@ from app.backend.renderers.text_region_renderer import (
     create_text_regions_from_elements,
     render_text_region,
 )
+from app.backend.services.metrics import record_font_cache_hit, record_font_cache_miss
 from app.backend.utils.font_utils import register_fonts
 
 if TYPE_CHECKING:
@@ -455,7 +456,16 @@ class PDFGenerator:
             if font_file:
                 # Load font bytes through the module-level LRU cache so repeated
                 # calls for the same font path avoid redundant disk reads.
+                # Metrics hook (BR-24): detect hit vs miss via cache_info() delta.
+                _hits_before = _load_font_buffer.cache_info().hits
                 font_buffer = _load_font_buffer(font_file)
+                try:
+                    if _load_font_buffer.cache_info().hits > _hits_before:
+                        record_font_cache_hit()
+                    else:
+                        record_font_cache_miss()
+                except Exception:
+                    pass  # instrumentation must never break font loading
                 font = fitz.Font(fontbuffer=font_buffer)
             else:
                 # Fallback to built-in font
