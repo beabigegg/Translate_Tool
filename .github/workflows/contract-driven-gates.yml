@@ -1,6 +1,6 @@
-# Contract-driven gates — p1-cloud-providers and beyond.
+# Contract-driven gates
 # Tier semantics: ci/gate-policy.md
-# Gate authority: specs/changes/p1-cloud-providers/ci-gates.md
+# Active change gates: p1-font-lru-cache (archived: p1-cloud-providers, p1-provider-routing)
 
 name: contract-driven-gates
 
@@ -45,8 +45,6 @@ jobs:
 
       - name: Change gate (Tier 1 — blocks merge)
         run: |
-          cdd-kit gate p1-cloud-providers
-          cdd-kit gate p1-provider-routing
           cdd-kit gate p1-font-lru-cache
 
       - name: OpenAPI sync gate
