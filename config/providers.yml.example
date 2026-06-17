@@ -33,5 +33,27 @@ routing:
     model: gpt-oss:120b
     provider: panjit
     profile: general
+  rules:
+    # Per-language routing rules (p1-provider-routing).
+    # Add or remove entries here to change which model handles each language.
+    # Unmatched languages fall back to routing.default (BR-19).
+    # Korean: routes to panjit in cloud mode; legacy Ollama path still uses
+    # TranslateGemma when provider_config is None (backward-compatible).
+    Vietnamese:
+      model: gpt-oss:120b
+      provider: panjit
+      profile: general
+    German:
+      model: gpt-oss:120b
+      provider: panjit
+      profile: general
+    Japanese:
+      model: gpt-oss:120b
+      provider: panjit
+      profile: general
+    Korean:
+      model: gpt-oss:120b
+      provider: panjit
+      profile: general
 
 fallback_chain: [panjit, ollama-local]

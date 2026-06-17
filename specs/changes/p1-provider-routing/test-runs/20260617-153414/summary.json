@@ -1,0 +1,16 @@
+{
+  "change_id": "p1-provider-routing",
+  "phase": "targeted",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_model_router.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p1-provider-routing/test-runs/20260617-153414/junit.xml' -ra",
+  "duration_ms": 180,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p1-provider-routing/test-runs/20260617-153414/summary.json",
+    "stdout": "specs/changes/p1-provider-routing/test-runs/20260617-153414/stdout.log",
+    "stderr": "specs/changes/p1-provider-routing/test-runs/20260617-153414/stderr.log",
+    "junit": "specs/changes/p1-provider-routing/test-runs/20260617-153414/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

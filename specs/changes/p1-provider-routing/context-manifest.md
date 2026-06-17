@@ -5,60 +5,77 @@ this change. The forbidden-paths baseline lives in `.cdd/context-policy.json`
 and is automatically applied by `cdd-kit gate` — do not duplicate it here.
 
 ## Affected Surfaces
--
+- Backend routing: `app/backend/services/model_router.py` (routing table + `resolve_route_groups()`)
+- Provider config: `config/providers.yml` (`routing:` section as source of truth)
+- Business behavior contract: routing rule semantics
 
 ## Allowed Paths
-<!-- UNION of all repo-relative paths (or globs) any agent may read for this change.
-     cdd-kit gate validates every agent's files-read log against this list.
-     If an agent legitimately read a path, add that path here; do not remove it
-     from files-read just to pass gate.
-     Be specific — wide globs (e.g. src/) defeat read-scope governance.
-     Always include the three defaults below; add change-specific paths beneath them. -->
-- specs/changes/<change-id>/
+- specs/changes/p1-provider-routing/
 - specs/context/project-map.md
 - specs/context/contracts-index.md
+- app/backend/services/model_router.py
+- config/providers.yml
+- config/providers.yml.example
+- contracts/business/business-rules.md
+- tests/test_model_router.py
+- docs/adr/0001-config-driven-provider-registry.md
+- app/backend/processors/orchestrator.py
+- app/backend/services/translation_service.py
 
 ## Required Contracts
--
+- contracts/business/business-rules.md
 
 ## Required Tests
--
+- tests/test_model_router.py
 
 ## Agent Work Packets
-<!-- One sub-section per required agent. Each path list must be a subset of Allowed Paths above.
-     Add or remove sub-sections to match Required Agents in change-classification.md.
-     These sub-sections are documentation only — gate enforces Allowed Paths, not individual packets. -->
 
 ### change-classifier
-- specs/changes/<change-id>/
+- specs/changes/p1-provider-routing/
 - specs/context/project-map.md
 - specs/context/contracts-index.md
 
-### <implementation-agent>
-<!-- Replace with actual agent name, e.g. backend-engineer, frontend-engineer -->
-- specs/changes/<change-id>/
-- contracts/
-- src/
-- tests/
+### contract-reviewer
+- specs/changes/p1-provider-routing/
+- contracts/business/business-rules.md
+- config/providers.yml
 
-### <review-agent>
-<!-- Replace with actual agent name, e.g. contract-reviewer, qa-reviewer -->
-- specs/changes/<change-id>/
-- contracts/
+### test-strategist
+- specs/changes/p1-provider-routing/
+- tests/test_model_router.py
+- app/backend/services/model_router.py
+- config/providers.yml
+
+### implementation-planner
+- specs/changes/p1-provider-routing/
+- specs/context/project-map.md
+- specs/context/contracts-index.md
+- app/backend/services/model_router.py
+- config/providers.yml
+- contracts/business/business-rules.md
+- docs/adr/0001-config-driven-provider-registry.md
+
+### backend-engineer
+- specs/changes/p1-provider-routing/
+- app/backend/services/model_router.py
+- config/providers.yml
+- config/providers.yml.example
+- tests/test_model_router.py
+- contracts/business/business-rules.md
+
+### qa-reviewer
+- specs/changes/p1-provider-routing/
+- tests/test_model_router.py
+- contracts/business/business-rules.md
 
 ## Context Expansion Requests
 
-<!--
-Agents must request context expansion instead of reading outside their work
-packet. Format example for real requests:
-
 - request-id: CER-001
   requested_paths:
-    - src/example.ts
-  reason: why this file is required
-  status: pending
--->
--
+    - app/backend/processors/orchestrator.py
+    - app/backend/services/translation_service.py
+  reason: Contract-reviewer flagged that per-language routing may return multiple RouteGroups in the cloud path, which could break callers that assume exactly one group. These files must be checked before backend-engineer implements resolve_route_groups() changes.
+  status: approved
 
 ## Approved Expansions
--
+- CER-001 approved: orchestrator.py + translation_service.py added to Allowed Paths; contract-reviewer confirmed behavioral risk on resolve_route_groups() return shape.

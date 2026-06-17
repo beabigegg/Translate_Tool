@@ -295,3 +295,227 @@ class TestConfigDrivenRouting:
             "RouteDecision must have a 'provider' field (AC-4)"
         )
         assert decision.provider is not None
+
+
+# ---------------------------------------------------------------------------
+# Helper: build a providers.yml dict with routing.rules for tests.
+# Never reads real config/providers.yml — uses tmp_path fixture inline.
+# ---------------------------------------------------------------------------
+
+def _build_config(tmp_path, rules: dict, default_model="fallback-model", default_provider="cloud-prov"):
+    """Write a providers.yml with given routing.rules to tmp_path and load it."""
+    rules_block = ""
+    if rules:
+        rules_block = "  rules:\n"
+        for lang, entry in rules.items():
+            rules_block += f"    {lang}:\n"
+            rules_block += f"      model: {entry['model']}\n"
+            rules_block += f"      provider: {entry['provider']}\n"
+            if "profile" in entry:
+                rules_block += f"      profile: {entry['profile']}\n"
+
+    yml_content = (
+        "providers:\n"
+        "  - id: cloud-prov\n"
+        "    type: openai\n"
+        "    enabled: true\n"
+        "    base_url: http://example.com\n"
+        "    api_key: testkey\n"
+        "    models:\n"
+        "      translate: fallback-model\n"
+        "routing:\n"
+        f"  default:\n"
+        f"    model: {default_model}\n"
+        f"    provider: {default_provider}\n"
+        f"    profile: general\n"
+        f"{rules_block}"
+        "fallback_chain: [cloud-prov]\n"
+    )
+    yml = tmp_path / "providers.yml"
+    yml.write_text(yml_content)
+    from app.backend.config import load_providers_config
+    return load_providers_config(config_path=yml)
+
+
+# ---------------------------------------------------------------------------
+# AC-1, AC-2, AC-5: routing.rules consumed from config
+# ---------------------------------------------------------------------------
+
+class TestProviderRoutingRules:
+    """Tests that routing.rules entries are read from config and used per-language."""
+
+    def test_routing_rules_key_consumed_from_config(self, tmp_path):
+        """resolve_route picks per-language rule, not routing.default, when rule exists (AC-1)."""
+        config = _build_config(
+            tmp_path,
+            rules={
+                "Vietnamese": {"model": "vi-model", "provider": "cloud-prov"},
+            },
+            default_model="fallback-model",
+        )
+        decision = resolve_route(["Vietnamese"], provider_config=config)
+        assert decision is not None
+        assert decision.model == "vi-model", (
+            f"Expected vi-model from routing.rules, got {decision.model}"
+        )
+
+    def test_config_only_change_routes_new_language(self, tmp_path):
+        """Adding a new language to routing.rules routes it without any code change (AC-2)."""
+        config = _build_config(
+            tmp_path,
+            rules={
+                "Klingon": {"model": "klingon-model", "provider": "cloud-prov"},
+            },
+            default_model="fallback-model",
+        )
+        decision = resolve_route(["Klingon"], provider_config=config)
+        assert decision is not None
+        assert decision.model == "klingon-model", (
+            f"Expected klingon-model from routing.rules, got {decision.model}"
+        )
+
+    def test_unlisted_language_falls_back_to_default(self, tmp_path):
+        """A language not in routing.rules falls back to routing.default (AC-5)."""
+        config = _build_config(
+            tmp_path,
+            rules={
+                "Vietnamese": {"model": "vi-model", "provider": "cloud-prov"},
+            },
+            default_model="fallback-model",
+        )
+        decision = resolve_route(["Swahili"], provider_config=config)
+        assert decision is not None
+        assert decision.model == "fallback-model", (
+            f"Expected fallback-model from routing.default, got {decision.model}"
+        )
+
+    def test_default_fallback_no_crash(self, tmp_path):
+        """Missing language in routing.rules must not raise and must return a valid RouteGroup (AC-5)."""
+        config = _build_config(tmp_path, rules={}, default_model="fallback-model")
+        try:
+            decision = resolve_route(["Klingon"], provider_config=config)
+        except Exception as exc:
+            raise AssertionError(f"resolve_route raised unexpectedly: {exc}") from exc
+        assert decision is not None
+        assert isinstance(decision, RouteDecision)
+
+
+# ---------------------------------------------------------------------------
+# AC-3, AC-4: per-language independent resolution in resolve_route_groups
+# ---------------------------------------------------------------------------
+
+class TestResolveRouteGroupsPerLanguage:
+    """Tests that resolve_route_groups resolves each target_lang independently."""
+
+    def test_each_target_resolved_independently(self, tmp_path):
+        """Two languages with distinct rules → two RouteGroups (AC-3)."""
+        config = _build_config(
+            tmp_path,
+            rules={
+                "Vietnamese": {"model": "vi-model", "provider": "cloud-prov"},
+                "German": {"model": "de-model", "provider": "cloud-prov"},
+            },
+            default_model="fallback-model",
+        )
+        groups = resolve_route_groups(["Vietnamese", "German"], provider_config=config)
+        assert groups is not None
+        assert len(groups) == 2, (
+            f"Expected 2 groups for distinct-model languages, got {len(groups)}: "
+            f"{[(g.model, g.targets) for g in groups]}"
+        )
+
+    def test_first_target_not_used_for_all(self, tmp_path):
+        """German is NOT used for Vietnamese targets — second lang resolves independently (AC-3)."""
+        config = _build_config(
+            tmp_path,
+            rules={
+                "German": {"model": "de-model", "provider": "cloud-prov"},
+                "Vietnamese": {"model": "vi-model", "provider": "cloud-prov"},
+            },
+            default_model="fallback-model",
+        )
+        groups = resolve_route_groups(["German", "Vietnamese"], provider_config=config)
+        assert groups is not None
+        # "Vietnamese" must NOT appear in the German group
+        de_group = next((g for g in groups if g.model == "de-model"), None)
+        assert de_group is not None, "de-model group not found"
+        assert "Vietnamese" not in de_group.targets, (
+            f"Vietnamese incorrectly placed in German group: {de_group.targets}"
+        )
+
+    def test_mixed_batch_vi_de_ko_ja_groups(self, tmp_path):
+        """Mixed [vi, de, ko, ja] batch partitions into groups by their distinct rule models (AC-4)."""
+        config = _build_config(
+            tmp_path,
+            rules={
+                "Vietnamese": {"model": "vi-model", "provider": "cloud-prov"},
+                "German": {"model": "de-model", "provider": "cloud-prov"},
+                "Korean": {"model": "ko-model", "provider": "cloud-prov"},
+                "Japanese": {"model": "ja-model", "provider": "cloud-prov"},
+            },
+            default_model="fallback-model",
+        )
+        groups = resolve_route_groups(
+            ["Vietnamese", "German", "Korean", "Japanese"], provider_config=config
+        )
+        assert groups is not None
+        # All 4 languages should have distinct models → 4 groups
+        assert len(groups) >= 2, f"Expected at least 2 groups, got {len(groups)}"
+        # All languages must appear somewhere in the groups
+        all_targets = [t for g in groups for t in g.targets]
+        assert set(all_targets) == {"Vietnamese", "German", "Korean", "Japanese"}, (
+            f"Not all languages in groups: {all_targets}"
+        )
+
+    def test_mixed_batch_group_models_match_rules(self, tmp_path):
+        """For each group, the model matches the fixture routing.rule for its target(s) (AC-4 contract)."""
+        rules = {
+            "Vietnamese": {"model": "vi-model", "provider": "cloud-prov"},
+            "German": {"model": "de-model", "provider": "cloud-prov"},
+            "Korean": {"model": "ko-model", "provider": "cloud-prov"},
+            "Japanese": {"model": "ja-model", "provider": "cloud-prov"},
+        }
+        config = _build_config(tmp_path, rules=rules, default_model="fallback-model")
+        groups = resolve_route_groups(
+            ["Vietnamese", "German", "Korean", "Japanese"], provider_config=config
+        )
+        assert groups is not None
+        for group in groups:
+            for target in group.targets:
+                expected_model = rules[target]["model"]
+                assert group.model == expected_model, (
+                    f"Target {target!r}: expected model {expected_model!r}, got {group.model!r}"
+                )
+
+
+# ---------------------------------------------------------------------------
+# AC-6 regression: legacy Ollama path when provider_config=None
+# ---------------------------------------------------------------------------
+
+class TestLegacyOllamaPath:
+    """Regression: provider_config=None still uses _OLLAMA_ROUTING_TABLE."""
+
+    def test_provider_config_none_uses_ollama_grouping(self):
+        """Without provider_config, resolve_route_groups uses legacy Ollama grouping (AC-6)."""
+        # Vietnamese, German, Japanese all map to HYMT in legacy table → 1 group
+        groups = resolve_route_groups(
+            ["Vietnamese", "German", "Japanese"], provider_config=None
+        )
+        assert groups is not None
+        assert len(groups) == 1, (
+            f"Legacy path: vi/de/ja should share one HYMT group, got {len(groups)}"
+        )
+        assert groups[0].model == HYMT_DEFAULT_MODEL
+
+    def test_legacy_single_language_batch(self):
+        """Single target, provider_config=None returns exactly one group."""
+        groups = resolve_route_groups(["Vietnamese"], provider_config=None)
+        assert groups is not None
+        assert len(groups) == 1
+
+    def test_legacy_profile_override_non_auto_returns_none(self):
+        """provider_config=None, profile_override='general' → None (AC-6)."""
+        result = resolve_route_groups(
+            ["Vietnamese"], profile_override="general", provider_config=None
+        )
+        assert result is None

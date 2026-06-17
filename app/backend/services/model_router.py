@@ -5,8 +5,12 @@ of the hardcoded ``_ROUTING_TABLE``.  If no provider_config is supplied the
 functions fall back to Ollama-local behaviour (backward-compatible with existing
 callers that do not pass a config).
 
-The ``routing.rules`` key is schema-tolerated but NOT consumed here — it is owned
-by ``p1-provider-routing``.  The schema is parsed and ignored.
+p1-provider-routing: ``routing.rules`` (a language-keyed mapping in providers.yml)
+is now consumed by ``_resolve_from_config()``.  Each target_lang is matched
+against ``routing.rules`` first; on a miss (or when the key is absent) the
+function falls back to ``routing.default`` (BR-18, BR-19).
+``resolve_route_groups()`` resolves each target in a batch independently and
+groups by the full ``(model, profile_id, model_type, provider)`` tuple.
 """
 
 from __future__ import annotations
@@ -80,10 +84,28 @@ def _resolve_from_config(
 ) -> Tuple[str, str, str, str]:
     """Resolve (model, profile_id, model_type, provider) from providers.yml config.
 
-    Uses ``routing.default`` for all targets (per-language rules are owned by
-    ``p1-provider-routing`` and are not consumed here).
+    Resolution order (BR-18, BR-19):
+    1. Check ``routing.rules[target]`` — a language-keyed mapping.  On a hit,
+       use that rule's model/provider/profile.
+    2. On a miss, or when ``routing.rules`` is absent/empty, fall back to
+       ``routing.default`` unchanged.
+
+    Never raises on a missing target, missing rules key, or malformed rule —
+    always degrades to routing.default (schema validation is out of scope).
     """
     routing = provider_config.get("routing", {})
+
+    # --- Step 1: try routing.rules ---
+    rules = routing.get("rules") or {}
+    rule = rules.get(target) if rules else None
+    if rule and isinstance(rule, dict) and rule.get("model") and rule.get("provider"):
+        model = rule["model"]
+        provider_id = rule["provider"]
+        profile = rule.get("profile", "general")
+        model_type = "general"  # cloud rules: same derivation as default (no distinction)
+        return model, profile, model_type, provider_id
+
+    # --- Step 2: fall back to routing.default ---
     default = routing.get("default", {})
     model = default.get("model", DEFAULT_MODEL)
     provider_id = default.get("provider", _OLLAMA_PROVIDER_ID)
@@ -160,20 +182,26 @@ def resolve_route_groups(
         return []
 
     if provider_config:
-        # All targets use the same routing.default when providers.yml is active.
-        # Per-language precise routing is owned by p1-provider-routing.
-        model, profile_id, model_type, provider_id = _resolve_from_config(
-            targets[0], provider_config
-        )
-        group = RouteGroup(
-            targets=list(targets),
-            model=model,
-            profile_id=profile_id,
-            model_type=model_type,
-            refine_model=None,  # Cloud providers don't use cross-model refinement
-            provider=provider_id,
-        )
-        return [group]
+        # Per-language resolution: each target is resolved independently via
+        # routing.rules (with routing.default fallback), then grouped by the
+        # full (model, profile_id, model_type, provider) tuple (BR-18).
+        seen: Dict[Tuple[str, str, str, str], RouteGroup] = {}
+        for target in targets:
+            model, profile_id, model_type, provider_id = _resolve_from_config(
+                target, provider_config
+            )
+            key = (model, profile_id, model_type, provider_id)
+            if key not in seen:
+                seen[key] = RouteGroup(
+                    targets=[],
+                    model=model,
+                    profile_id=profile_id,
+                    model_type=model_type,
+                    refine_model=None,  # Cloud groups do not use cross-model refinement
+                    provider=provider_id,
+                )
+            seen[key].targets.append(target)
+        return list(seen.values())
 
     # Legacy Ollama path: group by routing key, preserve insertion order
     seen: Dict[Tuple[str, str, str], RouteGroup] = {}

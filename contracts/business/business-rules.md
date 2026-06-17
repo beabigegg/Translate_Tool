@@ -3,7 +3,7 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.2.0
+schema-version: 0.3.0
 last-changed: 2026-06-17
 breaking-change-policy: deprecate-2-minors
 ---
@@ -16,7 +16,7 @@ breaking-change-policy: deprecate-2-minors
 | BR-1 | auth-policy | application-team | No authentication on any endpoint; intentional local-tool design decision. | — |
 | BR-2 | num_ctx-validation | application-team | If `num_ctx` is provided, must be > 0 and within [min_num_ctx, max_num_ctx] of the resolved model_type (from VRAM_METADATA); else HTTP 422. | — |
 | BR-3 | target-language-required | application-team | POST /api/jobs requires ≥ 1 non-empty target after comma-split; else HTTP 400. | — |
-| BR-4 | model-auto-routing | application-team | Provider and model selection is config-driven via `config/providers.yml` read at startup by `config.py`; `model_router.py` resolves model + provider from `routing.default` and `routing.rules`. Manual `profile` param overrides to a single group. Previously hardcoded `_ROUTING_TABLE` is removed. | — |
+| BR-4 | model-auto-routing | application-team | Provider and model selection is config-driven via `config/providers.yml` read at startup by `config.py`. `model_router.py` resolves model + provider from `routing.default`. Per-language overrides are sourced from `routing.rules` (language-keyed map of `{model, provider, profile}` entries, e.g. `routing.rules.Vietnamese`) when that key is present; rules are matched by `target_lang`. A manual `profile` param overrides to a single group. The legacy `_OLLAMA_ROUTING_TABLE` remains only as a no-`provider_config` fallback for backward compatibility. | — |
 | BR-5 | term-import-strategy | application-team | `strategy` must be one of `{skip, overwrite, merge, force}`. `force` overwrites approved rows; the others protect already-approved rows. | — |
 | BR-6 | term-export-format | application-team | `format` must be one of `{json, csv, xlsx}`. `status` filter accepts `approved`, `unverified`, or omitted (all). | — |
 | BR-7 | job-lifecycle | application-team | Job status transitions: `queued` → `running` → `{completed \| stopped \| failed}`. Cancel sets a stop flag; job transitions to `stopped`. | — |
@@ -30,6 +30,8 @@ breaking-change-policy: deprecate-2-minors
 | BR-15 | provider-offline-detection | application-team | A provider is considered "offline" when an HTTP request raises a connection or timeout exception at the client boundary. Auth failures (HTTP 401/403) are also treated as offline for fallback purposes. | — |
 | BR-16 | provider-attribution | application-team | The provider ID that successfully processed a job is always recorded in `JobStatus.provider`. If the job fails after all fallback providers are exhausted, `JobStatus.provider` remains null and `status` transitions to `failed`. | — |
 | BR-17 | provider-secret-safety | application-team | API keys (`PANJIT_API`, `DEEPSEEK_API`) must not appear in `config/providers.yml` as literals; they must be referenced via `${VAR}` interpolation resolved at load time. An unresolved reference must disable the provider, not pass the literal string to the endpoint. | — |
+| BR-18 | per-target-language-dispatch | application-team | `resolve_route_groups()` resolves each `target_lang` in a batch independently. A mixed-language batch (e.g. `[vi, de, ko, ja]`) produces one `RouteGroup` per distinct (model, profile_id, model_type, provider) tuple; each language is matched against `routing.rules` before falling back to `routing.default`. The whole batch is never routed by `targets[0]` alone. | — |
+| BR-19 | unmapped-language-fallback | application-team | A `target_lang` not matched by any entry in `routing.rules` (or when `routing.rules` is absent) falls back to `routing.default`. This must not raise an exception and must produce a deterministic result identical to a single-language job using the default route. | — |
 
 ## Decision Tables
 
@@ -58,6 +60,14 @@ breaking-change-policy: deprecate-2-minors
 | all providers in chain exhausted without success | job transitions to `status: "failed"`; `JobStatus.provider` remains null | — |
 | `providers.yml` absent or all providers have `enabled: false` | falls back to `OllamaClient`-only behavior; `JobStatus.provider` set to `"ollama-local"` | — |
 | `DEEPSEEK_ENABLED=false` | DeepSeek excluded from chain regardless of `DEEPSEEK_API` presence | — |
+
+### Table D — config-driven per-language routing (BR-18, BR-19)
+| condition | behavior | test id |
+|---|---|---|
+| `target_lang` matches an entry in `routing.rules` | model/provider/profile resolved from that rule; grouped accordingly | — |
+| `target_lang` not in `routing.rules` (or `routing.rules` absent) | falls back to `routing.default`; no exception | — |
+| mixed batch `[vi, de, ko, ja]` with distinct per-language rules | each language resolves independently; 1–4 RouteGroups possible | — |
+| `provider_config` is None | legacy `_OLLAMA_ROUTING_TABLE` path used; behavior unchanged | — |
 
 ## Change Policy
 
