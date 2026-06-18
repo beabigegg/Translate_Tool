@@ -3,8 +3,8 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.2.0
-last-changed: 2026-06-17
+schema-version: 0.3.0
+last-changed: 2026-06-18
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -16,6 +16,11 @@ breaking-change-policy: deprecate-2-minors
 | column | type | nullable | allowed values | fallback | validation |
 |---|---|---:|---|---|---|
 | JobStatus.status | string | no | `queued`, `running`, `completed`, `stopped`, `failed` | `queued` (initial create) | Set only by JobManager state machine; never supplied by clients. |
+
+### Term.status (application-controlled enum)
+| column | type | nullable | allowed values | fallback | validation |
+|---|---|---:|---|---|---|
+| Term.status | string | no | `unverified`, `needs_review`, `approved`, `rejected` | `unverified` (LLM extraction); `approved` (file import via `_dict_to_term()`) | Set by TermDB state machine methods (`approve()`, `reject()`, `flag_needs_review()`, `edit_term()`). Never supplied raw by API clients except via the state-transition endpoints. |
 
 ### POST /api/jobs — multipart/form-data required fields
 | column | type | nullable | allowed values | fallback | validation |
@@ -58,8 +63,20 @@ See `contracts/api/api-contract.md > ## Schemas > JobStatus` for the authoritati
 ## Export / Import Format
 
 - **Job output**: zip archive downloaded via `GET /api/jobs/{id}/download`.
-- **Term export**: `GET /api/terms/export?format={json|csv|xlsx}` — full term db or filtered by status.
+- **Term export**: `GET /api/terms/export?format={json|csv|xlsx}` — full term db or filtered by status (`approved`, `unverified`, `needs_review`, `rejected`).
 - **Term import**: `POST /api/terms/import` — multipart file upload (`.json` or `.csv`); strategy controls merge behavior (BR-5).
+
+### TermStatsResponse — data shape
+| field | type | nullable | default | notes |
+|---|---|---:|---|---|
+| total | integer | no | — | total term count |
+| unverified | integer | no | 0 | count of terms with status=unverified |
+| by_target_lang | object | no | {} | map of lang -> count |
+| by_domain | object | no | {} | map of domain -> count |
+| needs_review | integer | no | 0 | count of terms with status=needs_review (additive, p1-term-state-machine) |
+| approved | integer | no | 0 | count of terms with status=approved (additive, p1-term-state-machine) |
+| rejected | integer | no | 0 | count of terms with status=rejected (additive, p1-term-state-machine) |
+| by_status | string | no | {} | serialized as JSON map of status -> count for all four statuses (additive, p1-term-state-machine) |
 
 ## Row Limit / Truncation Policy
 

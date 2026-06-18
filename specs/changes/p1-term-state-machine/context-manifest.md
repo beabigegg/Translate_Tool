@@ -5,59 +5,87 @@ this change. The forbidden-paths baseline lives in `.cdd/context-policy.json`
 and is automatically applied by `cdd-kit gate` — do not duplicate it here.
 
 ## Affected Surfaces
--
+- `app/backend/models/term.py`
+- `app/backend/services/term_db.py`
+- `app/backend/services/term_extractor.py`
+- `app/backend/config.py`
+- `app/backend/api/schemas.py`
+- `app/backend/api/routes.py`
+- `contracts/business/business-rules.md`
+- `contracts/env/env-contract.md`
+- `contracts/api/api-contract.md`
+- `contracts/data/data-shape-contract.md`
+- `tests/test_term_state_machine.py` (new file)
 
 ## Allowed Paths
-<!-- UNION of all repo-relative paths (or globs) any agent may read for this change.
-     cdd-kit gate validates every agent's files-read log against this list.
-     If an agent legitimately read a path, add that path here; do not remove it
-     from files-read just to pass gate.
-     Be specific — wide globs (e.g. src/) defeat read-scope governance.
-     Always include the three defaults below; add change-specific paths beneath them. -->
-- specs/changes/<change-id>/
+- specs/changes/p1-term-state-machine/
 - specs/context/project-map.md
 - specs/context/contracts-index.md
-
-## Required Contracts
--
-
-## Required Tests
--
-
-## Agent Work Packets
-<!-- One sub-section per required agent. Each path list must be a subset of Allowed Paths above.
-     Add or remove sub-sections to match Required Agents in change-classification.md.
-     These sub-sections are documentation only — gate enforces Allowed Paths, not individual packets. -->
-
-### change-classifier
-- specs/changes/<change-id>/
-- specs/context/project-map.md
-- specs/context/contracts-index.md
-
-### <implementation-agent>
-<!-- Replace with actual agent name, e.g. backend-engineer, frontend-engineer -->
-- specs/changes/<change-id>/
-- contracts/
-- src/
+- app/backend/models/term.py
+- app/backend/services/term_db.py
+- app/backend/services/term_extractor.py
+- app/backend/config.py
+- app/backend/api/schemas.py
+- app/backend/api/routes.py
+- contracts/business/business-rules.md
+- contracts/env/env-contract.md
+- contracts/api/api-contract.md
+- contracts/data/data-shape-contract.md
 - tests/
 
-### <review-agent>
-<!-- Replace with actual agent name, e.g. contract-reviewer, qa-reviewer -->
-- specs/changes/<change-id>/
-- contracts/
+## Required Contracts
+- contracts/business/business-rules.md (state machine + injection gate + confidence source rules)
+- contracts/env/env-contract.md (TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED, TERM_INJECT_CONF_THRESHOLD)
+- contracts/api/api-contract.md (new endpoints + TermStatsResponse schema)
+- contracts/data/data-shape-contract.md (Term.status valid values)
+
+## Required Tests
+- tests/test_term_state_machine.py (8 new tests, AC-1..AC-8)
+
+## Agent Work Packets
+
+### change-classifier
+- specs/changes/p1-term-state-machine/
+- specs/context/project-map.md
+- specs/context/contracts-index.md
+
+### contract-reviewer
+- specs/changes/p1-term-state-machine/
+- app/backend/api/schemas.py
+- app/backend/api/routes.py
+- app/backend/config.py
+- contracts/business/business-rules.md
+- contracts/env/env-contract.md
+- contracts/api/api-contract.md
+- contracts/data/data-shape-contract.md
+
+### test-strategist
+- specs/changes/p1-term-state-machine/
+- app/backend/models/term.py
+- app/backend/services/term_db.py
+- app/backend/services/term_extractor.py
+- app/backend/api/routes.py
+- tests/
+
+### backend-engineer
+- specs/changes/p1-term-state-machine/
+- app/backend/models/term.py
+- app/backend/services/term_db.py
+- app/backend/services/term_extractor.py
+- app/backend/config.py
+- app/backend/api/schemas.py
+- app/backend/api/routes.py
+- contracts/business/business-rules.md
+- contracts/env/env-contract.md
+- contracts/api/api-contract.md
+- contracts/data/data-shape-contract.md
+- tests/
+
+### qa-reviewer
+- specs/changes/p1-term-state-machine/
+- tests/
 
 ## Context Expansion Requests
-
-<!--
-Agents must request context expansion instead of reading outside their work
-packet. Format example for real requests:
-
-- request-id: CER-001
-  requested_paths:
-    - src/example.ts
-  reason: why this file is required
-  status: pending
--->
 -
 
 ## Approved Expansions

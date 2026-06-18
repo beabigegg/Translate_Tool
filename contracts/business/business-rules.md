@@ -3,8 +3,8 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.5.0
-last-changed: 2026-06-17
+schema-version: 0.6.0
+last-changed: 2026-06-18
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -40,6 +40,10 @@ breaking-change-policy: deprecate-2-minors
 | BR-25 | translation-failure-placeholder | application-team | When a segment translation fails (any translation mode, including `SENTENCE_MODE`), the value stored in `tmap` for that block is `[Translation failed|{tgt}] {original_text}` — a block-level string containing the target language tag and the unmodified original source text. This format applies regardless of whether `SENTENCE_MODE` is active. The format is the detection anchor for `verify_and_fill_tmap`; any deviation makes the block non-retryable. | tests/test_sentence_mode_consistency.py |
 | BR-26 | per-segment-done-fail-counting | application-team | `done` and `fail_cnt` are incremented once per segment inside the per-segment translation loop, regardless of translation mode. A mid-loop or mid-batch stop must not cause `done` to exceed the number of segments actually processed. `SENTENCE_MODE` and non-`SENTENCE_MODE` paths must produce identical `done`/`fail_cnt` values on identical input with identical stop timing. | tests/test_sentence_mode_consistency.py |
 | BR-27 | stop-flag-propagation | application-team | When a job cancellation stop flag is set, it must be passed into `translate_blocks_batch` (and threaded through `BatchTranslator`) so mid-batch work halts as soon as the flag is detected between individual translation calls. After a batch completes (or halts), the outer per-target loop must check the stop flag and break immediately — no further target languages are processed once the stop flag is set. This applies to both `SENTENCE_MODE` and non-`SENTENCE_MODE` paths. | tests/test_sentence_mode_consistency.py |
+| BR-28 | term-state-machine | application-team | Valid `Term.status` values: `unverified`, `needs_review`, `approved`, `rejected`. Allowed transitions: any status → `approved` (via `approve()`); any status → `rejected` (via `reject()`); any status → `needs_review` (via `flag_needs_review()`); `rejected` or `needs_review` → `approved` (via `approve()`). `edit_term()` sets status to `approved` directly (implicit approval). | tests/test_term_state_machine.py |
+| BR-29 | term-injection-gate | application-team | Default (strict): only `status='approved'` terms are injected into translation prompts. Optional loose gate (`TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED=true`): also inject `status='unverified'` terms with `confidence >= TERM_INJECT_CONF_THRESHOLD`. `rejected` and `needs_review` terms are NEVER injected regardless of the loose gate flag. The `confidence=1.0` bypass is removed; LLM self-assessed confidence no longer grants injection. | tests/test_term_state_machine.py |
+| BR-30 | llm-confidence-cap | application-team | LLM-extracted confidence is capped at `_LLM_CONFIDENCE_CAP = 0.85` in `term_extractor.py`. This prevents LLM self-assessment from matching human-verified confidence. Human approval (`approve()`) is the canonical verification method. | tests/test_term_state_machine.py |
+| BR-31 | term-conflict-strategy-rejected-protection | application-team | `insert()` with strategy `overwrite` or `merge`: skip (return `'skipped'`) if existing term has `status='approved'` OR `status='rejected'`. `insert()` with strategy `force`: overwrites regardless of status, including `rejected`. Human-rejected terms are not silently re-imported by bulk imports unless `force` is used. | tests/test_term_state_machine.py |
 
 ## Decision Tables
 
@@ -101,6 +105,39 @@ breaking-change-policy: deprecate-2-minors
 | Stop flag set mid-batch | `translate_blocks_batch` detects flag between per-sentence calls and halts remaining sentences | tests/test_sentence_mode_consistency.py |
 | Stop flag set; batch completes or halts | outer per-target loop breaks; no further target languages are translated | tests/test_sentence_mode_consistency.py |
 | `translate_blocks_batch` called with no stop_flag (legacy callers) | behaves as before; `stop_flag=None` default means no cancellation check | tests/test_translation_strategy.py |
+
+## Term State Machine
+
+### Table G — term export status filter (BR-6 extended, BR-28)
+| condition | behavior | test id |
+|---|---|---|
+| `status` omitted | all terms exported | — |
+| `status = approved` | only `approved` terms exported | — |
+| `status = unverified` | only `unverified` terms exported | — |
+| `status = needs_review` | only `needs_review` terms exported | — |
+| `status = rejected` | only `rejected` terms exported | — |
+| `status` not in {approved, unverified, needs_review, rejected} | treated as no filter (all exported) | — |
+
+### Table H — term injection gate (BR-29)
+| condition | behavior | test id |
+|---|---|---|
+| `TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED=false` (default), term `status='approved'` | term included in injection | tests/test_term_state_machine.py |
+| `TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED=false` (default), term `status='unverified'`, any confidence | term NOT included | tests/test_term_state_machine.py |
+| `TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED=false` (default), term `status='rejected'` | term NOT included | tests/test_term_state_machine.py |
+| `TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED=false` (default), term `status='needs_review'` | term NOT included | tests/test_term_state_machine.py |
+| `TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED=true`, term `status='unverified'`, `confidence >= TERM_INJECT_CONF_THRESHOLD` | term included | tests/test_term_state_machine.py |
+| `TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED=true`, term `status='unverified'`, `confidence < TERM_INJECT_CONF_THRESHOLD` | term NOT included | tests/test_term_state_machine.py |
+| `TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED=true`, term `status='rejected'` | term NOT included (rejected never injected) | tests/test_term_state_machine.py |
+| `TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED=true`, term `status='needs_review'` | term NOT included (needs_review never injected) | tests/test_term_state_machine.py |
+
+### Table I — term conflict strategy (BR-5 extended, BR-31)
+| condition | behavior | test id |
+|---|---|---|
+| `strategy = skip`, term exists | existing row kept; new term not inserted | — |
+| `strategy = overwrite` or `merge`, existing term `status='approved'` | skip; return `'skipped'` | tests/test_term_state_machine.py |
+| `strategy = overwrite` or `merge`, existing term `status='rejected'` | skip; return `'skipped'` | tests/test_term_state_machine.py |
+| `strategy = overwrite` or `merge`, existing term `status='unverified'` or `'needs_review'` | update allowed | — |
+| `strategy = force`, any existing status including `rejected` | overwrite regardless | tests/test_term_state_machine.py |
 
 ## Change Policy
 

@@ -12,10 +12,14 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from app.backend.models.term import Term
+from app.backend.config import TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED, TERM_INJECT_CONF_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
 _DB_LOCK = threading.Lock()
+
+_VALID_STATUSES = {"unverified", "needs_review", "approved", "rejected"}
+_INJECTABLE_STATUSES = {"approved"}
 
 _CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS terms (
@@ -100,17 +104,24 @@ class TermDB:
     def get_top_terms(
         self, target_lang: str, domain: str, top_n: int = 30
     ) -> List[Term]:
-        """Return top N injection-safe terms (approved or confidence=1.0)."""
+        """Return top N injection-safe terms (approved by default; optionally high-confidence unverified)."""
+        where = "target_lang=? AND domain=? AND status='approved'"
+        params: list = [target_lang, domain]
+        if TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED:
+            where = (
+                "target_lang=? AND domain=?"
+                " AND (status='approved' OR (status='unverified' AND confidence>=?))"
+            )
+            params = [target_lang, domain, TERM_INJECT_CONF_THRESHOLD]
         with _DB_LOCK, self._connect() as conn:
             rows = conn.execute(
-                """
+                f"""
                 SELECT * FROM terms
-                WHERE target_lang=? AND domain=?
-                  AND (status='approved' OR confidence=1.0)
+                WHERE {where}
                 ORDER BY usage_count DESC
                 LIMIT ?
                 """,
-                (target_lang, domain, top_n),
+                params + [top_n],
             ).fetchall()
         return [_row_to_term(r) for r in rows]
 
@@ -122,22 +133,28 @@ class TermDB:
     ) -> List[Term]:
         """Return injection-safe terms matching the given source_texts.
 
-        Only returns terms with status='approved' OR confidence=1.0,
-        scoped to the current document's extracted terms.
+        Only returns terms with status='approved' by default.
+        When TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED is true, also includes
+        unverified terms with confidence >= TERM_INJECT_CONF_THRESHOLD.
         """
         if not source_texts:
             return []
+        placeholders = ",".join("?" for _ in source_texts)
+        status_clause = "status='approved'"
+        base_params: list = [target_lang, domain]
+        if TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED:
+            status_clause = "(status='approved' OR (status='unverified' AND confidence>=?))"
+            base_params = [target_lang, domain, TERM_INJECT_CONF_THRESHOLD]
         with _DB_LOCK, self._connect() as conn:
-            placeholders = ",".join("?" for _ in source_texts)
             rows = conn.execute(
                 f"""
                 SELECT * FROM terms
                 WHERE target_lang=? AND domain=?
-                  AND (status='approved' OR confidence=1.0)
+                  AND {status_clause}
                   AND source_text IN ({placeholders})
                 ORDER BY confidence DESC, usage_count DESC
                 """,
-                [target_lang, domain] + list(source_texts),
+                base_params + list(source_texts),
             ).fetchall()
         return [_row_to_term(r) for r in rows]
 
@@ -187,14 +204,15 @@ class TermDB:
                 return "inserted"
 
             existing_approved = existing["status"] == "approved"
+            existing_rejected = existing["status"] == "rejected"
 
             # Conflict resolution
             if strategy == "skip":
                 return "skipped"
 
             if strategy == "overwrite":
-                # Protect approved records — use 'force' for intentional correction
-                if existing_approved:
+                # Protect approved and rejected records — use 'force' for intentional correction
+                if existing_approved or existing_rejected:
                     return "skipped"
                 conn.execute(
                     """
@@ -233,8 +251,8 @@ class TermDB:
                 return "overwritten"
 
             if strategy == "merge":
-                # Protect approved; for unverified: take higher confidence
-                if existing_approved:
+                # Protect approved and rejected; for unverified/needs_review: take higher confidence
+                if existing_approved or existing_rejected:
                     return "skipped"
                 existing_confidence = existing["confidence"]
                 if term.confidence > existing_confidence:
@@ -301,6 +319,26 @@ class TermDB:
             conn.commit()
         return cur.rowcount > 0
 
+    def reject(self, source_text: str, target_lang: str, domain: str) -> bool:
+        """Transition term to rejected status. Returns False if term not found."""
+        with _DB_LOCK, self._connect() as conn:
+            cur = conn.execute(
+                "UPDATE terms SET status='rejected' WHERE source_text=? AND target_lang=? AND domain=?",
+                (source_text, target_lang, domain),
+            )
+            conn.commit()
+        return cur.rowcount > 0
+
+    def flag_needs_review(self, source_text: str, target_lang: str, domain: str) -> bool:
+        """Transition term to needs_review status. Returns False if term not found."""
+        with _DB_LOCK, self._connect() as conn:
+            cur = conn.execute(
+                "UPDATE terms SET status='needs_review' WHERE source_text=? AND target_lang=? AND domain=?",
+                (source_text, target_lang, domain),
+            )
+            conn.commit()
+        return cur.rowcount > 0
+
     def get_unverified(
         self,
         target_lang: Optional[str] = None,
@@ -337,7 +375,7 @@ class TermDB:
     # ------------------------------------------------------------------
 
     def get_stats(self) -> Dict:
-        """Return total / unverified / by_target_lang / by_domain statistics."""
+        """Return total / unverified / by_target_lang / by_domain / by_status statistics."""
         with _DB_LOCK, self._connect() as conn:
             total = conn.execute("SELECT COUNT(*) FROM terms").fetchone()[0]
             unverified = conn.execute(
@@ -349,11 +387,16 @@ class TermDB:
             by_domain_rows = conn.execute(
                 "SELECT domain, COUNT(*) as cnt FROM terms GROUP BY domain"
             ).fetchall()
+            status_rows = conn.execute(
+                "SELECT status, COUNT(*) FROM terms GROUP BY status"
+            ).fetchall()
+        by_status = {row[0]: row[1] for row in status_rows}
         return {
             "total": total,
             "unverified": unverified,
             "by_target_lang": {r["target_lang"]: r["cnt"] for r in by_lang_rows},
             "by_domain": {r["domain"]: r["cnt"] for r in by_domain_rows},
+            "by_status": by_status,
         }
 
     # ------------------------------------------------------------------
@@ -478,7 +521,7 @@ class TermDB:
     def _all_terms(self, status_filter: Optional[str] = None) -> List[Term]:
         sql = "SELECT * FROM terms"
         params: list = []
-        if status_filter in ("approved", "unverified"):
+        if status_filter in _VALID_STATUSES:
             sql += " WHERE status=?"
             params.append(status_filter)
         sql += " ORDER BY id"

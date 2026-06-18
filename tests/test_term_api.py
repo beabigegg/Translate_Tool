@@ -176,7 +176,8 @@ def test_terms_import_skip_duplicate(client, db):
     assert resp.status_code == 200
     body = resp.json()
     assert body["skipped"] == 1
-    # Original should remain
+    # Original should remain — approve it first to verify via get_top_terms
+    db.approve("Pin", "vi", "technical")
     terms = db.get_top_terms("vi", "technical")
     assert terms[0].target_text == "chân"
 

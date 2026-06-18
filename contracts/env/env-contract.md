@@ -3,8 +3,8 @@ contract: env
 summary: Environment variable inventory, secret handling, and deployment sync policy.
 owner: platform-team
 surface: runtime-config
-schema-version: 0.2.0
-last-changed: 2026-06-17
+schema-version: 0.3.0
+last-changed: 2026-06-18
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -26,6 +26,8 @@ breaking-change-policy: deprecate-2-minors
 | OLLAMA_NUM_CTX | backend | all | no | no | (none) | 4096 | platform-team | positive int | yes | Backward-compat fallback for context window. If set and the specific var (GENERAL_NUM_CTX / TRANSLATION_NUM_CTX) is not set, both types use this value. New deployments should prefer the specific vars. |
 | GENERAL_NUM_CTX | backend | all | no | no | 4096 | 4096 | platform-team | positive int | yes | Context window for general-purpose model calls. Fallback chain: GENERAL_NUM_CTX → OLLAMA_NUM_CTX → 4096 |
 | TRANSLATION_NUM_CTX | backend | all | no | no | 3072 | 3072 | platform-team | positive int | yes | Context window for translation-dedicated model calls. Fallback chain: TRANSLATION_NUM_CTX → OLLAMA_NUM_CTX → 3072 |
+| TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED | backend | all | no | no | false | false | application-team | boolean (true/false or 1/0) | no | When true, also inject unverified terms with confidence >= TERM_INJECT_CONF_THRESHOLD into translation prompts. Migration escape hatch for deployments relying on the old confidence=1.0 bypass. |
+| TERM_INJECT_CONF_THRESHOLD | backend | all | no | no | 0.9 | 0.9 | application-team | float in (0.0, 1.0] | no | Minimum confidence score for unverified terms to be included in injection when TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED=true. Has no effect when the flag is false. |
 
 ## Public Frontend Env Policy
 

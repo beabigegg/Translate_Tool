@@ -3,7 +3,7 @@ contract: api-inventory
 summary: Endpoint inventory categories and ownership map for non-standard API surfaces.
 owner: application-team
 schema-version: 0.1.0
-last-changed: 2026-06-17
+last-changed: 2026-06-18
 surface: api
 ---
 
@@ -30,6 +30,8 @@ All routes are served under the `/api` prefix (mounted in `app/backend/main.py`)
 | POST | /api/terms/import | file-upload-exception | application-team | — | multipart; query `strategy`; 400, 422 |
 | GET | /api/terms/unverified | standard-json | application-team | — | query `target_lang`, `domain` |
 | POST | /api/terms/approve | standard-json | application-team | — | body: TermApproveRequest; 404 |
+| POST | /api/terms/reject | standard-json | application-team | — | body: TermRejectRequest; 404 |
+| POST | /api/terms/flag-needs-review | standard-json | application-team | — | body: TermRejectRequest; 404 |
 | GET | /api/terms/approved | standard-json | application-team | — | query `target_lang`, `domain` |
 | PATCH | /api/terms/edit | standard-json | application-team | — | body: TermEditRequest; 404 |
 | POST | /api/terms/wikidata/search | standard-json | application-team | — | external Wikidata lookup |

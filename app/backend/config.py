@@ -177,6 +177,10 @@ LIBREOFFICE_TIMEOUT = int(os.environ.get("LIBREOFFICE_TIMEOUT", "120"))
 
 VERIFY_MAX_RETRIES = 2  # Retries per failed segment during post-translation verification
 
+# Term injection gate: optional loose mode
+TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED: bool = os.getenv("TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED", "false").lower() == "true"
+TERM_INJECT_CONF_THRESHOLD: float = float(os.getenv("TERM_INJECT_CONF_THRESHOLD", "0.9"))
+
 SUPPORTED_EXTENSIONS = {".docx", ".doc", ".pptx", ".xlsx", ".xls", ".pdf"}
 
 LANG_CODE_MAP = {

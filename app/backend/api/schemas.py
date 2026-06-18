@@ -42,6 +42,10 @@ class TermStatsResponse(BaseModel):
     unverified: int = 0
     by_target_lang: Dict[str, int]
     by_domain: Dict[str, int]
+    needs_review: int = 0
+    approved: int = 0
+    rejected: int = 0
+    by_status: Dict[str, int] = {}
 
 
 class TermItem(BaseModel):
@@ -57,6 +61,18 @@ class TermItem(BaseModel):
 
 
 class TermApproveRequest(BaseModel):
+    source_text: str
+    target_lang: str
+    domain: str
+
+
+class TermRejectRequest(BaseModel):
+    source_text: str
+    target_lang: str
+    domain: str
+
+
+class TermFlagNeedsReviewRequest(BaseModel):
     source_text: str
     target_lang: str
     domain: str

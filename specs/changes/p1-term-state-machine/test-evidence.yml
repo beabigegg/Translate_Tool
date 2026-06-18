@@ -1,0 +1,36 @@
+change-id: p1-term-state-machine
+generated: 2026-06-18
+
+phases:
+  - phase: targeted
+    command: "pytest tests/test_term_state_machine.py -v --tb=short"
+    result: passed
+    counts: { passed: 8, failed: 0 }
+    tests:
+      - test_injection_gate_excludes_rejected_and_needs_review
+      - test_injection_gate_unverified_confidence_1_not_injected_by_default
+      - test_injection_gate_loose_mode_includes_high_confidence_unverified
+      - test_reject_and_flag_needs_review_transitions
+      - test_insert_conflict_strategy_protects_rejected
+      - test_get_stats_returns_by_status
+      - test_reject_and_flag_api_endpoints
+      - test_llm_confidence_cap
+
+  - phase: changed-area
+    command: "pytest tests/test_term_db.py tests/test_term_api.py tests/test_term_extractor.py tests/test_term_state_machine.py -q --tb=short"
+    result: passed
+
+  - phase: full
+    command: "pytest tests/ -q --tb=short"
+    result: passed
+    counts: { passed: 411, failed: 0 }
+
+ac-coverage:
+  - { id: AC-1, test: test_injection_gate_excludes_rejected_and_needs_review, status: passed }
+  - { id: AC-2, test: test_injection_gate_unverified_confidence_1_not_injected_by_default, status: passed }
+  - { id: AC-3, test: test_injection_gate_loose_mode_includes_high_confidence_unverified, status: passed }
+  - { id: AC-4, test: test_reject_and_flag_needs_review_transitions, status: passed }
+  - { id: AC-5, test: test_insert_conflict_strategy_protects_rejected, status: passed }
+  - { id: AC-6, test: test_get_stats_returns_by_status, status: passed }
+  - { id: AC-7, test: test_reject_and_flag_api_endpoints, status: passed }
+  - { id: AC-8, test: test_llm_confidence_cap, status: passed }

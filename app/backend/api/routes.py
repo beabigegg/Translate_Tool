@@ -23,8 +23,10 @@ from app.backend.api.schemas import (
     RouteInfoResponse,
     TermApproveRequest,
     TermEditRequest,
+    TermFlagNeedsReviewRequest,
     TermImportResult,
     TermItem,
+    TermRejectRequest,
     TermStatsResponse,
     WikidataCandidate,
     WikidataImportRequest,
@@ -42,7 +44,7 @@ _providers_config = load_providers_config()
 from app.backend.translation_profiles import get_profile, list_profiles
 from app.backend.services.job_manager import JobManager
 from app.backend.services.translation_cache import get_cache
-from app.backend.services.term_db import TermDB
+from app.backend.services.term_db import TermDB, _VALID_STATUSES
 
 _term_db = TermDB()
 
@@ -318,7 +320,17 @@ def clear_cache(model: Optional[str] = None) -> dict:
 def terms_stats() -> TermStatsResponse:
     """Return term database statistics."""
     stats = _term_db.get_stats()
-    return TermStatsResponse(**stats)
+    by_status = stats.get("by_status", {})
+    return TermStatsResponse(
+        total=stats["total"],
+        unverified=stats.get("unverified", 0),
+        by_target_lang=stats.get("by_target_lang", {}),
+        by_domain=stats.get("by_domain", {}),
+        needs_review=by_status.get("needs_review", 0),
+        approved=by_status.get("approved", 0),
+        rejected=by_status.get("rejected", 0),
+        by_status=by_status,
+    )
 
 
 @router.get("/terms/export")
@@ -327,7 +339,7 @@ def terms_export(format: str = "json", status: Optional[str] = None):
     fmt = format.lower()
     if fmt not in ("json", "csv", "xlsx"):
         raise HTTPException(status_code=400, detail="format must be json, csv, or xlsx")
-    status_filter = status if status in ("approved", "unverified") else None
+    status_filter = status if status in _VALID_STATUSES else None
 
     import tempfile as _tempfile
 
@@ -424,6 +436,24 @@ def terms_approve(body: TermApproveRequest):
     if not found:
         raise HTTPException(status_code=404, detail="Term not found")
     return {"ok": True}
+
+
+@router.post("/terms/reject")
+def terms_reject(req: TermRejectRequest):
+    """Transition a term to rejected status."""
+    ok = _term_db.reject(req.source_text, req.target_lang, req.domain)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Term not found")
+    return {"status": "rejected"}
+
+
+@router.post("/terms/flag-needs-review")
+def terms_flag_needs_review(req: TermFlagNeedsReviewRequest):
+    """Transition a term to needs_review status."""
+    ok = _term_db.flag_needs_review(req.source_text, req.target_lang, req.domain)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Term not found")
+    return {"status": "needs_review"}
 
 
 @router.get("/terms/approved", response_model=List[TermItem])

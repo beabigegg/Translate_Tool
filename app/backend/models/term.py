@@ -17,7 +17,7 @@ class Term:
     context_snippet: str = ""
     confidence: float = 1.0
     usage_count: int = 0
-    status: str = "unverified"  # "unverified" | "approved"
+    status: str = "unverified"  # "unverified" | "needs_review" | "approved" | "rejected"
     created_at: Optional[str] = field(default=None)
 
     def __post_init__(self) -> None:

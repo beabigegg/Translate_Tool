@@ -49,7 +49,8 @@ def test_parse_translation_response_valid():
     assert len(result) == 1
     assert result[0]["source"] == "Pin"
     assert result[0]["target"] == "chân"
-    assert result[0]["confidence"] == 0.9
+    # confidence is capped at _LLM_CONFIDENCE_CAP (0.85); 0.9 > 0.85 so result is 0.85
+    assert result[0]["confidence"] == 0.85
 
 
 def test_parse_translation_response_with_surrounding_text():

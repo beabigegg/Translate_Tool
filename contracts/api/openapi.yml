@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "API behavior, compatibility rules, and endpoint contract requirements.",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "description": "- response style: JSON (Pydantic response models); binary endpoints return file streams (FileResponse / StreamingResponse)."
   },
   "paths": {
@@ -345,6 +345,56 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/TermApproveRequest"
+              }
+            }
+          }
+        },
+        "x-cdd-response-contract": "-",
+        "x-cdd-errors": "404"
+      }
+    },
+    "/terms/reject": {
+      "post": {
+        "summary": "POST /terms/reject",
+        "responses": {
+          "201": {
+            "description": "Contract response: -"
+          },
+          "404": {
+            "description": "Error response (see contract error format)"
+          }
+        },
+        "requestBody": {
+          "description": "Contract request: TermRejectRequest",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TermRejectRequest"
+              }
+            }
+          }
+        },
+        "x-cdd-response-contract": "-",
+        "x-cdd-errors": "404"
+      }
+    },
+    "/terms/flag-needs-review": {
+      "post": {
+        "summary": "POST /terms/flag-needs-review",
+        "responses": {
+          "201": {
+            "description": "Contract response: -"
+          },
+          "404": {
+            "description": "Error response (see contract error format)"
+          }
+        },
+        "requestBody": {
+          "description": "Contract request: TermRejectRequest",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TermRejectRequest"
               }
             }
           }
@@ -704,6 +754,22 @@
           "by_domain": {
             "type": "string",
             "description": "serialized as JSON map of domain -> count"
+          },
+          "needs_review": {
+            "type": "integer",
+            "description": "count of terms with status=needs_review; default 0"
+          },
+          "approved": {
+            "type": "integer",
+            "description": "count of terms with status=approved; default 0"
+          },
+          "rejected": {
+            "type": "integer",
+            "description": "count of terms with status=rejected; default 0"
+          },
+          "by_status": {
+            "type": "string",
+            "description": "serialized as JSON map of status -> count for all four statuses; default {}"
           }
         },
         "required": [
@@ -776,6 +842,25 @@
         ]
       },
       "TermApproveRequest": {
+        "type": "object",
+        "properties": {
+          "source_text": {
+            "type": "string"
+          },
+          "target_lang": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_text",
+          "target_lang",
+          "domain"
+        ]
+      },
+      "TermRejectRequest": {
         "type": "object",
         "properties": {
           "source_text": {

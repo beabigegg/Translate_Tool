@@ -19,6 +19,8 @@ from app.backend.services.term_db import TermDB
 
 logger = logging.getLogger(__name__)
 
+_LLM_CONFIDENCE_CAP = 0.85
+
 # Scenario → domain mapping (Decision 3 from design.md)
 SCENARIO_TO_DOMAIN: Dict[str, str] = {
     "TECHNICAL_PROCESS": "technical",
@@ -341,7 +343,7 @@ def _parse_translation_response(text: str) -> List[Dict]:
                     {
                         "source": str(t.get("source", "")),
                         "target": str(t.get("target", "")),
-                        "confidence": float(t.get("confidence", 1.0)),
+                        "confidence": min(float(t.get("confidence", 1.0)), _LLM_CONFIDENCE_CAP),
                     }
                     for t in translations
                     if isinstance(t, dict) and t.get("source")
@@ -358,7 +360,7 @@ def _parse_translation_response(text: str) -> List[Dict]:
                         {
                             "source": str(t.get("source", "")),
                             "target": str(t.get("target", "")),
-                            "confidence": float(t.get("confidence", 1.0)),
+                            "confidence": min(float(t.get("confidence", 1.0)), _LLM_CONFIDENCE_CAP),
                         }
                         for t in translations
                         if isinstance(t, dict) and t.get("source")
@@ -453,7 +455,7 @@ def run_phase0_multi(
                 for t in translations:
                     src = t.get("source", "")
                     tgt = t.get("target", "")
-                    conf = t.get("confidence", 1.0)
+                    conf = min(float(t.get("confidence", 1.0)), _LLM_CONFIDENCE_CAP)
                     if not src or not tgt:
                         continue
                     ctx = next(

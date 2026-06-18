@@ -3,8 +3,8 @@ contract: api
 summary: API behavior, compatibility rules, and endpoint contract requirements.
 owner: application-team
 surface: api
-schema-version: 0.3.0
-last-changed: 2026-06-17
+schema-version: 0.4.0
+last-changed: 2026-06-18
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -37,6 +37,8 @@ breaking-change-policy: deprecate-2-minors
 | POST | /terms/import | none | multipart/form-data | TermImportResult | 400, 422 | tests/contract/ |
 | GET | /terms/unverified | none | - | TermItem[] | - | tests/contract/ |
 | POST | /terms/approve | none | TermApproveRequest | - | 404 | tests/contract/ |
+| POST | /terms/reject | none | TermRejectRequest | - | 404 | tests/contract/ |
+| POST | /terms/flag-needs-review | none | TermRejectRequest | - | 404 | tests/contract/ |
 | GET | /terms/approved | none | - | TermItem[] | - | tests/contract/ |
 | PATCH | /terms/edit | none | TermEditRequest | - | 404 | tests/contract/ |
 | POST | /terms/wikidata/search | none | WikidataSearchRequest | WikidataSearchResponse | 422 | tests/contract/ |
@@ -145,6 +147,10 @@ The fence MUST be tagged `json-schema` (NOT `json`) or export fails fast:
 | unverified | integer | yes |  |  |
 | by_target_lang | string | yes |  | serialized as JSON map of lang -> count |
 | by_domain | string | yes |  | serialized as JSON map of domain -> count |
+| needs_review | integer | no |  | count of terms with status=needs_review; default 0 |
+| approved | integer | no |  | count of terms with status=approved; default 0 |
+| rejected | integer | no |  | count of terms with status=rejected; default 0 |
+| by_status | string | no |  | serialized as JSON map of status -> count for all four statuses; default {} |
 
 ### TermItem
 | field | type | required | format | notes |
@@ -167,6 +173,13 @@ The fence MUST be tagged `json-schema` (NOT `json`) or export fails fast:
 | overwritten | integer | yes |  |  |
 
 ### TermApproveRequest
+| field | type | required | format | notes |
+|---|---|---|---|---|
+| source_text | string | yes |  |  |
+| target_lang | string | yes |  |  |
+| domain | string | yes |  |  |
+
+### TermRejectRequest
 | field | type | required | format | notes |
 |---|---|---|---|---|
 | source_text | string | yes |  |  |
@@ -222,6 +235,14 @@ The fence MUST be tagged `json-schema` (NOT `json`) or export fails fast:
 | provider_failure_count | integer | yes |  | total provider call failures since process start; initializes to 0; see BR-23 |
 | font_cache_hits | integer | yes |  | total font buffer cache hits since process start; initializes to 0 |
 | font_cache_misses | integer | yes |  | total font buffer cache misses since process start; initializes to 0 |
+
+## Endpoint Notes
+
+**GET /terms/export** — the `status` query parameter accepts `approved`, `unverified`, `needs_review`, and `rejected`. When omitted, all terms are exported. See BR-6 (extended by BR-28) and Table G in `contracts/business/business-rules.md`.
+
+**POST /terms/reject** — transitions a term to `rejected` status. Rejected terms are never injected into translation prompts regardless of the loose gate flag (BR-29). Returns HTTP 200 `{"status": "rejected"}` on success; HTTP 404 `{"detail": "Term not found"}` when the term does not exist.
+
+**POST /terms/flag-needs-review** — flags a term for human review by transitioning it to `needs_review` status. Terms in `needs_review` are not injected until approved (BR-29). Returns HTTP 200 `{"status": "needs_review"}` on success; HTTP 404 `{"detail": "Term not found"}` when the term does not exist.
 
 ## Error Format
 

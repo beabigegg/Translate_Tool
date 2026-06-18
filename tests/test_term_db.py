@@ -68,6 +68,8 @@ def test_overwrite_strategy(db):
     db.insert(_make_term(confidence=0.7))
     result = db.insert(_make_term(target_text="đinh", confidence=1.0), strategy="overwrite")
     assert result == "overwritten"
+    # Approve to make injectable, then verify the new target_text is stored
+    db.approve("Pin", "vi", "technical")
     terms = db.get_top_terms("vi", "technical")
     assert terms[0].target_text == "đinh"
 
@@ -76,6 +78,8 @@ def test_merge_higher_confidence_wins(db):
     db.insert(_make_term(confidence=0.5))
     result = db.insert(_make_term(target_text="đinh", confidence=1.0), strategy="merge")
     assert result == "overwritten"
+    # Approve to make injectable, then verify the winner target_text
+    db.approve("Pin", "vi", "technical")
     terms = db.get_top_terms("vi", "technical")
     assert terms[0].target_text == "đinh"
 
@@ -84,6 +88,8 @@ def test_merge_lower_confidence_keeps_existing(db):
     db.insert(_make_term())
     result = db.insert(_make_term(target_text="đinh", confidence=0.3), strategy="merge")
     assert result == "skipped"
+    # Approve to make injectable, then verify the original target_text is preserved
+    db.approve("Pin", "vi", "technical")
     terms = db.get_top_terms("vi", "technical")
     assert terms[0].target_text == "chân"
 
@@ -108,6 +114,8 @@ def test_increment_usage(db):
     db.insert(_make_term())
     db.increment_usage("Pin", "vi", "technical")
     db.increment_usage("Pin", "vi", "technical")
+    # Approve to make injectable, then verify usage_count via get_top_terms
+    db.approve("Pin", "vi", "technical")
     terms = db.get_top_terms("vi", "technical")
     assert terms[0].usage_count == 2
 
@@ -119,6 +127,9 @@ def test_increment_usage(db):
 def test_get_top_terms_ordered_by_usage(db):
     db.insert(_make_term(source_text="SMD", usage_count=5))
     db.insert(_make_term(source_text="Pin", usage_count=1))
+    # Approve both to make injectable; ordering should still be by usage_count DESC
+    db.approve("SMD", "vi", "technical")
+    db.approve("Pin", "vi", "technical")
     terms = db.get_top_terms("vi", "technical")
     assert terms[0].source_text == "SMD"
 
@@ -180,6 +191,8 @@ def test_import_skip_preserves_existing(db, tmp_path):
 
     counts = db.import_file(out, strategy="skip")
     assert counts["skipped"] == 1
-    # Original should be preserved
+    # Original should be preserved — use get_approved() since original is unverified;
+    # approve first then verify via get_top_terms
+    db.approve("Pin", "vi", "technical")
     terms = db.get_top_terms("vi", "technical")
     assert terms[0].confidence == 1.0
