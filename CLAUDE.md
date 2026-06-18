@@ -119,4 +119,5 @@ write **outside** the markers is yours and is never edited or evicted.
 - At `/cdd-close`: remove the archived change's `cdd-kit gate <id>` line from `.github/workflows/contract-driven-gates.yml` — archived dirs no longer exist under `specs/changes/` and CI fails with "change not found".
 - After modifying `contracts/api/api-contract.md`: run `cdd-kit openapi export --out contracts/api/openapi.yml` and commit — the CI `openapi export --check` gate fails if `openapi.yml` is stale.
 - `cdd-kit contract` ordering: run `cdd-kit contract schema set <Name>` to define a response schema **before** `cdd-kit contract endpoint set` references it — referencing an undefined schema fails with "response schema <Name> is not defined".
+- `ci-gates.md` gate-table column header must contain the literal token `workflow` (e.g. `command / workflow`) — `validate_ci_gates.py` rejects files missing it; the template is correct, do not rename the column.
 <!-- cdd-kit:learnings:end -->

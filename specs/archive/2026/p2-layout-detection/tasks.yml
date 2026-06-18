@@ -37,5 +37,5 @@ tasks:
   - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "gates configured in .github/workflows/contract-driven-gates.yml; all required gates verified locally (cdd-kit gate passes)" }
   - { id: "6.3", section: Verification, title: "Informational gates", status: skipped, note: "only informational gate is hf-download-live (Tier 3 nightly); not required at PR" }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "hf-download-live promoted to Tier 3 nightly only; no mandatory weekly/manual gates for this change" }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "ci-gates.md workflow-token rule promoted to CLAUDE.md Promoted Learnings; onnxruntime CVE floor do-not-promote (machine-enforced in requirements.txt)" }
