@@ -3,7 +3,7 @@ contract: ci
 summary: CI gate inventory, artifact retention, and rollback requirements.
 owner: platform-team
 surface: delivery-pipeline
-schema-version: 0.2.0
+schema-version: 0.3.0
 last-changed: 2026-06-18
 breaking-change-policy: deprecate-2-minors
 ---
@@ -30,8 +30,11 @@ All gates in the Gate Inventory marked `required: yes` must pass before a PR is 
 - **Fail condition**: any sample where the new-format IR differs from the old-format IR on a pre-existing field (i.e., a field that existed before p2-ir-document-model) causes the gate to fail and blocks merge. Differences limited to the new `reading_order` field alone are not a regression.
 - **Report artifact**: the gate emits a per-sample pass/fail diff to stdout (captured by CI as a step log). No external artifact store is required at Tier 2.
 - **Sample set**: `tests/fixtures/golden/` must contain 3–5 representative files covering at minimum one PDF, one DOCX, and one PPTX. Files must be committed as binary fixtures; they must not be generated at CI time. Note: DOCX and PPTX binary fixtures are deferred pending sourcing of license-clean representative files; the gate skips DOCX/PPTX samples gracefully until they are committed.
+- **Snapshot initialization**: `_load_or_create_snapshot()` MUST NOT auto-write and auto-pass when a snapshot JSON is absent. CI must fail (not silently create) when a fixture file exists in `tests/fixtures/golden/` without a corresponding committed `.ir.json` snapshot. Any new fixture file committed to the golden directories MUST be accompanied by a committed snapshot in the same PR.
 
 ## Informational Gate Promotion Policy
+
+When a required gate produces results that vary across runner versions due to third-party library non-determinism (e.g. PyMuPDF table-detection variance), the affected field or sub-check MUST be quarantined to an informational sub-job rather than disabling or deleting the gate. The informational sub-job must record: the affected gate name, the non-deterministic field, the library and version range exhibiting the behavior, an assigned owner, and an exit date. The parent gate remains required and continues to block on all deterministic fields.
 
 ## Artifact Retention Policy
 

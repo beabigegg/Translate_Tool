@@ -3,9 +3,9 @@ artifact: project-map
 generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
-visible-dirs: 52
-visible-files: 174
-omitted-dirs: 8
+visible-dirs: 56
+visible-files: 179
+omitted-dirs: 11
 truncated-dirs: 0
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
 ---
@@ -176,8 +176,10 @@ Translate_Tool/
 |   \-- CHANGELOG.md
 |-- docs/
 |   |-- adr/
-|   |   \-- 0001-config-driven-provider-registry.md
-|   \-- improvement-plan.md
+|   |   |-- 0001-config-driven-provider-registry.md
+|   |   \-- 0002-ir-elementtype-serialized-values.md
+|   |-- improvement-plan.md
+|   \-- p2-change-requests.md
 |-- scripts/
 |   |-- benchmark_full_factorial.py
 |   |-- benchmark_realfile_pipeline.py
@@ -214,6 +216,14 @@ Translate_Tool/
 |   |   |-- README.md
 |   |   \-- response-samples.example.json
 |   |-- fixtures/
+|   |   |-- golden/
+|   |   |   |-- docx/
+|   |   |   |   \-- ... (max depth)
+|   |   |   |-- pdf/
+|   |   |   |   \-- ... (max depth)
+|   |   |   |-- pptx/
+|   |   |   |   \-- ... (max depth)
+|   |   |   \-- README.md
 |   |   \-- test.pdf
 |   |-- templates/
 |   |   |-- data-boundary/
@@ -239,8 +249,10 @@ Translate_Tool/
 |   |-- test_coordinate_renderer.py
 |   |-- test_docx_parser.py
 |   |-- test_font_utils.py
+|   |-- test_golden_regression.py
 |   |-- test_hy_mt_quality_refinement.py
 |   |-- test_inline_renderer.py
+|   |-- test_ir_pipeline_decoupling.py
 |   |-- test_llm_client_protocol.py
 |   |-- test_metrics_counters.py
 |   |-- test_metrics_endpoint.py

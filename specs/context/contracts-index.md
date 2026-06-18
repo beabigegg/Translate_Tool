@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 contract-count: 9
 missing-summary-count: 0
-inputs-digest: b825b066ee975a202af3ae711a7c6de4db536fcdf9c863b521b219a0fd846517
+inputs-digest: 0c41580e96e0c84eddc3170f559aeaa3c502ce255fc7d18f7c65dbf990522fc2
 ---
 
 # Contracts Index
@@ -82,8 +82,8 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: CI/CD Gate Contract
 - owner: platform-team
 - surface: delivery-pipeline
-- schema-version: 0.1.0
-- last-changed: 2026-04-27
+- schema-version: 0.3.0
+- last-changed: 2026-06-18
 - breaking-change-policy: deprecate-2-minors
 - summary: CI gate inventory, artifact retention, and rollback requirements.
 
@@ -118,7 +118,7 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: Data Shape Contract
 - owner: application-team
 - surface: data
-- schema-version: 0.3.0
+- schema-version: 0.4.1
 - last-changed: 2026-06-18
 - breaking-change-policy: deprecate-2-minors
 - summary: Data schema, invalid-data handling, and row-level compatibility rules.

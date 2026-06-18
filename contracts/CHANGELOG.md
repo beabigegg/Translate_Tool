@@ -8,8 +8,14 @@ While a contract is at 0.x (draft), entries here are optional.
 Once a contract reaches 1.0.0, every schema-version bump must have
 a corresponding entry below.
 
+## [ci 0.3.0] — 2026-06-18
+Added: Informational Gate Promotion Policy — quarantine-to-informational-sub-job rule for third-party library non-determinism; parent gate stays required. Added: snapshot initialization `MUST NOT` auto-pass rule — new fixture binaries must be accompanied by committed `.ir.json` snapshot in the same PR.
+
 ## [ci 0.2.0] — 2026-06-18
 Added: `golden-sample-regression` gate — offline dual-run comparison over `tests/fixtures/golden/` (no network, no GPU); required on PR; blocks merge on any pre-existing-field regression. Added: Required Check Policy section with golden-sample-regression gate specification.
+
+## [data 0.4.1] — 2026-06-18
+Added: `### ElementType wire-value convention` — all `ElementType` members MUST use lowercase wire values; frozen by ADR 0002; uppercase case is a breaking change requiring major version bump.
 
 ## [data 0.4.0] — 2026-06-18
 Added: `## Intermediate Representation (IR) — TranslatableDocument` section (p2-ir-document-model). Added: four region-level `ElementType` values (`TABLE`, `FIGURE`, `FORMULA`, `LIST`) — non-breaking additive enum expansion. Added: `reading_order` optional field (`integer|null`, default `null`) to `TranslatableElement` serialized shape — backward-compatible; old-format documents (lacking the key) deserialize with `reading_order=None`. Added: round-trip guarantee, backward-compatibility rule, `to_dict` compatibility rule, decoupling guarantee, known-consumers table. Added: two IR-specific invalid-data behavior rows.

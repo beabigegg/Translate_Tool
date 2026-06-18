@@ -3,7 +3,7 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.4.0
+schema-version: 0.4.1
 last-changed: 2026-06-18
 breaking-change-policy: deprecate-2-minors
 ---
@@ -117,6 +117,10 @@ The IR is the single authoritative in-memory and serialized form that decouples 
 | `list` | region-level | Entire list region (container; may enclose `list_item` elements) | added p2-ir-document-model |
 
 All pre-existing values remain valid and their serialized string forms are unchanged. New region-level values are additive non-breaking: existing consumers that do not recognize them must not raise on deserialization; they may skip or passthrough such elements.
+
+### ElementType wire-value convention
+
+All `ElementType` members MUST use lowercase Python string values as their wire form (e.g. `TABLE = "table"`, `LIST = "list"`). This convention is frozen by ADR 0002 (`docs/adr/0002-ir-elementtype-serialized-values.md`) to guarantee round-trip compatibility across serialized IR snapshots. Any future member whose `value` differs in case is a breaking change and requires a major version bump on this contract.
 
 ### TranslatableElement — serialized field shape (`to_dict` / `from_dict`)
 
