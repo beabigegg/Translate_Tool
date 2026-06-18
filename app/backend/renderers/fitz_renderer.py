@@ -33,6 +33,7 @@ from app.backend.renderers.bbox_reflow import reflow_document
 from app.backend.renderers.text_region_renderer import (
     TextRegion,
     create_text_regions_from_elements,
+    fit_text_cascade,
     render_text_region,
 )
 from app.backend.services.metrics import record_font_cache_hit, record_font_cache_miss
@@ -263,7 +264,7 @@ class PDFGenerator:
                 continue
 
             # Collect redaction areas and translations for this page
-            redaction_items = []  # List of (redact_rect, text_rect, translated_text)
+            redaction_items = []  # List of (redact_rect, text_rect, translated_text, element)
 
             # Process each element — use Placement for text_rect; fitz quad for redact_rect.
             for element in elements:
@@ -339,21 +340,21 @@ class PDFGenerator:
                     placement.y1,
                 )
 
-                redaction_items.append((redact_rect, text_rect, translated_text))
+                redaction_items.append((redact_rect, text_rect, translated_text, element))
 
             # Apply redactions if mask is enabled
             if self.draw_mask and redaction_items:
                 # Add all redaction annotations first
-                for redact_rect, _, _ in redaction_items:
+                for redact_rect, _, _, _ in redaction_items:
                     # Add redaction annotation with white fill
                     page.add_redact_annot(redact_rect, fill=(1, 1, 1))
 
                 # Apply all redactions at once (removes text from PDF)
                 page.apply_redactions()
 
-            # Now insert all translated text
-            for _, text_rect, translated_text in redaction_items:
-                self._insert_text_in_rect(page, text_rect, translated_text)
+            # Now insert all translated text; pass element so truncation marker (BR-38) can be set
+            for _, text_rect, translated_text, elem_ref in redaction_items:
+                self._insert_text_in_rect(page, text_rect, translated_text, element=elem_ref)
 
         # Subset fonts to embed only used glyphs (important for CJK fonts)
         try:
@@ -455,16 +456,26 @@ class PDFGenerator:
         page,
         rect,
         text: str,
+        element=None,
     ) -> None:
-        """Insert text into a rectangle with automatic font sizing and text wrapping.
+        """Insert text into a rectangle using the BR-36 fit cascade.
 
-        Uses TextWriter for proper Unicode support (especially Vietnamese diacritics).
-        Wraps long text lines to fit within the rectangle width.
+        Replaces the previous 25-iteration shrink loop with a call to the
+        shared ``fit_text_cascade`` helper (text_region_renderer.py).  The
+        cascade returns a ``CascadeDecision``; this method drives fitz
+        TextWriter from that decision.
+
+        When the cascade fires step (e) truncation, ``element.render_truncated``
+        is set ``True`` (BR-38, AC-5).  ``element`` may be ``None`` (legacy
+        call-sites that pre-date IR element access); in that case truncation is
+        logged but the marker cannot be set.
 
         Args:
             page: PyMuPDF page object.
             rect: Target fitz.Rect.
             text: Text to insert.
+            element: Optional TranslatableElement; when provided, receives the
+                render_truncated marker on truncation (BR-38).
         """
         import fitz
 
@@ -506,68 +517,57 @@ class PDFGenerator:
             logger.warning(f"Failed to create font: {e}, using default")
             font = fitz.Font("helv")
 
-        # Start with max font size and decrease until text fits
-        font_size = fc["max"]
-        line_spacing = 1.15
+        # --- Invoke the shared BR-36 fit cascade ---
+        # Build a minimal StyleInfo-compatible dict for the cascade.
+        from app.backend.models.translatable_document import StyleInfo, BoundingBox as _BBox
 
-        # Try inserting with decreasing font sizes until it fits
-        for _ in range(25):
-            if font_size < fc["min"]:
-                font_size = fc["min"]
-                break
+        style = StyleInfo(
+            font_size=float(fc["max"]),
+            font_name=None,  # cascade uses calculate_text_width (ReportLab); font object for I/O
+        )
+        bbox_obj = _BBox(
+            x0=float(rect.x0),
+            y0=float(rect.y0),
+            x1=float(rect.x1),
+            y1=float(rect.y1),
+        )
 
-            try:
-                # Wrap text to fit within rect width
-                wrapped_lines = self._wrap_text(text, font, font_size, rect.width)
+        decision = fit_text_cascade(
+            text=text,
+            bbox=bbox_obj,
+            style=style,
+            available_whitespace_below=0.0,  # neighbor geometry not exposed by fitz (design Open Risk)
+        )
 
-                # Calculate total height needed
-                total_height = len(wrapped_lines) * font_size * line_spacing
+        # Mark truncation on IR element (BR-38, AC-5)
+        if decision.truncated:
+            if element is not None:
+                element.render_truncated = True
+            logger.debug(
+                f"[cascade] Truncated text in bbox ({rect.width:.1f}×{rect.height:.1f}): "
+                f"'{text[:30]}…' → '{decision.fitted_text[:30]}'"
+            )
 
-                # Check if wrapped text fits vertically
-                if total_height <= rect.height:
-                    # Text fits! Insert it
-                    tw = fitz.TextWriter(page.rect)
-                    x = rect.x0
-                    y = rect.y0 + font_size  # Baseline offset
+        render_text = decision.fitted_text if decision.fitted_text else text
+        final_font_size = max(decision.font_size, float(fc["min"]))
+        line_spacing = decision.line_spacing
 
-                    for line in wrapped_lines:
-                        if y > rect.y1:
-                            break
-                        tw.append((x, y), line, font=font, fontsize=font_size)
-                        y += font_size * line_spacing
-
-                    tw.write_text(page)
-                    return
-
-                # Text didn't fit vertically, try smaller size
-                font_size *= fc["shrink_factor"]
-
-            except Exception as e:
-                logger.debug(f"TextWriter failed: {e}")
-                font_size *= fc["shrink_factor"]
-
-        # Final attempt with minimum size - truncate if needed
+        # Render via fitz TextWriter using the cascade decision
         try:
-            final_size = max(font_size, fc["min"])
-            wrapped_lines = self._wrap_text(text, font, final_size, rect.width)
-
+            wrapped_lines = self._wrap_text(render_text, font, final_font_size, rect.width)
             tw = fitz.TextWriter(page.rect)
-            y = rect.y0 + final_size
+            x = rect.x0
+            y = rect.y0 + final_font_size  # Baseline offset
 
             for line in wrapped_lines:
                 if y > rect.y1:
-                    # Log overflow warning
-                    logger.debug(
-                        f"Text does not fit in bbox even at minimum font size {final_size}pt: "
-                        f"text='{text[:50]}...', bbox=({rect.width:.1f}, {rect.height:.1f})"
-                    )
                     break
-                tw.append((rect.x0, y), line, font=font, fontsize=final_size)
-                y += final_size * line_spacing
+                tw.append((x, y), line, font=font, fontsize=final_font_size)
+                y += final_font_size * line_spacing
 
             tw.write_text(page)
         except Exception as e:
-            logger.warning(f"Failed to insert text: {e}")
+            logger.warning(f"Failed to insert text via cascade decision: {e}")
 
     def _generate_side_by_side(
         self,

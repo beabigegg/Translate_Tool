@@ -1,0 +1,46 @@
+agent: backend-engineer
+change-id: p2-text-expansion
+timestamp: 2026-06-18
+status: complete
+
+summary: |
+  Implemented all 8 IP items. Added CascadeDecision dataclass and fit_text_cascade
+  (BR-36 5-step cascade) to text_region_renderer.py. Rewired fitz_renderer.py
+  _insert_text_in_rect to call fit_text_cascade instead of the inline 25-iteration
+  shrink loop. Added render_truncated field to TranslatableElement. Added
+  EXPANSION_FACTOR_TABLE, DEFAULT_EXPANSION_FACTOR, get_expansion_factor, and
+  get_metric_compatible_fallback to font_utils.py. Created benchmark test file
+  and wrote TDD tests for all ACs.
+
+  IP-6 grep evidence:
+    grep fit_text_cascade|CascadeDecision|EXPANSION_FACTOR in coordinate_renderer.py,
+    inline_renderer.py, pdf_generator.py → zero matches (BR-40 satisfied).
+
+  Step (d) degraded-behavior note (design Open Risk):
+    available_whitespace_below=0.0 is passed from fitz_renderer._insert_text_in_rect
+    because fitz does not expose neighbor geometry. Step (d) is therefore skipped
+    and execution proceeds directly to step (e) when steps a-c are exhausted.
+    This is the documented degraded behavior per BR-36 Table L and design.md.
+
+  Test run summary:
+    Full suite: 575 passed, 3 skipped (pre-existing DOCX/PPTX fixture absence), 0 failed.
+    Skipped tests are in test_golden_regression.py for DOCX/PPTX fixture absence —
+    out of scope per test-plan.md.
+
+artifacts:
+  - { type: files-changed, pointer: "app/backend/models/translatable_document.py:140-172" }
+  - { type: files-changed, pointer: "app/backend/utils/font_utils.py:26-205 (new content)" }
+  - { type: files-changed, pointer: "app/backend/renderers/text_region_renderer.py:1-280 (new content)" }
+  - { type: files-changed, pointer: "app/backend/renderers/fitz_renderer.py:33-38,453-575 (rewired)" }
+  - { type: tests-added, pointer: "tests/test_text_region_renderer.py::TestFitCascadeContract" }
+  - { type: tests-added, pointer: "tests/test_text_region_renderer.py::TestFitCascade" }
+  - { type: tests-added, pointer: "tests/test_text_region_renderer.py::TestTruncationMarker" }
+  - { type: tests-added, pointer: "tests/test_text_region_renderer.py::TestSinglePathEnforcement" }
+  - { type: tests-added, pointer: "tests/test_font_utils.py::TestExpansionFactorTable" }
+  - { type: tests-added, pointer: "tests/test_font_utils.py::TestMetricFallbackChain" }
+  - { type: tests-added, pointer: "tests/test_translatable_document.py::TestRenderTruncatedField" }
+  - { type: tests-added, pointer: "tests/test_renderer_convergence.py::TestCascadeWiringLayoutEquivalence" }
+  - { type: tests-added, pointer: "tests/test_text_expansion_benchmark.py (new file)" }
+  - { type: tests-added, pointer: "tests/test_layout_detector.py::TestNoExtraFieldsOutsideIR (updated standard_attrs)" }
+  - { type: test-output, pointer: "575 passed, 3 skipped, 0 failed (full suite)" }
+  - { type: contracts-touched, pointer: "n/a (contracts already authored by contract-reviewer; implementation matches)" }

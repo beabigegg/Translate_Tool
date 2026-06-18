@@ -1,6 +1,6 @@
 # Contract-driven gates
 # Tier semantics: ci/gate-policy.md
-# Active change gates: none (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence)
+# Active change gates: p2-text-expansion (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence)
 
 name: contract-driven-gates
 
@@ -44,8 +44,7 @@ jobs:
         run: cdd-kit validate --contracts
 
       - name: Change gate (Tier 1 — blocks merge)
-        run: |
-          echo "No active change gates — all current changes are in specs/archive/."
+        run: cdd-kit gate p2-text-expansion
 
       - name: OpenAPI sync gate
         run: cdd-kit openapi export --check --out contracts/api/openapi.yml
@@ -138,6 +137,41 @@ jobs:
             app/backend/requirements.txt \
             app/backend/environment.yml
 
+  text-expansion-benchmark:
+    name: text-expansion-benchmark
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install -r app/backend/requirements.txt
+
+      - name: Text expansion benchmark (Tier 2 — blocks merge on PR)
+        # AC-1: en→de (+30%) 0 bbox overflow across golden expansion fixtures.
+        # AC-2: en→es (+25%) 0 bbox overflow across golden expansion fixtures.
+        # AC-3: 0 tofu boxes in the benchmark set.
+        # Fixtures are pre-committed binaries in tests/fixtures/golden/expansion/.
+        # No network access or GPU required.
+        run: >
+          pytest tests/test_text_expansion_benchmark.py
+          --tb=short -q
+          --junitxml=test-results/text-expansion-benchmark.xml
+
+      - name: Upload expansion benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: text-expansion-benchmark-results
+          path: test-results/text-expansion-benchmark.xml
+          retention-days: 14
+
   renderer-equivalence:
     name: renderer-equivalence
     if: github.event_name == 'pull_request'
@@ -155,15 +189,17 @@ jobs:
         run: pip install -r app/backend/requirements.txt
 
       - name: Renderer equivalence gate (Tier 2 — blocks merge on PR)
-        # AC-4/AC-5: both render paths (fitz primary, ReportLab fallback) make identical
-        # element-level decisions (inclusion, reading-order bucket, text-source) for the
-        # same TranslatableDocument IR. See contracts/ci/ci-gate-contract.md §Renderer Equivalence Gate.
-        # The -k "equivalence" filter selects TestLayoutEquivalence, TestEquivalenceGolden,
-        # TestReadingOrderPreservedBothPaths, and TestElementTypingPreservedBothPaths across
-        # test_ir_pipeline_decoupling.py now; when test_renderer_convergence.py is committed
-        # by the backend-engineer, the filter extends to it automatically.
+        # AC-6: both render paths (fitz primary, ReportLab fallback) make identical
+        # element-level decisions (inclusion, reading-order bucket, text-source) for
+        # the same TranslatableDocument IR after the cascade change.
+        # test_ir_pipeline_decoupling.py covers pre-existing equivalence classes.
+        # test_renderer_convergence.py (committed by backend-engineer) covers
+        # mock-based per-backend wiring assertions for the new cascade path.
+        # The -k "equivalence" filter picks up both automatically.
+        # See contracts/ci/ci-gate-contract.md §Renderer Equivalence Gate.
         run: >
           pytest tests/test_ir_pipeline_decoupling.py
+          tests/test_renderer_convergence.py
           -k "equivalence"
           --tb=short -q
           --junitxml=test-results/renderer-equivalence.xml

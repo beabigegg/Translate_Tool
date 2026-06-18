@@ -1,0 +1,17 @@
+agent: qa-reviewer
+change-id: p2-text-expansion
+timestamp: 2026-06-18
+status: complete
+
+artifacts:
+  - { type: gate-results, pointer: "contract-validate: pass, change-gate: pass, test-evidence (collect/targeted/changed-area/contract/full): all pass, benchmark: 28 passed" }
+  - { type: evidence-quality, pointer: "repro — qa-reviewer reran gate, validators, and AC-mapped test node-ids independently" }
+  - { type: decision, pointer: "approved" }
+  - { type: failure-routing, pointer: "F-1 fixture-dir hygiene (empty tests/fixtures/golden/expansion/) routed to backend-engineer as non-blocking; F-2 step-d neighbor-geometry future wiring routed to spec-architect / P3" }
+
+notes: |
+  All AC-1–AC-8 pass. Step (d) cascade code is implemented and unit-tested; degraded behavior
+  (available_whitespace_below=0.0 at fitz call site) is contract-correct per Table L and design.md
+  Open Risks — truncation always marked (BR-38), no silent data loss. Benchmark test is
+  self-contained (in-memory IR assertions); empty fixtures/golden/expansion/ dir does not
+  block gate. Visual review approved-with-risk on missing rendered PDF evidence (non-blocking).

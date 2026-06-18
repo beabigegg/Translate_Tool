@@ -784,3 +784,77 @@ class TestEquivalenceGolden:
             assert abs(got["x1"] - exp["x1"]) <= 2.0, f"[{i}] x1 out of tolerance"
             assert abs(got["y1"] - exp["y1"]) <= 2.0, f"[{i}] y1 out of tolerance"
             assert got["text"] == exp["text"], f"[{i}] text mismatch"
+
+
+# ---------------------------------------------------------------------------
+# p2-text-expansion: AC-6 cascade-wiring tests (TDD)
+# ---------------------------------------------------------------------------
+
+
+class TestCascadeWiringLayoutEquivalence:
+    """Integration tests: fitz_renderer uses fit_text_cascade when inserting text (AC-6)."""
+
+    def test_fitz_renderer_imports_fit_text_cascade(self):
+        """fitz_renderer must import fit_text_cascade from text_region_renderer (AC-6)."""
+        import importlib
+        import inspect
+        import app.backend.renderers.fitz_renderer as fitz_mod
+        src = inspect.getsource(fitz_mod)
+        assert "fit_text_cascade" in src, (
+            "fitz_renderer must import and use fit_text_cascade (AC-6 cascade-wiring)"
+        )
+
+    def test_insert_text_calls_fit_cascade(self):
+        """PDFGenerator._insert_text_in_rect must call fit_text_cascade (AC-6).
+
+        Uses mock.patch to assert the shared cascade is called rather than
+        deriving fit logic inline (non-tautological per test-plan.md AC-6).
+        """
+        from app.backend.renderers.fitz_renderer import PDFGenerator
+
+        gen = PDFGenerator(target_lang="en")
+
+        mock_page = MagicMock()
+        mock_page.rect = MagicMock()
+        mock_page.rect.width = 612
+        mock_page.rect.height = 792
+
+        mock_rect = MagicMock()
+        mock_rect.x0 = 72.0
+        mock_rect.y0 = 72.0
+        mock_rect.x1 = 300.0
+        mock_rect.y1 = 100.0
+        mock_rect.width = 228.0
+        mock_rect.height = 28.0
+
+        # Patch fit_text_cascade to track if it is called
+        with patch(
+            "app.backend.renderers.fitz_renderer.fit_text_cascade"
+        ) as mock_cascade, patch(
+            "app.backend.renderers.fitz_renderer.fitz"
+        ) as mock_fitz:
+            # Minimal fitz mocks
+            mock_font = MagicMock()
+            mock_font.text_length.return_value = 10.0
+            mock_fitz.Font.return_value = mock_font
+            mock_tw = MagicMock()
+            mock_fitz.TextWriter.return_value = mock_tw
+
+            from app.backend.renderers.text_region_renderer import CascadeDecision
+            mock_cascade.return_value = CascadeDecision(
+                font_size=10.0,
+                line_spacing=1.15,
+                letter_spacing=0.0,
+                overflow=False,
+                truncated=False,
+                fitted_text="Hello World",
+            )
+
+            try:
+                gen._insert_text_in_rect(mock_page, mock_rect, "Hello World")
+            except Exception:
+                pass  # fitz mock may be incomplete; we only care about the call
+
+            assert mock_cascade.called, (
+                "_insert_text_in_rect must call fit_text_cascade (AC-6 cascade-wiring)"
+            )

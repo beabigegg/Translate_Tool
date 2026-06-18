@@ -1,0 +1,7 @@
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/p2-text-expansion/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_text_region_renderer.py → app/backend/renderers/text_region_renderer.py" }
+  - { type: tdd-pairs, pointer: "tests/test_font_utils.py → app/backend/utils/font_utils.py" }
+  - { type: tdd-pairs, pointer: "tests/test_renderer_convergence.py → app/backend/renderers/fitz_renderer.py + bbox_reflow.py" }
+  - { type: coverage-tiers, pointer: "unit (tier 0), contract (tier 0), integration (tier 1), data-boundary (tier 1), visual (manual)" }
+  - { type: mapping-completeness, pointer: "all 8 ACs covered; AC-1/AC-2 visual coverage noted as manual-only beyond unit cascade tests" }

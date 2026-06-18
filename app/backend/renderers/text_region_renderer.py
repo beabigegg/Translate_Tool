@@ -2,6 +2,15 @@
 
 This module renders text at specific coordinates within a PDF,
 handling font sizing, rotation, and multi-line text.
+
+p2-text-expansion additions:
+  - CascadeDecision: structured result from fit_text_cascade
+  - fit_text_cascade: the BR-36 5-step cascade (font-size → line-spacing →
+    letter-spacing → controlled overflow → truncation)
+
+The cascade is backend-neutral; both the fitz primary adapter and the
+ReportLab adapter consume CascadeDecision.  No cascade logic may exist in
+coordinate_renderer.py, inline_renderer.py, or pdf_generator.py (BR-40).
 """
 
 from __future__ import annotations
@@ -24,9 +33,300 @@ from app.backend.utils.font_utils import (
 )
 
 if TYPE_CHECKING:
-    from app.backend.models.translatable_document import BoundingBox
+    from app.backend.models.translatable_document import BoundingBox, StyleInfo
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# CascadeDecision — structured result from fit_text_cascade (BR-36, AC-4)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class CascadeDecision:
+    """Structured result returned by fit_text_cascade.
+
+    Carries the final rendering parameters decided by the 5-step BR-36 cascade
+    so that both the fitz primary adapter and the ReportLab adapter can render
+    from an identical decision without re-deriving fit logic.
+
+    Fields
+    ------
+    font_size : float
+        Final font size in points (≥ ``MIN_FONT_SIZE_PT``).
+    line_spacing : float
+        Final line-spacing multiplier (1.0 – 1.15 range per BR-36 step b).
+    letter_spacing : float
+        Final letter-spacing as a fraction of em (0.0 to -0.005 per BR-36 step c).
+    overflow : bool
+        True when step (d) controlled-overflow was applied (text rect expanded
+        downward into adjacent whitespace ≤ 15% bbox height).
+    truncated : bool
+        True when step (e) truncation fired.  The renderer must set
+        ``element.render_truncated = True`` when this flag is set (BR-38).
+    fitted_text : str
+        The text to be rendered (possibly truncated with "…" appended).
+    """
+
+    font_size: float
+    line_spacing: float
+    letter_spacing: float
+    overflow: bool
+    truncated: bool
+    fitted_text: str
+
+
+# ---------------------------------------------------------------------------
+# Line-height helper (backend-neutral)
+# ---------------------------------------------------------------------------
+
+def _text_line_height(font_name: str, font_size: float, line_spacing: float) -> float:
+    """Return rendered line height for given font and line-spacing multiplier."""
+    return font_size * line_spacing
+
+
+def _measure_text_block(
+    lines: List[str],
+    font_name: str,
+    font_size: float,
+    line_spacing: float,
+) -> Tuple[float, float]:
+    """Return (max_line_width, total_height) for a list of lines.
+
+    Uses ReportLab pdfmetrics for width measurement (backend-neutral).
+    Falls back to a character-count heuristic when the font is not registered.
+    """
+    max_w = 0.0
+    for line in lines:
+        w = calculate_text_width(line, font_name, font_size)
+        if w > max_w:
+            max_w = w
+    total_h = font_size * line_spacing * len(lines)
+    return max_w, total_h
+
+
+def _wrap_lines_simple(text: str, font_name: str, font_size: float, max_width: float) -> List[str]:
+    """Word-wrap ``text`` to fit within ``max_width`` points.
+
+    Returns a list of output lines.  Words are split on spaces; a word that
+    alone exceeds the width is placed on its own line (no mid-word split).
+    """
+    result: List[str] = []
+    for paragraph in text.split("\n"):
+        if not paragraph:
+            result.append("")
+            continue
+        words = paragraph.split(" ")
+        current = ""
+        for word in words:
+            test = (current + " " + word).strip() if current else word
+            if calculate_text_width(test, font_name, font_size) <= max_width:
+                current = test
+            else:
+                if current:
+                    result.append(current)
+                current = word
+        if current:
+            result.append(current)
+    return result if result else [""]
+
+
+def _truncate_to_fit(
+    text: str,
+    font_name: str,
+    font_size: float,
+    line_spacing: float,
+    max_width: float,
+    max_height: float,
+) -> str:
+    """Clip ``text`` to the last whole word that fits, appending "…".
+
+    The returned string always ends with "…" (U+2026 HORIZONTAL ELLIPSIS).
+    If the ellipsis alone does not fit in the bbox, the empty string is returned
+    (degenerate bbox; the renderer may choose to skip rendering).
+    """
+    ellipsis = "…"
+    ellipsis_w = calculate_text_width(ellipsis, font_name, font_size)
+
+    words = text.split()
+    candidate = ""
+    for word in words:
+        test = (candidate + " " + word).strip() if candidate else word
+        lines = _wrap_lines_simple(test + ellipsis, font_name, font_size, max_width)
+        _, h = _measure_text_block(lines, font_name, font_size, line_spacing)
+        # Also check max width of each line candidate
+        ok = all(
+            calculate_text_width(line, font_name, font_size) <= max_width
+            for line in lines
+        )
+        if ok and h <= max_height:
+            candidate = test
+        else:
+            break
+
+    if candidate:
+        return candidate + ellipsis
+    # Nothing fits — return bare ellipsis if it fits, else empty string
+    if ellipsis_w <= max_width and font_size * line_spacing <= max_height:
+        return ellipsis
+    return ""
+
+
+# ---------------------------------------------------------------------------
+# fit_text_cascade — BR-36 5-step cascade (IP-1)
+# ---------------------------------------------------------------------------
+
+def fit_text_cascade(
+    text: str,
+    bbox: "BoundingBox",
+    style: "StyleInfo",
+    available_whitespace_below: float = 0.0,
+) -> CascadeDecision:
+    """Apply the BR-36 ordered fit cascade to ``text`` within ``bbox``.
+
+    Cascade steps, applied in order (each only when prior steps are exhausted):
+
+    (a) Font-size shrink from style.font_size (or MAX_FONT_SIZE_PT) down to
+        MIN_FONT_SIZE_PT (4 pt floor) using FONT_SIZE_SHRINK_FACTOR.
+    (b) Line-spacing compression from 1.15 down to 1.0 floor.
+    (c) Letter-spacing reduction to -0.005 em floor (negative tracking capped
+        to avoid glyph collision; currently advisory).
+    (d) Controlled downward overflow into adjacent whitespace only (≤ 15% bbox
+        height), provided ``available_whitespace_below > 0``.  Never sideways.
+    (e) Word-boundary truncation with "…" appended; always marked via
+        ``CascadeDecision.truncated = True`` (BR-38).
+
+    Parameters
+    ----------
+    text:
+        The text to fit (translated content).
+    bbox:
+        Target bounding box.
+    style:
+        StyleInfo carrying font_name and starting font_size.
+    available_whitespace_below:
+        Vertical whitespace available below the bbox (in points).  Set to 0.0
+        when neighbor geometry is unavailable (step d degrades to skip; BR-36
+        Table L row "step d: adjacent whitespace not available").
+
+    Returns
+    -------
+    CascadeDecision
+        Structured fit decision; consume fields to drive rendering.
+    """
+    from app.backend.config import FONT_SIZE_SHRINK_FACTOR as _SHRINK
+
+    bbox_w = bbox.x1 - bbox.x0
+    bbox_h = bbox.y1 - bbox.y0
+
+    font_name = (style.font_name or "Helvetica") if style else "Helvetica"
+    initial_size = (style.font_size or MIN_FONT_SIZE_PT) if style else MIN_FONT_SIZE_PT
+    # Clamp initial size to a positive value
+    initial_size = max(initial_size, MIN_FONT_SIZE_PT)
+
+    # We track the effective max height; may expand in step (d)
+    effective_max_height = bbox_h
+
+    # --- step (a): font-size shrink ---
+    font_size = initial_size
+    line_spacing = 1.15
+
+    while font_size > MIN_FONT_SIZE_PT:
+        lines = _wrap_lines_simple(text, font_name, font_size, bbox_w)
+        _, h = _measure_text_block(lines, font_name, font_size, line_spacing)
+        if h <= bbox_h:
+            return CascadeDecision(
+                font_size=font_size,
+                line_spacing=line_spacing,
+                letter_spacing=0.0,
+                overflow=False,
+                truncated=False,
+                fitted_text=text,
+            )
+        font_size = max(font_size * _SHRINK, MIN_FONT_SIZE_PT)
+
+    # At minimum font size — check once more
+    font_size = MIN_FONT_SIZE_PT
+    lines = _wrap_lines_simple(text, font_name, font_size, bbox_w)
+    _, h = _measure_text_block(lines, font_name, font_size, line_spacing)
+    if h <= bbox_h:
+        return CascadeDecision(
+            font_size=font_size,
+            line_spacing=line_spacing,
+            letter_spacing=0.0,
+            overflow=False,
+            truncated=False,
+            fitted_text=text,
+        )
+
+    # --- step (b): line-spacing compression ---
+    # Walk from 1.15 down to 1.0 in small steps
+    ls_steps = [1.10, 1.05, 1.0]
+    for ls in ls_steps:
+        lines = _wrap_lines_simple(text, font_name, font_size, bbox_w)
+        _, h = _measure_text_block(lines, font_name, font_size, ls)
+        if h <= bbox_h:
+            return CascadeDecision(
+                font_size=font_size,
+                line_spacing=ls,
+                letter_spacing=0.0,
+                overflow=False,
+                truncated=False,
+                fitted_text=text,
+            )
+    line_spacing = 1.0  # at floor
+
+    # --- step (c): letter-spacing reduction ---
+    # Letter-spacing is advisory (applied by the renderer via TextWriter spacing).
+    # Floor is -0.005 em (BR-36).  We check if the text fits with letter-spacing
+    # as a signal; the actual rendering adjustment is in the renderer adapter.
+    for ls_track in [-0.002, -0.005]:
+        # Estimate: letter-spacing of -0.005 em at 4pt = -0.02pt per char.
+        # We approximate the width reduction as letter_spacing * font_size * char_count.
+        char_count = len(text)
+        extra_width = -ls_track * font_size * char_count  # positive value = width reduction
+        adjusted_bbox_w = bbox_w + extra_width
+        lines = _wrap_lines_simple(text, font_name, font_size, adjusted_bbox_w)
+        _, h = _measure_text_block(lines, font_name, font_size, line_spacing)
+        if h <= bbox_h:
+            return CascadeDecision(
+                font_size=font_size,
+                line_spacing=line_spacing,
+                letter_spacing=ls_track,
+                overflow=False,
+                truncated=False,
+                fitted_text=text,
+            )
+    letter_spacing = -0.005  # at floor
+
+    # --- step (d): controlled downward overflow (≤ 15% bbox height) ---
+    if available_whitespace_below > 0:
+        max_overflow = min(bbox_h * 0.15, available_whitespace_below)
+        extended_h = bbox_h + max_overflow
+        lines = _wrap_lines_simple(text, font_name, font_size, bbox_w)
+        _, h = _measure_text_block(lines, font_name, font_size, line_spacing)
+        if h <= extended_h:
+            return CascadeDecision(
+                font_size=font_size,
+                line_spacing=line_spacing,
+                letter_spacing=letter_spacing,
+                overflow=True,
+                truncated=False,
+                fitted_text=text,
+            )
+    # step (d): adjacent whitespace not available → skip, proceed to (e)
+
+    # --- step (e): word-boundary truncation ---
+    fitted = _truncate_to_fit(text, font_name, font_size, line_spacing, bbox_w, bbox_h)
+    return CascadeDecision(
+        font_size=font_size,
+        line_spacing=line_spacing,
+        letter_spacing=letter_spacing,
+        overflow=False,
+        truncated=True,
+        fitted_text=fitted,
+    )
 
 
 @dataclass

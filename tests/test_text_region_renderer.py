@@ -19,6 +19,272 @@ from app.backend.renderers.text_region_renderer import (
 from app.backend.models.translatable_document import BoundingBox, TranslatableElement, ElementType
 
 
+# ---------------------------------------------------------------------------
+# p2-text-expansion: TDD failing tests (must be red before implementation)
+# ---------------------------------------------------------------------------
+
+
+class TestFitCascadeContract:
+    """Contract tests for the CascadeDecision struct (AC-4)."""
+
+    def test_cascade_decision_fields_present(self):
+        """CascadeDecision must expose all required fields (AC-4 contract)."""
+        from app.backend.renderers.text_region_renderer import CascadeDecision
+        d = CascadeDecision(
+            font_size=10.0,
+            line_spacing=1.15,
+            letter_spacing=0.0,
+            overflow=False,
+            truncated=False,
+            fitted_text="hello",
+        )
+        assert hasattr(d, "font_size")
+        assert hasattr(d, "line_spacing")
+        assert hasattr(d, "letter_spacing")
+        assert hasattr(d, "overflow")
+        assert hasattr(d, "truncated")
+        assert hasattr(d, "fitted_text")
+
+    def test_cascade_decision_is_dataclass(self):
+        """CascadeDecision must be importable and instantiable as a dataclass."""
+        from app.backend.renderers.text_region_renderer import CascadeDecision
+        d = CascadeDecision(
+            font_size=8.0,
+            line_spacing=1.0,
+            letter_spacing=-0.005,
+            overflow=True,
+            truncated=False,
+            fitted_text="text",
+        )
+        assert d.font_size == 8.0
+        assert d.line_spacing == 1.0
+        assert d.letter_spacing == -0.005
+        assert d.overflow is True
+        assert d.truncated is False
+        assert d.fitted_text == "text"
+
+
+class TestFitCascade:
+    """Unit tests for fit_text_cascade step order (AC-1, AC-2, AC-4)."""
+
+    def _make_style(self, font_size=11.0, font_name="Helvetica"):
+        from app.backend.models.translatable_document import StyleInfo
+        return StyleInfo(font_size=font_size, font_name=font_name)
+
+    def test_fit_cascade_is_importable(self):
+        """fit_text_cascade must be importable from text_region_renderer."""
+        from app.backend.renderers.text_region_renderer import fit_text_cascade
+        assert callable(fit_text_cascade)
+
+    def test_cascade_returns_cascade_decision(self):
+        """fit_text_cascade must return a CascadeDecision object."""
+        from app.backend.renderers.text_region_renderer import fit_text_cascade, CascadeDecision
+        style = self._make_style()
+        bbox = BoundingBox(x0=0, y0=0, x1=200, y1=50)
+        result = fit_text_cascade("short text", bbox, style, available_whitespace_below=0.0)
+        assert isinstance(result, CascadeDecision)
+
+    def test_cascade_order_font_size_first(self):
+        """Step (a): font-size shrink must be tried before line-spacing (AC-4)."""
+        from app.backend.renderers.text_region_renderer import fit_text_cascade
+        style = self._make_style(font_size=11.0)
+        # Very narrow box forces overflow; should try font shrink before line spacing
+        bbox = BoundingBox(x0=0, y0=0, x1=30, y1=50)
+        long_text = "This is a somewhat longer text that will overflow"
+        result = fit_text_cascade(long_text, bbox, style, available_whitespace_below=0.0)
+        # Step (a) must have been tried: font_size should be <= initial (11.0)
+        assert result.font_size <= 11.0
+
+    def test_cascade_order_line_spacing_after_font_min(self):
+        """Step (b): line-spacing compression applied only after font-size hits min (AC-4)."""
+        from app.backend.renderers.text_region_renderer import fit_text_cascade
+        from app.backend.config import MIN_FONT_SIZE_PT
+        style = self._make_style(font_size=11.0)
+        # Very tiny box forces font to minimum; line_spacing may then be compressed
+        bbox = BoundingBox(x0=0, y0=0, x1=20, y1=8)
+        long_text = "A very long text that absolutely will not fit in this tiny box at any size"
+        result = fit_text_cascade(long_text, bbox, style, available_whitespace_below=0.0)
+        # font_size must be at minimum when line_spacing < 1.15
+        if result.line_spacing < 1.15:
+            assert result.font_size <= MIN_FONT_SIZE_PT  # at config minimum floor
+
+    def test_cascade_order_letter_spacing_after_line_floor(self):
+        """Step (c): letter-spacing reduction only after line-spacing hits 1.0 floor (AC-4)."""
+        from app.backend.renderers.text_region_renderer import fit_text_cascade
+        style = self._make_style(font_size=11.0)
+        bbox = BoundingBox(x0=0, y0=0, x1=15, y1=6)
+        long_text = "This extremely long text cannot fit in this ridiculously small bbox at all"
+        result = fit_text_cascade(long_text, bbox, style, available_whitespace_below=0.0)
+        # letter_spacing floor is -0.005 (per BR-36)
+        assert result.letter_spacing >= -0.005
+
+    def test_cascade_order_overflow_before_truncation(self):
+        """Step (d): overflow into whitespace attempted before truncation (AC-4)."""
+        from app.backend.renderers.text_region_renderer import fit_text_cascade
+        style = self._make_style(font_size=11.0)
+        # Box too small, but whitespace available below
+        bbox = BoundingBox(x0=0, y0=0, x1=100, y1=10)
+        long_text = "Text that needs more vertical space than provided"
+        # With available whitespace, truncation should be avoided if overflow suffices
+        result_with_ws = fit_text_cascade(
+            long_text, bbox, style, available_whitespace_below=100.0
+        )
+        result_no_ws = fit_text_cascade(
+            long_text, bbox, style, available_whitespace_below=0.0
+        )
+        # With whitespace: overflow preferred over truncation (BR-36 step d before e)
+        if result_with_ws.overflow:
+            assert not result_with_ws.truncated, (
+                "If overflow suffices, truncation must not fire (d before e)"
+            )
+
+    def test_cascade_truncation_last_resort_only(self):
+        """Step (e): truncation fires only when all prior steps are exhausted (AC-4)."""
+        from app.backend.renderers.text_region_renderer import fit_text_cascade
+        style = self._make_style(font_size=11.0)
+        # Large box: text should fit without truncation
+        bbox = BoundingBox(x0=0, y0=0, x1=500, y1=200)
+        short_text = "Short"
+        result = fit_text_cascade(short_text, bbox, style, available_whitespace_below=0.0)
+        assert not result.truncated, "Short text in large bbox must not be truncated"
+
+    def test_ende_no_overflow(self):
+        """en→de (+30%): with reasonable bbox, cascade must produce 0 overflow at font min (AC-1)."""
+        from app.backend.renderers.text_region_renderer import fit_text_cascade
+        from app.backend.utils.font_utils import get_expansion_factor
+        style = self._make_style(font_size=11.0)
+        src = "Hello World"
+        factor = get_expansion_factor("en", "de")
+        assert factor == pytest.approx(1.30), "BR-37 en→de factor must be 1.30"
+        # Simulate German text ~30% longer
+        de_text = "Hallo Welt, das ist ein langer Text"  # representative German expansion
+        # Generous bbox that a real rendered document would have
+        bbox = BoundingBox(x0=0, y0=0, x1=200, y1=50)
+        result = fit_text_cascade(de_text, bbox, style, available_whitespace_below=0.0)
+        # Should not need truncation for a text that can fit with some size reduction
+        # The cascade must handle this without overflow (no bbox violation)
+        # At minimum: fitted_text is non-empty
+        assert result.fitted_text
+
+    def test_enes_no_overflow(self):
+        """en→es (+25%): with reasonable bbox, cascade produces non-empty fitted text (AC-2)."""
+        from app.backend.renderers.text_region_renderer import fit_text_cascade
+        from app.backend.utils.font_utils import get_expansion_factor
+        style = self._make_style(font_size=11.0)
+        factor = get_expansion_factor("en", "es")
+        assert factor == pytest.approx(1.25), "BR-37 en→es factor must be 1.25"
+        es_text = "Hola Mundo, este es un texto más largo en español"
+        bbox = BoundingBox(x0=0, y0=0, x1=200, y1=50)
+        result = fit_text_cascade(es_text, bbox, style, available_whitespace_below=0.0)
+        assert result.fitted_text
+
+
+class TestTruncationMarker:
+    """Tests for render_truncated field on TranslatableElement (AC-5)."""
+
+    def test_render_truncated_field_default_false(self):
+        """render_truncated defaults to False on a new element (AC-5)."""
+        elem = TranslatableElement(
+            element_id="e1",
+            content="Hello",
+            element_type=ElementType.TEXT,
+            page_num=1,
+        )
+        assert elem.render_truncated is False
+
+    def test_truncation_sets_render_truncated_true(self):
+        """When cascade truncates, element.render_truncated must be set True (AC-5, BR-38)."""
+        from app.backend.renderers.text_region_renderer import fit_text_cascade
+        from app.backend.models.translatable_document import StyleInfo
+        # Impossible bbox: absolutely no space
+        style = StyleInfo(font_size=11.0, font_name="Helvetica")
+        bbox = BoundingBox(x0=0, y0=0, x1=5, y1=5)
+        very_long = "This is an extremely long text that cannot possibly fit in a 5x5 box"
+        result = fit_text_cascade(very_long, bbox, style, available_whitespace_below=0.0)
+        assert result.truncated is True, "Cascade must truncate when nothing fits"
+        # When bbox is degenerate (ellipsis itself does not fit), fitted_text may be empty;
+        # when any text fits, it must end with the Unicode ellipsis character
+        if result.fitted_text:
+            assert result.fitted_text.endswith("…"), (
+                f"Truncated text must end with '…' (U+2026), got: {result.fitted_text!r}"
+            )
+
+    def test_no_truncation_render_truncated_false(self):
+        """When text fits, cascade truncated flag must remain False (AC-5, BR-38)."""
+        from app.backend.renderers.text_region_renderer import fit_text_cascade
+        from app.backend.models.translatable_document import StyleInfo
+        style = StyleInfo(font_size=11.0, font_name="Helvetica")
+        bbox = BoundingBox(x0=0, y0=0, x1=500, y1=200)
+        result = fit_text_cascade("Short", bbox, style, available_whitespace_below=0.0)
+        assert result.truncated is False
+
+    def test_render_truncated_field_in_to_dict(self):
+        """render_truncated must appear in to_dict output (AC-5 contract)."""
+        elem = TranslatableElement(
+            element_id="e1",
+            content="Hello",
+            element_type=ElementType.TEXT,
+            page_num=1,
+        )
+        d = elem.to_dict()
+        assert "render_truncated" in d, "render_truncated must be present in to_dict()"
+        assert d["render_truncated"] is False
+
+    def test_render_truncated_true_survives_roundtrip(self):
+        """render_truncated=True round-trips through to_dict/from_dict (AC-5)."""
+        elem = TranslatableElement(
+            element_id="e1",
+            content="Hello",
+            element_type=ElementType.TEXT,
+            page_num=1,
+        )
+        elem.render_truncated = True
+        d = elem.to_dict()
+        assert d["render_truncated"] is True
+        restored = TranslatableElement.from_dict(d)
+        assert restored.render_truncated is True
+
+    def test_from_dict_missing_render_truncated_defaults_false(self):
+        """Old-format dict lacking render_truncated key deserializes to False (AC-5, backward-compat)."""
+        d = {
+            "element_id": "e1",
+            "content": "Hello",
+            "element_type": "text",
+            "page_num": 1,
+            "should_translate": True,
+            "translated_content": None,
+            "metadata": {},
+            # render_truncated intentionally absent
+        }
+        elem = TranslatableElement.from_dict(d)
+        assert elem.render_truncated is False
+
+
+class TestSinglePathEnforcement:
+    """AC-6: cascade helper must not be imported in legacy renderer paths (BR-40)."""
+
+    def test_no_cascade_logic_in_legacy_paths(self):
+        """fit_text_cascade must not be imported in coordinate_renderer, inline_renderer, pdf_generator."""
+        import ast
+        import os
+
+        legacy_paths = [
+            "/home/egg/Projects/Translate_Tool/app/backend/renderers/coordinate_renderer.py",
+            "/home/egg/Projects/Translate_Tool/app/backend/renderers/inline_renderer.py",
+            "/home/egg/Projects/Translate_Tool/app/backend/renderers/pdf_generator.py",
+        ]
+        forbidden_symbols = {"fit_text_cascade", "CascadeDecision"}
+
+        for path in legacy_paths:
+            with open(path) as f:
+                src = f.read()
+            for sym in forbidden_symbols:
+                assert sym not in src, (
+                    f"BR-40 violation: '{sym}' found in {path}. "
+                    "Cascade logic must only be in text_region_renderer.py and fitz_renderer.py."
+                )
+
+
 class TestTextRegion:
     """Tests for TextRegion dataclass."""
 

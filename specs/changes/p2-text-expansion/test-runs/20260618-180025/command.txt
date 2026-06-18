@@ -1,0 +1,1 @@
+pytest tests/ --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-text-expansion/test-runs/20260618-180025/junit.xml' --maxfail=1 --tb=short -ra

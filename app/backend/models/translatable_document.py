@@ -138,6 +138,7 @@ class TranslatableElement:
     translated_content: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
     reading_order: Optional[int] = None
+    render_truncated: bool = False  # Added p2-text-expansion (BR-38, ADR-0004)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -152,6 +153,7 @@ class TranslatableElement:
             "translated_content": self.translated_content,
             "metadata": self.metadata,
             "reading_order": self.reading_order,
+            "render_truncated": self.render_truncated,
         }
 
     @classmethod
@@ -168,6 +170,7 @@ class TranslatableElement:
             translated_content=data.get("translated_content"),
             metadata=data.get("metadata", {}),
             reading_order=data.get("reading_order", None),
+            render_truncated=data.get("render_truncated", False),
         )
 
 

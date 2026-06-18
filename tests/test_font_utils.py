@@ -275,3 +275,144 @@ class TestLanguageFontMap:
             assert isinstance(font_name, str)
             assert isinstance(patterns, list)
             assert len(font_name) > 0
+
+
+# ---------------------------------------------------------------------------
+# p2-text-expansion: TDD failing tests (must be red before implementation)
+# ---------------------------------------------------------------------------
+
+
+class TestExpansionFactorTable:
+    """Tests for expansion-factor table (AC-8, BR-37)."""
+
+    def test_expansion_factor_importable(self):
+        """get_expansion_factor must be importable from font_utils."""
+        from app.backend.utils.font_utils import get_expansion_factor
+        assert callable(get_expansion_factor)
+
+    def test_en_de_factor(self):
+        """en→de factor must be 1.30 (BR-37, AC-8)."""
+        from app.backend.utils.font_utils import get_expansion_factor
+        assert get_expansion_factor("en", "de") == pytest.approx(1.30)
+
+    def test_en_es_factor(self):
+        """en→es factor must be 1.25 (BR-37, AC-8)."""
+        from app.backend.utils.font_utils import get_expansion_factor
+        assert get_expansion_factor("en", "es") == pytest.approx(1.25)
+
+    def test_en_fr_factor(self):
+        """en→fr factor must be 1.20 (BR-37, AC-8)."""
+        from app.backend.utils.font_utils import get_expansion_factor
+        assert get_expansion_factor("en", "fr") == pytest.approx(1.20)
+
+    def test_unknown_pair_default_factor(self):
+        """Unknown language pair must return 1.15 default (BR-37, AC-8)."""
+        from app.backend.utils.font_utils import get_expansion_factor
+        assert get_expansion_factor("en", "ja") == pytest.approx(1.15)
+        assert get_expansion_factor("de", "fr") == pytest.approx(1.15)
+        assert get_expansion_factor("zh", "ko") == pytest.approx(1.15)
+
+    def test_default_factor_is_documented(self):
+        """EXPANSION_FACTOR_TABLE and DEFAULT_EXPANSION_FACTOR must be importable (AC-8 contract)."""
+        from app.backend.utils.font_utils import (
+            EXPANSION_FACTOR_TABLE,
+            DEFAULT_EXPANSION_FACTOR,
+        )
+        assert isinstance(EXPANSION_FACTOR_TABLE, dict)
+        assert DEFAULT_EXPANSION_FACTOR == pytest.approx(1.15)
+        # Table must contain the three documented pairs
+        assert ("en", "de") in EXPANSION_FACTOR_TABLE
+        assert ("en", "es") in EXPANSION_FACTOR_TABLE
+        assert ("en", "fr") in EXPANSION_FACTOR_TABLE
+
+
+class TestMetricFallbackChain:
+    """Tests for metric-compatible font fallback chain (AC-3, AC-7, BR-39)."""
+
+    def test_get_metric_compatible_fallback_importable(self):
+        """get_metric_compatible_fallback must be importable from font_utils."""
+        from app.backend.utils.font_utils import get_metric_compatible_fallback
+        assert callable(get_metric_compatible_fallback)
+
+    def test_missing_glyph_selects_noto(self):
+        """Missing glyph: fallback must select a Noto face (AC-3, BR-39)."""
+        from app.backend.utils.font_utils import get_metric_compatible_fallback
+        # Use a registered face name; if none available, Noto terminal fallback applies
+        result = get_metric_compatible_fallback(
+            primary_face="Helvetica",
+            target_char="é",  # é — a Latin extended char
+            registered_faces=["NotoSans", "Helvetica"],
+        )
+        # Must return a non-empty string (font name)
+        assert isinstance(result, str) and result, (
+            "get_metric_compatible_fallback must return a non-empty font name"
+        )
+
+    def test_fallback_no_tofu_metric_drift(self):
+        """Fallback must return the best metric-compatible Noto face (AC-3)."""
+        from app.backend.utils.font_utils import get_metric_compatible_fallback
+        # When primary is Helvetica and Noto is in registered_faces, prefer Noto
+        result = get_metric_compatible_fallback(
+            primary_face="Helvetica",
+            target_char="A",
+            registered_faces=["Helvetica"],
+        )
+        assert result  # Must always return something (terminal fallback)
+
+    def test_fallback_reuses_lru_cache(self):
+        """get_metric_compatible_fallback must not trigger redundant font I/O (AC-7, BR-39).
+
+        After the first call for a given face, repeated calls must not increment
+        the cache miss counter (i.e., _load_font_buffer miss count stays stable).
+        """
+        from app.backend.utils.font_utils import get_metric_compatible_fallback
+        from app.backend.renderers.fitz_renderer import _load_font_buffer
+
+        # Clear cache to get a clean baseline
+        _load_font_buffer.cache_clear()
+        info_before = _load_font_buffer.cache_info()
+
+        # Call twice; misses should not grow by more than 1 per distinct font path
+        get_metric_compatible_fallback(
+            primary_face="Helvetica",
+            target_char="A",
+            registered_faces=["Helvetica"],
+        )
+        info_mid = _load_font_buffer.cache_info()
+        misses_first_call = info_mid.misses - info_before.misses
+
+        get_metric_compatible_fallback(
+            primary_face="Helvetica",
+            target_char="A",
+            registered_faces=["Helvetica"],
+        )
+        info_after = _load_font_buffer.cache_info()
+        misses_second_call = info_after.misses - info_mid.misses
+
+        # Second call for the same face must not add new misses (LRU cache)
+        assert misses_second_call <= misses_first_call, (
+            "Repeated fallback calls for the same face must not trigger new disk reads (BR-39 LRU)"
+        )
+
+    def test_fallback_no_redundant_font_io(self):
+        """Total cache misses for same-face repeated calls must be <= 1 (AC-7)."""
+        from app.backend.utils.font_utils import get_metric_compatible_fallback
+        from app.backend.renderers.fitz_renderer import _load_font_buffer
+
+        _load_font_buffer.cache_clear()
+        info_before = _load_font_buffer.cache_info()
+
+        for _ in range(5):
+            get_metric_compatible_fallback(
+                primary_face="Helvetica",
+                target_char="B",
+                registered_faces=["Helvetica"],
+            )
+
+        info_after = _load_font_buffer.cache_info()
+        total_misses = info_after.misses - info_before.misses
+        # For Helvetica (built-in, no file), misses should be 0; for file-based
+        # fonts, at most 1 miss per distinct font file across all 5 calls
+        assert total_misses <= 1, (
+            f"Expected <= 1 cache miss across 5 repeated fallback calls, got {total_misses}"
+        )

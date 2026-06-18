@@ -3,7 +3,7 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.4.3
+schema-version: 0.4.4
 last-changed: 2026-06-18
 breaking-change-policy: deprecate-2-minors
 ---
@@ -61,6 +61,7 @@ See `contracts/api/api-contract.md > ## Schemas > JobStatus` for the authoritati
 | `provider` field set by client | ignored — field is server-set only; not in POST /api/jobs input schema | — | — |
 | `element_type` value in serialized IR not in current enum | `from_dict` raises `ValueError` | not caught; propagated to caller | tests/test_translatable_document.py |
 | `reading_order` absent in serialized IR (old-format document) | `from_dict` defaults to `None`; element is valid | — | tests/test_translatable_document.py |
+| `render_truncated` absent in serialized IR (old-format document) | `from_dict` defaults to `False`; element is valid | — | tests/test_translatable_document.py |
 
 ## Export / Import Format
 
@@ -162,6 +163,7 @@ The following table is normative. The implementation constant in `layout_detecto
 | translated_content | string\|null | yes | null | translated text; null until translation applied |
 | metadata | object | no | {} | arbitrary key-value metadata map |
 | reading_order | integer\|null | yes | null | **Added p2-ir-document-model.** Explicit reading-order index (0-based) assigned by the parser. When present and non-null, takes precedence over positional sort heuristics. Old-format documents lacking this key deserialize with `reading_order=None` and remain valid. `get_elements_in_reading_order()` uses a two-bucket sort: elements with non-null `reading_order` are placed before elements with `reading_order=None`, sorted by their index value; null elements are placed after, sorted by `(page_num, bbox.y0, bbox.x0)`. In practice, all parsers assign `reading_order` to every element, so mixed-population documents do not occur in normal use. |
+| render_truncated | boolean | no | false | **Added p2-text-expansion.** Render-time annotation. Set `True` by the renderer when step (e) of the fit cascade (BR-36) fires (word-boundary truncation with ellipsis). Absent keys in old-format IR deserialize as `False`; backward-compatible. Never set by parsers or the translation layer. Consumers: QA safety net, human-review tooling. See ADR-0004 (`docs/adr/0004-truncation-marker-on-ir.md`). |
 
 ### BoundingBox — serialized field shape
 
@@ -197,15 +199,17 @@ Coordinate system: top-left origin; x increases right; y increases down. Unit: p
 
 ### Round-trip guarantee
 
-A document serialized by `TranslatableDocument.to_dict()` then deserialized by `TranslatableDocument.from_dict()` must produce an equivalent IR preserving all of the following fields without loss or mutation: `bbox` (all four float coordinates), `style` / font metadata (all six fields), `element_type`, `reading_order`, `element_id`, `content`, `page_num`, `should_translate`, `translated_content`, `metadata`. Floating-point bbox coordinates must round-trip without rounding or truncation.
+A document serialized by `TranslatableDocument.to_dict()` then deserialized by `TranslatableDocument.from_dict()` must produce an equivalent IR preserving all of the following fields without loss or mutation: `bbox` (all four float coordinates), `style` / font metadata (all six fields), `element_type`, `reading_order`, `render_truncated`, `element_id`, `content`, `page_num`, `should_translate`, `translated_content`, `metadata`. Floating-point bbox coordinates must round-trip without rounding or truncation.
 
 ### Backward-compatibility rule
 
 Old-format means a document dict produced by the pre-change `TranslatableElement.to_dict()` (lacking the `reading_order` key). `TranslatableElement.from_dict()` must deserialize old-format dicts without raising; `reading_order` defaults to `None` when the key is absent. Old-format documents deserialized under the new code are valid IR instances and may be passed to any renderer.
 
+`render_truncated` follows the same rule: when the key is absent in an old-format dict, `from_dict()` defaults it to `False`. A serialized IR produced before p2-text-expansion deserializes unchanged and is a valid IR instance.
+
 ### `to_dict` compatibility rule
 
-All pre-existing keys (`element_id`, `content`, `element_type`, `page_num`, `bbox`, `style`, `should_translate`, `translated_content`, `metadata`) must remain present in `to_dict` output with the same types and semantics. `reading_order` is added as a new key (integer or `None`). No existing key may be renamed, removed, or have its type narrowed.
+All pre-existing keys (`element_id`, `content`, `element_type`, `page_num`, `bbox`, `style`, `should_translate`, `translated_content`, `metadata`) must remain present in `to_dict` output with the same types and semantics. `reading_order` is added as a new key (integer or `None`). `render_truncated` is added as a new key (boolean, default `False`). No existing key may be renamed, removed, or have its type narrowed.
 
 ### Known consumers of the IR
 
@@ -220,7 +224,7 @@ All pre-existing keys (`element_id`, `content`, `element_type`, `page_num`, `bbo
 | `app/backend/renderers/pdf_generator.py` | consumer — ReportLab fallback renderer (p2-renderer-convergence) | ReportLab fallback; consumes IR via shared bbox-reflow component; invoked only when fitz primary path fails per BR-34 |
 | `app/backend/renderers/text_region_renderer.py` | consumer | same as base |
 | `app/backend/renderers/inline_renderer.py` | consumer | same as base |
-| `app/backend/renderers/fitz_renderer.py` (to be created) | consumer — fitz primary renderer (p2-renderer-convergence) | fitz primary PDF renderer; consumes IR via shared bbox-reflow component; see BR-34. File path confirmed at implementation. |
+| `app/backend/renderers/fitz_renderer.py` | consumer — fitz primary renderer (p2-renderer-convergence) | fitz primary PDF renderer; consumes IR via shared bbox-reflow component; see BR-34. Writes `render_truncated=True` on elements where cascade step (e) fires (BR-38). |
 | `app/backend/processors/orchestrator.py` | processor | no IR schema change required; reads elements after parsing |
 
 ### Renderer IR-consumption contract
@@ -238,6 +242,7 @@ Both the fitz primary renderer and the ReportLab fallback renderer MUST consume 
 | `element_type` | Use the wire value to determine rendering treatment (e.g. skip non-translatable regions). An unknown or unrecognized `element_type` string MUST NOT raise; the element MUST be rendered as type `text` (passthrough fallback). |
 | `page_num` | Use to assign the element to the correct output page. |
 | `translated_content` | If non-null, use as the rendered text. If null, use `content` (source text) as the fallback. |
+| `render_truncated` | If the renderer applies word-boundary truncation (cascade step e, BR-36), it MUST set this field to `True` on the element before any further serialization. The renderer MUST NOT set it `True` for any other reason. Parsers and the translation layer MUST NOT set this field. |
 
 #### Malformed IR handling (AC-6)
 

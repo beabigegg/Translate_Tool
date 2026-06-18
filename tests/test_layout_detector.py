@@ -242,10 +242,11 @@ class TestNoExtraFieldsOutsideIR:
         # Region provenance must be stored in metadata, not as new attributes
         assert "layout_region" in elem.metadata or "layout_confidence" in elem.metadata or True
         # Verify no unexpected attributes were added to the IR element
+        # render_truncated added in p2-text-expansion (additive, default False; ADR-0004)
         standard_attrs = {
             "element_id", "content", "element_type", "page_num",
             "bbox", "style", "should_translate", "translated_content",
-            "metadata", "reading_order",
+            "metadata", "reading_order", "render_truncated",
         }
         actual_attrs = set(vars(elem).keys())
         unexpected = actual_attrs - standard_attrs

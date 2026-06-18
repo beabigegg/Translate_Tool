@@ -1,0 +1,5 @@
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/p2-text-expansion/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer (IP-1..IP-8)" }
+  - { type: scope-summary, pointer: "in: cascade helper + fitz adapter rewire + font fallback/expansion table + render_truncated IR field + tests + benchmark fixtures; out: legacy-path logic, frontend, API, env, content changes" }
+  - { type: blocked-reason, pointer: "none; design.md filled, contracts authored, code-map stale (fitz_renderer.py is live path) noted in Known Risks" }

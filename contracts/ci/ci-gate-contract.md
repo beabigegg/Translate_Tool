@@ -3,7 +3,7 @@ contract: ci
 summary: CI gate inventory, artifact retention, and rollback requirements.
 owner: platform-team
 surface: delivery-pipeline
-schema-version: 0.4.1
+schema-version: 0.4.2
 last-changed: 2026-06-18
 breaking-change-policy: deprecate-2-minors
 ---
@@ -19,6 +19,7 @@ breaking-change-policy: deprecate-2-minors
 | golden-sample-regression | 2+ | PR | yes | pytest tests/test_golden_regression.py --tb=short -q | application-team | per-sample pass/fail diff (step log) |
 | layout-detector-dependency-gate | 2+ | PR | yes | `! grep -E "(ultralytics|onnxruntime-gpu)" app/backend/requirements.txt app/backend/environment.yml` | platform-team | exit code 0 (no forbidden packages) |
 | renderer-equivalence | 2+ | PR | yes | pytest tests/test_ir_pipeline_decoupling.py tests/test_golden_regression.py -k "equivalence" --tb=short -q | application-team | per-element pass/fail diff (step log) |
+| text-expansion-benchmark | 2+ | PR | yes | pytest tests/test_text_expansion_benchmark.py --tb=short -q | application-team | zero-overflow + zero-tofu assertion log; covers AC-1 AC-2 AC-3 |
 
 ## Required Check Policy
 
@@ -33,6 +34,24 @@ All gates in the Gate Inventory marked `required: yes` must pass before a PR is 
 - **Report artifact**: the gate emits a per-sample pass/fail diff to stdout (captured by CI as a step log). No external artifact store is required at Tier 2.
 - **Sample set**: `tests/fixtures/golden/` must contain 3–5 representative files covering at minimum one PDF, one DOCX, and one PPTX. Files must be committed as binary fixtures; they must not be generated at CI time. Note: DOCX and PPTX binary fixtures are deferred pending sourcing of license-clean representative files; the gate skips DOCX/PPTX samples gracefully until they are committed.
 - **Snapshot initialization**: `_load_or_create_snapshot()` MUST NOT auto-write and auto-pass when a snapshot JSON is absent. CI must fail (not silently create) when a fixture file exists in `tests/fixtures/golden/` without a corresponding committed `.ir.json` snapshot. Any new fixture file committed to the golden directories MUST be accompanied by a committed snapshot in the same PR.
+
+## Text Expansion Benchmark Gate
+
+**Gate name**: `text-expansion-benchmark`
+
+**Added in p2-text-expansion.**
+
+**Scope**: Runs `tests/test_text_expansion_benchmark.py` against pre-committed en→de and en→es expansion fixtures in `tests/fixtures/golden/expansion/`. Asserts (1) zero bbox overflow across all rendered benchmark elements; (2) zero tofu boxes in the rendered PDF output (all glyphs resolve to a registered font face).
+
+**Pass condition**: No element in the benchmark set overflows its bbox region; no glyph in the rendered output resolves to a missing-glyph placeholder. Both sub-checks must pass.
+
+**Fail condition**: Any overflow or any tofu box blocks merge.
+
+**Offline constraint**: runs with no network access, no GPU; uses pre-committed benchmark fixture PDFs and their `.ir.json` snapshots. Fixtures must follow the same snapshot-initialization rule as `golden-sample-regression` — CI must fail (not silently create) when a fixture file exists without a committed snapshot.
+
+**Fixture requirement**: at least two en→de and two en→es pre-rendered benchmark PDFs plus their `.ir.json` snapshots must be committed before this gate can pass. The backend-engineer is responsible for committing these fixtures in the same PR as the implementation.
+
+**Non-determinism quarantine**: if glyph resolution varies across runner images due to font-rendering non-determinism, the affected sub-check must be quarantined per the Informational Gate Promotion Policy; the overflow sub-check remains required.
 
 ## Layout Detector Dependency Gate
 

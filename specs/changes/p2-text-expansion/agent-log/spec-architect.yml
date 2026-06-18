@@ -1,0 +1,6 @@
+artifacts:
+  - { type: design-written, pointer: "specs/changes/p2-text-expansion/design.md" }
+  - { type: adr-written, pointer: "docs/adr/0004-truncation-marker-on-ir.md" }
+  - { type: affected-areas, pointer: "fitz_renderer cascade, text_region_renderer, font_utils fallback, TranslatableElement IR" }
+  - { type: decision-summary, pointer: "extract ordered fit cascade to shared helper; metric-compatible Noto fallback reusing P1 LRU cache; truncation marker as additive IR field; expansion table de1.30/es1.25/fr1.20, default 1.15" }
+  - { type: risks-noted, pointer: "3 medium (stale code-map fitz_renderer name, CER-001 pending for AC-6 legacy-path grep, overflow-neighbor availability)" }

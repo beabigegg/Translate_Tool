@@ -24,6 +24,155 @@ from app.backend.config import (
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Expansion-factor table (BR-37, AC-8)
+# Advisory language-pair expansion coefficients used to pre-size the initial
+# fit attempt.  The measured rendered width always governs the actual decision;
+# these factors are never hard-coded in the renderer.
+# ---------------------------------------------------------------------------
+
+#: Per-language-pair expansion coefficients (source_lang, target_lang) → factor.
+#: Only covers the documented benchmark pairs (en→de/es/fr).
+EXPANSION_FACTOR_TABLE: Dict[Tuple[str, str], float] = {
+    ("en", "de"): 1.30,
+    ("en", "es"): 1.25,
+    ("en", "fr"): 1.20,
+}
+
+#: Default advisory factor for any language pair not in the table (BR-37).
+DEFAULT_EXPANSION_FACTOR: float = 1.15
+
+
+def get_expansion_factor(src_lang: str, tgt_lang: str) -> float:
+    """Return the advisory expansion factor for a source→target language pair.
+
+    Args:
+        src_lang: ISO source language code (e.g. "en").
+        tgt_lang: ISO target language code (e.g. "de").
+
+    Returns:
+        Expansion factor from EXPANSION_FACTOR_TABLE, or DEFAULT_EXPANSION_FACTOR
+        when the pair is not listed.  This value is advisory only — the measured
+        rendered width always governs the actual fit decision (BR-37).
+    """
+    return EXPANSION_FACTOR_TABLE.get((src_lang, tgt_lang), DEFAULT_EXPANSION_FACTOR)
+
+
+# ---------------------------------------------------------------------------
+# Per-face metrics memoization (BR-39)
+# Metrics are read once per registered face and stored here.  This avoids
+# repeated font-file I/O when the fallback chain compares multiple candidates.
+# ---------------------------------------------------------------------------
+_face_metrics_cache: Dict[str, Dict[str, float]] = {}
+
+
+def _get_face_metrics(font_name: str) -> Dict[str, float]:
+    """Return x-height, cap-height, and mean advance-width for a registered face.
+
+    Metrics are memoized per face name.  Falls back to zero-dict on any error
+    so the fallback chain can still operate (Noto terminal fallback catches edge cases).
+
+    Args:
+        font_name: A font name registered with ReportLab pdfmetrics.
+
+    Returns:
+        Dict with keys ``x_height``, ``cap_height``, ``advance_width``.
+    """
+    if font_name in _face_metrics_cache:
+        return _face_metrics_cache[font_name]
+
+    metrics: Dict[str, float] = {"x_height": 0.0, "cap_height": 0.0, "advance_width": 0.0}
+
+    try:
+        font = pdfmetrics.getFont(font_name)
+        # ReportLab TTFont exposes face.ascent / descent via the underlying TTFont object
+        face = getattr(font, "face", None)
+        if face is not None:
+            # x-height: typically encoded as OS/2 sxHeight (in font units, 1000 upem assumed)
+            x_height = getattr(face, "xHeight", None)
+            cap_height = getattr(face, "capHeight", None)
+            # Advance width proxy: use width of 'x' at 1000pt
+            try:
+                adv = font.stringWidth("x", 1000)
+            except Exception:
+                adv = 0.0
+
+            metrics["x_height"] = float(x_height) if x_height else 0.0
+            metrics["cap_height"] = float(cap_height) if cap_height else 0.0
+            metrics["advance_width"] = float(adv)
+    except Exception:
+        pass  # Return zero-dict; terminal Noto fallback handles the edge case
+
+    _face_metrics_cache[font_name] = metrics
+    return metrics
+
+
+def get_metric_compatible_fallback(
+    primary_face: str,
+    target_char: str,
+    registered_faces: List[str],
+) -> str:
+    """Select the metric-compatible fallback font for a character (BR-39, AC-3/AC-7).
+
+    When ``get_font_for_language`` resolves a font that lacks a glyph for
+    ``target_char``, this function selects a replacement face from
+    ``registered_faces`` by comparing x-height (primary), cap-height
+    (secondary), and mean advance-width (tertiary) against ``primary_face``
+    metrics.
+
+    Selection is restricted to already-registered faces so no new font I/O
+    occurs beyond the initial load cached by ``_load_font_buffer``.  Metrics
+    are memoized per face (``_face_metrics_cache``).
+
+    The Noto terminal fallback rule (BR-39):
+    - If no registered face provides a match, fall back to ``NotoSans``.
+    - If ``NotoSans`` is not registered, fall back to ``Helvetica`` (built-in).
+
+    Args:
+        primary_face: The originally-selected font name whose metrics are the target.
+        target_char: The character that may be missing from ``primary_face``.
+        registered_faces: Candidate font names (already registered with pdfmetrics).
+
+    Returns:
+        The best-matching registered font name (never raises; always returns a string).
+    """
+    if not registered_faces:
+        return "Helvetica"
+
+    primary_metrics = _get_face_metrics(primary_face)
+
+    best_face: Optional[str] = None
+    best_distance: float = float("inf")
+
+    for face in registered_faces:
+        if face == primary_face:
+            # Skip primary itself; we're looking for a fallback
+            continue
+        m = _get_face_metrics(face)
+        # Weighted distance: x-height (3×), cap-height (2×), advance-width (1×)
+        dist = (
+            3.0 * abs(m["x_height"] - primary_metrics["x_height"])
+            + 2.0 * abs(m["cap_height"] - primary_metrics["cap_height"])
+            + 1.0 * abs(m["advance_width"] - primary_metrics["advance_width"])
+        )
+        if dist < best_distance:
+            best_distance = dist
+            best_face = face
+
+    if best_face is not None:
+        return best_face
+
+    # Noto terminal fallback (BR-39)
+    for noto_name in ("NotoSans", "NotoSansSC", "NotoSansTC"):
+        try:
+            pdfmetrics.getFont(noto_name)
+            return noto_name
+        except KeyError:
+            continue
+
+    # Last resort: Helvetica (always available in ReportLab)
+    return "Helvetica"
+
 # Font registration status
 _fonts_registered = False
 

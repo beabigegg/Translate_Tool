@@ -691,3 +691,96 @@ class TestBackwardCompat:
         d["metadata"] = {"unknown_key_xyz": "some_value", "another_unknown": 42}
         elem = TranslatableElement.from_dict(d)
         assert elem.metadata["unknown_key_xyz"] == "some_value"
+
+
+# ---------------------------------------------------------------------------
+# p2-text-expansion: render_truncated field tests (TDD — must fail red first)
+# ---------------------------------------------------------------------------
+
+
+class TestRenderTruncatedField:
+    """Tests for TranslatableElement.render_truncated field (AC-5, data-shape-contract)."""
+
+    def test_render_truncated_default_false(self):
+        """render_truncated defaults to False on new element (AC-5)."""
+        elem = TranslatableElement(
+            element_id="e1",
+            content="Hello",
+            element_type=ElementType.TEXT,
+            page_num=1,
+        )
+        assert elem.render_truncated is False
+
+    def test_render_truncated_in_to_dict(self):
+        """render_truncated appears in to_dict output (AC-5 contract, data-shape-contract)."""
+        elem = TranslatableElement(
+            element_id="e1",
+            content="Hello",
+            element_type=ElementType.TEXT,
+            page_num=1,
+        )
+        d = elem.to_dict()
+        assert "render_truncated" in d
+        assert d["render_truncated"] is False
+
+    def test_render_truncated_true_in_to_dict(self):
+        """render_truncated=True serializes correctly."""
+        elem = TranslatableElement(
+            element_id="e1",
+            content="Hello",
+            element_type=ElementType.TEXT,
+            page_num=1,
+        )
+        elem.render_truncated = True
+        d = elem.to_dict()
+        assert d["render_truncated"] is True
+
+    def test_render_truncated_roundtrip_false(self):
+        """render_truncated=False round-trips through to_dict/from_dict."""
+        elem = TranslatableElement(
+            element_id="e1",
+            content="Hello",
+            element_type=ElementType.TEXT,
+            page_num=1,
+        )
+        restored = TranslatableElement.from_dict(elem.to_dict())
+        assert restored.render_truncated is False
+
+    def test_render_truncated_roundtrip_true(self):
+        """render_truncated=True round-trips through to_dict/from_dict."""
+        elem = TranslatableElement(
+            element_id="e1",
+            content="Hello",
+            element_type=ElementType.TEXT,
+            page_num=1,
+        )
+        elem.render_truncated = True
+        restored = TranslatableElement.from_dict(elem.to_dict())
+        assert restored.render_truncated is True
+
+    def test_from_dict_missing_render_truncated_defaults_false(self):
+        """Old-format dict without render_truncated key deserializes to False (backward-compat)."""
+        d = {
+            "element_id": "old",
+            "content": "Old text",
+            "element_type": "text",
+            "page_num": 1,
+            "should_translate": True,
+            "translated_content": None,
+            "metadata": {},
+            # render_truncated intentionally absent
+        }
+        elem = TranslatableElement.from_dict(d)
+        assert elem.render_truncated is False
+
+    def test_render_truncated_type_is_bool(self):
+        """render_truncated field must be bool type."""
+        elem = TranslatableElement(
+            element_id="e1",
+            content="Hello",
+            element_type=ElementType.TEXT,
+            page_num=1,
+        )
+        assert isinstance(elem.render_truncated, bool)
+        d = elem.to_dict()
+        assert isinstance(d["render_truncated"], bool)

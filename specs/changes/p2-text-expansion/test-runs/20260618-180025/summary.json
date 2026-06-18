@@ -1,0 +1,18 @@
+{
+  "change_id": "p2-text-expansion",
+  "phase": "collect",
+  "status": "failed",
+  "exit_code": 127,
+  "command": "pytest tests/ --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-text-expansion/test-runs/20260618-180025/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 30,
+  "first_failure": {
+    "kind": "unknown",
+    "message": "/bin/sh: 1: pytest: not found"
+  },
+  "artifacts": {
+    "summary": "specs/changes/p2-text-expansion/test-runs/20260618-180025/summary.json",
+    "stdout": "specs/changes/p2-text-expansion/test-runs/20260618-180025/stdout.log",
+    "stderr": "specs/changes/p2-text-expansion/test-runs/20260618-180025/stderr.log"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

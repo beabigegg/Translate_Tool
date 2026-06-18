@@ -3,7 +3,7 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.7.1
+schema-version: 0.7.2
 last-changed: 2026-06-18
 breaking-change-policy: deprecate-2-minors
 ---
@@ -48,6 +48,11 @@ breaking-change-policy: deprecate-2-minors
 | BR-33 | layout-detection-fail-soft | platform-team | When layout detection fails for any page (causes: model file absent, ONNX session load error, out-of-memory, corrupt or unrasterisable page image), the system MUST fall back to the `round(y0,10pt)` reading-order heuristic for that affected page and continue the job. The failure MUST be logged at WARNING level, including the page number and failure reason. No page image or page content may appear in the log message. A detector unavailable at startup is surfaced once as a WARNING; it does not fail the process. | tests/test_pdf_parser.py |
 | BR-34 | renderer-primary-fallback | application-team | fitz is the default primary renderer for PDF output. When the fitz render path raises an unhandled exception, the system MUST fall back to the ReportLab renderer and produce a rendered PDF output without aborting the job. The fallback MUST be logged at WARNING level, including the exception type and the document identifier. The ReportLab path is never invoked unless fitz fails; both paths consume the same `TranslatableDocument` IR via the shared IR-bbox reflow component. | tests/test_pdf_generator.py |
 | BR-35 | renderer-ir-consumption-consistency | application-team | For any given `TranslatableDocument` IR, the fitz primary path and the ReportLab fallback path MUST make identical element-level decisions for element inclusion/exclusion, reading-order resolution, and text-source selection (translated_content vs. content fallback). Layout pixel-position and font rendering may differ between paths within the documented numeric tolerance (defined in design.md). An unknown `element_type` value MUST be treated as `text` on both paths (passthrough, do not skip, do not raise). | tests/test_ir_pipeline_decoupling.py |
+| BR-36 | text-expansion-fit-cascade | application-team | When translated text overflows a `bbox` region, the renderer applies the following steps in order, attempting each only after all prior steps are exhausted: (a) font-size shrink from `FONT_SIZE_CONFIG.max` down to `min` (floor 4pt); (b) line-spacing compression from 1.15 down to a floor of 1.0; (c) letter-spacing reduction to a floor of -0.5% em (never below glyph-collision threshold); (d) controlled overflow downward into adjacent vertical whitespace only, bounded to ≤ 15% of bbox height, never sideways into a neighbour's bbox; (e) word-boundary truncation with ellipsis appended, marked via `render_truncated = True`. Steps (a)–(d) MUST be exhausted before (e) is applied. | tests/test_text_region_renderer.py |
+| BR-37 | expansion-factor-advisory-table | application-team | The renderer pre-sizes the initial fit attempt using a per-language-pair expansion factor: en→de: 1.30; en→es: 1.25; en→fr: 1.20; any other pair: 1.15. These factors are advisory only; the measured rendered width always governs the actual fit decision. The table and default (1.15) live in `font_utils.py`; they must not be encoded as magic numbers in the renderer. | tests/test_text_region_renderer.py |
+| BR-38 | no-silent-truncation | application-team | Every truncation of a `TranslatableElement` during rendering MUST set `render_truncated = True` on that IR element. Silent truncation (text clipped without marking) is forbidden. `render_truncated` is consumed by the QA safety net and human-review tooling. | tests/test_text_region_renderer.py |
+| BR-39 | metric-compatible-font-fallback | application-team | When `get_font_for_language` resolves a font lacking a glyph for a target character, a fallback is selected from already-registered per-language Noto faces by nearest metric match: x-height (primary weight), cap-height (secondary), mean advance-width (tertiary). The terminal fallback is the language's `LANGUAGE_FONT_MAP` Noto face, else `NotoSans`. Fallback selection MUST reuse `register_fonts` registration state and load bytes only through the P1 `_load_font_buffer` LRU cache; redundant font I/O is forbidden. Metric values are memoized per registered face. | tests/test_font_utils.py |
+| BR-40 | single-path-expansion-enforcement | application-team | All text-expansion and fit-cascade logic MUST reside exclusively on the fitz primary renderer path and the shared `bbox_reflow.py` component. No duplication of expansion or cascade logic is permitted in any legacy renderer path (`coordinate_renderer.py`, `inline_renderer.py`, or `pdf_generator.py`). Verified by consumer-import grep and per-backend mock assertions (AC-6). | tests/test_renderer_convergence.py |
 
 ## Decision Tables
 
@@ -166,6 +171,18 @@ breaking-change-policy: deprecate-2-minors
 | IR `reading_order` is null for an element | both paths apply positional sort fallback; neither raises | tests/test_ir_pipeline_decoupling.py |
 | IR `element_type` is an unknown value | both paths treat element as `text`; neither raises; element rendered | tests/test_ir_pipeline_decoupling.py |
 | IR `translated_content` is null | both paths render `content` (source text) instead; neither raises | tests/test_ir_pipeline_decoupling.py |
+
+### Table L — text-expansion fit cascade (BR-36, BR-37, BR-38)
+| condition | cascade step applied | next step if still overflowing | test id |
+|---|---|---|---|
+| translated text fits within bbox at max font size | none (no-op) | — | tests/test_text_region_renderer.py |
+| overflow at max font size | (a) shrink font size toward min (4pt floor) | (b) if overflow at min font size | tests/test_text_region_renderer.py |
+| overflow at min font size | (b) compress line-spacing to floor 1.0 | (c) if still overflowing | tests/test_text_region_renderer.py |
+| overflow after line-spacing floor | (c) reduce letter-spacing to -0.5% em floor | (d) if still overflowing | tests/test_text_region_renderer.py |
+| overflow after letter-spacing floor | (d) controlled downward overflow into adjacent whitespace ≤ 15% bbox height; never sideways | (e) if still overflowing or no whitespace below | tests/test_text_region_renderer.py |
+| overflow exhausts (d) or no adjacent whitespace available | (e) word-boundary truncate + ellipsis; set `render_truncated = True` | — (terminal) | tests/test_text_region_renderer.py |
+| step (d): adjacent whitespace not available | step (d) skipped; proceed immediately to (e) | — | tests/test_text_region_renderer.py |
+| expansion factor pair not in table (non en→de/es/fr) | advisory factor 1.15 applied; measured width governs | — | tests/test_text_region_renderer.py |
 
 ## Change Policy
 

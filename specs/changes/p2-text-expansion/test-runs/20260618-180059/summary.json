@@ -1,0 +1,16 @@
+{
+  "change_id": "p2-text-expansion",
+  "phase": "changed-area",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_text_region_renderer.py tests/test_font_utils.py tests/test_renderer_convergence.py tests/test_translatable_document.py tests/test_golden_regression.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-text-expansion/test-runs/20260618-180059/junit.xml' -ra",
+  "duration_ms": 7566,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p2-text-expansion/test-runs/20260618-180059/summary.json",
+    "stdout": "specs/changes/p2-text-expansion/test-runs/20260618-180059/stdout.log",
+    "stderr": "specs/changes/p2-text-expansion/test-runs/20260618-180059/stderr.log",
+    "junit": "specs/changes/p2-text-expansion/test-runs/20260618-180059/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}
