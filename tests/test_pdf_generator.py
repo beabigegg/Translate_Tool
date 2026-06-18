@@ -581,7 +581,7 @@ class TestFontBufferCache:
         """A single call to _load_font_buffer reads the font file exactly once."""
         fake_bytes = b"FONT_DATA_FIRST"
         with patch(
-            "app.backend.renderers.pdf_generator.open",
+            "app.backend.renderers.fitz_renderer.open",
             mock_open(read_data=fake_bytes),
         ) as mocked_open:
             result = _load_font_buffer("/fake/font.ttf")
@@ -596,7 +596,7 @@ class TestFontBufferCache:
         """A second call with the same path does NOT read the file again."""
         fake_bytes = b"FONT_DATA_CACHED"
         with patch(
-            "app.backend.renderers.pdf_generator.open",
+            "app.backend.renderers.fitz_renderer.open",
             mock_open(read_data=fake_bytes),
         ) as mocked_open:
             result1 = _load_font_buffer("/fake/font.ttf")
@@ -618,7 +618,7 @@ class TestFontBufferCache:
             return m
 
         with patch(
-            "app.backend.renderers.pdf_generator.open",
+            "app.backend.renderers.fitz_renderer.open",
             side_effect=side_effect,
         ) as mocked_open:
             result_a = _load_font_buffer("/fake/a.ttf")
@@ -635,7 +635,7 @@ class TestFontBufferCache:
         """Bytes returned from a warm cache equal bytes from a fresh read."""
         fake_bytes = b"FONT_DATA_EQUIV"
         with patch(
-            "app.backend.renderers.pdf_generator.open",
+            "app.backend.renderers.fitz_renderer.open",
             mock_open(read_data=fake_bytes),
         ):
             warm_result = _load_font_buffer("/fake/font.ttf")
@@ -643,7 +643,7 @@ class TestFontBufferCache:
         # Reset cache, then call again with the same mock
         clear_font_cache()
         with patch(
-            "app.backend.renderers.pdf_generator.open",
+            "app.backend.renderers.fitz_renderer.open",
             mock_open(read_data=fake_bytes),
         ):
             cold_result = _load_font_buffer("/fake/font.ttf")
@@ -660,7 +660,7 @@ class TestFontBufferCache:
 
         # First call: simulate a read failure
         with patch(
-            "app.backend.renderers.pdf_generator.open",
+            "app.backend.renderers.fitz_renderer.open",
             side_effect=IOError("disk error"),
         ):
             with pytest.raises(IOError):
@@ -668,7 +668,7 @@ class TestFontBufferCache:
 
         # Second call: the exception must NOT have been cached; file is now readable
         with patch(
-            "app.backend.renderers.pdf_generator.open",
+            "app.backend.renderers.fitz_renderer.open",
             mock_open(read_data=fake_bytes),
         ) as mocked_open:
             result = _load_font_buffer("/fake/font.ttf")
@@ -684,7 +684,7 @@ class TestFontBufferCache:
         """clear_font_cache() causes the next call to re-read from disk."""
         fake_bytes = b"FONT_DATA_RESET"
         with patch(
-            "app.backend.renderers.pdf_generator.open",
+            "app.backend.renderers.fitz_renderer.open",
             mock_open(read_data=fake_bytes),
         ) as mocked_open:
             _load_font_buffer("/fake/font.ttf")
@@ -694,9 +694,125 @@ class TestFontBufferCache:
 
         # After reset, a new open() call must happen
         with patch(
-            "app.backend.renderers.pdf_generator.open",
+            "app.backend.renderers.fitz_renderer.open",
             mock_open(read_data=fake_bytes),
         ) as mocked_open2:
             result = _load_font_buffer("/fake/font.ttf")
             assert result == fake_bytes
             assert mocked_open2.call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# AC-3  TestFallbackPath (resilience, tier 0)
+# ---------------------------------------------------------------------------
+
+class TestFallbackPath:
+    """Tests for the fitz-import-failure → ReportLab fallback path (AC-3, BR-34).
+
+    These tests mock a fitz import failure and verify the ReportLab path is
+    invoked without aborting the job.
+    """
+
+    def test_fallback_path_invoked_when_fitz_import_fails(self):
+        """When _run_fitz_render raises ImportError, ReportLab path produces output."""
+        from app.backend.renderers.base import RenderMode
+        from app.backend.models.translatable_document import (
+            BoundingBox, DocumentMetadata, ElementType,
+            PageInfo, TranslatableDocument, TranslatableElement,
+        )
+
+        doc = TranslatableDocument(
+            source_path="/tmp/fake.pdf",
+            source_type="pdf",
+            elements=[
+                TranslatableElement(
+                    element_id="e1",
+                    content="Hello",
+                    element_type=ElementType.TEXT,
+                    page_num=1,
+                    bbox=BoundingBox(x0=72, y0=72, x1=300, y1=90),
+                    should_translate=True,
+                    translated_content="Translated",
+                )
+            ],
+            pages=[PageInfo(page_num=1, width=612, height=792)],
+            metadata=DocumentMetadata(page_count=1, has_text_layer=True),
+        )
+        translations = {"Hello": "Translated"}
+
+        import tempfile
+        import os
+        fd, out_path = tempfile.mkstemp(suffix=".pdf")
+        os.close(fd)
+        try:
+            with patch(
+                "app.backend.processors.pdf_processor._run_fitz_render",
+                side_effect=ImportError("fitz not available"),
+            ), patch(
+                "app.backend.processors.pdf_processor._run_reportlab_render"
+            ) as mock_rl:
+                mock_rl.return_value = None
+
+                from app.backend.processors import pdf_processor
+                pdf_processor._dispatch_render(
+                    doc=doc,
+                    translations=translations,
+                    output_path=out_path,
+                    target_lang="en",
+                    mode=RenderMode.OVERLAY,
+                    draw_mask=False,
+                    doc_id="import-fail-test",
+                )
+                mock_rl.assert_called_once()
+        finally:
+            if os.path.exists(out_path):
+                os.unlink(out_path)
+
+    def test_fallback_path_warning_logged(self):
+        """When _run_fitz_render raises ImportError, a WARNING is present in log messages."""
+        from app.backend.renderers.base import RenderMode
+        from app.backend.models.translatable_document import (
+            BoundingBox, DocumentMetadata, ElementType,
+            PageInfo, TranslatableDocument, TranslatableElement,
+        )
+
+        doc = TranslatableDocument(
+            source_path="/tmp/fake.pdf",
+            source_type="pdf",
+            elements=[],
+            pages=[PageInfo(page_num=1, width=612, height=792)],
+            metadata=DocumentMetadata(page_count=1, has_text_layer=True),
+        )
+        translations = {}
+
+        import tempfile
+        import os
+        fd, out_path = tempfile.mkstemp(suffix=".pdf")
+        os.close(fd)
+        try:
+            with patch(
+                "app.backend.processors.pdf_processor._run_fitz_render",
+                side_effect=ImportError("no fitz"),
+            ), patch(
+                "app.backend.processors.pdf_processor._run_reportlab_render"
+            ), patch(
+                "app.backend.processors.pdf_processor.logger"
+            ) as mock_logger:
+                from app.backend.processors import pdf_processor
+                pdf_processor._dispatch_render(
+                    doc=doc,
+                    translations=translations,
+                    output_path=out_path,
+                    target_lang="en",
+                    mode=RenderMode.OVERLAY,
+                    draw_mask=False,
+                    doc_id="import-fail-warn",
+                )
+                warning_calls = [str(c) for c in mock_logger.warning.call_args_list]
+                assert len(warning_calls) > 0, "WARNING must be emitted on fitz failure"
+                assert any("ImportError" in w for w in warning_calls), (
+                    "WARNING must contain exception type"
+                )
+        finally:
+            if os.path.exists(out_path):
+                os.unlink(out_path)

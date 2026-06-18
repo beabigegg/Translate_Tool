@@ -1,0 +1,39 @@
+# Design: p2-renderer-convergence
+
+## Summary
+PDF rendering converges on a primary/fallback architecture: the fitz (PyMuPDF) redaction-overlay path is the default primary renderer, and the ReportLab Canvas path is the fallback, invoked only when the fitz path raises (BR-34, Table K). Both paths are reduced to thin backend adapters that delegate all IR→placement logic to a single shared IR-bbox reflow component. The reflow component consumes `TranslatableDocument` IR (`bbox`, `reading_order`, `element_type`, `page_num`, `translated_content`) and produces backend-neutral placement decisions, so the two backends make identical element-level include/exclude, ordering, and text-source decisions (BR-35). Dispatch lives in `pdf_processor._translate_pdf_to_pdf`: it calls the fitz adapter inside a try, and on any unhandled exception logs a WARNING (exception type + document id) and retries via the ReportLab adapter. This makes the existing implicit "PDFGenerator is primary, CoordinateRenderer is an alternate" split explicit and contract-backed, and removes the duplicated placement logic that lives independently in `pdf_generator._generate_overlay` and `text_region_renderer`.
+
+## Affected Components
+| component | file path(s) | nature of change |
+|---|---|---|
+| shared IR-bbox reflow | `app/backend/renderers/bbox_reflow.py` (new) | new module: IR→placement; null-bbox/null-reading_order/unknown-element_type/null-translated_content fallbacks per data-shape contract |
+| fitz primary adapter | `app/backend/renderers/pdf_generator.py` → `fitz_renderer.py` (rename) | becomes thin fitz backend consuming reflow output; drops inline placement logic |
+| ReportLab fallback adapter | `app/backend/renderers/coordinate_renderer.py` | becomes thin ReportLab backend consuming reflow output; placement logic moves to reflow |
+| placement helpers | `app/backend/renderers/text_region_renderer.py` | `create_text_regions_from_elements` placement logic absorbed into `bbox_reflow`; module kept as ReportLab draw helper only |
+| dispatch / fallback | `app/backend/processors/pdf_processor.py` (`_translate_pdf_to_pdf`) | wraps fitz call in try; on exception logs WARNING and invokes ReportLab adapter |
+| business rules | `contracts/business/business-rules.md` | BR-34/BR-35/Table K already authored; consumed, not redefined |
+| data shape | `contracts/data/data-shape-contract.md` | Renderer IR-consumption contract already authored; reflow honors it |
+
+## Key Decisions
+
+- **Decision A — shared reflow is a new `renderers/bbox_reflow.py`, not `bbox_utils.py`**: the component must map IR `TranslatableElement` → renderable placement (region + ordered text + skip decision), which is renderer-domain logic, not the pure geometric primitives in `utils/bbox_utils.py`. Placing it in `renderers/` keeps the IR-consumption boundary inside the rendering layer and lets it reuse `bbox_utils` geometry. → Rejected: extending `bbox_utils.py` — would pull IR/ElementType/translation-selection concerns into a pure-geometry util and blur the boundary.
+
+- **Decision B — fallback trigger is "fitz adapter raises any unhandled exception"** (import failure, redaction/insert failure, corrupt source) per Table K. Explicit NON-triggers: an empty `elements` list, a null bbox/reading_order/unknown element_type on individual elements, and missing translations — these are handled deterministically inside reflow and MUST NOT trigger fallback. If the ReportLab fallback also raises, the exception propagates and the job transitions to `failed` (no third path). → Rejected: catching `BaseException`/broad swallow — would mask `KeyboardInterrupt`/stop-flag and hide reflow contract bugs as silent fallbacks.
+
+- **Decision C — equivalence tolerance is element-level decision identity, not pixel identity.** Hard-equal: per-element include/exclude set, resolved reading-order sequence, and text-source choice (`translated_content` else `content`) must be identical across paths. Placement coords are equivalence-tested at ±2.0 pt per bbox edge (matches the existing fitz redaction margin in `_generate_overlay`); element-count must be exactly equal. NOT equivalence-tested: font face/embedding, glyph shaping, anti-aliasing, pixel color, byte-identical PDF output. → Rejected: byte/raster diffing — fitz redaction vs ReportLab Canvas legitimately differ in glyph rendering; raster equality would force the two backends to be the same engine.
+
+- **Decision D — disposition of existing renderer files.** `pdf_generator.py` (the actual fitz path) is renamed to `fitz_renderer.py` and reduced to a fitz adapter; `coordinate_renderer.py` is retained as the ReportLab adapter (already Canvas-based, no fitz); both stop computing placement and consume `bbox_reflow`. `text_region_renderer.py` is demoted to a ReportLab-only drawing helper (its `create_text_regions_from_elements` IR logic moves to reflow). `inline_renderer.py` is unchanged and out of scope — it is the DOCX inline renderer and is not part of PDF convergence. → Rejected: keeping `pdf_generator.py` name — "generator" obscures that it is the fitz backend peer of the ReportLab backend; the rename makes the primary/fallback pair legible.
+
+## Rejected Alternatives
+- **Duplicate reflow logic in each backend (status quo).** Rejected: the current divergence (fitz placement in `_generate_overlay` vs. ReportLab placement in `text_region_renderer`) is exactly the drift BR-35 forbids; identical element-level decisions can only be guaranteed by a single shared component.
+- **Make ReportLab primary / fitz fallback.** Rejected: fitz preserves source images, backgrounds, and vector borders via redaction overlay; ReportLab Canvas reconstructs the page and loses non-text fidelity. fitz-primary keeps the higher-fidelity path default and ReportLab as the always-renders safety net (consistent with the parser PyMuPDF→PyPDF2 fail-soft precedent).
+
+## Migration / Rollback Strategy
+No schema or data migration; this is a code-path convergence. Rollback is config/code only. The dispatch is feature-flaggable: a `PDF_RENDERER_PRIMARY` config switch (default `fitz`) lets an operator force `reportlab` as primary without code change if the fitz path proves unstable post-deploy. Because both adapters consume the same `bbox_reflow` output, swapping the primary is behavior-equivalent at the IR-decision level. Full code rollback reverts the rename and dispatch wrapper; the shared `bbox_reflow` module is additive and can remain. Golden snapshots are split (`*.layout.json` for placement decisions, separate from existing `*.ir.json`) so a reflow regression is caught before it reaches either backend.
+
+## Open Risks
+- The fitz path currently uses `page.search_for()` to locate exact text quads; reflow must expose bbox-based placement without forcing fitz to abandon quad-precise redaction — confirm reflow output carries both the IR bbox and lets the fitz adapter still refine via quad search.
+- `fitz_renderer.py` rename touches `renderers/__init__.py` and `pdf_processor` imports; implementation must update all import sites or the gate import-conformance check fails.
+- ±2.0 pt tolerance is derived from the existing redaction margin; `test-strategist` must validate it against golden fixtures before locking `TestLayoutEquivalence` pass criteria — widen only with recorded rationale.
+- Side-by-side mode placement differs structurally between fitz and ReportLab; confirm equivalence contract scopes to OVERLAY mode (the BR-34 fallback target) and document side-by-side handling explicitly.
+- `bbox_reflow` is asserted to fail before implementation (test-plan `TestIRBboxReflow`); ensure the new module path matches the test import path the strategist commits.

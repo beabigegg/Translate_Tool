@@ -440,7 +440,6 @@ def _translate_pdf_to_pdf(
     """
     from app.backend.parsers.pdf_parser import PyMuPDFParser
     from app.backend.renderers.base import RenderMode
-    from app.backend.renderers.pdf_generator import PDFGenerator
 
     # Create parser
     should_skip_hf = skip_header_footer if skip_header_footer is not None else PDF_SKIP_HEADER_FOOTER
@@ -533,13 +532,17 @@ def _translate_pdf_to_pdf(
                     from app.backend.utils.translation_verification import verify_and_fill_dict
                     verify_and_fill_dict(translations, tgt, client, src_lang, stop_flag=stop_flag, log=log)
 
-            # Generate PDF for this language
-            generator = PDFGenerator(
+            # Generate PDF for this language (fitz primary / ReportLab fallback per BR-34)
+            _dispatch_render(
+                doc=doc,
+                translations=translations,
+                output_path=lang_out_path,
                 target_lang=tgt,
+                mode=mode_enum,
                 draw_mask=should_draw_mask,
+                doc_id=os.path.basename(in_path),
                 log=log,
             )
-            generator.generate(doc, translations, lang_out_path, mode_enum)
             output_files.append(lang_out_path)
             log(f"[PDF] Generated: {Path(lang_out_path).name}")
 
@@ -557,6 +560,104 @@ def _translate_pdf_to_pdf(
         docx_out = str(Path(out_path).with_suffix(".docx"))
         return _translate_pdf_with_pymupdf(
             in_path, docx_out, targets, src_lang, client, stop_flag, log, skip_header_footer
+        )
+
+
+# ---------------------------------------------------------------------------
+# BR-34 dispatch helpers: fitz primary / ReportLab fallback
+# ---------------------------------------------------------------------------
+
+def _run_fitz_render(
+    doc: "TranslatableDocument",
+    translations: dict,
+    output_path: str,
+    target_lang: str,
+    mode,
+    draw_mask: bool,
+    log,
+) -> None:
+    """Invoke the fitz primary renderer.
+
+    Separated as a named function so tests can patch it independently
+    of the ReportLab fallback path.
+    """
+    from app.backend.renderers.fitz_renderer import PDFGenerator
+
+    generator = PDFGenerator(target_lang=target_lang, draw_mask=draw_mask, log=log)
+    generator.generate(doc, translations, output_path, mode)
+
+
+def _run_reportlab_render(
+    doc: "TranslatableDocument",
+    translations: dict,
+    output_path: str,
+    target_lang: str,
+    mode,
+    draw_mask: bool,
+    log,
+) -> None:
+    """Invoke the ReportLab fallback renderer.
+
+    Separated as a named function so tests can patch it independently
+    of the fitz primary path.
+    """
+    from app.backend.renderers.coordinate_renderer import CoordinateRenderer
+
+    renderer = CoordinateRenderer(
+        target_lang=target_lang,
+        draw_background=draw_mask,
+        log=log,
+    )
+    renderer.render(doc, output_path, translations, mode)
+
+
+def _dispatch_render(
+    doc: "TranslatableDocument",
+    translations: dict,
+    output_path: str,
+    target_lang: str,
+    mode,
+    draw_mask: bool,
+    doc_id: str,
+    log=None,
+) -> None:
+    """Dispatch to fitz primary renderer; fall back to ReportLab on unhandled exception.
+
+    Implements BR-34, Table K:
+    - fitz primary is always attempted first.
+    - On any unhandled exception (import failure, redaction failure, corrupt source):
+        * WARNING is logged with exception type + document id.
+        * ReportLab fallback is invoked.
+    - If ReportLab also raises, the exception propagates (job → failed).
+    - Never catches BaseException or KeyboardInterrupt (Decision B).
+    """
+    if log is None:
+        log = lambda s: None  # noqa: E731
+
+    try:
+        _run_fitz_render(
+            doc=doc,
+            translations=translations,
+            output_path=output_path,
+            target_lang=target_lang,
+            mode=mode,
+            draw_mask=draw_mask,
+            log=log,
+        )
+    except Exception as exc:
+        logger.warning(
+            f"[PDF] fitz render failed ({type(exc).__name__}) for '{doc_id}'; "
+            f"falling back to ReportLab. Exception: {exc}"
+        )
+        # ReportLab fallback — if this also raises, propagate to job manager.
+        _run_reportlab_render(
+            doc=doc,
+            translations=translations,
+            output_path=output_path,
+            target_lang=target_lang,
+            mode=mode,
+            draw_mask=draw_mask,
+            log=log,
         )
 
 

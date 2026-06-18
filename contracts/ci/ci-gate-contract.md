@@ -3,7 +3,7 @@ contract: ci
 summary: CI gate inventory, artifact retention, and rollback requirements.
 owner: platform-team
 surface: delivery-pipeline
-schema-version: 0.4.0
+schema-version: 0.4.1
 last-changed: 2026-06-18
 breaking-change-policy: deprecate-2-minors
 ---
@@ -18,6 +18,7 @@ breaking-change-policy: deprecate-2-minors
 | unit-tests | 2+ | PR | yes | pytest tests/ | application-team | junit XML |
 | golden-sample-regression | 2+ | PR | yes | pytest tests/test_golden_regression.py --tb=short -q | application-team | per-sample pass/fail diff (step log) |
 | layout-detector-dependency-gate | 2+ | PR | yes | `! grep -E "(ultralytics|onnxruntime-gpu)" app/backend/requirements.txt app/backend/environment.yml` | platform-team | exit code 0 (no forbidden packages) |
+| renderer-equivalence | 2+ | PR | yes | pytest tests/test_ir_pipeline_decoupling.py tests/test_golden_regression.py -k "equivalence" --tb=short -q | application-team | per-element pass/fail diff (step log) |
 
 ## Required Check Policy
 
@@ -44,6 +45,22 @@ All gates in the Gate Inventory marked `required: yes` must pass before a PR is 
 **GPU opt-in**: `onnxruntime-gpu` may be installed out-of-band by operators for GPU acceleration. The detector auto-selects CUDA execution provider when available and silently falls back to `CPUExecutionProvider`. This requires no code change and is not tracked in base requirements.
 
 **Model weight bundling note**: Weights are NOT bundled in the repository. Offline bundling is achieved via Docker image preload + `LAYOUT_DETECTOR_MODEL_PATH`. The gate does not verify Docker weight bundling; that is an operational concern.
+
+## Renderer Equivalence Gate
+
+**Gate name**: `renderer-equivalence`
+
+**Added in p2-renderer-convergence.**
+
+**Scope**: For each fixture in `tests/fixtures/golden/pdf/`, run the same `TranslatableDocument` IR through both the fitz primary renderer and the ReportLab fallback renderer. Compare element-level decisions (inclusion, reading-order bucket assignment, text-source selection) on both paths.
+
+**Pass condition**: For every element in the IR, both render paths make identical element-level decisions as defined in `contracts/data/data-shape-contract.md § Renderer IR-consumption contract` and BR-35. Layout pixel-position differences and font rendering differences within the documented numeric tolerance do not fail this gate.
+
+**Fail condition**: Any element where the two paths disagree on inclusion/exclusion, reading-order bucket (null vs. non-null bucket assignment), or text-source selection (translated_content vs. content) fails the gate and blocks merge.
+
+**Offline constraint**: runs with no network access, no GPU; uses pre-committed IR fixtures.
+
+**Report artifact**: per-element pass/fail diff to stdout (captured as step log). No external artifact store required at Tier 2.
 
 ## Informational Gate Promotion Policy
 

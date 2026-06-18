@@ -3,7 +3,7 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.4.2
+schema-version: 0.4.3
 last-changed: 2026-06-18
 breaking-change-policy: deprecate-2-minors
 ---
@@ -217,7 +217,38 @@ All pre-existing keys (`element_id`, `content`, `element_type`, `page_num`, `bbo
 | `app/backend/parsers/pptx_parser.py` | producer | must populate `reading_order` from element extraction order |
 | `app/backend/renderers/base.py` | consumer | may consume `reading_order`; must not raise when `None` |
 | `app/backend/renderers/coordinate_renderer.py` | consumer | same as base |
-| `app/backend/renderers/pdf_generator.py` | consumer | same as base |
+| `app/backend/renderers/pdf_generator.py` | consumer — ReportLab fallback renderer (p2-renderer-convergence) | ReportLab fallback; consumes IR via shared bbox-reflow component; invoked only when fitz primary path fails per BR-34 |
 | `app/backend/renderers/text_region_renderer.py` | consumer | same as base |
 | `app/backend/renderers/inline_renderer.py` | consumer | same as base |
+| `app/backend/renderers/fitz_renderer.py` (to be created) | consumer — fitz primary renderer (p2-renderer-convergence) | fitz primary PDF renderer; consumes IR via shared bbox-reflow component; see BR-34. File path confirmed at implementation. |
 | `app/backend/processors/orchestrator.py` | processor | no IR schema change required; reads elements after parsing |
+
+### Renderer IR-consumption contract
+
+**Added in p2-renderer-convergence.**
+
+Both the fitz primary renderer and the ReportLab fallback renderer MUST consume `TranslatableDocument` via the shared IR-bbox reflow component. Neither renderer may implement independent element-placement logic that bypasses this component.
+
+#### Fields a renderer MUST honor
+
+| field | renderer obligation |
+|---|---|
+| `bbox` | If non-null, use the bbox coordinates (x0, y0, x1, y1) as the authoritative placement region. If null, the renderer MUST apply a documented fallback placement strategy and MUST NOT raise. |
+| `reading_order` | If non-null, use as the explicit placement sequence. If null, fall back to `(page_num, bbox.y0, bbox.x0)` positional sort (same as `get_elements_in_reading_order()` null-bucket rule). MUST NOT raise when `reading_order` is null. |
+| `element_type` | Use the wire value to determine rendering treatment (e.g. skip non-translatable regions). An unknown or unrecognized `element_type` string MUST NOT raise; the element MUST be rendered as type `text` (passthrough fallback). |
+| `page_num` | Use to assign the element to the correct output page. |
+| `translated_content` | If non-null, use as the rendered text. If null, use `content` (source text) as the fallback. |
+
+#### Malformed IR handling (AC-6)
+
+Both render paths MUST handle the following conditions deterministically and identically:
+
+| condition | required behavior |
+|---|---|
+| `bbox` is null | Apply documented fallback placement; do not raise. |
+| `reading_order` is null | Apply positional sort fallback; do not raise. |
+| `element_type` is an unknown string value | Treat as `text`; do not raise; do not skip. |
+| `translated_content` is null | Render `content` instead; do not raise. |
+| `elements` list is empty | Produce an empty (but valid) output page; do not raise. |
+
+"Identically" means: for the same input IR, both paths must produce the same element-level decisions (skip vs. render, placement region source, text source) even if the visual output differs due to renderer capabilities.

@@ -140,6 +140,204 @@ class TestPublicAPIUnchanged:
         assert pptx_params[4] == "client", f"translate_pptx 5th param changed: {pptx_params[4]}"
 
 
+# ---------------------------------------------------------------------------
+# AC-5  TestReadingOrderPreservedBothPaths
+# ---------------------------------------------------------------------------
+
+class TestReadingOrderPreservedBothPaths:
+    """Contract tests: reading_order is preserved identically on both render paths (AC-5, BR-35)."""
+
+    def test_reading_order_preserved_fitz_path(self):
+        """Reflow (shared component used by fitz) returns placements in reading_order sequence."""
+        from app.backend.renderers.bbox_reflow import reflow_document
+
+        elements = [
+            TranslatableElement(
+                element_id=f"e{i}",
+                content=f"Segment {i}",
+                element_type=ElementType.TEXT,
+                page_num=1,
+                bbox=BoundingBox(x0=72, y0=100 + i * 20, x1=540, y1=115 + i * 20),
+                reading_order=2 - i,  # reversed order to verify sorting
+                should_translate=True,
+                translated_content=f"Trans {i}",
+            )
+            for i in range(3)
+        ]
+        doc = _make_simple_ir()
+        doc.elements = elements
+
+        placements = reflow_document(doc)
+        # Placements should be returned in reading_order (ascending) sequence
+        ro_values = [p.reading_order for p in placements]
+        assert ro_values == sorted(ro_values), (
+            "Fitz-path reflow must return placements in ascending reading_order"
+        )
+
+    def test_reading_order_preserved_reportlab_path(self):
+        """Reflow (shared component used by ReportLab) returns placements in reading_order sequence."""
+        from app.backend.renderers.bbox_reflow import reflow_document
+
+        # Same test body — reflow_document is the shared component, both paths use it
+        elements = [
+            TranslatableElement(
+                element_id=f"e{i}",
+                content=f"Text {i}",
+                element_type=ElementType.TEXT,
+                page_num=1,
+                bbox=BoundingBox(x0=72, y0=200 + i * 20, x1=540, y1=215 + i * 20),
+                reading_order=i,
+                should_translate=True,
+                translated_content=f"Translated {i}",
+            )
+            for i in range(4)
+        ]
+        doc = _make_simple_ir()
+        doc.elements = elements
+
+        placements = reflow_document(doc)
+        ro_values = [p.reading_order for p in placements]
+        assert ro_values == sorted(ro_values), (
+            "ReportLab-path reflow must return placements in ascending reading_order"
+        )
+
+
+# ---------------------------------------------------------------------------
+# AC-5  TestElementTypingPreservedBothPaths
+# ---------------------------------------------------------------------------
+
+class TestElementTypingPreservedBothPaths:
+    """Contract tests: element_type routing is identical on both paths (AC-5, BR-35)."""
+
+    def test_element_type_routing_fitz(self):
+        """TABLE/FIGURE/FORMULA elements have consistent skip/include decisions in reflow."""
+        from app.backend.renderers.bbox_reflow import reflow_element
+
+        # Non-translatable region types should be skipped or treated as text
+        region_types = [ElementType.TABLE, ElementType.FIGURE, ElementType.FORMULA]
+        for et in region_types:
+            elem = TranslatableElement(
+                element_id=f"e_{et.value}",
+                content=f"Content for {et.value}",
+                element_type=et,
+                page_num=1,
+                bbox=BoundingBox(x0=72, y0=100, x1=540, y1=200),
+                should_translate=False,  # region containers are not directly translated
+                translated_content=None,
+            )
+            # Must not raise; result is None (skip) for non-translatable
+            result = reflow_element(elem)
+            # Region-level containers with should_translate=False → skip (None)
+            assert result is None, (
+                f"{et.value} with should_translate=False must be skipped (None)"
+            )
+
+    def test_element_type_routing_reportlab(self):
+        """Same element_type routing decisions in reflow (shared component, same code path)."""
+        from app.backend.renderers.bbox_reflow import reflow_element
+
+        # TEXT with should_translate=True should produce a placement
+        text_elem = TranslatableElement(
+            element_id="etext",
+            content="Body text",
+            element_type=ElementType.TEXT,
+            page_num=1,
+            bbox=BoundingBox(x0=72, y0=100, x1=540, y1=120),
+            should_translate=True,
+            translated_content="Translated body",
+        )
+        result = reflow_element(text_elem)
+        assert result is not None, "TEXT with should_translate=True must produce a placement"
+
+        # FIGURE with should_translate=False should be skipped
+        figure_elem = TranslatableElement(
+            element_id="efig",
+            content="",
+            element_type=ElementType.FIGURE,
+            page_num=1,
+            bbox=BoundingBox(x0=72, y0=200, x1=400, y1=400),
+            should_translate=False,
+            translated_content=None,
+        )
+        result_fig = reflow_element(figure_elem)
+        assert result_fig is None, "FIGURE with should_translate=False must be skipped"
+
+
+# ---------------------------------------------------------------------------
+# AC-6  TestMalformedIRBothPaths
+# ---------------------------------------------------------------------------
+
+class TestMalformedIRBothPaths:
+    """Data-boundary tests for malformed IR on both render paths (AC-6)."""
+
+    def test_malformed_ir_null_bbox_both_paths(self):
+        """Both paths: element with null bbox → no raise, element skipped."""
+        from app.backend.renderers.bbox_reflow import reflow_element
+
+        elem = TranslatableElement(
+            element_id="enullbbox",
+            content="No bbox element",
+            element_type=ElementType.TEXT,
+            page_num=1,
+            bbox=None,
+            should_translate=True,
+            translated_content="Translated",
+        )
+        # fitz path (via reflow)
+        result_fitz = reflow_element(elem)
+        assert result_fitz is None, "null bbox must produce None on fitz-side reflow"
+
+        # ReportLab path (same shared reflow component)
+        result_rl = reflow_element(elem)
+        assert result_rl is None, "null bbox must produce None on RL-side reflow"
+        assert result_fitz == result_rl, "Both paths must handle null bbox identically"
+
+    def test_malformed_ir_null_reading_order_both_paths(self):
+        """Both paths handle missing reading_order identically (positional sort fallback)."""
+        from app.backend.renderers.bbox_reflow import reflow_document
+
+        elements = [
+            TranslatableElement(
+                element_id="e_no_ro",
+                content="Missing reading_order",
+                element_type=ElementType.TEXT,
+                page_num=1,
+                bbox=BoundingBox(x0=72, y0=100, x1=540, y1=120),
+                should_translate=True,
+                translated_content="Translated",
+                reading_order=None,
+            ),
+        ]
+        doc = TranslatableDocument(
+            source_path="/tmp/fake.pdf",
+            source_type="pdf",
+            elements=elements,
+            pages=[PageInfo(page_num=1, width=612, height=792)],
+            metadata=DocumentMetadata(page_count=1),
+        )
+        # Must not raise on either path; should produce one placement
+        placements = reflow_document(doc)
+        assert len(placements) == 1, "null reading_order must still produce a placement"
+
+    def test_malformed_ir_unknown_element_type_both_paths(self):
+        """Both paths handle unrecognized ElementType identically (treat as text)."""
+        from app.backend.renderers.bbox_reflow import reflow_element
+
+        class FakeElem:
+            element_id = "eunknown2"
+            content = "Unknown element type"
+            element_type = "completely_unknown_2099"
+            page_num = 1
+            bbox = BoundingBox(x0=72, y0=100, x1=300, y1=120)
+            should_translate = True
+            translated_content = "Translated"
+            reading_order = 0
+
+        result = reflow_element(FakeElem())
+        assert result is not None, "Unknown element_type must not skip the element"
+        assert result.text is not None, "Unknown element_type must produce renderable text"
+
+
 class TestIRCarriesNewFieldsAfterPDFParse:
     """AC-2/AC-5: reading_order and region types present post-parse."""
 

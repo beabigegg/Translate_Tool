@@ -1,0 +1,16 @@
+{
+  "change_id": "p2-renderer-convergence",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_renderer_convergence.py tests/test_ir_pipeline_decoupling.py tests/test_translatable_document.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-renderer-convergence/test-runs/20260618-145141/junit.xml' -ra",
+  "duration_ms": 1950,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p2-renderer-convergence/test-runs/20260618-145141/summary.json",
+    "stdout": "specs/changes/p2-renderer-convergence/test-runs/20260618-145141/stdout.log",
+    "stderr": "specs/changes/p2-renderer-convergence/test-runs/20260618-145141/stderr.log",
+    "junit": "specs/changes/p2-renderer-convergence/test-runs/20260618-145141/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

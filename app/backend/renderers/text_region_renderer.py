@@ -310,3 +310,32 @@ def create_text_regions_from_elements(
         regions.append(region)
 
     return regions
+
+
+def create_text_regions_from_placements(placements: list) -> List[TextRegion]:
+    """Create TextRegions from Placement objects produced by bbox_reflow.
+
+    This is the ReportLab draw helper that consumes pre-computed Placement
+    decisions from the shared IR-bbox reflow component (bbox_reflow.py).  It
+    contains NO IR logic — inclusion/exclusion, reading_order sorting, and
+    text-source selection are already resolved by reflow_document.
+
+    Args:
+        placements: List of Placement objects from bbox_reflow.reflow_document.
+
+    Returns:
+        List of TextRegion instances ready for rendering.  One TextRegion per
+        Placement; never raises for any individual Placement.
+    """
+    regions = []
+    for placement in placements:
+        # No IR decisions here: reflow already resolved text, bbox, and skip logic.
+        region = TextRegion(
+            text=placement.text,
+            x0=placement.x0,
+            y0=placement.y0,
+            x1=placement.x1,
+            y1=placement.y1,
+        )
+        regions.append(region)
+    return regions

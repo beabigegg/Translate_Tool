@@ -3,7 +3,7 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.7.0
+schema-version: 0.7.1
 last-changed: 2026-06-18
 breaking-change-policy: deprecate-2-minors
 ---
@@ -46,6 +46,8 @@ breaking-change-policy: deprecate-2-minors
 | BR-31 | term-conflict-strategy-rejected-protection | application-team | `insert()` with strategy `overwrite` or `merge`: skip (return `'skipped'`) if existing term has `status='approved'` OR `status='rejected'`. `insert()` with strategy `force`: overwrites regardless of status, including `rejected`. Human-rejected terms are not silently re-imported by bulk imports unless `force` is used. | tests/test_term_state_machine.py |
 | BR-32 | local-inference-privacy | platform-team | Page images produced by rasterising PDF pages (via PyMuPDF `page.get_pixmap()`) during layout detection MUST remain local. They must never be serialised, persisted to disk, sent over any socket, or logged. The rasterised array is created, consumed, and discarded entirely within `layout_detector.py`. The module must contain no network-client, HTTP, socket, or cloud-SDK imports. | tests/test_pdf_parser.py |
 | BR-33 | layout-detection-fail-soft | platform-team | When layout detection fails for any page (causes: model file absent, ONNX session load error, out-of-memory, corrupt or unrasterisable page image), the system MUST fall back to the `round(y0,10pt)` reading-order heuristic for that affected page and continue the job. The failure MUST be logged at WARNING level, including the page number and failure reason. No page image or page content may appear in the log message. A detector unavailable at startup is surfaced once as a WARNING; it does not fail the process. | tests/test_pdf_parser.py |
+| BR-34 | renderer-primary-fallback | application-team | fitz is the default primary renderer for PDF output. When the fitz render path raises an unhandled exception, the system MUST fall back to the ReportLab renderer and produce a rendered PDF output without aborting the job. The fallback MUST be logged at WARNING level, including the exception type and the document identifier. The ReportLab path is never invoked unless fitz fails; both paths consume the same `TranslatableDocument` IR via the shared IR-bbox reflow component. | tests/test_pdf_generator.py |
+| BR-35 | renderer-ir-consumption-consistency | application-team | For any given `TranslatableDocument` IR, the fitz primary path and the ReportLab fallback path MUST make identical element-level decisions for element inclusion/exclusion, reading-order resolution, and text-source selection (translated_content vs. content fallback). Layout pixel-position and font rendering may differ between paths within the documented numeric tolerance (defined in design.md). An unknown `element_type` value MUST be treated as `text` on both paths (passthrough, do not skip, do not raise). | tests/test_ir_pipeline_decoupling.py |
 
 ## Decision Tables
 
@@ -142,6 +144,7 @@ breaking-change-policy: deprecate-2-minors
 | `strategy = force`, any existing status including `rejected` | overwrite regardless | tests/test_term_state_machine.py |
 
 ### Table J — layout detection failure handling (BR-32, BR-33)
+
 | condition | behavior | test id |
 |---|---|---|
 | `LAYOUT_DETECTOR_ENABLED=false` or `0` | layout detection skipped for all pages; `round(y0,10pt)` heuristic used for all `reading_order` assignment | — |
@@ -152,6 +155,17 @@ breaking-change-policy: deprecate-2-minors
 | Corrupt or unrasterisable page image | WARNING logged (page number + reason); heuristic fallback used for that page; job continues | — |
 | Inference failure on page N | pages before N retain detector-assigned values; page N and subsequent use heuristic | — |
 | No-text-layer (scanned) PDF | layout detection not invoked; existing out-of-scope (P3-1) behavior unchanged | — |
+
+### Table K — renderer primary/fallback selection (BR-34, BR-35)
+| condition | behavior | test id |
+|---|---|---|
+| fitz render path completes without exception | output PDF produced via fitz; ReportLab not invoked | tests/test_pdf_generator.py |
+| fitz render path raises an unhandled exception | WARNING logged (exception type + document id); ReportLab path invoked; PDF produced via ReportLab | tests/test_pdf_generator.py |
+| ReportLab fallback also raises | job transitions to `status: "failed"`; exception propagated to job manager | tests/test_pdf_generator.py |
+| IR `bbox` is null for an element | both paths apply documented fallback placement; neither raises | tests/test_ir_pipeline_decoupling.py |
+| IR `reading_order` is null for an element | both paths apply positional sort fallback; neither raises | tests/test_ir_pipeline_decoupling.py |
+| IR `element_type` is an unknown value | both paths treat element as `text`; neither raises; element rendered | tests/test_ir_pipeline_decoupling.py |
+| IR `translated_content` is null | both paths render `content` (source text) instead; neither raises | tests/test_ir_pipeline_decoupling.py |
 
 ## Change Policy
 

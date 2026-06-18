@@ -1,0 +1,22 @@
+[
+  {
+    "element_id": "e1",
+    "page_num": 1,
+    "x0": 72,
+    "y0": 72,
+    "x1": 300,
+    "y1": 90,
+    "text": "Translated Hello",
+    "reading_order": 0
+  },
+  {
+    "element_id": "e2",
+    "page_num": 1,
+    "x0": 72,
+    "y0": 100,
+    "x1": 300,
+    "y1": 118,
+    "text": "Translated Second",
+    "reading_order": 1
+  }
+]

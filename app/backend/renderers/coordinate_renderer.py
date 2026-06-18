@@ -15,9 +15,11 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen.canvas import Canvas
 
 from app.backend.renderers.base import BaseRenderer, RenderMode
+from app.backend.renderers.bbox_reflow import reflow_document
 from app.backend.renderers.text_region_renderer import (
     TextRegion,
     create_text_regions_from_elements,
+    create_text_regions_from_placements,
     render_text_regions,
 )
 from app.backend.utils.font_utils import get_font_for_language, register_fonts
@@ -112,8 +114,15 @@ class CoordinateRenderer(BaseRenderer):
         """
         self.log(f"[Renderer] Generating overlay PDF: {Path(output_path).name}")
 
-        # Group elements by page
-        elements_by_page = document.get_all_elements_by_page()
+        # Obtain ordered placements via the shared IR-bbox reflow component (AC-1/BR-35).
+        # This is the single source of element-level placement decisions for both
+        # the fitz primary and ReportLab fallback paths.
+        placements = reflow_document(document)
+
+        # Group placements by page_num for per-page canvas rendering.
+        placements_by_page: dict = {}
+        for p in placements:
+            placements_by_page.setdefault(p.page_num, []).append(p)
 
         # Determine page size from document or use default
         if document.pages:
@@ -127,8 +136,19 @@ class CoordinateRenderer(BaseRenderer):
 
         total_regions = 0
 
-        for page_num in sorted(elements_by_page.keys()):
-            elements = elements_by_page[page_num]
+        all_page_nums = sorted(
+            set(p.page_num for p in placements) | {pi.page_num for pi in document.pages}
+        ) if document.pages else sorted(placements_by_page.keys())
+
+        # Use element_by_page keys as the authoritative page iteration set when
+        # there are no placements (empty document → no pages to iterate).
+        if not all_page_nums:
+            canvas.save()
+            self.log(f"[Renderer] Rendered {total_regions} text regions to {Path(output_path).name}")
+            return
+
+        for page_num in all_page_nums:
+            page_placements = placements_by_page.get(page_num, [])
 
             # Get page-specific dimensions
             page_info = next((p for p in document.pages if p.page_num == page_num), None)
@@ -138,10 +158,8 @@ class CoordinateRenderer(BaseRenderer):
             else:
                 current_page_height = page_height
 
-            # Create text regions for this page
-            regions = create_text_regions_from_elements(
-                elements, translations, self.target_lang
-            )
+            # Convert placements to TextRegions (draw-only; no IR logic here).
+            regions = create_text_regions_from_placements(page_placements)
 
             # Render regions
             rendered = render_text_regions(
@@ -154,7 +172,7 @@ class CoordinateRenderer(BaseRenderer):
             total_regions += rendered
 
             # Add new page (except for last page)
-            if page_num < max(elements_by_page.keys()):
+            if page_num < max(all_page_nums):
                 canvas.showPage()
 
         # Save the PDF
