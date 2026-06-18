@@ -3,7 +3,7 @@ contract: api
 summary: API behavior, compatibility rules, and endpoint contract requirements.
 owner: application-team
 surface: api
-schema-version: 0.4.0
+schema-version: 0.4.1
 last-changed: 2026-06-18
 breaking-change-policy: deprecate-2-minors
 ---
@@ -69,6 +69,11 @@ The fence MUST be tagged `json-schema` (NOT `json`) or export fails fast:
 ```json-schema
 { "type": "object", "oneOf": [ { "required": ["createdAt"] }, { "required": ["deletedAt"] } ] }
 ```
+
+Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
+"serialized as JSON map of <key> -> <value>". `cdd-kit openapi export` rejects
+`object` with "unknown type" and fails the gate. See existing examples:
+`by_target_lang`, `by_domain`, `by_status` in TermStatsResponse.
 -->
 
 ### HealthResponse

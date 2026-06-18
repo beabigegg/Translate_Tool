@@ -14,6 +14,9 @@ Added: BR-28 (term-state-machine — four-state lifecycle and allowed transition
 ## [env 0.3.0] — 2026-06-18
 Added: TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED (bool, default false) and TERM_INJECT_CONF_THRESHOLD (float, default 0.9) — term injection loose gate vars. Updated: .env.example.template and env.schema.json.
 
+## [api 0.4.1] — 2026-06-18
+Added: schema authoring rule in `## Schemas` comment block — map/dict fields must use type `string` (not `object`) with "serialized as JSON map of <key> -> <value>" note; `cdd-kit openapi export` rejects `object` type. Non-breaking additive note.
+
 ## [api 0.4.0] — 2026-06-18
 Added: POST /terms/reject and POST /terms/flag-needs-review endpoints (TermRejectRequest body; 200 on success, 404 on not found). Added: TermRejectRequest schema. Extended: TermStatsResponse with needs_review, approved, rejected, by_status fields (additive, non-breaking). Note: GET /terms/export status param now accepts needs_review and rejected in addition to approved and unverified. Updated: api-inventory.md with two new routes.
 
