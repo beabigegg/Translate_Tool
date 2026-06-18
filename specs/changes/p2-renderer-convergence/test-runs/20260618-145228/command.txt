@@ -1,1 +1,0 @@
-/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_renderer_convergence.py tests/test_pdf_generator.py::TestFallbackPath tests/test_ir_pipeline_decoupling.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-renderer-convergence/test-runs/20260618-145228/junit.xml' -ra

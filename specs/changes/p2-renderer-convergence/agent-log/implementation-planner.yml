@@ -1,4 +1,0 @@
-artifacts:
-  - { type: plan-written, pointer: "specs/changes/p2-renderer-convergence/implementation-plan.md" }
-  - { type: owner-map, pointer: "backend-engineer (all of IP-1..IP-7)" }
-  - { type: scope-summary, pointer: "in: bbox_reflow (new), fitz_renderer rename, coordinate/text_region adapters, pdf_processor dispatch, __init__ exports, tests; out: IR wire schema, DOCX/PPTX/XLSX, API, side-by-side equivalence, byte/raster identity" }
