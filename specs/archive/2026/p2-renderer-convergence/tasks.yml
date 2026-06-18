@@ -1,0 +1,41 @@
+change-id: p2-renderer-convergence
+status: in-progress
+tier: 2
+context-governance: v1
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on: [p2-ir-document-model, p2-layout-detection]
+
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: done }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: skipped, note: "no endpoint change; rendering is internal" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no UI web surface" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: skipped, note: "no new env vars" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: done }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: done }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: done }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: done }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: done }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: done }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "per-document rendering, no stress/soak surface" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: done }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no UI surface" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: skipped, note: "no env/deploy changes" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: done }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI surface" }
+  - { id: "5.2", section: Review, title: "Visual review", status: done, note: "approve-with-risk: VR-1 quad-refinement tolerance gap, VR-2 no .layout.json golden snapshots; routed to qa-reviewer" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done }
+  - { id: "5.4", section: Review, title: "QA review", status: done, note: "approve-with-risk: VR-1 quad-refinement tolerance gap documented as non-blocking follow-up; F-0 closed" }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "gates configured in .github/workflows/contract-driven-gates.yml; all required gates verified locally (cdd-kit gate passes)" }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: skipped, note: "no informational gates for this change" }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gates for this change" }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "2 lessons promoted to CLAUDE.md: shared-component wiring verification and tautological wiring test anti-pattern" }

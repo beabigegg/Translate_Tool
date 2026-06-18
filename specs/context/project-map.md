@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
 visible-dirs: 56
-visible-files: 183
+visible-files: 186
 omitted-dirs: 11
 truncated-dirs: 0
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -92,7 +92,9 @@ Translate_Tool/
 |   |   |-- renderers/
 |   |   |   |-- __init__.py
 |   |   |   |-- base.py
+|   |   |   |-- bbox_reflow.py
 |   |   |   |-- coordinate_renderer.py
+|   |   |   |-- fitz_renderer.py
 |   |   |   |-- inline_renderer.py
 |   |   |   |-- pdf_generator.py
 |   |   |   \-- text_region_renderer.py
@@ -268,6 +270,7 @@ Translate_Tool/
 |   |-- test_pdf_parser.py
 |   |-- test_pptx_parser.py
 |   |-- test_provider_fallback.py
+|   |-- test_renderer_convergence.py
 |   |-- test_sentence_mode_consistency.py
 |   |-- test_term_api.py
 |   |-- test_term_db.py

@@ -1,0 +1,5 @@
+artifacts:
+  - { type: adr-written, pointer: "none (BR-34/BR-35 + data-shape Renderer IR-consumption contract already encode the load-bearing trade-offs; design.md records the WHAT/WHY)" }
+  - { type: affected-areas, pointer: "renderers (fitz_renderer, coordinate_renderer, text_region_renderer, new bbox_reflow), pdf_processor dispatch" }
+  - { type: decision-summary, pointer: "fitz primary / ReportLab fallback; shared renderers/bbox_reflow.py owns IR->placement; rename pdf_generator.py -> fitz_renderer.py" }
+  - { type: risks-noted, pointer: "5 open risks, 0 high (tolerance validation, rename import sites, quad-precise redaction, side-by-side scope, test import path)" }

@@ -1,0 +1,45 @@
+change-id: p2-renderer-convergence
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/pytest tests/ --collect-only -q
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-renderer-convergence/test-runs/20260618-143501/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/p2-renderer-convergence/test-runs/20260618-143501/summary.json
+    junit: specs/changes/p2-renderer-convergence/test-runs/20260618-143501/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_renderer_convergence.py
+      tests/test_pdf_generator.py::TestFallbackPath tests/test_ir_pipeline_decoupling.py -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-renderer-convergence/test-runs/20260618-145228/junit.xml'
+      -ra
+    summary: specs/changes/p2-renderer-convergence/test-runs/20260618-145228/summary.json
+    junit: specs/changes/p2-renderer-convergence/test-runs/20260618-145228/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_renderer_convergence.py tests/test_pdf_generator.py
+      tests/test_coordinate_renderer.py tests/test_text_region_renderer.py tests/test_ir_pipeline_decoupling.py -x -q
+      --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-renderer-convergence/test-runs/20260618-145237/junit.xml'
+      -ra
+    summary: specs/changes/p2-renderer-convergence/test-runs/20260618-145237/summary.json
+    junit: specs/changes/p2-renderer-convergence/test-runs/20260618-145237/junit.xml
+  - phase: contract
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_renderer_convergence.py
+      tests/test_ir_pipeline_decoupling.py tests/test_translatable_document.py -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-renderer-convergence/test-runs/20260618-145244/junit.xml'
+      -ra
+    summary: specs/changes/p2-renderer-convergence/test-runs/20260618-145244/summary.json
+    junit: specs/changes/p2-renderer-convergence/test-runs/20260618-145244/junit.xml
+final-status: passed

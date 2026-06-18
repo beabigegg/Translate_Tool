@@ -1,0 +1,1 @@
+/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/ --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-renderer-convergence/test-runs/20260618-143501/junit.xml' --maxfail=1 --tb=short -ra
