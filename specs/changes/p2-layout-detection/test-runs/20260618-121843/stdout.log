@@ -1,0 +1,6 @@
+.................................s.......ss..........                    [100%]
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_pdf_parser.py:348: TABLE region-level element emission via find_tables() not yet implemented for this fixture; will be addressed in p2-layout-detection
+SKIPPED [1] tests/test_golden_regression.py:165: No DOCX fixtures available yet
+SKIPPED [1] tests/test_golden_regression.py:186: No PPTX fixtures available yet
+50 passed, 3 skipped in 15.44s

@@ -25,6 +25,9 @@ from app.backend.models.translatable_document import (
     TranslatableDocument,
     TranslatableElement,
 )
+import os
+
+from app.backend.config import LAYOUT_DETECTOR_MODEL_PATH
 from app.backend.parsers.base import BaseParser
 from app.backend.utils.bbox_utils import is_header_footer_region, normalize_bbox
 
@@ -116,12 +119,20 @@ class PyMuPDFParser(BaseParser):
             # Detect tables and update element types
             self._detect_and_mark_tables(doc, elements)
 
-            # Sort by reading order
-            elements = self._sort_by_reading_order(elements)
-
-            # Assign sequential reading_order after final sort
-            for idx, elem in enumerate(elements):
-                elem.reading_order = idx
+            # Layout-detector path (native-PDF text-layer only):
+            # Rasterise each page, run detector, write element_type + reading_order.
+            # Falls back per-page to _sort_by_reading_order heuristic on any failure (D-2).
+            # Read env var at runtime so tests can monkeypatch os.environ.
+            _detector_enabled = os.environ.get(
+                "LAYOUT_DETECTOR_ENABLED", "true"
+            ).lower() in ("1", "true", "yes")
+            if _detector_enabled:
+                self._run_layout_detector(doc, elements)
+            else:
+                # Heuristic path (detector disabled or LAYOUT_DETECTOR_ENABLED=false)
+                elements = self._sort_by_reading_order(elements)
+                for idx, elem in enumerate(elements):
+                    elem.reading_order = idx
 
             # Build metadata
             metadata = self._extract_metadata(doc, len(pages), total_chars)
@@ -348,6 +359,95 @@ class PyMuPDFParser(BaseParser):
             and inner.x1 <= outer.x1 + tolerance
             and inner.y1 <= outer.y1 + tolerance
         )
+
+    def _run_layout_detector(
+        self,
+        doc: Any,  # fitz.Document
+        elements: List[TranslatableElement],
+    ) -> None:
+        """Run the layout detector on each page; write element_type + reading_order.
+
+        Rasterises each page via page.get_pixmap(), passes the numpy array to
+        LayoutDetector.detect() together with that page's elements.  On any per-page
+        failure the heuristic fallback is applied for that page (D-2).  The page
+        pixmap array is never stored on self (D-3).
+
+        Args:
+            doc: PyMuPDF document.
+            elements: All elements (all pages); mutated in-place.
+        """
+        import numpy as np
+
+        try:
+            from app.backend.parsers.layout_detector import LayoutDetector
+            detector = LayoutDetector(model_path=LAYOUT_DETECTOR_MODEL_PATH)
+        except Exception as exc:
+            logger.warning(
+                "PyMuPDFParser: could not import LayoutDetector (%s); "
+                "falling back to heuristic for all pages.",
+                exc,
+            )
+            elements[:] = self._sort_by_reading_order(elements)
+            for idx, elem in enumerate(elements):
+                elem.reading_order = idx
+            return
+
+        # Build page → elements lookup
+        page_elements: Dict[int, List[TranslatableElement]] = {}
+        for elem in elements:
+            page_elements.setdefault(elem.page_num, []).append(elem)
+
+        for page_num_0 in range(len(doc)):
+            page_num_1 = page_num_0 + 1
+            page_elems = page_elements.get(page_num_1, [])
+            if not page_elems:
+                continue
+
+            # Rasterise page to numpy array (pixmap created, consumed, not stored)
+            try:
+                page = doc[page_num_0]
+                pixmap = page.get_pixmap(matrix=fitz.Matrix(1, 1))
+                page_array = np.frombuffer(pixmap.samples, dtype=np.uint8).reshape(
+                    pixmap.height, pixmap.width, pixmap.n
+                )
+                # Ensure 3-channel (drop alpha if present)
+                if page_array.shape[2] == 4:
+                    page_array = page_array[:, :, :3]
+                elif page_array.shape[2] == 1:
+                    page_array = np.repeat(page_array, 3, axis=2)
+            except Exception as exc:
+                logger.warning(
+                    "PyMuPDFParser: failed to rasterise page %d (%s); "
+                    "applying heuristic for that page.",
+                    page_num_1,
+                    exc,
+                )
+                sorted_page = self._sort_by_reading_order(page_elems)
+                # Assign reading_order using a page-local offset
+                current_max = max(
+                    (e.reading_order for e in elements if e.reading_order is not None),
+                    default=-1,
+                )
+                for i, elem in enumerate(sorted_page):
+                    elem.reading_order = current_max + 1 + i
+                continue
+
+            # Run detector (fail-soft: LayoutDetector.detect never raises, D-2)
+            detector.detect(page_array, page_elems)
+            # page_array goes out of scope here; GC reclaims it
+
+        # Re-sequence globally: detect() assigns 0-based reading_order per page;
+        # after all pages we must produce a single 0..N-1 sequence across the document.
+        # Sort by (page_num, local reading_order) then reassign global sequential index.
+        def _global_sort_key(e: TranslatableElement):
+            ro = e.reading_order if e.reading_order is not None else 999999
+            y0 = e.bbox.y0 if e.bbox else 0.0
+            x0 = e.bbox.x0 if e.bbox else 0.0
+            return (e.page_num, ro, y0, x0)
+
+        all_sorted = sorted(elements, key=_global_sort_key)
+        for idx, elem in enumerate(all_sorted):
+            elem.reading_order = idx
 
     def _sort_by_reading_order(
         self,

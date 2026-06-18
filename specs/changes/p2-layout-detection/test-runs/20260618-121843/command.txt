@@ -1,0 +1,1 @@
+/home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_layout_detector.py tests/test_pdf_parser.py tests/test_golden_regression.py tests/test_env_contract.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-layout-detection/test-runs/20260618-121843/junit.xml' -q --maxfail=1 --tb=short -ra

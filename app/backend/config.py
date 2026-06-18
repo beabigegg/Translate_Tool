@@ -131,6 +131,13 @@ PDF_PARSER_ENGINE = "pymupdf"  # pymupdf | pypdf2 (fallback)
 PDF_SKIP_HEADER_FOOTER = False  # Skip header/footer translation
 PDF_HEADER_FOOTER_MARGIN_PT = 50  # Margin for header/footer detection (points)
 
+# Layout detector configuration (p2-layout-detection)
+# LAYOUT_DETECTOR_MODEL_PATH: optional explicit path to heron-101 ONNX weights directory.
+# When unset, falls back to HuggingFace cache / auto-download (D-5, tier 2/3).
+LAYOUT_DETECTOR_MODEL_PATH: Optional[str] = os.environ.get("LAYOUT_DETECTOR_MODEL_PATH") or None
+# LAYOUT_DETECTOR_ENABLED: default on; set to "0"/"false"/"no" to revert to heuristic.
+LAYOUT_DETECTOR_ENABLED: bool = os.environ.get("LAYOUT_DETECTOR_ENABLED", "true").lower() in ("1", "true", "yes")
+
 # Layout preservation configuration
 LAYOUT_PRESERVATION_MODE = "inline"  # inline | overlay | side_by_side
 DEFAULT_FONT_FAMILY = "NotoSansSC"  # Default font for PDF rendering

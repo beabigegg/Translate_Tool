@@ -1,0 +1,16 @@
+{
+  "change_id": "p2-layout-detection",
+  "phase": "targeted",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_layout_detector.py tests/test_env_contract.py -x --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-layout-detection/test-runs/20260618-121216/junit.xml' -q --tb=short -ra",
+  "duration_ms": 467,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p2-layout-detection/test-runs/20260618-121216/summary.json",
+    "stdout": "specs/changes/p2-layout-detection/test-runs/20260618-121216/stdout.log",
+    "stderr": "specs/changes/p2-layout-detection/test-runs/20260618-121216/stderr.log",
+    "junit": "specs/changes/p2-layout-detection/test-runs/20260618-121216/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

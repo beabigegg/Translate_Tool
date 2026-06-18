@@ -1,6 +1,6 @@
 # Contract-driven gates
 # Tier semantics: ci/gate-policy.md
-# Active change gates: none (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model)
+# Active change gates: p2-layout-detection (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model)
 
 name: contract-driven-gates
 
@@ -43,9 +43,8 @@ jobs:
       - name: Validate contracts (Tier 1 — blocks merge)
         run: cdd-kit validate --contracts
 
-      - name: Change gate (Tier 1 — blocks merge)
-        run: |
-          echo "No active change gates — all current changes are in specs/archive/."
+      - name: Change gate (Tier 2 — blocks merge)
+        run: cdd-kit gate p2-layout-detection
 
       - name: OpenAPI sync gate
         run: cdd-kit openapi export --check --out contracts/api/openapi.yml
@@ -120,6 +119,23 @@ jobs:
         # a regression; any pre-existing-field diff fails the gate.
         # DOCX/PPTX fixtures deferred — tests skip gracefully until fixtures are committed.
         run: pytest tests/test_golden_regression.py --tb=short -q
+
+  layout-detector-dependency-gate:
+    name: layout-detector-dependency-gate
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Layout detector dependency gate (Tier 2 — blocks merge)
+        # AC-8: only onnxruntime (CPU, no suffix) is permitted.
+        # ultralytics is forbidden (license). onnxruntime-gpu is forbidden
+        # in base requirements (operator opt-in only, installed out-of-band).
+        # Pass condition: grep finds no match → exit 1 from grep → ! inverts to exit 0.
+        run: |
+          ! grep -E "(ultralytics|onnxruntime-gpu)" \
+            app/backend/requirements.txt \
+            app/backend/environment.yml
 
   scheduled-stress-soak:
     name: scheduled-stress-soak

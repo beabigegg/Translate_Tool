@@ -11,6 +11,9 @@ lxml>=5.0.0
 blingfire>=0.1.8
 pysbd>=0.3.4
 reportlab>=4.0.0
+onnxruntime>=1.20.0
+huggingface_hub>=0.22.0
+numpy>=1.24.0
 
 # Testing
 pytest>=8.0.0

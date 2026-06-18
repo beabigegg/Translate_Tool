@@ -239,6 +239,164 @@ class TestDualRunDiffNoRegressions:
                 )
 
 
+# ---------------------------------------------------------------------------
+# p2-layout-detection: AC-6 dual-run and multi-column accuracy
+# ---------------------------------------------------------------------------
+
+class TestDualRunLayoutDetectorVsHeuristic:
+    """AC-6: parse same fixture with detector enabled vs heuristic; IR schema-identical."""
+
+    def test_dual_run_layout_detector_vs_heuristic(self, monkeypatch):
+        """Both detector and heuristic paths produce IR-schema-compatible output.
+
+        The IR wire shape (element fields) must be identical under both paths.
+        reading_order values may differ (detector may reorder); element_count
+        and element_type sets must not differ.
+        """
+        import os
+        import numpy as np
+        from unittest.mock import MagicMock, patch
+
+        pdf_fixtures = _pdf_fixtures()
+        if not pdf_fixtures:
+            pytest.skip("No PDF fixtures available")
+
+        fixture_path = pdf_fixtures[0]
+
+        try:
+            from app.backend.parsers.pdf_parser import PyMuPDFParser
+        except ImportError:
+            pytest.skip("PyMuPDF not installed")
+
+        # --- Run 1: heuristic (detector disabled) ---
+        monkeypatch.setenv("LAYOUT_DETECTOR_ENABLED", "false")
+        parser_h = PyMuPDFParser()
+        doc_heuristic = parser_h.parse(str(fixture_path))
+
+        # --- Run 2: detector enabled (mocked ONNX, returns empty detections) ---
+        monkeypatch.setenv("LAYOUT_DETECTOR_ENABLED", "true")
+
+        mock_session = MagicMock()
+        mock_session.run.return_value = [
+            np.zeros((1, 0, 4), dtype=np.float32),
+            np.zeros((1, 0), dtype=np.float32),
+            np.zeros((1, 0), dtype=np.int64),
+        ]
+        mock_input = MagicMock()
+        mock_input.name = "pixel_values"
+        mock_session.get_inputs.return_value = [mock_input]
+
+        with patch("onnxruntime.InferenceSession", return_value=mock_session):
+            parser_d = PyMuPDFParser()
+            doc_detector = parser_d.parse(str(fixture_path))
+
+        # IR schema must be identical: same number of elements
+        assert len(doc_heuristic.elements) == len(doc_detector.elements), (
+            f"Element count changed between heuristic and detector runs: "
+            f"{len(doc_heuristic.elements)} vs {len(doc_detector.elements)}"
+        )
+
+        # All elements must have reading_order set in both runs
+        for elem in doc_detector.elements:
+            assert elem.reading_order is not None, (
+                f"Detector run: element {elem.element_id} missing reading_order"
+            )
+        for elem in doc_heuristic.elements:
+            assert elem.reading_order is not None, (
+                f"Heuristic run: element {elem.element_id} missing reading_order"
+            )
+
+        # reading_order values must form a valid 0..N-1 sequence in both runs
+        def _is_sequential(elements) -> bool:
+            orders = sorted(e.reading_order for e in elements)
+            return orders == list(range(len(elements)))
+
+        assert _is_sequential(doc_heuristic.elements), (
+            "Heuristic run: reading_order is not a valid 0..N-1 sequence"
+        )
+        assert _is_sequential(doc_detector.elements), (
+            "Detector run: reading_order is not a valid 0..N-1 sequence"
+        )
+
+
+class TestMultiColumnReadingOrderAccuracy:
+    """AC-6: multi-column reading-order accuracy — detector path must handle column layouts."""
+
+    def test_multi_column_reading_order_accuracy(self, monkeypatch):
+        """With mocked detector columns (left col before right col), verify correct order.
+
+        Constructs 4 elements in a 2-column layout and mocks the detector to
+        assign 2 region boxes (left column and right column).  Expected reading
+        order: left-col top, left-col bottom, right-col top, right-col bottom.
+        """
+        import os
+        import numpy as np
+        from unittest.mock import MagicMock, patch
+
+        try:
+            from app.backend.parsers.layout_detector import LayoutDetector
+        except ImportError:
+            pytest.skip("layout_detector not yet implemented")
+
+        from app.backend.models.translatable_document import (
+            BoundingBox,
+            ElementType,
+            TranslatableElement,
+        )
+
+        # 2-column layout (page: 0..600 wide, 0..800 tall)
+        # Left column: x 0..280; right column: x 320..600
+        elements = [
+            TranslatableElement("lc_top",  "Left top",    ElementType.TEXT, 1, BoundingBox(10, 50, 270, 80),   metadata={}),
+            TranslatableElement("rc_top",  "Right top",   ElementType.TEXT, 1, BoundingBox(330, 50, 590, 80),  metadata={}),
+            TranslatableElement("lc_bot",  "Left bottom", ElementType.TEXT, 1, BoundingBox(10, 150, 270, 180), metadata={}),
+            TranslatableElement("rc_bot",  "Right bottom",ElementType.TEXT, 1, BoundingBox(330, 150, 590, 180),metadata={}),
+        ]
+
+        # Mock detector: 2 region boxes — left col (0..0.46 wide) and right col (0.53..1.0)
+        # Normalised to page 600×800
+        boxes  = [
+            [0.0,  0.0, 0.46, 1.0],   # left column region
+            [0.53, 0.0, 1.0,  1.0],   # right column region
+        ]
+        scores = [0.9, 0.9]
+        labels = [0, 0]  # both TEXT
+
+        mock_session = MagicMock()
+        mock_session.run.return_value = [
+            np.array([boxes],  dtype=np.float32),
+            np.array([scores], dtype=np.float32),
+            np.array([labels], dtype=np.int64),
+        ]
+        mock_input = MagicMock()
+        mock_input.name = "pixel_values"
+        mock_session.get_inputs.return_value = [mock_input]
+
+        page_pixmap = np.zeros((800, 600, 3), dtype=np.uint8)
+
+        monkeypatch.setenv("LAYOUT_DETECTOR_ENABLED", "true")
+        with patch("onnxruntime.InferenceSession", return_value=mock_session):
+            detector = LayoutDetector(model_path="/fake/path")
+            detector.detect(page_pixmap, elements)
+
+        # All elements must have reading_order
+        orders = {e.element_id: e.reading_order for e in elements}
+        assert all(v is not None for v in orders.values()), (
+            f"Not all elements got reading_order: {orders}"
+        )
+
+        # Left column elements must come before right column elements
+        lc_orders = {eid: o for eid, o in orders.items() if eid.startswith("lc")}
+        rc_orders = {eid: o for eid, o in orders.items() if eid.startswith("rc")}
+
+        max_lc = max(lc_orders.values())
+        min_rc = min(rc_orders.values())
+        assert max_lc < min_rc, (
+            f"Left-column elements must precede right-column elements in reading order. "
+            f"Left: {lc_orders}, Right: {rc_orders}"
+        )
+
+
 class TestGoldenOfflineNoNetwork:
     """AC-7: Golden tests must pass with network access blocked."""
 

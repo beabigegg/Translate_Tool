@@ -8,6 +8,18 @@ While a contract is at 0.x (draft), entries here are optional.
 Once a contract reaches 1.0.0, every schema-version bump must have
 a corresponding entry below.
 
+## [ci 0.4.0] — 2026-06-18
+Added: `layout-detector-dependency-gate` — verifies onnxruntime (CPU only) is the only new ML runtime; blocks on ultralytics or onnxruntime-gpu in requirements. Added: `## Layout Detector Dependency Gate` section with pass/fail conditions and model-weight bundling note.
+
+## [env 0.4.0] — 2026-06-18
+Added: LAYOUT_DETECTOR_MODEL_PATH (optional string, no default — falls back to HuggingFace auto-download) and LAYOUT_DETECTOR_ENABLED (optional boolean, default true — rollback switch to round(y0,10pt) heuristic). Updated: .env.example.template and env.schema.json.
+
+## [data 0.4.2] — 2026-06-18
+Added: `### ElementType producer inventory` — layout_detector.py recorded as IR producer alongside pdf_parser.py. Added: normative heron-101 → ElementType label mapping table (D-4). Updated: `Known consumers` table — pdf_parser.py producer row updated to reflect delegation to layout detector; layout_detector.py added as producer. No wire-schema change.
+
+## [business 0.7.0] — 2026-06-18
+Added: BR-32 (local-inference-privacy — page images must never leave the process during layout detection; module must have no network imports). Added: BR-33 (layout-detection-fail-soft — inference failure on any page triggers WARNING + per-page fallback to round(y0,10pt); job continues). Added: Table J (layout detection failure handling decision table).
+
 ## [ci 0.3.0] — 2026-06-18
 Added: Informational Gate Promotion Policy — quarantine-to-informational-sub-job rule for third-party library non-determinism; parent gate stays required. Added: snapshot initialization `MUST NOT` auto-pass rule — new fixture binaries must be accompanied by committed `.ir.json` snapshot in the same PR.
 

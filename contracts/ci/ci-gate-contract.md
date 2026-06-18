@@ -3,7 +3,7 @@ contract: ci
 summary: CI gate inventory, artifact retention, and rollback requirements.
 owner: platform-team
 surface: delivery-pipeline
-schema-version: 0.3.0
+schema-version: 0.4.0
 last-changed: 2026-06-18
 breaking-change-policy: deprecate-2-minors
 ---
@@ -17,6 +17,7 @@ breaking-change-policy: deprecate-2-minors
 | change-gate | 2+ | pre-commit / PR | yes | cdd-kit gate <change-id> | platform-team | exit code 0 |
 | unit-tests | 2+ | PR | yes | pytest tests/ | application-team | junit XML |
 | golden-sample-regression | 2+ | PR | yes | pytest tests/test_golden_regression.py --tb=short -q | application-team | per-sample pass/fail diff (step log) |
+| layout-detector-dependency-gate | 2+ | PR | yes | `! grep -E "(ultralytics|onnxruntime-gpu)" app/backend/requirements.txt app/backend/environment.yml` | platform-team | exit code 0 (no forbidden packages) |
 
 ## Required Check Policy
 
@@ -31,6 +32,18 @@ All gates in the Gate Inventory marked `required: yes` must pass before a PR is 
 - **Report artifact**: the gate emits a per-sample pass/fail diff to stdout (captured by CI as a step log). No external artifact store is required at Tier 2.
 - **Sample set**: `tests/fixtures/golden/` must contain 3–5 representative files covering at minimum one PDF, one DOCX, and one PPTX. Files must be committed as binary fixtures; they must not be generated at CI time. Note: DOCX and PPTX binary fixtures are deferred pending sourcing of license-clean representative files; the gate skips DOCX/PPTX samples gracefully until they are committed.
 - **Snapshot initialization**: `_load_or_create_snapshot()` MUST NOT auto-write and auto-pass when a snapshot JSON is absent. CI must fail (not silently create) when a fixture file exists in `tests/fixtures/golden/` without a corresponding committed `.ir.json` snapshot. Any new fixture file committed to the golden directories MUST be accompanied by a committed snapshot in the same PR.
+
+## Layout Detector Dependency Gate
+
+**Gate name**: `layout-detector-dependency-gate`
+
+**Pass condition**: Neither `ultralytics` nor `onnxruntime-gpu` appears in `app/backend/requirements.txt` or `app/backend/environment.yml`. `onnxruntime` (CPU variant, no suffix) is the only permitted ONNX runtime entry. `huggingface_hub` is also permitted.
+
+**Fail condition**: Any line matching `ultralytics` or `onnxruntime-gpu` in either requirements file blocks merge.
+
+**GPU opt-in**: `onnxruntime-gpu` may be installed out-of-band by operators for GPU acceleration. The detector auto-selects CUDA execution provider when available and silently falls back to `CPUExecutionProvider`. This requires no code change and is not tracked in base requirements.
+
+**Model weight bundling note**: Weights are NOT bundled in the repository. Offline bundling is achieved via Docker image preload + `LAYOUT_DETECTOR_MODEL_PATH`. The gate does not verify Docker weight bundling; that is an operational concern.
 
 ## Informational Gate Promotion Policy
 

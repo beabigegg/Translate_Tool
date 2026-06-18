@@ -3,7 +3,7 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.6.0
+schema-version: 0.7.0
 last-changed: 2026-06-18
 breaking-change-policy: deprecate-2-minors
 ---
@@ -44,6 +44,8 @@ breaking-change-policy: deprecate-2-minors
 | BR-29 | term-injection-gate | application-team | Default (strict): only `status='approved'` terms are injected into translation prompts. Optional loose gate (`TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED=true`): also inject `status='unverified'` terms with `confidence >= TERM_INJECT_CONF_THRESHOLD`. `rejected` and `needs_review` terms are NEVER injected regardless of the loose gate flag. The `confidence=1.0` bypass is removed; LLM self-assessed confidence no longer grants injection. | tests/test_term_state_machine.py |
 | BR-30 | llm-confidence-cap | application-team | LLM-extracted confidence is capped at `_LLM_CONFIDENCE_CAP = 0.85` in `term_extractor.py`. This prevents LLM self-assessment from matching human-verified confidence. Human approval (`approve()`) is the canonical verification method. | tests/test_term_state_machine.py |
 | BR-31 | term-conflict-strategy-rejected-protection | application-team | `insert()` with strategy `overwrite` or `merge`: skip (return `'skipped'`) if existing term has `status='approved'` OR `status='rejected'`. `insert()` with strategy `force`: overwrites regardless of status, including `rejected`. Human-rejected terms are not silently re-imported by bulk imports unless `force` is used. | tests/test_term_state_machine.py |
+| BR-32 | local-inference-privacy | platform-team | Page images produced by rasterising PDF pages (via PyMuPDF `page.get_pixmap()`) during layout detection MUST remain local. They must never be serialised, persisted to disk, sent over any socket, or logged. The rasterised array is created, consumed, and discarded entirely within `layout_detector.py`. The module must contain no network-client, HTTP, socket, or cloud-SDK imports. | tests/test_pdf_parser.py |
+| BR-33 | layout-detection-fail-soft | platform-team | When layout detection fails for any page (causes: model file absent, ONNX session load error, out-of-memory, corrupt or unrasterisable page image), the system MUST fall back to the `round(y0,10pt)` reading-order heuristic for that affected page and continue the job. The failure MUST be logged at WARNING level, including the page number and failure reason. No page image or page content may appear in the log message. A detector unavailable at startup is surfaced once as a WARNING; it does not fail the process. | tests/test_pdf_parser.py |
 
 ## Decision Tables
 
@@ -138,6 +140,18 @@ breaking-change-policy: deprecate-2-minors
 | `strategy = overwrite` or `merge`, existing term `status='rejected'` | skip; return `'skipped'` | tests/test_term_state_machine.py |
 | `strategy = overwrite` or `merge`, existing term `status='unverified'` or `'needs_review'` | update allowed | — |
 | `strategy = force`, any existing status including `rejected` | overwrite regardless | tests/test_term_state_machine.py |
+
+### Table J — layout detection failure handling (BR-32, BR-33)
+| condition | behavior | test id |
+|---|---|---|
+| `LAYOUT_DETECTOR_ENABLED=false` or `0` | layout detection skipped for all pages; `round(y0,10pt)` heuristic used for all `reading_order` assignment | — |
+| `LAYOUT_DETECTOR_ENABLED=true` (default), model weights found | detection runs; `element_type` and `reading_order` written from detector output | — |
+| Model weights absent at startup | WARNING logged once; detection skipped for all pages; heuristic fallback used; job continues | — |
+| ONNX session load error (any page) | WARNING logged (page number + reason); heuristic fallback used for that page; job continues | — |
+| Out-of-memory on inference (any page) | WARNING logged (page number + reason); heuristic fallback used for that page; job continues | — |
+| Corrupt or unrasterisable page image | WARNING logged (page number + reason); heuristic fallback used for that page; job continues | — |
+| Inference failure on page N | pages before N retain detector-assigned values; page N and subsequent use heuristic | — |
+| No-text-layer (scanned) PDF | layout detection not invoked; existing out-of-scope (P3-1) behavior unchanged | — |
 
 ## Change Policy
 

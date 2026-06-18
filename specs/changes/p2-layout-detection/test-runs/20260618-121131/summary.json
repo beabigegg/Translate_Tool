@@ -1,0 +1,18 @@
+{
+  "change_id": "p2-layout-detection",
+  "phase": "collect",
+  "status": "failed",
+  "exit_code": 127,
+  "command": "python -m pytest tests/test_layout_detector.py tests/test_pdf_parser.py tests/test_golden_regression.py tests/test_env_contract.py --collect-only --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-layout-detection/test-runs/20260618-121131/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 31,
+  "first_failure": {
+    "kind": "unknown",
+    "message": "/bin/sh: 1: python: not found"
+  },
+  "artifacts": {
+    "summary": "specs/changes/p2-layout-detection/test-runs/20260618-121131/summary.json",
+    "stdout": "specs/changes/p2-layout-detection/test-runs/20260618-121131/stdout.log",
+    "stderr": "specs/changes/p2-layout-detection/test-runs/20260618-121131/stderr.log"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

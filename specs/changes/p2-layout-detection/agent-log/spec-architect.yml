@@ -1,0 +1,5 @@
+artifacts:
+  - { type: adr-written, pointer: "docs/adr/0003-layout-detector-runtime-and-failure-mode.md" }
+  - { type: affected-areas, pointer: "parsers (layout_detector new, pdf_parser), config, env/data/business contracts, deps" }
+  - { type: decision-summary, pointer: "CPU-only onnxruntime default + fail-soft to round(y0,10pt) heuristic; local-only inference, additive IR" }
+  - { type: risks-noted, pointer: "0 high, 4 medium/open (mAP-vs-target, CPU latency, line-region tie-break, code-map not consulted)" }

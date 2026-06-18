@@ -3,7 +3,7 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.4.1
+schema-version: 0.4.2
 last-changed: 2026-06-18
 breaking-change-policy: deprecate-2-minors
 ---
@@ -122,6 +122,32 @@ All pre-existing values remain valid and their serialized string forms are uncha
 
 All `ElementType` members MUST use lowercase Python string values as their wire form (e.g. `TABLE = "table"`, `LIST = "list"`). This convention is frozen by ADR 0002 (`docs/adr/0002-ir-elementtype-serialized-values.md`) to guarantee round-trip compatibility across serialized IR snapshots. Any future member whose `value` differs in case is a breaking change and requires a major version bump on this contract.
 
+### ElementType producer inventory
+
+| producer | file path | added in | notes |
+|---|---|---|---|
+| PDF parser | `app/backend/parsers/pdf_parser.py` | p2-ir-document-model | extracts structural element types from PyMuPDF text/table detection; delegates reading-order to layout detector on native-PDF path |
+| Layout detector | `app/backend/parsers/layout_detector.py` | p2-layout-detection | maps Docling heron-101 DocLayNet labels to `ElementType` wire values; sets `reading_order`; rasterised page image never leaves the process |
+| DOCX parser | `app/backend/parsers/docx_parser.py` | p2-ir-document-model | populates `reading_order` from element extraction order |
+| PPTX parser | `app/backend/parsers/pptx_parser.py` | p2-ir-document-model | populates `reading_order` from element extraction order |
+
+**Label mapping — heron-101 → ElementType (D-4, normative)**
+
+The following table is normative. The implementation constant in `layout_detector.py` MUST match this mapping. Unknown or unmapped heron labels default to `text` (never raise). No new `ElementType` enum members are introduced; all values are existing lowercase wire values per ADR 0002.
+
+| heron-101 label | ElementType wire value | notes |
+|---|---|---|
+| Text / Paragraph | `text` | body text |
+| Title / Section-header | `title` | |
+| Page-header | `header` | |
+| Page-footer | `footer` | |
+| Table | `table` | region container; enclosed lines remain `table_cell` per existing table marking |
+| Picture / Figure | `figure` | excluded from translation (future); region marked only |
+| Formula | `formula` | pass-through target (future); region marked only |
+| List-item | `list` / `list_item` | region → `list`; enclosed lines → `list_item` |
+| Caption | `caption` | |
+| Footnote | `footnote` | |
+
 ### TranslatableElement — serialized field shape (`to_dict` / `from_dict`)
 
 | field | type | nullable | default (from_dict) | notes |
@@ -185,7 +211,8 @@ All pre-existing keys (`element_id`, `content`, `element_type`, `page_num`, `bbo
 
 | consumer | surface | impact |
 |---|---|---|
-| `app/backend/parsers/pdf_parser.py` | producer | must populate `reading_order` from explicit index, replacing `round(y0, 10pt)` heuristic |
+| `app/backend/parsers/pdf_parser.py` | producer | extracts text elements; delegates reading-order assignment to `layout_detector.py` on native-PDF text-layer path; retains `round(y0,10pt)` heuristic as per-page fallback (BR-33) |
+| `app/backend/parsers/layout_detector.py` | producer (p2-layout-detection) | consumes rasterised page images from PyMuPDF in-process; writes `element_type` (from D-4 label mapping) and `reading_order` onto `TranslatableElement`; never changes wire schema |
 | `app/backend/parsers/docx_parser.py` | producer | must populate `reading_order` from element extraction order |
 | `app/backend/parsers/pptx_parser.py` | producer | must populate `reading_order` from element extraction order |
 | `app/backend/renderers/base.py` | consumer | may consume `reading_order`; must not raise when `None` |

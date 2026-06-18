@@ -1,0 +1,36 @@
+change-id: p2-layout-detection
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_layout_detector.py
+      tests/test_pdf_parser.py tests/test_golden_regression.py tests/test_env_contract.py --collect-only
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-layout-detection/test-runs/20260618-121143/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/p2-layout-detection/test-runs/20260618-121143/summary.json
+    junit: specs/changes/p2-layout-detection/test-runs/20260618-121143/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_layout_detector.py
+      tests/test_env_contract.py -x
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-layout-detection/test-runs/20260618-121216/junit.xml'
+      -q --tb=short -ra
+    summary: specs/changes/p2-layout-detection/test-runs/20260618-121216/summary.json
+    junit: specs/changes/p2-layout-detection/test-runs/20260618-121216/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_layout_detector.py
+      tests/test_pdf_parser.py tests/test_golden_regression.py tests/test_env_contract.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-layout-detection/test-runs/20260618-121843/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/p2-layout-detection/test-runs/20260618-121843/summary.json
+    junit: specs/changes/p2-layout-detection/test-runs/20260618-121843/junit.xml
+final-status: passed

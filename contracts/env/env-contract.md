@@ -3,7 +3,7 @@ contract: env
 summary: Environment variable inventory, secret handling, and deployment sync policy.
 owner: platform-team
 surface: runtime-config
-schema-version: 0.3.0
+schema-version: 0.4.0
 last-changed: 2026-06-18
 breaking-change-policy: deprecate-2-minors
 ---
@@ -28,6 +28,8 @@ breaking-change-policy: deprecate-2-minors
 | TRANSLATION_NUM_CTX | backend | all | no | no | 3072 | 3072 | platform-team | positive int | yes | Context window for translation-dedicated model calls. Fallback chain: TRANSLATION_NUM_CTX → OLLAMA_NUM_CTX → 3072 |
 | TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED | backend | all | no | no | false | false | application-team | boolean (true/false or 1/0) | no | When true, also inject unverified terms with confidence >= TERM_INJECT_CONF_THRESHOLD into translation prompts. Migration escape hatch for deployments relying on the old confidence=1.0 bypass. |
 | TERM_INJECT_CONF_THRESHOLD | backend | all | no | no | 0.9 | 0.9 | application-team | float in (0.0, 1.0] | no | Minimum confidence score for unverified terms to be included in injection when TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED=true. Has no effect when the flag is false. |
+| LAYOUT_DETECTOR_MODEL_PATH | backend | all | no | no | (none) | /opt/models/heron-101 | platform-team | non-empty string (valid local directory path) | yes | Local path to the Docling heron-101 ONNX weights directory. When unset, falls back to HuggingFace auto-download of `docling-project/docling-layout-heron-onnx`. Set for air-gapped / Docker-preloaded deployments. Not a secret. |
+| LAYOUT_DETECTOR_ENABLED | backend | all | no | no | true | false | platform-team | boolean (true/false or 1/0) | yes | Enable or disable the layout detector. When false (or 0), `round(y0,10pt)` reading-order heuristic is used for all pages. Rollback switch — set to 0 to revert to pre-p2-layout-detection parse path without a code change. |
 
 ## Public Frontend Env Policy
 

@@ -1,0 +1,10 @@
+agent: ci-cd-gatekeeper
+change-id: p2-layout-detection
+date: 2026-06-18
+status: complete
+
+artifacts:
+  - { type: tiers-modified, pointer: "2" }
+  - { type: gate-promotions, pointer: "n/a (no gate moved between tiers; layout-detector-dependency-gate added new at Tier 2)" }
+  - { type: workflow-files-changed, pointer: ".github/workflows/contract-driven-gates.yml:46-47,123-138" }
+  - { type: required-status-checks, pointer: "contract-and-fast-tests, golden-sample-regression, layout-detector-dependency-gate" }
