@@ -3,9 +3,9 @@ artifact: project-map
 generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
-visible-dirs: 56
-visible-files: 186
-omitted-dirs: 11
+visible-dirs: 57
+visible-files: 188
+omitted-dirs: 12
 truncated-dirs: 0
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
 ---
@@ -181,7 +181,8 @@ Translate_Tool/
 |   |-- adr/
 |   |   |-- 0001-config-driven-provider-registry.md
 |   |   |-- 0002-ir-elementtype-serialized-values.md
-|   |   \-- 0003-layout-detector-runtime-and-failure-mode.md
+|   |   |-- 0003-layout-detector-runtime-and-failure-mode.md
+|   |   \-- 0004-truncation-marker-on-ir.md
 |   |-- improvement-plan.md
 |   \-- p2-change-requests.md
 |-- scripts/
@@ -222,6 +223,8 @@ Translate_Tool/
 |   |-- fixtures/
 |   |   |-- golden/
 |   |   |   |-- docx/
+|   |   |   |   \-- ... (max depth)
+|   |   |   |-- expansion/
 |   |   |   |   \-- ... (max depth)
 |   |   |   |-- pdf/
 |   |   |   |   \-- ... (max depth)
@@ -276,6 +279,7 @@ Translate_Tool/
 |   |-- test_term_db.py
 |   |-- test_term_extractor.py
 |   |-- test_term_state_machine.py
+|   |-- test_text_expansion_benchmark.py
 |   |-- test_text_region_renderer.py
 |   |-- test_translatable_document.py
 |   |-- test_translation_profiles_scenarios.py
