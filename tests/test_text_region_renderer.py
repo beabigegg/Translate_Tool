@@ -265,13 +265,13 @@ class TestSinglePathEnforcement:
 
     def test_no_cascade_logic_in_legacy_paths(self):
         """fit_text_cascade must not be imported in coordinate_renderer, inline_renderer, pdf_generator."""
-        import ast
-        import os
+        from pathlib import Path
 
+        repo_root = Path(__file__).parent.parent
         legacy_paths = [
-            "/home/egg/Projects/Translate_Tool/app/backend/renderers/coordinate_renderer.py",
-            "/home/egg/Projects/Translate_Tool/app/backend/renderers/inline_renderer.py",
-            "/home/egg/Projects/Translate_Tool/app/backend/renderers/pdf_generator.py",
+            repo_root / "app/backend/renderers/coordinate_renderer.py",
+            repo_root / "app/backend/renderers/inline_renderer.py",
+            repo_root / "app/backend/renderers/pdf_generator.py",
         ]
         forbidden_symbols = {"fit_text_cascade", "CascadeDecision"}
 
