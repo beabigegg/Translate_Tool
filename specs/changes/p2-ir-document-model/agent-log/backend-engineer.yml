@@ -1,0 +1,37 @@
+agent: backend-engineer
+change-id: p2-ir-document-model
+timestamp: 2026-06-18
+status: done
+
+summary: >
+  Implemented IR maturation changes following TDD (red → green). Added four region-level
+  ElementType members (TABLE, FIGURE, FORMULA, LIST) with lowercase wire values; added
+  reading_order: int|None to TranslatableElement with to_dict/from_dict handling;
+  updated get_elements_in_reading_order() to use reading_order when non-None with
+  positional fallback; assigned sequential reading_order in PDF, DOCX, and PPTX parsers
+  after their final extraction/sort; verified renderers and processors are tolerant of
+  new fields (no raise on None reading_order or unrecognized region types). Created
+  golden fixture directory with 3 PDF samples and companion snapshot files; wrote all
+  required test classes per test-plan.md. Full test ladder passes: 446 passed, 3 skipped.
+
+artifacts:
+  - { type: files-changed, pointer: "app/backend/models/translatable_document.py:14-29,120-165,278-296" }
+  - { type: files-changed, pointer: "app/backend/parsers/pdf_parser.py:119-123" }
+  - { type: files-changed, pointer: "app/backend/parsers/docx_parser.py:104-106" }
+  - { type: files-changed, pointer: "app/backend/parsers/pptx_parser.py:107-109" }
+  - { type: tests-added, pointer: "tests/test_translatable_document.py::TestElementType" }
+  - { type: tests-added, pointer: "tests/test_translatable_document.py::TestTranslatableElementReadingOrder" }
+  - { type: tests-added, pointer: "tests/test_translatable_document.py::TestRoundTripFidelity" }
+  - { type: tests-added, pointer: "tests/test_translatable_document.py::TestBackwardCompat" }
+  - { type: tests-added, pointer: "tests/test_pdf_parser.py::TestReadingOrderField" }
+  - { type: tests-added, pointer: "tests/test_ir_pipeline_decoupling.py" }
+  - { type: tests-added, pointer: "tests/test_golden_regression.py" }
+  - { type: test-output, pointer: "446 passed, 3 skipped, 1 warning in 2.42s (full suite)" }
+  - { type: contracts-touched, pointer: "n/a (data-shape-contract.md already had correct lowercase wire values; no API/env/CI contract changes needed from backend)" }
+
+risks:
+  - "IP-7 (contract/design wire-value conflict) was a non-issue: data-shape-contract.md already lists lowercase wire values (table/figure/formula/list) — no conflict to resolve."
+  - "DOCX/PPTX golden fixtures are still placeholder (.gitkeep); test_golden_docx/pptx_parse_ir_stable skip gracefully — will need real fixtures before AC-6 ≥3 per format."
+  - "test_reading_order in existing TestPyMuPDFParserIntegration still uses round(y0/10)*10 bucket logic in its assertion — this test passes because the assertion only checks key >= prev_key, not the actual bucket math; no change needed."
+
+next-reviewer: contract-reviewer (IP-7 was pre-resolved), ci-cd-gatekeeper (golden gate path), test-strategist (DOCX/PPTX fixture sourcing)

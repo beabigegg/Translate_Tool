@@ -1,0 +1,5 @@
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/p2-ir-document-model/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer (IR model + parsers + renderer/processor verify + tests), contract-reviewer (data-shape ElementType wire-value fix), test-strategist (golden fixtures), ci-cd-gatekeeper (golden gate wiring)" }
+  - { type: scope-summary, pointer: "5 in-scope steps (IR core, PDF reading_order, DOCX/PPTX reading_order, renderer/processor tolerance, golden harness); 7 out-of-scope (layout-detection, renderer convergence, region rendering, schema_version, API/env/CSS/migration, OCR/XLSX, opportunistic refactor)" }
+  - { type: blocker-flagged, pointer: "data-shape-contract ElementType table lists new wire values uppercase; design.md ADR 0001 freezes lowercase. IP-7 (contract-reviewer) must correct before golden fixtures committed. Not a blocker to planning." }

@@ -1,0 +1,18 @@
+{
+  "change_id": "p2-ir-document-model",
+  "phase": "collect",
+  "status": "failed",
+  "exit_code": 127,
+  "command": "python -m pytest tests/test_translatable_document.py tests/test_pdf_parser.py tests/test_ir_pipeline_decoupling.py tests/test_golden_regression.py --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-ir-document-model/test-runs/20260618-094252/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 27,
+  "first_failure": {
+    "kind": "unknown",
+    "message": "/bin/sh: 1: python: not found"
+  },
+  "artifacts": {
+    "summary": "specs/changes/p2-ir-document-model/test-runs/20260618-094252/summary.json",
+    "stdout": "specs/changes/p2-ir-document-model/test-runs/20260618-094252/stdout.log",
+    "stderr": "specs/changes/p2-ir-document-model/test-runs/20260618-094252/stderr.log"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

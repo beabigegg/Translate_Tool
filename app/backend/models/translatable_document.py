@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 class ElementType(Enum):
     """Type of document element."""
 
+    # Text-level types (pre-existing)
     TEXT = "text"
     TITLE = "title"
     HEADER = "header"
@@ -22,6 +23,12 @@ class ElementType(Enum):
     LIST_ITEM = "list_item"
     CAPTION = "caption"
     FOOTNOTE = "footnote"
+
+    # Region-level types (added p2-ir-document-model)
+    TABLE = "table"
+    FIGURE = "figure"
+    FORMULA = "formula"
+    LIST = "list"
 
 
 @dataclass
@@ -130,6 +137,7 @@ class TranslatableElement:
     should_translate: bool = True
     translated_content: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
+    reading_order: Optional[int] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -143,6 +151,7 @@ class TranslatableElement:
             "should_translate": self.should_translate,
             "translated_content": self.translated_content,
             "metadata": self.metadata,
+            "reading_order": self.reading_order,
         }
 
     @classmethod
@@ -158,6 +167,7 @@ class TranslatableElement:
             should_translate=data.get("should_translate", True),
             translated_content=data.get("translated_content"),
             metadata=data.get("metadata", {}),
+            reading_order=data.get("reading_order", None),
         )
 
 
@@ -266,12 +276,23 @@ class TranslatableDocument:
         return result
 
     def get_elements_in_reading_order(self) -> List[TranslatableElement]:
-        """Get elements sorted by reading order (top-to-bottom, left-to-right)."""
+        """Get elements sorted by reading order.
+
+        When reading_order is non-null it is authoritative (lower index = earlier).
+        When null, falls back to positional heuristic (page_num, bbox.y0, bbox.x0).
+        Mixed populations (some with, some without reading_order) are sorted
+        deterministically: elements with an explicit reading_order come before
+        those without within the same page, as the explicit index is authoritative.
+        """
 
         def sort_key(e: TranslatableElement) -> tuple:
-            if e.bbox:
-                return (e.page_num, e.bbox.y0, e.bbox.x0)
-            return (e.page_num, 0, 0)
+            if e.reading_order is not None:
+                # Authoritative: (0, reading_order) sorts before positional fallback
+                return (0, e.reading_order, 0, 0)
+            # Positional fallback
+            y0 = e.bbox.y0 if e.bbox else 0
+            x0 = e.bbox.x0 if e.bbox else 0
+            return (1, e.page_num, y0, x0)
 
         return sorted(self.elements, key=sort_key)
 

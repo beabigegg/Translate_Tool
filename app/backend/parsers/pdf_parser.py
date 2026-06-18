@@ -119,6 +119,10 @@ class PyMuPDFParser(BaseParser):
             # Sort by reading order
             elements = self._sort_by_reading_order(elements)
 
+            # Assign sequential reading_order after final sort
+            for idx, elem in enumerate(elements):
+                elem.reading_order = idx
+
             # Build metadata
             metadata = self._extract_metadata(doc, len(pages), total_chars)
 

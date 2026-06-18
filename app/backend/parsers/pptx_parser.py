@@ -104,6 +104,10 @@ class PptxParser(BaseParser):
             elements.extend(slide_elements)
             total_text_length += sum(len(e.content) for e in slide_elements)
 
+        # Assign reading_order from extraction sequence
+        for idx, elem in enumerate(elements):
+            elem.reading_order = idx
+
         # Validate document size
         check_document_size_limits(
             segment_count=len(elements),

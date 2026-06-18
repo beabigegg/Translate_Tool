@@ -392,3 +392,302 @@ class TestPageInfo:
         assert original.page_num == restored.page_num
         assert original.width == restored.width
         assert original.rotation == restored.rotation
+
+
+# ---------------------------------------------------------------------------
+# New test classes added for p2-ir-document-model
+# ---------------------------------------------------------------------------
+
+
+class TestElementType:
+    """Tests for ElementType enum additions (AC-1)."""
+
+    def test_region_types_present(self):
+        """TABLE, FIGURE, FORMULA, LIST exist on ElementType."""
+        assert hasattr(ElementType, "TABLE")
+        assert hasattr(ElementType, "FIGURE")
+        assert hasattr(ElementType, "FORMULA")
+        assert hasattr(ElementType, "LIST")
+
+    def test_existing_types_unchanged(self):
+        """All 8 pre-existing values still present with same string values."""
+        expected = {
+            "TEXT": "text",
+            "TITLE": "title",
+            "HEADER": "header",
+            "FOOTER": "footer",
+            "TABLE_CELL": "table_cell",
+            "LIST_ITEM": "list_item",
+            "CAPTION": "caption",
+            "FOOTNOTE": "footnote",
+        }
+        for name, value in expected.items():
+            assert hasattr(ElementType, name), f"ElementType.{name} missing"
+            assert ElementType[name].value == value, (
+                f"ElementType.{name}.value changed: expected {value!r}, "
+                f"got {ElementType[name].value!r}"
+            )
+
+    def test_unknown_element_type_from_dict_raises(self):
+        """ElementType('nonexistent') raises ValueError."""
+        with pytest.raises(ValueError):
+            ElementType("nonexistent")
+
+    def test_element_type_values_are_strings(self):
+        """Every .value is a lowercase string."""
+        for member in ElementType:
+            assert isinstance(member.value, str), (
+                f"ElementType.{member.name}.value is not a str"
+            )
+            assert member.value == member.value.lower(), (
+                f"ElementType.{member.name}.value is not lowercase: {member.value!r}"
+            )
+
+
+class TestTranslatableElementReadingOrder:
+    """Tests for reading_order additions to TranslatableElement (AC-2)."""
+
+    def test_reading_order_default_none(self):
+        """New field defaults to None."""
+        elem = TranslatableElement(
+            element_id="e1",
+            content="text",
+            element_type=ElementType.TEXT,
+            page_num=1,
+        )
+        assert elem.reading_order is None
+
+    def test_reading_order_roundtrip(self):
+        """Integer reading_order serializes/deserializes correctly."""
+        elem = TranslatableElement(
+            element_id="e2",
+            content="text",
+            element_type=ElementType.TEXT,
+            page_num=1,
+            reading_order=5,
+        )
+        d = elem.to_dict()
+        assert d["reading_order"] == 5
+        restored = TranslatableElement.from_dict(d)
+        assert restored.reading_order == 5
+
+    def test_reading_order_none_roundtrip(self):
+        """None reading_order survives to_dict -> from_dict."""
+        elem = TranslatableElement(
+            element_id="e3",
+            content="text",
+            element_type=ElementType.TEXT,
+            page_num=1,
+            reading_order=None,
+        )
+        d = elem.to_dict()
+        assert d["reading_order"] is None
+        restored = TranslatableElement.from_dict(d)
+        assert restored.reading_order is None
+
+    def test_region_element_types_accepted(self):
+        """element_type=TABLE/FIGURE/FORMULA/LIST constructs without error."""
+        for et in (ElementType.TABLE, ElementType.FIGURE, ElementType.FORMULA, ElementType.LIST):
+            elem = TranslatableElement(
+                element_id=f"region_{et.value}",
+                content="region content",
+                element_type=et,
+                page_num=1,
+            )
+            assert elem.element_type == et
+
+
+class TestRoundTripFidelity:
+    """Round-trip guarantee tests (AC-3)."""
+
+    def _make_element(
+        self,
+        reading_order=None,
+        element_type=ElementType.TEXT,
+    ) -> TranslatableElement:
+        return TranslatableElement(
+            element_id="rt_elem",
+            content="Sample text",
+            element_type=element_type,
+            page_num=2,
+            bbox=BoundingBox(x0=10.5, y0=20.25, x1=200.75, y1=40.125),
+            style=StyleInfo(
+                font_name="Arial",
+                font_size=12.5,
+                is_bold=True,
+                is_italic=False,
+                color="#AABBCC",
+                background_color="#FFFFFF",
+            ),
+            should_translate=True,
+            translated_content="Translated text",
+            metadata={"key": "value"},
+            reading_order=reading_order,
+        )
+
+    def test_full_ir_roundtrip_preserves_bbox(self):
+        """x0/y0/x1/y1 exact after to_dict -> from_dict."""
+        original = self._make_element()
+        restored = TranslatableElement.from_dict(original.to_dict())
+        assert restored.bbox.x0 == original.bbox.x0
+        assert restored.bbox.y0 == original.bbox.y0
+        assert restored.bbox.x1 == original.bbox.x1
+        assert restored.bbox.y1 == original.bbox.y1
+
+    def test_full_ir_roundtrip_preserves_font_metadata(self):
+        """font_name, font_size, is_bold, color preserved."""
+        original = self._make_element()
+        restored = TranslatableElement.from_dict(original.to_dict())
+        assert restored.style.font_name == original.style.font_name
+        assert restored.style.font_size == original.style.font_size
+        assert restored.style.is_bold == original.style.is_bold
+        assert restored.style.is_italic == original.style.is_italic
+        assert restored.style.color == original.style.color
+        assert restored.style.background_color == original.style.background_color
+
+    def test_full_ir_roundtrip_preserves_element_type(self):
+        """All ElementType values survive to_dict -> from_dict."""
+        for et in ElementType:
+            elem = TranslatableElement(
+                element_id=f"e_{et.value}",
+                content="x",
+                element_type=et,
+                page_num=1,
+            )
+            restored = TranslatableElement.from_dict(elem.to_dict())
+            assert restored.element_type == et
+
+    def test_full_ir_roundtrip_preserves_reading_order(self):
+        """int and None reading_order both preserved."""
+        for ro in (0, 1, 42, None):
+            elem = self._make_element(reading_order=ro)
+            restored = TranslatableElement.from_dict(elem.to_dict())
+            assert restored.reading_order == ro
+
+    def test_document_roundtrip_element_count(self):
+        """Element list length unchanged after document round-trip."""
+        elements = [
+            TranslatableElement(
+                element_id=f"e{i}",
+                content=f"content {i}",
+                element_type=ElementType.TEXT,
+                page_num=1,
+                reading_order=i,
+            )
+            for i in range(5)
+        ]
+        doc = TranslatableDocument(
+            source_path="/tmp/test.pdf",
+            source_type="pdf",
+            elements=elements,
+            pages=[PageInfo(page_num=1, width=612, height=792)],
+            metadata=DocumentMetadata(page_count=1),
+        )
+        restored = TranslatableDocument.from_dict(doc.to_dict())
+        assert len(restored.elements) == len(doc.elements)
+
+
+class TestBackwardCompat:
+    """Backward-compatibility tests (AC-4)."""
+
+    def _old_format_element_dict(self) -> dict:
+        """Return a dict in old format (no reading_order key)."""
+        return {
+            "element_id": "old_elem",
+            "content": "Old content",
+            "element_type": "text",
+            "page_num": 1,
+            "bbox": {"x0": 10.0, "y0": 20.0, "x1": 100.0, "y1": 40.0},
+            "style": {
+                "font_name": "Times",
+                "font_size": 11.0,
+                "is_bold": False,
+                "is_italic": False,
+                "color": "#000000",
+                "background_color": None,
+            },
+            "should_translate": True,
+            "translated_content": None,
+            "metadata": {},
+        }
+
+    def test_from_dict_missing_reading_order_defaults_none(self):
+        """Old dict without reading_order deserializes cleanly with None."""
+        d = self._old_format_element_dict()
+        assert "reading_order" not in d
+        elem = TranslatableElement.from_dict(d)
+        assert elem.reading_order is None
+
+    def test_from_dict_missing_bbox_ok(self):
+        """Old element without bbox key -> bbox=None."""
+        d = self._old_format_element_dict()
+        del d["bbox"]
+        elem = TranslatableElement.from_dict(d)
+        assert elem.bbox is None
+
+    def test_from_dict_missing_style_ok(self):
+        """Old element without style key -> style=None."""
+        d = self._old_format_element_dict()
+        del d["style"]
+        elem = TranslatableElement.from_dict(d)
+        assert elem.style is None
+
+    def test_from_dict_missing_font_metadata_fields_ok(self):
+        """StyleInfo.from_dict with absent keys uses defaults."""
+        partial_style = {"is_bold": True}
+        style = StyleInfo.from_dict(partial_style)
+        assert style.font_name is None
+        assert style.font_size is None
+        assert style.is_bold is True
+        assert style.is_italic is False
+        assert style.color is None
+
+    def test_to_dict_keys_are_superset_of_old_keys(self):
+        """No key removals from to_dict output."""
+        old_keys = {
+            "element_id",
+            "content",
+            "element_type",
+            "page_num",
+            "bbox",
+            "style",
+            "should_translate",
+            "translated_content",
+            "metadata",
+        }
+        elem = TranslatableElement(
+            element_id="e_compat",
+            content="compat",
+            element_type=ElementType.TEXT,
+            page_num=1,
+        )
+        d = elem.to_dict()
+        assert old_keys.issubset(d.keys()), (
+            f"Missing keys: {old_keys - d.keys()}"
+        )
+
+    def test_empty_elements_list_roundtrip(self):
+        """Document with zero elements round-trips cleanly."""
+        doc = TranslatableDocument(
+            source_path="/tmp/empty.pdf",
+            source_type="pdf",
+            elements=[],
+            pages=[PageInfo(page_num=1, width=612, height=792)],
+            metadata=DocumentMetadata(page_count=1),
+        )
+        restored = TranslatableDocument.from_dict(doc.to_dict())
+        assert restored.elements == []
+
+    def test_partial_ir_missing_translated_content(self):
+        """Element dict without translated_content -> None."""
+        d = self._old_format_element_dict()
+        del d["translated_content"]
+        elem = TranslatableElement.from_dict(d)
+        assert elem.translated_content is None
+
+    def test_from_dict_unknown_key_in_metadata_field_ignored(self):
+        """Unknown key in metadata dict does not raise."""
+        d = self._old_format_element_dict()
+        d["metadata"] = {"unknown_key_xyz": "some_value", "another_unknown": 42}
+        elem = TranslatableElement.from_dict(d)
+        assert elem.metadata["unknown_key_xyz"] == "some_value"

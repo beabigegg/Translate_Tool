@@ -3,7 +3,7 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.3.0
+schema-version: 0.4.0
 last-changed: 2026-06-18
 breaking-change-policy: deprecate-2-minors
 ---
@@ -59,6 +59,8 @@ See `contracts/api/api-contract.md > ## Schemas > JobStatus` for the authoritati
 | over max segment/text limit | not rejected at upload; job transitions to `status: "failed"` | job error field | — |
 | unexpected `JobStatus.status` | n/a — status is server-set only, never client input | — | — |
 | `provider` field set by client | ignored — field is server-set only; not in POST /api/jobs input schema | — | — |
+| `element_type` value in serialized IR not in current enum | `from_dict` raises `ValueError` | not caught; propagated to caller | tests/test_translatable_document.py |
+| `reading_order` absent in serialized IR (old-format document) | `from_dict` defaults to `None`; element is valid | — | tests/test_translatable_document.py |
 
 ## Export / Import Format
 
@@ -83,3 +85,108 @@ See `contracts/api/api-contract.md > ## Schemas > JobStatus` for the authoritati
 - In-memory job store capped at `MAX_JOBS_IN_MEMORY=100` (BR-8). When at capacity, oldest completed/failed jobs are evicted.
 - Jobs expire after `JOB_TTL_HOURS=24` hours; cleanup runs every 30 minutes.
 - Document segment/text size limits are effectively disabled (`MAX_SEGMENTS=10_000_000`, `MAX_TEXT_LENGTH=1_000_000_000`). See BR-10.
+
+---
+
+## Intermediate Representation (IR) — TranslatableDocument
+
+**Added in p2-ir-document-model. Source of truth: `app/backend/models/translatable_document.py`.**
+
+The IR is the single authoritative in-memory and serialized form that decouples parse → translate → render. Any parser produces it; any renderer consumes it; the translation layer modifies only `translated_content` fields within it.
+
+### Decoupling guarantee
+
+- A persisted IR (produced by `TranslatableDocument.to_dict()`) can be loaded via `TranslatableDocument.from_dict()` and rendered without invoking any parser.
+- Translated text can be replaced in the IR (via `TranslatableElement.translated_content`) and the document re-serialized without re-rendering or re-parsing.
+
+### ElementType enum — valid string values
+
+| value | level | description | status |
+|---|---|---|---|
+| `text` | text-level | Body text block | existing |
+| `title` | text-level | Document or section title | existing |
+| `header` | text-level | Page header | existing |
+| `footer` | text-level | Page footer | existing |
+| `table_cell` | text-level | Single cell of a table | existing |
+| `list_item` | text-level | Single item in a list | existing |
+| `caption` | text-level | Figure or table caption | existing |
+| `footnote` | text-level | Footnote text | existing |
+| `table` | region-level | Entire table region (container; may enclose `table_cell` elements) | added p2-ir-document-model |
+| `figure` | region-level | Figure or image region | added p2-ir-document-model |
+| `formula` | region-level | Mathematical formula region | added p2-ir-document-model |
+| `list` | region-level | Entire list region (container; may enclose `list_item` elements) | added p2-ir-document-model |
+
+All pre-existing values remain valid and their serialized string forms are unchanged. New region-level values are additive non-breaking: existing consumers that do not recognize them must not raise on deserialization; they may skip or passthrough such elements.
+
+### TranslatableElement — serialized field shape (`to_dict` / `from_dict`)
+
+| field | type | nullable | default (from_dict) | notes |
+|---|---|---:|---|---|
+| element_id | string | no | — | required; unique within the document |
+| content | string | no | — | required; original text content |
+| element_type | string | no | — | required; must be a valid `ElementType` string value |
+| page_num | integer | no | — | required; 1-based page number |
+| bbox | object\|null | yes | null | `BoundingBox.to_dict()` output or null |
+| style | object\|null | yes | null | `StyleInfo.to_dict()` output or null |
+| should_translate | boolean | no | true | whether the element should be translated |
+| translated_content | string\|null | yes | null | translated text; null until translation applied |
+| metadata | object | no | {} | arbitrary key-value metadata map |
+| reading_order | integer\|null | yes | null | **Added p2-ir-document-model.** Explicit reading-order index (0-based) assigned by the parser. When present and non-null, takes precedence over positional sort heuristics. Old-format documents lacking this key deserialize with `reading_order=None` and remain valid. `get_elements_in_reading_order()` uses a two-bucket sort: elements with non-null `reading_order` are placed before elements with `reading_order=None`, sorted by their index value; null elements are placed after, sorted by `(page_num, bbox.y0, bbox.x0)`. In practice, all parsers assign `reading_order` to every element, so mixed-population documents do not occur in normal use. |
+
+### BoundingBox — serialized field shape
+
+| field | type | nullable | notes |
+|---|---|---:|---|
+| x0 | float | no | left edge, points |
+| y0 | float | no | top edge, points |
+| x1 | float | no | right edge, points |
+| y1 | float | no | bottom edge, points |
+
+Coordinate system: top-left origin; x increases right; y increases down. Unit: points (1 pt = 1/72 inch).
+
+### StyleInfo — serialized field shape (font metadata)
+
+| field | type | nullable | default (from_dict) | notes |
+|---|---|---:|---|---|
+| font_name | string\|null | yes | null | font family name |
+| font_size | float\|null | yes | null | font size in points |
+| is_bold | boolean | no | false | bold weight |
+| is_italic | boolean | no | false | italic style |
+| color | string\|null | yes | null | hex color code (e.g. `#FF0000`) |
+| background_color | string\|null | yes | null | hex background color code |
+
+### TranslatableDocument — serialized field shape
+
+| field | type | nullable | notes |
+|---|---|---:|---|
+| source_path | string | no | original file path |
+| source_type | string | no | `pdf`, `docx`, `pptx`, `xlsx` |
+| elements | array | no | ordered array of `TranslatableElement.to_dict()` objects |
+| pages | array | no | ordered array of `PageInfo.to_dict()` objects |
+| metadata | object | no | `DocumentMetadata.to_dict()` object |
+
+### Round-trip guarantee
+
+A document serialized by `TranslatableDocument.to_dict()` then deserialized by `TranslatableDocument.from_dict()` must produce an equivalent IR preserving all of the following fields without loss or mutation: `bbox` (all four float coordinates), `style` / font metadata (all six fields), `element_type`, `reading_order`, `element_id`, `content`, `page_num`, `should_translate`, `translated_content`, `metadata`. Floating-point bbox coordinates must round-trip without rounding or truncation.
+
+### Backward-compatibility rule
+
+Old-format means a document dict produced by the pre-change `TranslatableElement.to_dict()` (lacking the `reading_order` key). `TranslatableElement.from_dict()` must deserialize old-format dicts without raising; `reading_order` defaults to `None` when the key is absent. Old-format documents deserialized under the new code are valid IR instances and may be passed to any renderer.
+
+### `to_dict` compatibility rule
+
+All pre-existing keys (`element_id`, `content`, `element_type`, `page_num`, `bbox`, `style`, `should_translate`, `translated_content`, `metadata`) must remain present in `to_dict` output with the same types and semantics. `reading_order` is added as a new key (integer or `None`). No existing key may be renamed, removed, or have its type narrowed.
+
+### Known consumers of the IR
+
+| consumer | surface | impact |
+|---|---|---|
+| `app/backend/parsers/pdf_parser.py` | producer | must populate `reading_order` from explicit index, replacing `round(y0, 10pt)` heuristic |
+| `app/backend/parsers/docx_parser.py` | producer | must populate `reading_order` from element extraction order |
+| `app/backend/parsers/pptx_parser.py` | producer | must populate `reading_order` from element extraction order |
+| `app/backend/renderers/base.py` | consumer | may consume `reading_order`; must not raise when `None` |
+| `app/backend/renderers/coordinate_renderer.py` | consumer | same as base |
+| `app/backend/renderers/pdf_generator.py` | consumer | same as base |
+| `app/backend/renderers/text_region_renderer.py` | consumer | same as base |
+| `app/backend/renderers/inline_renderer.py` | consumer | same as base |
+| `app/backend/processors/orchestrator.py` | processor | no IR schema change required; reads elements after parsing |

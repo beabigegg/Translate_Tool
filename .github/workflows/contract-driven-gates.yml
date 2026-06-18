@@ -44,8 +44,7 @@ jobs:
         run: cdd-kit validate --contracts
 
       - name: Change gate (Tier 1 — blocks merge)
-        run: |
-          echo "No active change gates — all current changes are in specs/archive/."
+        run: cdd-kit gate p2-ir-document-model
 
       - name: OpenAPI sync gate
         run: cdd-kit openapi export --check --out contracts/api/openapi.yml
@@ -97,6 +96,29 @@ jobs:
           name: full-regression-results
           path: test-results/full-regression.xml
           retention-days: 14
+
+  golden-sample-regression:
+    name: golden-sample-regression
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install -r app/backend/requirements.txt
+
+      - name: Golden-sample regression (Tier 2 — blocks merge on PR)
+        # All fixture files are pre-committed binaries in tests/fixtures/golden/.
+        # No network access or GPU is required. A reading_order-only diff is not
+        # a regression; any pre-existing-field diff fails the gate.
+        # DOCX/PPTX fixtures deferred — tests skip gracefully until fixtures are committed.
+        run: pytest tests/test_golden_regression.py --tb=short -q
 
   scheduled-stress-soak:
     name: scheduled-stress-soak

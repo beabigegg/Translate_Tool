@@ -1,0 +1,5 @@
+artifacts:
+  - { type: adr-written, pointer: "docs/adr/0002-ir-elementtype-serialized-values.md" }
+  - { type: affected-areas, pointer: "IR model, parsers (pdf/docx/pptx), renderers, processors, data+ci contracts, golden harness" }
+  - { type: decision-summary, pointer: "additive-only IR: lowercase wire values for new ElementTypes, nullable parser-assigned reading_order, no schema_version key, snapshot-based offline dual-run gate" }
+  - { type: risks-noted, pointer: "0 high, 3 medium (fixture sourcing, PyMuPDF table-detection nondeterminism, rollback unknown-key tolerance)" }

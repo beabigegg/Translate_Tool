@@ -1,0 +1,1 @@
+/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_translatable_document.py::TestBackwardCompat tests/test_translatable_document.py::TestRoundTripFidelity -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-ir-document-model/test-runs/20260618-094342/junit.xml' -ra

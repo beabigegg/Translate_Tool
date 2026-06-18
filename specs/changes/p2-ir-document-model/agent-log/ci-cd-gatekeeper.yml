@@ -1,0 +1,16 @@
+change-id: p2-ir-document-model
+agent: ci-cd-gatekeeper
+timestamp: "2026-06-18T00:00:00Z"
+status: complete
+artifacts:
+  - { type: tiers-modified, pointer: "1" }
+  - { type: gate-promotions, pointer: "golden-sample-regression: new → Tier 1 (required)" }
+  - { type: workflow-files-changed, pointer: ".github/workflows/contract-driven-gates.yml" }
+  - { type: required-status-checks, pointer: "contract-validate, change-gate, unit-tests, golden-sample-regression" }
+next-action: none
+notes: >
+  golden-sample-regression job added as a standalone job (not a step) so the
+  job name binds to branch-protection required-check rules. No network or GPU.
+  PyMuPDF table-detection flakiness risk noted in design.md §Open Risks; if
+  observed, quarantine affected field to an informational sub-job with an owner
+  and exit date — do not disable the gate.
