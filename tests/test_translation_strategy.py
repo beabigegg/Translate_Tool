@@ -40,7 +40,8 @@ def test_build_strategy_adds_context_and_options_for_general_model() -> None:
     assert decision.scenario == TranslationScenario.LEGAL_CONTRACT
     assert "Document context:" in decision.system_prompt
     assert decision.options_override.get("temperature") == 0.18
-    assert decision.cache_variant.endswith("_ctx")
+    # BR-45: cache_variant includes _ctx segment plus _crit critique marker
+    assert "_ctx" in decision.cache_variant
 
 
 def test_build_strategy_for_translation_model_technical_process_includes_glossary_hint() -> None:
@@ -53,7 +54,8 @@ def test_build_strategy_for_translation_model_technical_process_includes_glossar
     )
     assert "work instruction" in decision.system_prompt
     assert decision.options_override.get("temperature") == 0.2
-    assert decision.cache_variant.endswith("_glossary")
+    # BR-45: cache_variant includes _glossary segment plus _crit critique marker
+    assert "_glossary" in decision.cache_variant
 
 
 def test_scenario_from_profile_supports_new_and_legacy_profile_ids() -> None:
@@ -61,6 +63,49 @@ def test_scenario_from_profile_supports_new_and_legacy_profile_ids() -> None:
     assert scenario_from_profile("business_finance") == TranslationScenario.BUSINESS_FINANCE
     assert scenario_from_profile("legal") == TranslationScenario.LEGAL_CONTRACT
     assert scenario_from_profile("unknown_profile") is None
+
+
+def test_build_strategy_includes_glossary_digest_in_cache_variant() -> None:
+    """AC-6 / BR-45: cache_variant embeds glossary-state digest so pre-glossary entries miss."""
+    from app.backend.models.term import Term
+
+    terms_empty: list = []
+    terms_with_data = [
+        Term(
+            source_text="wafer",
+            target_text="晶圓",
+            source_lang="en",
+            target_lang="zh-TW",
+            domain="technical",
+            status="approved",
+        )
+    ]
+
+    decision_empty = build_strategy(
+        base_system_prompt="",
+        model_type=ModelType.GENERAL.value,
+        scenario=TranslationScenario.GENERAL,
+        detected_context=None,
+        enable_context_flow=False,
+        terms=terms_empty,
+    )
+
+    decision_with_terms = build_strategy(
+        base_system_prompt="",
+        model_type=ModelType.GENERAL.value,
+        scenario=TranslationScenario.GENERAL,
+        detected_context=None,
+        enable_context_flow=False,
+        terms=terms_with_data,
+    )
+
+    # Variants must differ (stale pre-glossary entries will miss)
+    assert decision_empty.cache_variant != decision_with_terms.cache_variant
+    # Both must carry the critique marker
+    assert "_crit" in decision_empty.cache_variant
+    assert "_crit" in decision_with_terms.cache_variant
+    # The glossary-digest version must contain a hex digest segment
+    assert "_g" in decision_with_terms.cache_variant
 
 
 def test_build_strategy_legacy_scenario_is_canonicalized() -> None:

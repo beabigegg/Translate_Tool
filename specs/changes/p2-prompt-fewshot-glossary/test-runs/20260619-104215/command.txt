@@ -1,0 +1,1 @@
+pytest tests/test_fewshot_glossary.py --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104215/junit.xml' --maxfail=1 --tb=short -ra

@@ -1,0 +1,5 @@
+artifacts:
+  - { type: adr-written, pointer: "none (decisions captured in design.md; no boundary/persistence/consistency change warranting a standalone ADR)" }
+  - { type: affected-areas, pointer: "prompt construction, translation orchestration, glossary read path, cache keying, metrics" }
+  - { type: decision-summary, pointer: "deterministic post-translation glossary substitution + service-level bounded critique loop; glossary digest folded into existing cache_variant (no schema change)" }
+  - { type: risks-noted, pointer: "0 high, 1 medium (full pre-glossary cache invalidation at rollout — intended per BR-45)" }

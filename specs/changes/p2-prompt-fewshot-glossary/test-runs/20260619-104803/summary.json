@@ -1,0 +1,16 @@
+{
+  "change_id": "p2-prompt-fewshot-glossary",
+  "phase": "full",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/ -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104803/junit.xml' -ra",
+  "duration_ms": 13464,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104803/summary.json",
+    "stdout": "specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104803/stdout.log",
+    "stderr": "specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104803/stderr.log",
+    "junit": "specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104803/junit.xml"
+  },
+  "next_action": "all phases green"
+}

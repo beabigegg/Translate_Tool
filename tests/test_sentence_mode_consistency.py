@@ -260,8 +260,12 @@ def test_verify_and_fill_detects_sentence_mode_failures():
 # ---------------------------------------------------------------------------
 
 def test_translate_texts_signature_unchanged():
-    """translate_texts must have exactly these 8 parameters in this order:
-    texts, targets, src_lang, client, max_batch_chars, stop_flag, log, refine_client.
+    """translate_texts must have exactly these 9 parameters in this order:
+    texts, targets, src_lang, client, max_batch_chars, stop_flag, log,
+    refine_client, terms.
+    The ``terms`` parameter (p2-prompt-fewshot-glossary, BR-41/BR-44) is an
+    optional keyword argument with a default of None; adding it is
+    backward-compatible.
     """
     from app.backend.services.translation_service import translate_texts
 
@@ -269,7 +273,7 @@ def test_translate_texts_signature_unchanged():
     params = list(sig.parameters.keys())
 
     expected = ["texts", "targets", "src_lang", "client",
-                "max_batch_chars", "stop_flag", "log", "refine_client"]
+                "max_batch_chars", "stop_flag", "log", "refine_client", "terms"]
     assert params == expected, (
         f"Signature mismatch.\nExpected: {expected}\nActual:   {params}"
     )

@@ -115,6 +115,11 @@ CROSS_MODEL_REFINEMENT_ENABLED = os.environ.get("CROSS_MODEL_REFINEMENT_ENABLED"
 CONTEXT_DETECTION_ENABLED = True
 CONTEXT_SAMPLE_CHARS = 500  # Max chars to sample from file for context detection
 
+# Critique loop configuration (p2-prompt-fewshot-glossary, BR-44)
+CRITIQUE_LOOP_ENABLED: bool = os.environ.get("CRITIQUE_LOOP_ENABLED", "1").lower() in ("1", "true", "yes")
+CRITIQUE_MAX_ITERATIONS: int = int(os.environ.get("CRITIQUE_MAX_ITERATIONS", "3"))
+CRITIQUE_TIMEOUT_SECONDS: float = float(os.environ.get("CRITIQUE_TIMEOUT_SECONDS", "60"))
+
 # Dynamic scenario strategy:
 # - Detect translation scenario from filename/sample/context
 # - Apply scenario-specific decoding options

@@ -3,8 +3,8 @@ contract: api
 summary: API behavior, compatibility rules, and endpoint contract requirements.
 owner: application-team
 surface: api
-schema-version: 0.4.1
-last-changed: 2026-06-18
+schema-version: 0.4.2
+last-changed: 2026-06-19
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -240,6 +240,9 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 | provider_failure_count | integer | yes |  | total provider call failures since process start; initializes to 0; see BR-23 |
 | font_cache_hits | integer | yes |  | total font buffer cache hits since process start; initializes to 0 |
 | font_cache_misses | integer | yes |  | total font buffer cache misses since process start; initializes to 0 |
+| critique_loop_invocations | integer | no |  | total critique-loop invocations since process start; initializes to 0; see BR-46 |
+| critique_iterations_total | integer | no |  | cumulative critique iterations across all requests since process start; initializes to 0; see BR-46 |
+| glossary_match_rate | number | no |  | glossary term match rate (0.0–1.0 float); definition per design.md; 0.0 when no terms evaluated; see BR-46 |
 
 ## Endpoint Notes
 

@@ -155,3 +155,56 @@ def test_reset_restores_initial_state():
     assert data["provider_failure_count"] == 0
     assert data["font_cache_hits"] == 0
     assert data["font_cache_misses"] == 0
+
+
+# ---------------------------------------------------------------------------
+# AC-8 / BR-46 — New critique loop counters
+# ---------------------------------------------------------------------------
+
+def test_critique_loop_invocations_initializes_to_zero():
+    data = metrics_mod.get_metrics()
+    assert data["critique_loop_invocations"] == 0
+
+
+def test_critique_iterations_total_initializes_to_zero():
+    data = metrics_mod.get_metrics()
+    assert data["critique_iterations_total"] == 0
+
+
+def test_glossary_match_rate_initializes_to_one():
+    data = metrics_mod.get_metrics()
+    # 1.0 when no terms present (nothing to miss)
+    assert data["glossary_match_rate"] == pytest.approx(1.0)
+
+
+def test_critique_loop_invocations_increments():
+    metrics_mod.record_critique_loop_invocation()
+    metrics_mod.record_critique_loop_invocation()
+    data = metrics_mod.get_metrics()
+    assert data["critique_loop_invocations"] == 2
+
+
+def test_critique_iterations_total_accumulates():
+    metrics_mod.record_critique_iteration(3)
+    metrics_mod.record_critique_iteration(2)
+    data = metrics_mod.get_metrics()
+    assert data["critique_iterations_total"] == 5
+
+
+def test_glossary_match_rate_set_scalar():
+    metrics_mod.set_glossary_match_rate(0.5)
+    data = metrics_mod.get_metrics()
+    assert data["glossary_match_rate"] == pytest.approx(0.5)
+
+
+def test_critique_counters_reset_via_reset():
+    metrics_mod.record_critique_loop_invocation()
+    metrics_mod.record_critique_iteration(4)
+    metrics_mod.set_glossary_match_rate(0.25)
+
+    metrics_mod.reset()
+
+    data = metrics_mod.get_metrics()
+    assert data["critique_loop_invocations"] == 0
+    assert data["critique_iterations_total"] == 0
+    assert data["glossary_match_rate"] == pytest.approx(1.0)  # reset to sentinel 1.0

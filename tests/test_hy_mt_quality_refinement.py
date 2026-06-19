@@ -296,3 +296,41 @@ class TestTranslateTextsRefinePhase:
 
         primary.unload.assert_not_called()
         assert tmap[("Vietnamese", long_text)] == "draft here"
+
+
+# ---------------------------------------------------------------------------
+# AC-4 / BR-44 — Critique loop invoked within translate_texts
+# ---------------------------------------------------------------------------
+
+class TestCritiqueLoopInvocation:
+    """Prove critique loop runs ≥1 per request via mock call count at LLM boundary."""
+
+    def _make_client(self, model="test-model"):
+        client = MagicMock(spec=OllamaClient)
+        client.model = model
+        client.cache_model_key = model
+        client._is_translation_dedicated.return_value = False
+        return client
+
+    @patch("app.backend.services.translation_service.CRITIQUE_LOOP_ENABLED", True)
+    @patch("app.backend.services.translation_service.CRITIQUE_MAX_ITERATIONS", 1)
+    @patch("app.backend.services.translation_service.get_cache", return_value=None)
+    @patch("app.backend.services.translation_service.translate_blocks_batch")
+    def test_critique_loop_invoked_within_translate_texts(self, mock_batch, mock_cache):
+        """AC-4: critique loop uses client.translate_once ≥1 time per request."""
+        from app.backend.services.translation_service import translate_texts
+
+        mock_batch.return_value = [(True, "initial draft translation")]
+        primary = self._make_client("hymt-model")
+        primary.translate_once.return_value = (True, "critique-improved translation")
+
+        translate_texts(
+            texts=["Some source text to translate"],
+            targets=["Vietnamese"],
+            src_lang="English",
+            client=primary,
+            terms=[],
+        )
+
+        # The critique loop must have called translate_once at least once
+        assert primary.translate_once.call_count >= 1

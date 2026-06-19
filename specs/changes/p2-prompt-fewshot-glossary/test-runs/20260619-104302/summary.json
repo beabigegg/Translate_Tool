@@ -1,0 +1,20 @@
+{
+  "change_id": "p2-prompt-fewshot-glossary",
+  "phase": "targeted",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_fewshot_glossary.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104302/junit.xml' -ra",
+  "duration_ms": 169,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests.test_fewshot_glossary.TestFewShotInjection::test_fewshot_examples_present_in_prompt_string",
+    "message": "ImportError: cannot import name 'build_fewshot_block' from 'app.backend.services.context_prompts' (/home/egg/Projects/Translate_Tool/app/backend/services/context_prompts.py)"
+  },
+  "artifacts": {
+    "summary": "specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104302/summary.json",
+    "stdout": "specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104302/stdout.log",
+    "stderr": "specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104302/stderr.log",
+    "junit": "specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104302/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

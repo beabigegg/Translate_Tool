@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Iterable, List, Optional, TYPE_CHECKING
@@ -245,12 +246,29 @@ def detect_translation_scenario(
     return best if best_score >= 2 else TranslationScenario.GENERAL
 
 
+def _glossary_state_digest(terms: "List[Term]") -> str:
+    """Compute a short SHA-256 hex digest of the sorted term set (BR-45, Decision 4).
+
+    Digest = SHA-256 of sorted ``source_text\\x00target_text`` pairs joined by
+    newlines, truncated to 8 hex chars.  Returns "" when terms is empty.
+
+    Module-pure: no IO, no DB read — callers pass the term list in.
+    """
+    if not terms:
+        return ""
+    # Sort for determinism independent of query order
+    pairs = sorted(f"{t.source_text}\x00{t.target_text}" for t in terms)
+    payload = "\n".join(pairs).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()[:8]
+
+
 def build_strategy(
     base_system_prompt: str,
     model_type: str,
     scenario: TranslationScenario,
     detected_context: Optional[str] = None,
     enable_context_flow: bool = True,
+    terms: "Optional[List[Term]]" = None,
 ) -> StrategyDecision:
     """Build per-file prompt/option overrides for the detected scenario."""
     resolved_scenario = _canonicalize_scenario(scenario)
@@ -282,6 +300,17 @@ def build_strategy(
         cache_variant = f"{cache_variant}_ctx"
     if resolved_scenario == TranslationScenario.TECHNICAL_PROCESS and model_type == ModelType.TRANSLATION.value:
         cache_variant = f"{cache_variant}_glossary"
+
+    # BR-45: embed glossary-state digest + critique marker so stale
+    # pre-glossary/pre-critique entries always miss.
+    _term_list = terms or []
+    gloss_digest = _glossary_state_digest(_term_list)
+    if gloss_digest:
+        cache_variant = f"{cache_variant}_g{gloss_digest}"
+    # Always append critique pass marker when critique is effectively active
+    # (digest presence implies the critique path is in use; marker ensures
+    # even zero-term requests carried through the critique path are partitioned)
+    cache_variant = f"{cache_variant}_crit"
 
     return StrategyDecision(
         scenario=resolved_scenario,

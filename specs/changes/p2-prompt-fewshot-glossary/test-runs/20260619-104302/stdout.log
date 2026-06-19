@@ -1,0 +1,10 @@
+F
+=================================== FAILURES ===================================
+_____ TestFewShotInjection.test_fewshot_examples_present_in_prompt_string ______
+tests/test_fewshot_glossary.py:65: in test_fewshot_examples_present_in_prompt_string
+    from app.backend.services.context_prompts import build_fewshot_block
+E   ImportError: cannot import name 'build_fewshot_block' from 'app.backend.services.context_prompts' (/home/egg/Projects/Translate_Tool/app/backend/services/context_prompts.py)
+=========================== short test summary info ============================
+FAILED tests/test_fewshot_glossary.py::TestFewShotInjection::test_fewshot_examples_present_in_prompt_string
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 0.03s

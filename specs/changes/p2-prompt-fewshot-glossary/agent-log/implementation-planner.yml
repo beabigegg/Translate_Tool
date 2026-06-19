@@ -1,0 +1,7 @@
+agent: implementation-planner
+change-id: p2-prompt-fewshot-glossary
+status: complete
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/p2-prompt-fewshot-glossary/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer (all 8 IP items)" }
+  - { type: scope-summary, pointer: "in: context_prompts/translation_service/translation_strategy/config/metrics + new tests; out: API/IR/cache-schema/frontend/CI-topology" }

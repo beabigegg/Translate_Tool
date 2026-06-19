@@ -1,0 +1,29 @@
+agent: backend-engineer
+change-id: p2-prompt-fewshot-glossary
+completed-at: 2026-06-19
+
+artifacts:
+  - { type: files-changed, pointer: "tests/test_fewshot_glossary.py:1-309 (new — 25 test cases, 7 classes)" }
+  - { type: files-changed, pointer: "app/backend/services/context_prompts.py:1-215 (added _FEWSHOT_BANK, build_fewshot_block, build_glossary_block, apply_glossary_substitution, compute_glossary_match_rate)" }
+  - { type: files-changed, pointer: "app/backend/services/metrics.py:1-159 (added critique_loop_invocations, critique_iterations_total, glossary_match_rate counters + helpers + reset)" }
+  - { type: files-changed, pointer: "app/backend/config.py:115-119 (added CRITIQUE_LOOP_ENABLED, CRITIQUE_MAX_ITERATIONS, CRITIQUE_TIMEOUT_SECONDS)" }
+  - { type: files-changed, pointer: "app/backend/services/translation_strategy.py:1-10,260-310 (added hashlib import, _glossary_state_digest, terms param + cache variant extension)" }
+  - { type: files-changed, pointer: "app/backend/services/translation_service.py:1-35,57-100,233-310 (added critique loop + glossary substitution + metrics hooks at Phase-2 seam)" }
+  - { type: files-changed, pointer: "tests/test_translation_strategy.py:40-90 (updated endswith checks + added test_build_strategy_includes_glossary_digest_in_cache_variant)" }
+  - { type: files-changed, pointer: "tests/test_metrics_counters.py:143-195 (added 7 new counter tests AC-8/BR-46)" }
+  - { type: files-changed, pointer: "tests/test_hy_mt_quality_refinement.py:299-335 (added TestCritiqueLoopInvocation AC-4)" }
+  - { type: files-changed, pointer: "tests/test_sentence_mode_consistency.py:262-275 (updated signature test to include new terms param)" }
+  - { type: files-changed, pointer: "specs/changes/p2-prompt-fewshot-glossary/ci-gates.md (added Promotion Policy section)" }
+  - { type: tests-added, pointer: "tests/test_fewshot_glossary.py::TestFewShotInjection (4 tests)" }
+  - { type: tests-added, pointer: "tests/test_fewshot_glossary.py::TestGlossaryEnforcement (4 tests)" }
+  - { type: tests-added, pointer: "tests/test_fewshot_glossary.py::TestGlossaryMatchRate (2 tests)" }
+  - { type: tests-added, pointer: "tests/test_fewshot_glossary.py::TestGlossarySourceOfTruth (2 tests)" }
+  - { type: tests-added, pointer: "tests/test_fewshot_glossary.py::TestCritiqueLoop (2 tests)" }
+  - { type: tests-added, pointer: "tests/test_fewshot_glossary.py::TestCritiqueLoopBounds (4 tests)" }
+  - { type: tests-added, pointer: "tests/test_fewshot_glossary.py::TestCacheKeyGlossaryDigest (2 tests)" }
+  - { type: tests-added, pointer: "tests/test_fewshot_glossary.py::TestCritiqueMetrics (5 tests)" }
+  - { type: tests-added, pointer: "tests/test_metrics_counters.py::test_critique_loop_invocations_initializes_to_zero + 6 more (7 tests)" }
+  - { type: tests-added, pointer: "tests/test_translation_strategy.py::test_build_strategy_includes_glossary_digest_in_cache_variant" }
+  - { type: tests-added, pointer: "tests/test_hy_mt_quality_refinement.py::TestCritiqueLoopInvocation::test_critique_loop_invoked_within_translate_texts" }
+  - { type: test-output, pointer: "621 passed, 4 skipped (pre-existing), 1 warning — full suite green" }
+  - { type: contracts-touched, pointer: "none (no new endpoint, no API contract change per scope)" }

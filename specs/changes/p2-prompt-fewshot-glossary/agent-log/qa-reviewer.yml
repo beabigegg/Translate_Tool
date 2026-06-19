@@ -1,0 +1,20 @@
+agent: qa-reviewer
+change-id: p2-prompt-fewshot-glossary
+timestamp: 2026-06-19
+status: complete
+
+artifacts:
+  - { type: gate-results, pointer: "cdd-kit gate: pass; validate --contracts: pass (response-shape: skipped); targeted 25/0-fail; changed-area 87/0-fail; full 625 tests/4 skipped/0 failed" }
+  - { type: evidence-quality, pointer: "gate + contracts re-ran live; junit parsed from test-runs/; test-evidence.yml final-status: passed; all required phases present, no waiver fields" }
+  - { type: decision, pointer: "approved-with-risk" }
+  - { type: failure-routing, pointer: "VR-1: /api/metrics response-shape sample missing (ADR 0007 — skipped not passed) → backend-engineer + test-strategist (P3); VR-2: glossary_match_rate module-float concurrency race (observability-only) → backend-engineer (P3)" }
+  - { type: residual-risk, pointer: "VR-1: response-shape harness unenrolled (repo-wide); additive-only optional fields; low break risk. VR-2: last-request scalar race is per design.md decision 5; correctness guarantee is racy (deterministic substitution is per-request). VR-3: _crit cache variant always active — confirmed intentional per BR-45 design.md rollback section." }
+
+notes: |
+  AC-1–AC-8 all met. Deterministic post-translation substitution (not prompt-only) satisfies BR-41
+  100% guarantee. TestGlossarySourceOfTruth uses real in-memory TermDB (not mocked), satisfying AC-3.
+  Critique loop bounded by CRITIQUE_MAX_ITERATIONS + CRITIQUE_TIMEOUT_SECONDS; fail-soft degrade-to-draft
+  confirmed by TestCritiqueLoopBounds. Cache-key digest partitions pre/post-glossary entries (BR-45).
+  No required test failed; no required gate is red; no contract claim is unverified.
+  Doc-label mismatch: tasks.yml note 3.1 says TestCritiqueCacheKey but actual class is
+  TestCacheKeyGlossaryDigest (matches test-plan.md and junit output) — label-only, no functional impact.

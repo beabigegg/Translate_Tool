@@ -3,8 +3,8 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.7.2
-last-changed: 2026-06-18
+schema-version: 0.8.0
+last-changed: 2026-06-19
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -53,6 +53,12 @@ breaking-change-policy: deprecate-2-minors
 | BR-38 | no-silent-truncation | application-team | Every truncation of a `TranslatableElement` during rendering MUST set `render_truncated = True` on that IR element. Silent truncation (text clipped without marking) is forbidden. `render_truncated` is consumed by the QA safety net and human-review tooling. | tests/test_text_region_renderer.py |
 | BR-39 | metric-compatible-font-fallback | application-team | When `get_font_for_language` resolves a font lacking a glyph for a target character, a fallback is selected from already-registered per-language Noto faces by nearest metric match: x-height (primary weight), cap-height (secondary), mean advance-width (tertiary). The terminal fallback is the language's `LANGUAGE_FONT_MAP` Noto face, else `NotoSans`. Fallback selection MUST reuse `register_fonts` registration state and load bytes only through the P1 `_load_font_buffer` LRU cache; redundant font I/O is forbidden. Metric values are memoized per registered face. | tests/test_font_utils.py |
 | BR-40 | single-path-expansion-enforcement | application-team | All text-expansion and fit-cascade logic MUST reside exclusively on the fitz primary renderer path and the shared `bbox_reflow.py` component. No duplication of expansion or cascade logic is permitted in any legacy renderer path (`coordinate_renderer.py`, `inline_renderer.py`, or `pdf_generator.py`). Verified by consumer-import grep and per-backend mock assertions (AC-6). | tests/test_renderer_convergence.py |
+| BR-41 | glossary-match-guarantee | application-team | For any translation request where `term_db` contains ≥1 `approved` (or loose-gate-eligible per BR-29) term whose `source_text` appears in the source content, the corresponding `target_text` MUST appear verbatim in the final output for every matched term. Enforcement is deterministic (post-translation check + substitution), not prompt-only best-effort. Match rate is 100%; zero terminology mismatches are permitted in the final delivered output. | tests/test_hy_mt_quality_refinement.py |
+| BR-42 | fewshot-injection-required | application-team | Every LLM prompt constructed by `context_prompts.py` for a translation request MUST include at least one few-shot example pair (source snippet → target snippet). The injected examples MUST be verifiably present in the prompt string passed to the LLM client. A request for which no examples are available MUST fall back to a documented zero-shot template rather than omitting the few-shot block silently. | tests/test_context_prompt_i18n.py |
+| BR-43 | glossary-source-of-truth | application-team | All glossary/domain terms injected into LLM prompts (or enforced post-hoc) MUST be sourced exclusively from `term_db`. Hardcoded term lists anywhere in the codebase are forbidden. Few-shot example selection MAY draw from a separate curated example bank, but any domain-specific terminology within those examples MUST also agree with `term_db`. | tests/test_context_prompt_i18n.py |
+| BR-44 | critique-loop-policy | application-team | The translate-then-critique self-refinement loop MUST run ≥1 iteration per translation request. Maximum iterations is bounded by `CRITIQUE_MAX_ITERATIONS` (default: 3; must be configurable). Per-request cost cap is enforced by `CRITIQUE_TIMEOUT_SECONDS` (default: 60 s). When a critique call fails (exception or timeout), the loop MUST degrade gracefully to the last valid draft and MUST NOT propagate the exception to the caller or transition the job to `failed`. | tests/test_hy_mt_quality_refinement.py |
+| BR-45 | critique-loop-cache-key | application-team | The translation cache key MUST incorporate a glossary-state digest (e.g. sorted hash of injected term set) and the active critique-iteration count (or refinement-pass marker). A cache hit MUST NOT serve a result produced without glossary injection or without the critique pass. Stale pre-glossary or pre-critique cache entries must be treated as misses. | tests/test_translation_strategy.py |
+| BR-46 | critique-loop-metrics | application-team | `metrics.py` MUST expose: `critique_loop_invocations` (total critique-loop calls since process start), `critique_iterations_total` (cumulative iterations across all requests since process start), and `glossary_match_rate` (float ratio 0.0–1.0, last-request value or running mean — defined by design.md). All three counters follow BR-20 lifetime semantics (in-process memory, reset on restart). | tests/test_metrics_counters.py |
 
 ## Decision Tables
 
@@ -183,6 +189,25 @@ breaking-change-policy: deprecate-2-minors
 | overflow exhausts (d) or no adjacent whitespace available | (e) word-boundary truncate + ellipsis; set `render_truncated = True` | — (terminal) | tests/test_text_region_renderer.py |
 | step (d): adjacent whitespace not available | step (d) skipped; proceed immediately to (e) | — | tests/test_text_region_renderer.py |
 | expansion factor pair not in table (non en→de/es/fr) | advisory factor 1.15 applied; measured width governs | — | tests/test_text_region_renderer.py |
+
+### Table M — critique loop execution (BR-44)
+| condition | behavior | test id |
+|---|---|---|
+| Source content contains ≥1 approved glossary term | critique loop runs ≥1 iteration; revised draft produced; glossary-match check applied to final output | tests/test_hy_mt_quality_refinement.py |
+| Source content contains 0 glossary terms | critique loop still runs ≥1 iteration (BR-44); final output may differ from initial draft based on critique only | tests/test_hy_mt_quality_refinement.py |
+| Critique call succeeds within timeout | revised draft accepted; `critique_iterations_total` incremented | tests/test_hy_mt_quality_refinement.py |
+| Critique call raises exception or exceeds `CRITIQUE_TIMEOUT_SECONDS` | loop degrades to last valid draft; job NOT failed; WARNING logged | tests/test_hy_mt_quality_refinement.py |
+| Iterations reach `CRITIQUE_MAX_ITERATIONS` | loop terminates; final draft used; no further critique calls made | tests/test_hy_mt_quality_refinement.py |
+| Cache hit exists for same (content, glossary-state, refinement-pass) | cached result served; no LLM calls made; cache MUST incorporate glossary digest (BR-45) | tests/test_translation_strategy.py |
+
+### Table N — glossary enforcement (BR-41, BR-43)
+| condition | behavior | test id |
+|---|---|---|
+| Source contains registered `approved` term; LLM output already contains canonical target | output accepted; no substitution needed; match recorded in `glossary_match_rate` | tests/test_hy_mt_quality_refinement.py |
+| Source contains registered `approved` term; LLM output missing canonical target after critique loop | post-translation deterministic substitution applied; `glossary_match_rate` updated | tests/test_hy_mt_quality_refinement.py |
+| Source contains term matching only `unverified` term with confidence below threshold (strict gate) | term not enforced; no substitution; BR-29 injection gate governs | tests/test_term_state_machine.py |
+| Source contains `rejected` or `needs_review` term | term not enforced; BR-29 governs; no match expected in output | tests/test_term_state_machine.py |
+| No terms in `term_db` for this (source_lang, target_lang) pair | enforcement step is a no-op; job completes normally | tests/test_hy_mt_quality_refinement.py |
 
 ## Change Policy
 

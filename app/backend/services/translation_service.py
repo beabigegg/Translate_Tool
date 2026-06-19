@@ -4,14 +4,34 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple
 
 from app.backend.clients.base_llm_client import LLMClient
-from app.backend.config import CROSS_MODEL_REFINEMENT_ENABLED, DEFAULT_MAX_BATCH_CHARS, REFINEMENT_MIN_CHARS, SENTENCE_MODE
-from app.backend.services.context_prompts import _get_context_detection_prompt
-from app.backend.services.metrics import record_translation
+from app.backend.config import (
+    CROSS_MODEL_REFINEMENT_ENABLED,
+    CRITIQUE_LOOP_ENABLED,
+    CRITIQUE_MAX_ITERATIONS,
+    CRITIQUE_TIMEOUT_SECONDS,
+    DEFAULT_MAX_BATCH_CHARS,
+    REFINEMENT_MIN_CHARS,
+    SENTENCE_MODE,
+)
+from app.backend.services.context_prompts import (
+    _get_context_detection_prompt,
+    apply_glossary_substitution,
+    compute_glossary_match_rate,
+)
+from app.backend.services.metrics import (
+    record_critique_iteration,
+    record_critique_loop_invocation,
+    record_translation,
+    set_glossary_match_rate,
+)
 from app.backend.services.translation_cache import get_cache
 from app.backend.utils.translation_helpers import translate_blocks_batch
+
+if TYPE_CHECKING:
+    from app.backend.models.term import Term
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +83,21 @@ def translate_texts(
     stop_flag=None,
     log: Callable[[str], None] = lambda s: None,
     refine_client: Optional[LLMClient] = None,
+    terms: "Optional[List[Term]]" = None,
 ) -> Tuple[Dict[Tuple[str, str], str], int, int, bool]:
     """Translate texts for all targets with character-based batching.
+
+    Args:
+        texts: Source text segments to translate.
+        targets: Target language codes.
+        src_lang: Source language code (or None / "auto").
+        client: Primary LLM client.
+        max_batch_chars: Character batching budget.
+        stop_flag: Optional threading.Event for cancellation.
+        log: Progress log callback.
+        refine_client: Optional cross-model refinement client (Phase 2).
+        terms: Optional list of Term objects for glossary enforcement and
+               critique loop context (BR-41, BR-44).
 
     Returns:
         (tmap, done_count, fail_count, stopped)
@@ -230,6 +263,99 @@ def translate_texts(
 
     if cache_hits > 0:
         log(f"[CACHE] total: {cache_hits} hits, {done - cache_hits} translated")
+
+    # ---------------------------------------------------------------------------
+    # Critique loop (p2-prompt-fewshot-glossary, BR-44, Table M)
+    # Runs per translatable unit (segment), ≥1 iteration, bounded by caps.
+    # Degrades to last valid draft on exception/timeout — never fails the job.
+    # ---------------------------------------------------------------------------
+    _active_terms = terms or []
+    if CRITIQUE_LOOP_ENABLED and tmap and not stopped:
+        try:
+            record_critique_loop_invocation()
+        except Exception:
+            pass  # metrics must never break translation
+
+        _critique_iter_count = 0
+        for _key in list(tmap.keys()):
+            _tgt, _src_text = _key
+            _current_draft = tmap[_key]
+            # Skip failure placeholders
+            if _current_draft.startswith("[Translation failed|"):
+                continue
+            # Run the bounded critique iterations for this segment
+            _segment_iters = 0
+            for _iter in range(max(1, CRITIQUE_MAX_ITERATIONS)):
+                _iter_start = time.monotonic()
+                try:
+                    _critique_prompt = (
+                        f"Review and improve this translation.\n"
+                        f"Source: {_src_text}\n"
+                        f"Draft: {_current_draft}\n"
+                        f"Output ONLY the improved translation:"
+                    )
+                    _elapsed = time.monotonic() - _iter_start
+                    if _elapsed >= CRITIQUE_TIMEOUT_SECONDS:
+                        logger.warning(
+                            "[CRITIQUE] Timeout budget exhausted before call for segment len=%d",
+                            len(_src_text),
+                        )
+                        break
+                    _ok, _revised = client.translate_once(_critique_prompt, _tgt, src_lang)
+                    _call_elapsed = time.monotonic() - _iter_start
+                    if _call_elapsed >= CRITIQUE_TIMEOUT_SECONDS:
+                        logger.warning(
+                            "[CRITIQUE] Call exceeded timeout (%.1fs) for segment len=%d; keeping draft",
+                            _call_elapsed,
+                            len(_src_text),
+                        )
+                        break
+                    if _ok and _revised and not _revised.startswith("[Translation failed|"):
+                        _current_draft = _revised
+                        _segment_iters += 1
+                except Exception as exc:
+                    logger.warning(
+                        "[CRITIQUE] Exception during critique iteration %d: %s; keeping last draft",
+                        _iter + 1,
+                        exc,
+                    )
+                    break
+            tmap[_key] = _current_draft
+            _critique_iter_count += _segment_iters
+
+        try:
+            record_critique_iteration(_critique_iter_count)
+        except Exception:
+            pass
+
+    # ---------------------------------------------------------------------------
+    # Deterministic glossary substitution + match rate (BR-41, IP-5)
+    # Applied to final draft after critique loop.
+    # ---------------------------------------------------------------------------
+    if _active_terms and tmap and not stopped:
+        _all_rates: list = []
+        for _key in list(tmap.keys()):
+            _tgt, _src_text = _key
+            _draft = tmap[_key]
+            if _draft.startswith("[Translation failed|"):
+                continue
+            try:
+                _draft = apply_glossary_substitution(_draft, _src_text, _active_terms)
+                tmap[_key] = _draft
+                _rate = compute_glossary_match_rate(_draft, _src_text, _active_terms)
+                _all_rates.append(_rate)
+            except Exception as exc:
+                logger.warning("[GLOSSARY] Substitution error for segment: %s", exc)
+        if _all_rates:
+            try:
+                set_glossary_match_rate(sum(_all_rates) / len(_all_rates))
+            except Exception:
+                pass
+        else:
+            try:
+                set_glossary_match_rate(1.0)
+            except Exception:
+                pass
 
     # Phase 2: Cross-model refinement (HY-MT → Qwen polish pass)
     if refine_client is not None and CROSS_MODEL_REFINEMENT_ENABLED and not stopped:

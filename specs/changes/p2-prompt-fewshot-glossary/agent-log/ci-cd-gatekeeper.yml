@@ -1,0 +1,15 @@
+change-id: p2-prompt-fewshot-glossary
+agent: ci-cd-gatekeeper
+timestamp: "2026-06-19T00:00:00Z"
+status: complete
+artifacts:
+  - { type: tiers-modified, pointer: "1, 2" }
+  - { type: gate-promotions, pointer: "n/a (no gates moved between tiers; existing job sweep already covers new test file)" }
+  - { type: workflow-files-changed, pointer: ".github/workflows/contract-driven-gates.yml:3,47" }
+  - { type: required-status-checks, pointer: "contract-and-fast-tests, golden-sample-regression" }
+next-action: none
+files-read:
+  - specs/changes/p2-prompt-fewshot-glossary/change-classification.md
+  - specs/changes/p2-prompt-fewshot-glossary/test-plan.md
+  - .github/workflows/contract-driven-gates.yml
+  - specs/changes/p2-prompt-fewshot-glossary/ci-gates.md

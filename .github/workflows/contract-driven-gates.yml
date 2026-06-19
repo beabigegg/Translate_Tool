@@ -1,6 +1,6 @@
 # Contract-driven gates
 # Tier semantics: ci/gate-policy.md
-# Active change gates: none (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection)
+# Active change gates: p2-prompt-fewshot-glossary (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection)
 
 name: contract-driven-gates
 
@@ -44,7 +44,7 @@ jobs:
         run: cdd-kit validate --contracts
 
       - name: Change gate (Tier 1 — blocks merge)
-        run: echo "No active change gates — all changes archived."
+        run: cdd-kit gate p2-prompt-fewshot-glossary
 
       - name: OpenAPI sync gate
         run: cdd-kit openapi export --check --out contracts/api/openapi.yml

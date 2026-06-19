@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "API behavior, compatibility rules, and endpoint contract requirements.",
-    "version": "0.4.1",
+    "version": "0.4.2",
     "description": "- response style: JSON (Pydantic response models); binary endpoints return file streams (FileResponse / StreamingResponse)."
   },
   "paths": {
@@ -1025,6 +1025,18 @@
           "font_cache_misses": {
             "type": "integer",
             "description": "total font buffer cache misses since process start; initializes to 0"
+          },
+          "critique_loop_invocations": {
+            "type": "integer",
+            "description": "total critique-loop invocations since process start; initializes to 0; see BR-46"
+          },
+          "critique_iterations_total": {
+            "type": "integer",
+            "description": "cumulative critique iterations across all requests since process start; initializes to 0; see BR-46"
+          },
+          "glossary_match_rate": {
+            "type": "number",
+            "description": "glossary term match rate (0.0–1.0 float); definition per design.md; 0.0 when no terms evaluated; see BR-46"
           }
         },
         "required": [

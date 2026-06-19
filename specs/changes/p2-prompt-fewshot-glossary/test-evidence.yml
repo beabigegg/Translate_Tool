@@ -1,0 +1,43 @@
+change-id: p2-prompt-fewshot-glossary
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_fewshot_glossary.py --collect-only -q
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104256/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104256/summary.json
+    junit: specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104256/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_fewshot_glossary.py -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104648/junit.xml'
+      -ra
+    summary: specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104648/summary.json
+    junit: specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104648/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_fewshot_glossary.py
+      tests/test_metrics_counters.py tests/test_context_prompt_i18n.py tests/test_translation_strategy.py
+      tests/test_hy_mt_quality_refinement.py -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104656/junit.xml'
+      -ra
+    summary: specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104656/summary.json
+    junit: specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104656/junit.xml
+  - phase: full
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/ -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104803/junit.xml'
+      -ra
+    summary: specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104803/summary.json
+    junit: specs/changes/p2-prompt-fewshot-glossary/test-runs/20260619-104803/junit.xml
+final-status: passed
