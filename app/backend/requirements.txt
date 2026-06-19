@@ -27,6 +27,7 @@ pytorch-lightning>=2.6.1   # fixes GHSA-75m9-98v2-hjpm (checkpoint deserializati
 transformers>=4.52.1       # fixes ReDoS vulns GHSA-37mw-44qp-f5jm et al.
 sentencepiece>=0.2.1       # fixes GHSA-38vq-g6vr-w8wf (heap overflow)
 protobuf>=4.25.8,<5.0.0    # fixes GHSA-8qvm-5x2c-j2w7 (DoS); stays within unbabel-comet bound
+jsonschema>=4.0.0           # required by cdd-kit validate --contracts response-shape validator
 
 # Testing
 pytest>=8.0.0
