@@ -1,0 +1,39 @@
+agent: backend-engineer
+change-id: p2-term-audit
+timestamp: 2026-06-19T17:14:00Z
+status: complete
+
+summary: >
+  Implemented terminology audit module (p2-term-audit) in TDD order.
+  All 18 tests pass across 5 phases (collect, targeted, changed-area, contract, full).
+  Gate passes with no contract drift.
+
+artifacts:
+  - { type: files-changed, pointer: "tests/test_term_audit.py:1-520" }
+  - { type: files-changed, pointer: "app/backend/services/term_audit.py:1-120" }
+  - { type: files-changed, pointer: "app/backend/services/term_db.py:425-441" }
+  - { type: files-changed, pointer: "app/backend/services/job_manager.py:32-34,85,307,402-419" }
+  - { type: tests-added, pointer: "tests/test_term_audit.py::test_hit_rate_exact_match" }
+  - { type: tests-added, pointer: "tests/test_term_audit.py::test_hit_rate_case_insensitive" }
+  - { type: tests-added, pointer: "tests/test_term_audit.py::test_unapplied_terms_list" }
+  - { type: tests-added, pointer: "tests/test_term_audit.py::test_rejected_injection_detected" }
+  - { type: tests-added, pointer: "tests/test_term_audit.py::test_rejected_injection_not_detected" }
+  - { type: tests-added, pointer: "tests/test_term_audit.py::test_vacuous_hit_rate" }
+  - { type: tests-added, pointer: "tests/test_term_audit.py::test_scope_excludes_non_approved" }
+  - { type: tests-added, pointer: "tests/test_term_audit.py::test_whole_token_rejected_injection" }
+  - { type: tests-added, pointer: "tests/test_term_audit.py::test_hit_rate_20_approved_terms" }
+  - { type: tests-added, pointer: "tests/test_term_audit.py::test_get_rejected_interface" }
+  - { type: tests-added, pointer: "tests/test_term_audit.py::test_result_shape_conforms_to_data_contract" }
+  - { type: tests-added, pointer: "tests/test_term_audit.py::test_no_parallel_report_format" }
+  - { type: tests-added, pointer: "tests/test_term_audit.py::test_audit_wired_at_hook_seam" }
+  - { type: tests-added, pointer: "tests/test_term_audit.py::test_audit_disabled_when_exception" }
+  - { type: test-output, pointer: "18 passed in full suite; all 5 phases green (collect/targeted/changed-area/contract/full)" }
+  - { type: contracts-touched, pointer: "none — contracts/api/api-contract.md and openapi.yml unchanged per AC-6" }
+
+notes:
+  - TermDB.get_rejected() added at term_db.py:425-441 mirroring get_approved() exactly.
+  - TerminologyAuditResult dataclass has exactly 5 fields per data-shape-contract.md.
+  - Whole-token boundary check uses re.compile(r'\b' + re.escape(target_text) + r'\b') for rejected terms.
+  - qe_blocks guard removed: audit runs whenever mode != extraction_only (matches QE pattern exactly).
+  - TermDB promoted to module-level import in job_manager.py to allow consumer-binding mock.patch.
+  - blingfire import is lazy (inside lemmatized branch only, default-off).

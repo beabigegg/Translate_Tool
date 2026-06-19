@@ -1,0 +1,20 @@
+{
+  "change_id": "p2-term-audit",
+  "phase": "targeted",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_term_audit.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-term-audit/test-runs/20260619-171338/junit.xml' -ra",
+  "duration_ms": 511,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests.test_term_audit::test_audit_wired_at_hook_seam",
+    "message": "AssertionError: audit_terms must be called at least once via _run_job; call_count=0\nassert 0 >= 1\n +  where 0 = <MagicMock name='audit_terms' id='131648044441488'>.call_count"
+  },
+  "artifacts": {
+    "summary": "specs/changes/p2-term-audit/test-runs/20260619-171338/summary.json",
+    "stdout": "specs/changes/p2-term-audit/test-runs/20260619-171338/stdout.log",
+    "stderr": "specs/changes/p2-term-audit/test-runs/20260619-171338/stderr.log",
+    "junit": "specs/changes/p2-term-audit/test-runs/20260619-171338/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

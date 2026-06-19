@@ -29,6 +29,8 @@ from app.backend.config import (
 from app.backend.processors.orchestrator import process_files
 from app.backend.services.model_router import RouteGroup
 from app.backend.services.quality_evaluator import load_model, score_blocks
+from app.backend.services.term_audit import audit_terms, TerminologyAuditResult
+from app.backend.services.term_db import TermDB
 from app.backend.translation_profiles import get_profile as _get_translation_profile
 from app.backend.utils.logging_utils import logger
 from app.backend.utils.resource_utils import release_resources
@@ -80,6 +82,7 @@ class JobRecord:
     term_summary: Optional[Dict] = None
     provider: Optional[str] = None  # p1-cloud-providers: winning provider ID
     quality: Optional[JobQualityRecord] = None  # p2-comet-qe: QE result
+    audit: Optional[TerminologyAuditResult] = None  # p2-term-audit: terminology audit result
 
 
 class JobLogger:
@@ -301,7 +304,6 @@ class JobManager:
                 qe_blocks: List[Tuple[str, str, str]] = []
 
                 # Initialise shared TermDB for Phase 0
-                from app.backend.services.term_db import TermDB
                 term_db = TermDB()
 
                 for group in route_groups:
@@ -396,6 +398,25 @@ class JobManager:
                     job.quality = JobQualityRecord(
                         job_id=job_id, scores=[], qe_status="disabled", model=None
                     )
+
+                # p2-term-audit: audit terminology hits/rejections over qe_blocks (BR-59..BR-61)
+                # Mirrors the QE extraction_only guard so audit only runs on translation jobs.
+                if mode != "extraction_only":
+                    try:
+                        # Collect targets and domain from the route groups used in this job
+                        all_targets = list({t for g in route_groups for t in g.targets})
+                        job.audit = audit_terms(
+                            qe_blocks,
+                            targets=all_targets,
+                            domain=None,
+                            term_db=term_db,
+                        )
+                    except Exception as audit_exc:
+                        logger.warning(
+                            "[TermAudit] audit_terms failed job_id=%s: %s: %s",
+                            job_id, type(audit_exc).__name__, audit_exc,
+                        )
+                        job.audit = None
 
                 with job.lock:
                     job.processed_files = total_processed

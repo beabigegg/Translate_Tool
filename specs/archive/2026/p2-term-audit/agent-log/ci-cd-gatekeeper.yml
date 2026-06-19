@@ -1,0 +1,16 @@
+agent: ci-cd-gatekeeper
+change-id: p2-term-audit
+date: 2026-06-19
+status: complete
+
+artifacts:
+  - { type: tiers-modified, pointer: "1, 2" }
+  - { type: gate-promotions, pointer: "n/a (no gate promoted; existing gates reused)" }
+  - { type: workflow-files-changed, pointer: ".github/workflows/contract-driven-gates.yml:3,47" }
+  - { type: required-status-checks, pointer: "contract-and-fast-tests (contract-validate, change-gate, openapi-sync, unit-tests), layout-detector-dependency-gate" }
+
+notes: >
+  tier-floor-override: 2 applied; "integration" vocab in change-request misfires cdd-kit gate
+  tier heuristic — refers only to in-process hook wiring and integration-level tests, not
+  cross-system integration, auth, DDL, or new HTTP route. No new gate or ci-gate-contract.md
+  row required; existing unit-tests gate covers all required test families.

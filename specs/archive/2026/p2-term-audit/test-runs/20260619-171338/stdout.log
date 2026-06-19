@@ -1,0 +1,18 @@
+................F
+=================================== FAILURES ===================================
+________________________ test_audit_wired_at_hook_seam _________________________
+tests/test_term_audit.py:477: in test_audit_wired_at_hook_seam
+    assert mock_audit.call_count >= 1, (
+E   AssertionError: audit_terms must be called at least once via _run_job; call_count=0
+E   assert 0 >= 1
+E    +  where 0 = <MagicMock name='audit_terms' id='131648044441488'>.call_count
+=============================== warnings summary ===============================
+tests/test_term_audit.py::test_no_parallel_report_format
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21: DeprecationWarning: PyPDF2 is deprecated. Please move to the pypdf library instead.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_term_audit.py::test_audit_wired_at_hook_seam - AssertionErr...
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 16 passed, 1 warning in 0.31s

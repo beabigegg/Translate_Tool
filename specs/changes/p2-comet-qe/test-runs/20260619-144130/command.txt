@@ -1,1 +1,0 @@
-pytest tests/ -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-comet-qe/test-runs/20260619-144130/junit.xml' --maxfail=1 --tb=short -ra

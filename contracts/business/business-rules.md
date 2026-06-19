@@ -3,7 +3,7 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.11.0
+schema-version: 0.12.0
 last-changed: 2026-06-19
 breaking-change-policy: deprecate-2-minors
 ---
@@ -71,6 +71,9 @@ breaking-change-policy: deprecate-2-minors
 | BR-56 | qe-safe-degradation | application-team | QE scoring failure — whether caused by model load error, COMET library exception, device OOM, or any other exception — MUST NOT cause the translation job to transition to `status: "failed"` or block delivery of the translated output. The failure must be caught, logged at WARNING level (exception type + job_id), and recorded as `qe_status: "unavailable"` on the `JobQualityRecord`. The translation result is always delivered regardless of QE outcome. | tests/test_quality_evaluation.py |
 | BR-57 | qe-enable-disable-flag | application-team | When `QE_ENABLED=false` (default), the QE scoring step is entirely skipped — no model is loaded, no scoring is attempted, and no `BlockQualityScore` records are produced. `GET /api/jobs/{id}/quality` returns HTTP 200 with `status: "disabled"` for all jobs. When `QE_ENABLED=true`, scoring runs per BR-55 using the model named in `QE_MODEL_NAME` on the device specified by `QE_DEVICE`. The flag takes effect at startup (restart required per env-contract.md). | tests/test_quality_evaluation.py |
 | BR-58 | qe-block-id-best-effort | application-team | For PDF files translated through the IR-based path, `BlockQualityScore.block_id` is the stable `element_id` from the `TranslatableElement`. For non-IR formats (DOCX, PPTX, XLSX) and the PDF-PyPDF2 fallback, `block_id` is a synthetic positional identifier (`"{ext}:{file_stem}:{index}"`) that is stable within a single job run but is not globally durable across re-submissions. A missing or colliding synthetic `block_id` MUST degrade gracefully (score omitted or overwritten) rather than fail the job (subordinate to BR-56). Consumers of `GET /api/jobs/{id}/quality` MUST NOT rely on `block_id` stability across re-submissions for non-IR formats. | tests/test_quality_evaluation.py |
+| BR-59 | terminology-audit-scope | application-team | Only `approved` terms (per the BR-28 state machine) are included in the hit-rate denominator. Terms with status `unverified`, `needs_review`, or `rejected` are excluded from `total_approved` and do not count as hits or misses. The approved set is filtered by `(target_lang, domain)` matching the job request. | tests/test_term_audit.py |
+| BR-60 | terminology-audit-match-algorithm | application-team | Default matching algorithm: case-insensitive exact substring search of each approved term's `target_text` against the concatenated `mt` text of each translated block. Match is deterministic, requires no NLP runtime dependency, and must be consistent across Python interpreter versions (str.lower() only). Optional lemmatized match mode: disabled by default; enabled via a boolean parameter to `audit_terms()`; when enabled, uses the already-present `blingfire` tokenizer plus simple suffix-stripping for lightweight normalization. The lemmatized path MUST be imported lazily inside `term_audit.py` so the default exact path loads nothing extra. No spaCy or NLTK dependency is permitted. | tests/test_term_audit.py |
+| BR-61 | terminology-audit-safe-degradation | application-team | If `audit_terms()` raises any exception, the exception MUST be caught in `_run_job`, logged at WARNING level (exception type + job_id), and `JobRecord.audit` MUST be set to `None`. The job MUST NOT transition to `status: "failed"` and the translated output MUST be delivered normally. Mirrors BR-56 (QE safe degradation). The audit is read-only and inert by construction; no mutation of translated content occurs at any point in the audit path. | tests/test_term_audit.py |
 
 ## Decision Tables
 
@@ -252,6 +255,20 @@ breaking-change-policy: deprecate-2-minors
 | `GET /api/jobs/{id}/quality`, `qe_status = "available"` | HTTP 200, `status: "available"`, `scores` array with one entry per translated block | tests/test_quality_evaluation.py |
 | Document has zero `should_translate=True` elements | Scoring step is a no-op; `scores` is empty list; `qe_status = "available"` (scoring ran; result is vacuously complete) | tests/test_quality_evaluation.py |
 | Non-IR format (DOCX/PPTX/XLSX) or PDF-PyPDF2 fallback — `block_id` collision or missing | Colliding entry overwritten (last-write wins) or entry omitted; job is not failed; consumer must not rely on `block_id` stability across re-runs (BR-58) | tests/test_quality_evaluation.py |
+
+### Table Q — terminology audit behavior (BR-59, BR-60, BR-61)
+
+| condition | behavior | test id |
+|---|---|---|
+| `total_approved == 0` (no approved terms for job's target_lang/domain) | `terminology_hit_rate = 1.0` (vacuously satisfied); `unapplied_terms = []`; `matched_approved = 0`; `total_approved = 0` | tests/test_term_audit.py |
+| Approved term's `target_text` found (case-insensitive substring) in any block `mt` | term counted as matched; excluded from `unapplied_terms` | tests/test_term_audit.py |
+| Approved term's `target_text` NOT found in any block `mt` | term counted as unmatched; appended to `unapplied_terms` as `source_text` key | tests/test_term_audit.py |
+| Rejected term's `target_text` found in any block `mt` | term appended to `rejected_injections`; does not affect hit-rate numerator/denominator | tests/test_term_audit.py |
+| Rejected term's `target_text` NOT found in any block `mt` | `rejected_injections` remains empty or unmodified; no hit-rate effect | tests/test_term_audit.py |
+| `audit_terms()` raises any exception | exception caught; WARNING logged (type + job_id); `JobRecord.audit = None`; job not failed; translation delivered | tests/test_term_audit.py |
+| Optional lemmatized mode disabled (default) | case-insensitive exact substring match only; no `blingfire` import at module load time | tests/test_term_audit.py |
+| Optional lemmatized mode enabled | `blingfire` tokenizer + suffix-stripping applied before match; import is lazy | tests/test_term_audit.py |
+| Rejected term is a substring of an approved term's `target_text` | rejected-injection matching MUST use whole-token boundary check (not bare substring) to avoid false positives from approved-term text | tests/test_term_audit.py |
 
 ## Change Policy
 

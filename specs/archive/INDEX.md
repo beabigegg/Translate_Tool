@@ -19,3 +19,4 @@
 | p2-prompt-fewshot-glossary | 2026 | 2026-06-19 | specs/archive/2026/p2-prompt-fewshot-glossary/ |
 | p2-long-doc-chunking | 2026 | 2026-06-19 | specs/archive/2026/p2-long-doc-chunking/ |
 | p2-comet-qe | 2026 | 2026-06-19 | specs/archive/2026/p2-comet-qe/ |
+| p2-term-audit | 2026 | 2026-06-19 | specs/archive/2026/p2-term-audit/ |

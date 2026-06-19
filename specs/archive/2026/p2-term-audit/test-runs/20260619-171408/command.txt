@@ -1,0 +1,1 @@
+/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_term_audit.py tests/test_term_db.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-term-audit/test-runs/20260619-171408/junit.xml' -ra

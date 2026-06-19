@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 contract-count: 9
 missing-summary-count: 0
-inputs-digest: 700aa6474ae8acf7612e85b6a103499f8b6871dc0d451d979838f762aaa60cf9
+inputs-digest: 0b38c1ddf5ea9458464199543114b165f9e2d8b2568f068ef182205d8ff830d7
 ---
 
 # Contracts Index
@@ -34,7 +34,7 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: API Contract
 - owner: application-team
 - surface: api
-- schema-version: 0.4.2
+- schema-version: 0.5.0
 - last-changed: 2026-06-19
 - breaking-change-policy: deprecate-2-minors
 - summary: API behavior, compatibility rules, and endpoint contract requirements.
@@ -46,8 +46,8 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - directory: contracts/api
 - title: API Inventory
 - owner: application-team
-- schema-version: 0.1.0
-- last-changed: 2026-06-18
+- schema-version: 0.2.0
+- last-changed: 2026-06-19
 - surface: api
 - summary: Endpoint inventory categories and ownership map for non-standard API surfaces.
 
@@ -69,7 +69,7 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: Business Rules
 - owner: application-team
 - surface: domain-behavior
-- schema-version: 0.9.0
+- schema-version: 0.12.0
 - last-changed: 2026-06-19
 - breaking-change-policy: deprecate-2-minors
 - summary: Business decision tables, rule inventory, and change policy for behavior updates.
@@ -82,8 +82,8 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: CI/CD Gate Contract
 - owner: platform-team
 - surface: delivery-pipeline
-- schema-version: 0.4.2
-- last-changed: 2026-06-18
+- schema-version: 0.4.3
+- last-changed: 2026-06-19
 - breaking-change-policy: deprecate-2-minors
 - summary: CI gate inventory, artifact retention, and rollback requirements.
 
@@ -118,7 +118,7 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: Data Shape Contract
 - owner: application-team
 - surface: data
-- schema-version: 0.5.0
+- schema-version: 0.8.0
 - last-changed: 2026-06-19
 - breaking-change-policy: deprecate-2-minors
 - summary: Data schema, invalid-data handling, and row-level compatibility rules.
@@ -131,7 +131,7 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: Env Contract
 - owner: platform-team
 - surface: runtime-config
-- schema-version: 0.5.0
+- schema-version: 0.6.0
 - last-changed: 2026-06-19
 - breaking-change-policy: deprecate-2-minors
 - summary: Environment variable inventory, secret handling, and deployment sync policy.

@@ -1,0 +1,4 @@
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/p2-term-audit/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer (IP-1..IP-5)" }
+  - { type: scope-summary, pointer: "5 in-scope changes (tests, term_db.get_rejected, term_audit.py, TerminologyAuditResult, job_manager seam); no endpoint/frontend/env/migration" }

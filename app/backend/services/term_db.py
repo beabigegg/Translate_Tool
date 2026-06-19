@@ -422,6 +422,25 @@ class TermDB:
             rows = conn.execute(sql, params).fetchall()
         return [_row_to_term(r) for r in rows]
 
+    def get_rejected(
+        self,
+        target_lang: Optional[str] = None,
+        domain: Optional[str] = None,
+    ) -> List[Term]:
+        """Return all rejected terms, optionally filtered."""
+        conditions = ["status='rejected'"]
+        params: list = []
+        if target_lang:
+            conditions.append("target_lang=?")
+            params.append(target_lang)
+        if domain:
+            conditions.append("domain=?")
+            params.append(domain)
+        sql = f"SELECT * FROM terms WHERE {' AND '.join(conditions)} ORDER BY id DESC"
+        with _DB_LOCK, self._connect() as conn:
+            rows = conn.execute(sql, params).fetchall()
+        return [_row_to_term(r) for r in rows]
+
     def export_json(self, path: Path, status_filter: Optional[str] = None) -> None:
         """Export terms to a JSON file. status_filter: 'approved' | 'unverified' | None (all)."""
         terms = self._all_terms(status_filter)

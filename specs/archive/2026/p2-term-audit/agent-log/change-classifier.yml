@@ -1,0 +1,15 @@
+change-id: p2-term-audit
+timestamp: 2026-06-19
+agent: change-classifier
+status: done
+artifacts:
+  - { type: tier, pointer: "Tier 2 — medium/module-level" }
+  - { type: open-question-resolution, pointer: "case-insensitive exact match default; optional configurable lemmatized match — no heavy NLP dep on default path" }
+  - { type: tier-floor-override-flag, pointer: "integration vocab may misfire gate tier-floor; apply tier-floor-override: 2 in ci-gates.md if triggered" }
+  - { type: contracts-not-touched, pointer: "api-contract.md and env-contract.md unchanged; no new endpoint, no env var" }
+next-action: run-spec-architect-for-design.md
+notes: >
+  Architecture Review Required = yes. Two design decisions: (1) matching algorithm
+  (exact vs lemmatized, multi-language morphology), (2) data-flow seam into post-translate
+  hook + qa-report write path. spec-architect must settle both before implementation-planner.
+  Assumption: post-translate seam = same post_translate_hook pattern as quality_evaluator.py.

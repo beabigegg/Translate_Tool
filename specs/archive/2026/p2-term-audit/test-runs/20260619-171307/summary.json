@@ -1,0 +1,20 @@
+{
+  "change_id": "p2-term-audit",
+  "phase": "targeted",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_term_audit.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-term-audit/test-runs/20260619-171307/junit.xml' -ra",
+  "duration_ms": 768,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests.test_term_audit::test_audit_wired_at_hook_seam",
+    "message": "AttributeError: <module 'app.backend.services.job_manager' from '/home/egg/Projects/Translate_Tool/app/backend/services/job_manager.py'> does not have the attribute 'TermDB'"
+  },
+  "artifacts": {
+    "summary": "specs/changes/p2-term-audit/test-runs/20260619-171307/summary.json",
+    "stdout": "specs/changes/p2-term-audit/test-runs/20260619-171307/stdout.log",
+    "stderr": "specs/changes/p2-term-audit/test-runs/20260619-171307/stderr.log",
+    "junit": "specs/changes/p2-term-audit/test-runs/20260619-171307/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

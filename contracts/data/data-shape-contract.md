@@ -3,7 +3,7 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.7.0
+schema-version: 0.8.0
 last-changed: 2026-06-19
 breaking-change-policy: deprecate-2-minors
 ---
@@ -353,3 +353,52 @@ QE scores are produced post-translation by the `quality_evaluator.py` service an
 | Unknown `job_id` | `JobQualityRecord` absent and job absent; endpoint returns HTTP 404 |
 | `block_id` in scores not matching any current IR element | Consumers MUST treat this as a stale score and ignore it; the IR is authoritative; never raise on unknown `block_id` |
 | Non-IR format job — `block_id` collision across files in the same job | Colliding entry overwritten (last-write wins) or omitted; `qe_status` stays `"available"`; never raises (BR-58, BR-56) |
+
+---
+
+## Terminology Audit Representation
+
+**Added in p2-term-audit.**
+
+The terminology audit result is produced post-translation by `term_audit.audit_terms()` and attached to the job record in the in-memory job store as `JobRecord.audit`. It is read-only and in-memory only — not serialized as part of `TranslatableDocument.to_dict()`, not persisted to disk, and not part of any HTTP response schema (no new endpoint). The lifecycle is identical to `JobQualityRecord` (attached at the end of `_run_job`, after QE scoring; discarded when the job is evicted from the in-memory store).
+
+### TerminologyAuditResult — in-memory data shape
+
+| field | type | nullable | default | notes |
+|---|---|---:|---|---|
+| terminology_hit_rate | float | no | — | `matched_approved / total_approved`; `1.0` when `total_approved == 0` (vacuously satisfied, per BR-59). Range: [0.0, 1.0]. |
+| unapplied_terms | list[str] | no | [] | `source_text` key of each approved term whose `target_text` was not found in any translated block. Populated by the matcher (BR-60). Empty list when all approved terms are matched or `total_approved == 0`. |
+| rejected_injections | list[str] | no | [] | `target_text` values of rejected terms (status=`rejected`) that were found in the translated output. Detected using whole-token boundary matching to avoid substring false-positives from overlapping approved terms. Empty list when no rejected terms leak into output. |
+| total_approved | int | no | — | Count of approved terms in scope, filtered by `(target_lang, domain)` matching the job. Matches the denominator of `terminology_hit_rate`. |
+| matched_approved | int | no | — | Count of approved terms whose `target_text` was found (case-insensitive exact substring) in at least one translated block. Matches the numerator of `terminology_hit_rate`. |
+
+### JobRecord.audit — optional field
+
+`JobRecord.audit: Optional[TerminologyAuditResult]`
+
+| condition | value |
+|---|---|
+| Audit has not yet run (job in progress) | `None` |
+| Audit ran successfully | `TerminologyAuditResult` instance |
+| Audit raised an exception (BR-61) | `None` |
+| Job was submitted before p2-term-audit | `None` (backward-compatible default) |
+
+This field is additive and optional. It is parallel to `JobRecord.quality` (the `JobQualityRecord` field added in p2-comet-qe). No existing field on `JobRecord` is modified or removed. Consumers that do not yet read `audit` are unaffected.
+
+### Nullability and invalid-data rules
+
+| condition | expected behavior |
+|---|---|
+| `total_approved == 0` | `terminology_hit_rate = 1.0`; `unapplied_terms = []`; `matched_approved = 0`; result is a valid `TerminologyAuditResult`, not `None` |
+| `audit_terms()` raises any exception | `JobRecord.audit = None`; job not failed; translation delivered; WARNING logged (BR-61) |
+| Job pre-dates p2-term-audit | `JobRecord.audit` absent or `None`; consumers must handle `None` gracefully |
+| Rejected term `target_text` is a substring of an approved term's `target_text` | Whole-token boundary check governs; bare substring match is forbidden for `rejected_injections` to avoid false positives |
+| Multiple blocks contain the same approved term | Term counted as matched once (idempotent); `matched_approved` does not double-count |
+
+### Known consumers of TerminologyAuditResult
+
+| consumer | surface | impact |
+|---|---|---|
+| `app/backend/services/job_manager.py` | producer | sets `JobRecord.audit` after `_run_job` post-translate step |
+| `app/backend/services/term_audit.py` | producer (new, p2-term-audit) | computes `TerminologyAuditResult`; calls `term_db.get_approved()` and the new `term_db.get_rejected()` read query |
+| `tests/test_term_audit.py` | test consumer (new, p2-term-audit) | asserts result shape conforms to this section |

@@ -1,0 +1,16 @@
+{
+  "change_id": "p2-term-audit",
+  "phase": "collect",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_term_audit.py --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-term-audit/test-runs/20260619-171301/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 163,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p2-term-audit/test-runs/20260619-171301/summary.json",
+    "stdout": "specs/changes/p2-term-audit/test-runs/20260619-171301/stdout.log",
+    "stderr": "specs/changes/p2-term-audit/test-runs/20260619-171301/stderr.log",
+    "junit": "specs/changes/p2-term-audit/test-runs/20260619-171301/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

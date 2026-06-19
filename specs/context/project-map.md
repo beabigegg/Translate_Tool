@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
 visible-dirs: 57
-visible-files: 192
+visible-files: 199
 omitted-dirs: 12
 truncated-dirs: 0
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -105,6 +105,8 @@ Translate_Tool/
 |   |   |   |-- job_manager.py
 |   |   |   |-- metrics.py
 |   |   |   |-- model_router.py
+|   |   |   |-- quality_evaluator.py
+|   |   |   |-- term_audit.py
 |   |   |   |-- term_db.py
 |   |   |   |-- term_extractor.py
 |   |   |   |-- translation_cache.py
@@ -163,6 +165,7 @@ Translate_Tool/
 |   |   |-- api-contract.md
 |   |   |-- api-inventory.md
 |   |   |-- error-format.md
+|   |   |-- openapi.json
 |   |   \-- openapi.yml
 |   |-- business/
 |   |   \-- business-rules.md
@@ -218,9 +221,11 @@ Translate_Tool/
 |-- tests/
 |   |-- contract/
 |   |   |-- samples/
-|   |   |   \-- .gitkeep
+|   |   |   |-- .gitkeep
+|   |   |   \-- job_quality_available.json
 |   |   |-- README.md
-|   |   \-- response-samples.example.json
+|   |   |-- response-samples.example.json
+|   |   \-- response-samples.json
 |   |-- fixtures/
 |   |   |-- golden/
 |   |   |   |-- docx/
@@ -276,10 +281,12 @@ Translate_Tool/
 |   |-- test_pdf_parser.py
 |   |-- test_pptx_parser.py
 |   |-- test_provider_fallback.py
+|   |-- test_quality_evaluation.py
 |   |-- test_renderer_convergence.py
 |   |-- test_sentence_mode_consistency.py
 |   |-- test_table_border_protection.py
 |   |-- test_term_api.py
+|   |-- test_term_audit.py
 |   |-- test_term_db.py
 |   |-- test_term_extractor.py
 |   |-- test_term_state_machine.py

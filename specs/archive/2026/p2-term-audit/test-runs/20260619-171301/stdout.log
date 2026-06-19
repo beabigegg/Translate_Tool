@@ -1,0 +1,20 @@
+tests/test_term_audit.py::test_get_rejected_interface
+tests/test_term_audit.py::test_get_rejected_filters_by_lang
+tests/test_term_audit.py::test_hit_rate_exact_match
+tests/test_term_audit.py::test_hit_rate_case_insensitive
+tests/test_term_audit.py::test_unapplied_terms_list
+tests/test_term_audit.py::test_rejected_injection_detected
+tests/test_term_audit.py::test_rejected_injection_not_detected
+tests/test_term_audit.py::test_vacuous_hit_rate
+tests/test_term_audit.py::test_scope_excludes_non_approved
+tests/test_term_audit.py::test_whole_token_rejected_injection
+tests/test_term_audit.py::test_hit_rate_20_approved_terms
+tests/test_term_audit.py::test_empty_block_list
+tests/test_term_audit.py::test_zero_approved_terms
+tests/test_term_audit.py::test_multi_language_target
+tests/test_term_audit.py::test_result_shape_conforms_to_data_contract
+tests/test_term_audit.py::test_no_parallel_report_format
+tests/test_term_audit.py::test_audit_wired_at_hook_seam
+tests/test_term_audit.py::test_audit_disabled_when_exception
+
+18 tests collected in 0.01s

@@ -1,0 +1,41 @@
+change-id: p2-term-audit
+status: in-progress
+tier: 2
+context-governance: v1
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on: []
+
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done, note: "business-rules 0.11.0→0.12.0 (BR-59/60/61, Table Q); data-shape 0.7.0→0.8.0 (TerminologyAuditResult + JobRecord.audit); CHANGELOG updated; api/env contracts unchanged" }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: done, note: "design.md written by spec-architect; D-1 case-insensitive exact default (blingfire optional lemmatized), D-2 qe_blocks seam (NOT translate_document), D-3 JobRecord.audit parallel to quality, D-4 blingfire for optional lemmatized mode; term_db needs get_rejected() query" }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done, note: "ci-gates.md written by ci-cd-gatekeeper; tier-floor-override:2 (integration vocab); contract-driven-gates.yml updated to cdd-kit gate p2-term-audit" }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done, note: "implementation-plan.md written by implementation-planner; 5 IPs in TDD order; seam confirmed qe_blocks:list job_manager.py:301; line numbers for QE block 370-398 given; all critical constraints forwarded to backend-engineer" }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: skipped, note: "no new endpoint; api-contract.md unchanged" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no UI surface" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: skipped, note: "no new env var or secret" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: done, note: "TerminologyAuditResult shape + JobRecord.audit optional field added; schema-version 0.7.0→0.8.0" }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: done, note: "BR-59/60/61 + Table Q added; schema-version 0.11.0→0.12.0" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no new gate command needed" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done, note: "test-plan.md written by test-strategist; 13 test rows mapped to AC-1..AC-8; tautology guards pinned (wrong-entry-point, selection, whole-token boundary)" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: done, note: "test_audit_wired_at_hook_seam in test-plan.md; patches app.backend.services.job_manager.audit_terms (consumer binding); calls process_files() not translate_document()" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: skipped, note: "no user-facing flow/route" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "no interactive surface; data-boundary covered in unit tests" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "single-pass per-job audit; not a high-load path" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: done, note: "term_audit.py created; TermDB.get_rejected() added; JobRecord.audit field + _run_job wiring done; 18 tests in test_term_audit.py; all 5 test phases passed" }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no frontend surface" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: skipped, note: "no env config change" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: done, note: "contract-driven-gates.yml: change gate updated to cdd-kit gate p2-term-audit; tier-floor-override:2 documented in ci-gates.md" }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI surface" }
+  - { id: "5.2", section: Review, title: "Visual review", status: skipped, note: "no UI surface" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done, note: "contract-reviewer: changes-required-applied; BR-59/60/61 + Table Q written; TerminologyAuditResult + JobRecord.audit written; whole-token boundary for rejected_injections elevated to contract rule" }
+  - { id: "5.4", section: Review, title: "QA review", status: done, note: "release-ready: 18/18 tests pass; 690 regression tests pass; all AC-1..AC-8 mapped; all tautology guards confirmed; no new endpoint; implementation matches contracts" }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done, note: "cdd-kit gate p2-term-audit: pass; cdd-kit validate --contracts: pass; 18 targeted + 690 regression: all pass" }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "gate pass confirmed by qa-reviewer; same gate runs in CI contract-driven-gates.yml" }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: skipped, note: "none" }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "none" }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done, note: "archived to specs/archive/2026/p2-term-audit/ on 2026-06-19" }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: skipped, note: "no new lessons: whole-token-boundary already in data-shape-contract; tier-floor+tautology+mock-binding already in CLAUDE.md learnings; blingfire lazy import is one-off detail" }

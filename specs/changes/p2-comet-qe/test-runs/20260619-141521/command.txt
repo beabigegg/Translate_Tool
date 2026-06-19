@@ -1,1 +1,0 @@
-/home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_quality_evaluation.py tests/test_env_contract.py tests/test_translation_strategy.py --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-comet-qe/test-runs/20260619-141521/junit.xml' --maxfail=1 --tb=short -ra

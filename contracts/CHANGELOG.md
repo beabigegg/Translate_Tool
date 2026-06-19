@@ -8,6 +8,12 @@ While a contract is at 0.x (draft), entries here are optional.
 Once a contract reaches 1.0.0, every schema-version bump must have
 a corresponding entry below.
 
+## [business 0.12.0] — 2026-06-19
+Added: BR-59 (terminology-audit-scope — only `approved` terms in hit-rate denominator; `unverified`, `needs_review`, `rejected` excluded). Added: BR-60 (terminology-audit-match-algorithm — case-insensitive exact substring default; optional configurable lemmatized mode using `blingfire`; no spaCy/NLTK). Added: BR-61 (terminology-audit-safe-degradation — audit exception caught, WARNING logged, `JobRecord.audit=None`, job not failed; mirrors BR-56). Added: Table Q (terminology audit decision table, 9 condition rows).
+
+## [data 0.8.0] — 2026-06-19
+Added: `## Terminology Audit Representation` section — `TerminologyAuditResult` in-memory shape (terminology_hit_rate, unapplied_terms, rejected_injections, total_approved, matched_approved), `JobRecord.audit` optional field (parallel to `JobRecord.quality`), nullability/invalid-data rules (whole-token boundary required for `rejected_injections`), known-consumers table. Additive optional field; fully backward-compatible.
+
 ## [data 0.7.0] — 2026-06-19
 Updated: `BlockQualityScore.block_id` clarified — `element_id` for PDF-IR path; synthetic positional `"{ext}:{file_stem}:{index}"` for non-IR formats (DOCX/PPTX/XLSX) and PDF-PyPDF2-fallback; run-stable only, not durable across re-submissions. Added: non-IR block_id collision row to nullability/invalid-data rules. (DR-1 resolution for p2-comet-qe)
 

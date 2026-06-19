@@ -1,0 +1,20 @@
+agent: test-strategist
+change-id: p2-term-audit
+date: 2026-06-19
+status: complete
+
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/p2-term-audit/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_term_audit.py → app/backend/services/term_audit.py" }
+  - { type: coverage-tiers, pointer: "unit (tier 0), contract (tier 1), integration (tier 1), data-boundary (tier 0)" }
+  - { type: mapping-completeness, pointer: "AC-1 through AC-8 all mapped; AC-6 delegated to cdd-kit validate --contracts gate (no new endpoint, no test case needed)" }
+
+notes: |
+  - test_whole_token_rejected_injection pins the design.md Open Risk (substring-of-approved
+    rejected term); must fail red before boundary-aware matcher is implemented.
+  - Integration test (test_audit_wired_at_hook_seam) patches at
+    app.backend.services.job_manager.audit_terms (consumer binding, not definition path)
+    and calls process_files() directly — guards both CLAUDE.md tautology lessons
+    (wrong-entry-point + mock-binding-path).
+  - get_rejected is a new TermDB query; its test lives in test_term_audit.py
+    to keep test_term_db.py scope unchanged.
