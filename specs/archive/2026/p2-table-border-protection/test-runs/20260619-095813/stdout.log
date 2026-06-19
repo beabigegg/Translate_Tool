@@ -1,0 +1,15 @@
+......F
+=================================== FAILURES ===================================
+_ TestSideBySideSourceMasking.test_right_panel_source_text_masked_before_overlay _
+tests/test_table_border_protection.py:304: in test_right_panel_source_text_masked_before_overlay
+    with patch("app.backend.renderers.fitz_renderer.fitz.open", side_effect=patched_open):
+../../miniforge3/envs/translate-tool/lib/python3.11/unittest/mock.py:1446: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+../../miniforge3/envs/translate-tool/lib/python3.11/unittest/mock.py:1419: in get_original
+    raise AttributeError(
+E   AttributeError: None does not have the attribute 'open'
+=========================== short test summary info ============================
+FAILED tests/test_table_border_protection.py::TestSideBySideSourceMasking::test_right_panel_source_text_masked_before_overlay
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 6 passed in 0.22s

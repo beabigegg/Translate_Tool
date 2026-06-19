@@ -1,0 +1,10 @@
+change-id: p2-table-border-protection
+agent: ci-cd-gatekeeper
+timestamp: "2026-06-19T00:00:00Z"
+status: complete
+artifacts:
+  - { type: tiers-modified, pointer: "1, 2" }
+  - { type: gate-promotions, pointer: "n/a (no tier moves; all gates already in workflow)" }
+  - { type: workflow-files-changed, pointer: ".github/workflows/contract-driven-gates.yml" }
+  - { type: required-status-checks, pointer: "contract-and-fast-tests, golden-sample-regression, renderer-equivalence" }
+next-action: none

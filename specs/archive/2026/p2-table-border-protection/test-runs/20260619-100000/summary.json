@@ -1,0 +1,20 @@
+{
+  "change_id": "p2-table-border-protection",
+  "phase": "targeted",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_table_border_protection.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-table-border-protection/test-runs/20260619-100000/junit.xml' -ra",
+  "duration_ms": 592,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests.test_table_border_protection.TestSideBySideRightPanelMasking::test_sbs_right_panel_no_source_text",
+    "message": "AssertionError: AC-2 VIOLATION: source text 'Hello World' visible in right panel of side-by-side output. Source text must be masked before translated overlay is placed.\nassert 'Hello World' not in 'Hello World...\\n翻譯2\\n翻譯3\\n'\n  \n  'Hello World' is contained here:\n    Hello World\n    This is a test PDF document.\n    Second line of text for reading order test.\n    翻譯1\n    翻譯2\n    翻譯3"
+  },
+  "artifacts": {
+    "summary": "specs/changes/p2-table-border-protection/test-runs/20260619-100000/summary.json",
+    "stdout": "specs/changes/p2-table-border-protection/test-runs/20260619-100000/stdout.log",
+    "stderr": "specs/changes/p2-table-border-protection/test-runs/20260619-100000/stderr.log",
+    "junit": "specs/changes/p2-table-border-protection/test-runs/20260619-100000/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

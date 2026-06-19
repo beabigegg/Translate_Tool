@@ -1,0 +1,16 @@
+{
+  "change_id": "p2-table-border-protection",
+  "phase": "collect",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_table_border_protection.py --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-table-border-protection/test-runs/20260619-095804/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 423,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p2-table-border-protection/test-runs/20260619-095804/summary.json",
+    "stdout": "specs/changes/p2-table-border-protection/test-runs/20260619-095804/stdout.log",
+    "stderr": "specs/changes/p2-table-border-protection/test-runs/20260619-095804/stderr.log",
+    "junit": "specs/changes/p2-table-border-protection/test-runs/20260619-095804/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

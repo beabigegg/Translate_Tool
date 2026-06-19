@@ -1,0 +1,42 @@
+change-id: p2-table-border-protection
+status: in-progress
+tier: 3
+context-governance: v1
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on:
+  - "p2-renderer-convergence"
+
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done, note: "no contracts to update; all 5 contract tasks skipped (no API/CSS/env/data-shape/business-rule changes)" }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: skipped, note: "no architecture review required; geometry fix inside one existing renderer" }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: skipped, note: "no API surface change" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no CSS/UI surface" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: skipped, note: "no env var changes" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: skipped, note: "no IR field changes" }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: skipped, note: "no new business rules; rendering geometry fix" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: done, note: "change-gate step updated in .github/workflows/contract-driven-gates.yml; no ci-gate-contract.md change needed (no new gate type)" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done, note: "tests/test_table_border_protection.py: TestBorderAwareRedactRect, TestMaskCoversTextContent, TestSideBySideSourceMasking, TestConfinementNoNewImports" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: done, note: "TestOverlayBorderPreservation, TestSideBySideRightPanelMasking in tests/test_table_border_protection.py; 1 skipped (no vector fixtures in test.pdf)" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: skipped, note: "no E2E surface; test-plan.md written; test code written by bug-fix-engineer/backend-engineer" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "no monkey/fuzz surface" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "no stress/soak surface" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: done, note: "bug-fix-engineer applied both fixes to fitz_renderer.py; 12 passed, 1 skipped (no vector fixture); full suite passed" }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no UI surface" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: skipped, note: "no env/deploy changes" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: done, note: "cdd-kit gate p2-table-border-protection wired into change-gate step" }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI surface" }
+  - { id: "5.2", section: Review, title: "Visual review", status: done, note: "approved-with-risk: VR-1 no vector-drawing fixture for AC-1 integration test; VR-2 Form XObject edge case; see visual-review-report.md" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done, note: "no contracts changed; confirmed by classifier and contract-update tasks (all skipped)" }
+  - { id: "5.4", section: Review, title: "QA review", status: done, note: "approved-with-risk; AC-1–AC-5 met; VR-1/VR-2 follow-up P3; see agent-log/qa-reviewer.yml" }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "gates configured in .github/workflows/contract-driven-gates.yml; cdd-kit gate passes locally" }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: skipped, note: "no informational gates for this change" }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gates" }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: skipped, note: "apply_redactions(graphics=0) is implementation-detail (captured in source + tests); no durable cross-change workflow rule to promote" }

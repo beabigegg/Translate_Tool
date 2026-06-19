@@ -1,0 +1,4 @@
+.........s...                                                            [100%]
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_table_border_protection.py:596: test.pdf page 0 has no vector drawings — cannot test border preservation. Add a PDF with table lines to tests/fixtures/test.pdf or use a dedicated fixture.
+12 passed, 1 skipped in 0.34s
