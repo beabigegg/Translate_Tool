@@ -349,8 +349,11 @@ class PDFGenerator:
                     # Add redaction annotation with white fill
                     page.add_redact_annot(redact_rect, fill=(1, 1, 1))
 
-                # Apply all redactions at once (removes text from PDF)
-                page.apply_redactions()
+                # Apply all redactions at once (removes text from PDF).
+                # graphics=0 preserves vector strokes (table border lines) that
+                # overlap the redaction rect — fixes Bug (a) table border erasure
+                # (p2-table-border-protection, AC-1).
+                page.apply_redactions(graphics=0)
 
             # Now insert all translated text; pass element so truncation marker (BR-38) can be set
             for _, text_rect, translated_text, elem_ref in redaction_items:
@@ -619,6 +622,28 @@ class PDFGenerator:
 
             # Get elements for this page
             elements = elements_by_page.get(page_num + 1, [])
+
+            if elements and self.draw_mask:
+                # Bug (b) fix (p2-table-border-protection, AC-2): mask source text
+                # on the right-panel copy before the translated overlay is placed.
+                # Without this pass, source text copied via show_pdf_page bleeds
+                # through around/under the translated overlay rectangles.
+                # Use redact annotations so the text content stream is actually
+                # removed (draw_rect only visually covers text but does not remove
+                # it from the PDF text layer queried by get_text()).
+                # Each element's bbox is offset by src_rect.width (right-half origin).
+                for elem in elements:
+                    if elem.bbox is None:
+                        continue
+                    mask_rect = fitz.Rect(
+                        elem.bbox.x0 + src_rect.width,
+                        elem.bbox.y0,
+                        elem.bbox.x1 + src_rect.width,
+                        elem.bbox.y1,
+                    )
+                    new_page.draw_rect(mask_rect, color=None, fill=(1, 1, 1))
+                    new_page.add_redact_annot(mask_rect, fill=(1, 1, 1))
+                new_page.apply_redactions(graphics=0)
 
             if elements:
                 # Create translation overlay for right side
