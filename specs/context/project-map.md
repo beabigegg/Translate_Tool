@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
 visible-dirs: 57
-visible-files: 190
+visible-files: 192
 omitted-dirs: 12
 truncated-dirs: 0
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -101,6 +101,7 @@ Translate_Tool/
 |   |   |-- services/
 |   |   |   |-- __init__.py
 |   |   |   |-- context_prompts.py
+|   |   |   |-- doc_chunker.py
 |   |   |   |-- job_manager.py
 |   |   |   |-- metrics.py
 |   |   |   |-- model_router.py
@@ -254,6 +255,7 @@ Translate_Tool/
 |   |-- test_bbox_utils.py
 |   |-- test_context_prompt_i18n.py
 |   |-- test_coordinate_renderer.py
+|   |-- test_doc_chunker.py
 |   |-- test_docx_parser.py
 |   |-- test_env_contract.py
 |   |-- test_fewshot_glossary.py

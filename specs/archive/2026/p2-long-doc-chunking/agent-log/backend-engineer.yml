@@ -1,0 +1,38 @@
+agent: backend-engineer
+change-id: p2-long-doc-chunking
+date: 2026-06-19
+status: complete
+
+summary: >
+  Implemented long-document chunking (BR-47..BR-53) following TDD-first order.
+  Wrote 38 failing tests in test_doc_chunker.py before implementing code.
+  All 4 test phases (collect, targeted, changed-area, full) are GREEN.
+  cdd-kit gate passes.
+
+artifacts:
+  - type: files-changed
+    pointer: "app/backend/services/doc_chunker.py:1-246 (new file)"
+  - type: files-changed
+    pointer: "app/backend/services/translation_service.py:1-10 (import CHUNK_OVERLAP_TOKENS), :435-546 (add translate_document)"
+  - type: files-changed
+    pointer: "app/backend/config.py:119-123 (add CHUNK_OVERLAP_TOKENS)"
+  - type: tests-added
+    pointer: "tests/test_doc_chunker.py (new file, 38 tests: TestChunkerTokenCeiling, TestBoundaryPriority, TestOverlapInsertion, TestReassembly, TestAtomicOversizeElement, TestDoc2DocPath, TestChunkFailureIsolation, TestTranslateTextsRegression, TestDataBoundary, TestReassemblyIntegrity)"
+  - type: tests-added
+    pointer: "tests/test_env_contract.py::TestEnvContractDeclared::test_chunk_overlap_tokens_declared (AC-3)"
+  - type: tests-added
+    pointer: "tests/test_sentence_mode_consistency.py::test_sentence_mode_backward_compat_with_chunking_change (AC-8)"
+  - type: tests-added
+    pointer: "tests/test_translation_strategy.py (8 new Doc2Doc integration tests: test_doc2doc_calls_llm_once_per_chunk, test_each_chunk_translation_is_independent, test_single_chunk_doc_produces_exactly_one_llm_call, test_doc2doc_accepts_whole_document, test_doc2doc_returns_same_document_instance, test_doc2doc_chunking_transparent_to_caller, test_translate_texts_unchanged_after_doc2doc_added, test_doc2doc_does_not_mutate_shared_cache_state)"
+  - type: test-output
+    pointer: "full: 66 tests across changed-area files; full suite: all pass (exit 0, ~29s)"
+  - type: contracts-touched
+    pointer: "none (all contract artifacts already updated by spec-architect; env.schema.json and .env.example.template had CHUNK_OVERLAP_TOKENS; data-shape-contract.md and business-rules.md had BR-47..BR-53; implementation conforms without editing)"
+
+notes:
+  - "Mock boundary: patched at app.backend.services.translation_service.translate_blocks_batch (the bound name after module import), not at app.backend.utils.translation_helpers.translate_blocks_batch (would not intercept calls through the already-imported reference)."
+  - "ChunkRecord.overlap_element_count is captured at split time — used for reassembly de-dup without recomputing from target-side tokens (Decision 3 / design.md)."
+  - "BR-52 single-chunk fast path: returns immediately with one ChunkRecord when total_tokens <= num_ctx, no split-point logic executed."
+  - "BR-48 atomic oversize: guaranteed by the 'if not chunk_elems: always add first element' guard in the greedy packer, even when that element alone exceeds num_ctx."
+  - "translate_document is an unwired entry point after this change (Decision 4 / design.md). No processor calls it yet; no orchestrator change in scope."
+  - "All four IP items for backend-engineer (IP-2 config, IP-3 doc_chunker, IP-4 translate_document) are complete."

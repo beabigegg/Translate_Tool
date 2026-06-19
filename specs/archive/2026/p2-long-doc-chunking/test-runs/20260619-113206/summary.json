@@ -1,0 +1,15 @@
+{
+  "change_id": "p2-long-doc-chunking",
+  "phase": "full",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "conda run -n translate-tool python -m pytest tests/ -q --tb=short",
+  "duration_ms": 29288,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p2-long-doc-chunking/test-runs/20260619-113206/summary.json",
+    "stdout": "specs/changes/p2-long-doc-chunking/test-runs/20260619-113206/stdout.log",
+    "stderr": "specs/changes/p2-long-doc-chunking/test-runs/20260619-113206/stderr.log"
+  },
+  "next_action": "all phases green"
+}

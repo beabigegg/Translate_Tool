@@ -1,0 +1,10 @@
+agent: ci-gatekeeper
+change-id: p2-long-doc-chunking
+date: 2026-06-19
+status: complete
+
+artifacts:
+  - { type: tiers-modified, pointer: "1, 2" }
+  - { type: gate-promotions, pointer: "n/a (no tier moves; existing pytest sweep covers all new test families automatically)" }
+  - { type: workflow-files-changed, pointer: ".github/workflows/contract-driven-gates.yml:3,47" }
+  - { type: required-status-checks, pointer: "contract-and-fast-tests (Tier 1 — blocks merge)" }
