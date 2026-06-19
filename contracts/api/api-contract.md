@@ -3,7 +3,7 @@ contract: api
 summary: API behavior, compatibility rules, and endpoint contract requirements.
 owner: application-team
 surface: api
-schema-version: 0.4.2
+schema-version: 0.5.0
 last-changed: 2026-06-19
 breaking-change-policy: deprecate-2-minors
 ---
@@ -44,6 +44,7 @@ breaking-change-policy: deprecate-2-minors
 | POST | /terms/wikidata/search | none | WikidataSearchRequest | WikidataSearchResponse | 422 | tests/contract/ |
 | POST | /terms/wikidata/import | none | WikidataImportRequest | - | 422 | tests/contract/ |
 | GET | /api/metrics | none | - | MetricsResponse | - | tests/contract/ |
+| GET | /jobs/{job_id}/quality | none | - | JobQualityResponse | 200 (status: available/pending/disabled/unavailable); 404 job not found | tests/contract/ |
 
 ## Schemas
 
@@ -244,6 +245,20 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 | critique_iterations_total | integer | no |  | cumulative critique iterations across all requests since process start; initializes to 0; see BR-46 |
 | glossary_match_rate | number | no |  | glossary term match rate (0.0–1.0 float); definition per design.md; 0.0 when no terms evaluated; see BR-46 |
 
+### BlockQualityScore
+| field | type | required | format | notes |
+|---|---|---|---|---|
+| block_id | string | yes |  | element_id of the TranslatableElement this score belongs to |
+| score | number | yes |  | COMET/xCOMET quality score; float; range is model-dependent (see BR-54) |
+| model | string | yes |  | name/version of the QE model that produced the score (e.g. Unbabel/wmt22-cometkiwi-da) |
+
+### JobQualityResponse
+| field | type | required | format | notes |
+|---|---|---|---|---|
+| job_id | string | yes |  | job identifier |
+| status | enum(available, pending, disabled, unavailable) | yes |  | available — scores ready; pending — translation not yet complete or scoring still running; disabled — QE_ENABLED=false; unavailable — model load failed or scoring failed for this job |
+| scores | BlockQualityScore[] | no |  | present and non-empty when status = available; omitted or empty array when status is any other value |
+
 ## Endpoint Notes
 
 **GET /terms/export** — the `status` query parameter accepts `approved`, `unverified`, `needs_review`, and `rejected`. When omitted, all terms are exported. See BR-6 (extended by BR-28) and Table G in `contracts/business/business-rules.md`.
@@ -251,6 +266,8 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 **POST /terms/reject** — transitions a term to `rejected` status. Rejected terms are never injected into translation prompts regardless of the loose gate flag (BR-29). Returns HTTP 200 `{"status": "rejected"}` on success; HTTP 404 `{"detail": "Term not found"}` when the term does not exist.
 
 **POST /terms/flag-needs-review** — flags a term for human review by transitioning it to `needs_review` status. Terms in `needs_review` are not injected until approved (BR-29). Returns HTTP 200 `{"status": "needs_review"}` on success; HTTP 404 `{"detail": "Term not found"}` when the term does not exist.
+
+**GET /jobs/{job_id}/quality** — returns quality evaluation scores produced by the COMET/xCOMET model after job completion. Returns HTTP 200 with `status: "available"` and a populated `scores` array when scores are ready. Returns HTTP 200 with `status: "pending"` when the job exists but has not yet completed or scores are not yet attached. Returns HTTP 200 with `status: "disabled"` when `QE_ENABLED=false`. Returns HTTP 200 with `status: "unavailable"` when the QE model failed to load or scoring failed for this job. Returns HTTP 404 `{"detail": "Job not found"}` for an unknown `job_id`. See BR-54, BR-55, BR-56, BR-57. QE scoring never blocks translation job completion (BR-56).
 
 ## Error Format
 

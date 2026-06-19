@@ -360,6 +360,7 @@ def process_files(
     mode: str = "translation",
     term_db=None,
     provider_id: Optional[str] = None,
+    post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
 ) -> Tuple[int, int, bool, Optional[OllamaClient], Dict, Optional[str]]:
     """Process files for translation.
 
@@ -693,6 +694,7 @@ def process_files(
                     max_batch_chars=max_batch_chars,
                     refine_client=refine_client,
                     pre_translate_hook=_phase0_hook,
+                    post_translate_hook=post_translate_hook,
                 )
             elif ext == ".doc":
                 tmp_docx = str(output_dir / f"{src.stem}__tmp.docx")
@@ -723,6 +725,7 @@ def process_files(
                         max_batch_chars=max_batch_chars,
                         refine_client=refine_client,
                         pre_translate_hook=_phase0_hook,
+                        post_translate_hook=post_translate_hook,
                     )
                 finally:
                     try:
@@ -741,6 +744,7 @@ def process_files(
                     max_batch_chars=max_batch_chars,
                     refine_client=refine_client,
                     pre_translate_hook=_phase0_hook,
+                    post_translate_hook=post_translate_hook,
                 )
             elif ext in (".xlsx", ".xls"):
                 stopped = translate_xlsx_xls(
@@ -754,6 +758,7 @@ def process_files(
                     max_batch_chars=max_batch_chars,
                     refine_client=refine_client,
                     pre_translate_hook=_phase0_hook,
+                    post_translate_hook=post_translate_hook,
                 )
             elif ext == ".pdf":
                 log(f"[PDF] Using output_format={output_format}, layout_mode={layout_mode}")
@@ -769,6 +774,7 @@ def process_files(
                     output_format=output_format or "docx",
                     layout_mode=layout_mode,
                     pre_translate_hook=_phase0_hook,
+                    post_translate_hook=post_translate_hook,
                 )
             else:
                 log(f"[SKIP] Unsupported file: {src.name}")

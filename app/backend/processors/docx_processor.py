@@ -480,6 +480,7 @@ def translate_docx(
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
     refine_client: Optional[OllamaClient] = None,
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
+    post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
 ) -> bool:
     from shutil import copyfile
 
@@ -525,6 +526,17 @@ def translate_docx(
 
     if tmap:
         _insert_docx_translations(doc, segs, tmap, targets, log=log)
+
+    if post_translate_hook is not None:
+        import os as _os
+        file_stem = _os.path.splitext(_os.path.basename(in_path))[0]
+        tuples: List[Tuple[str, str, str]] = []
+        for idx, src_text in enumerate(uniq_texts):
+            for tgt in targets:
+                if (tgt, src_text) in tmap:
+                    tuples.append((f"docx:{file_stem}:{idx}", src_text, tmap[(tgt, src_text)]))
+        if tuples:
+            post_translate_hook(tuples)
 
     doc.save(out_path)
     if stopped:

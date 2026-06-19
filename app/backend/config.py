@@ -121,6 +121,13 @@ CONTEXT_SAMPLE_CHARS = 500  # Max chars to sample from file for context detectio
 # Has no effect when the document fits in one chunk (BR-52).
 CHUNK_OVERLAP_TOKENS: int = int(os.environ.get("CHUNK_OVERLAP_TOKENS", "50"))
 
+# Quality Evaluation configuration (p2-comet-qe, BR-54..BR-58)
+# QE_ENABLED: set to "true"/"1" to activate COMET scoring after each job.
+# Default is disabled (false) so no model or torch is loaded at startup (BR-57).
+QE_ENABLED: bool = os.environ.get("QE_ENABLED", "false").lower() in ("true", "1")
+QE_MODEL_NAME: str = os.environ.get("QE_MODEL_NAME", "Unbabel/wmt22-cometkiwi-da")
+QE_DEVICE: str = os.environ.get("QE_DEVICE", "cpu")
+
 # Critique loop configuration (p2-prompt-fewshot-glossary, BR-44)
 CRITIQUE_LOOP_ENABLED: bool = os.environ.get("CRITIQUE_LOOP_ENABLED", "1").lower() in ("1", "true", "yes")
 CRITIQUE_MAX_ITERATIONS: int = int(os.environ.get("CRITIQUE_MAX_ITERATIONS", "3"))

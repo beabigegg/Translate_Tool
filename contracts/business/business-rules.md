@@ -3,7 +3,7 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.9.0
+schema-version: 0.11.0
 last-changed: 2026-06-19
 breaking-change-policy: deprecate-2-minors
 ---
@@ -66,6 +66,11 @@ breaking-change-policy: deprecate-2-minors
 | BR-51 | chunk-translation-failure-isolation | application-team | A translation failure on a single chunk MUST be surfaced as an error (raised exception or job-level `fail_cnt` increment) and MUST NOT silently corrupt or drop the reassembly of other chunks. The job transitions to `status: "failed"` if any chunk fails and no retry strategy is configured. The `translated_content` of elements in the failed chunk MUST be set to the BR-25 failure placeholder format — not left null or silently omitted. | tests/test_doc_chunker.py |
 | BR-52 | single-chunk-optimization | application-team | A document whose estimated token count is at or below the resolved `num_ctx` ceiling produces exactly one chunk and exactly one LLM call. The chunker MUST NOT produce more than one chunk for such a document. No split-point detection, overlap insertion, or reassembly logic is executed in this path. | tests/test_doc_chunker.py |
 | BR-53 | translate-texts-backward-compat | application-team | The existing per-segment `translate_texts()` entry point on `translation_service.py` MUST produce results identical to its pre-change behavior for all inputs. The Doc2Doc path (`translate_document()`) MUST NOT alter any shared state, cache key structure, prompt template, or LLM call pattern that `translate_texts()` depends on. | tests/test_translation_strategy.py |
+| BR-54 | qe-score-model-and-range | application-team | QE scores are produced by the model identified in `BlockQualityScore.model`. The score range is model-dependent: `Unbabel/wmt22-cometkiwi-da` (default) outputs a float in approximately [0.0, 1.0] (higher is better). Consumers must not interpret the numeric range without checking the `model` field. The backend MUST store the exact model name/version string used to produce each score batch alongside the scores. | tests/test_quality_evaluation.py |
+| BR-55 | qe-invocation-timing | application-team | QE scoring is invoked as a post-translation step immediately after all translated blocks for a job are available (job status transitions to `completed`). Scoring runs synchronously within the same request/task context as translation completion. If scoring is moved to a background task in a future change, this rule must be updated and the change re-classified. | tests/test_quality_evaluation.py |
+| BR-56 | qe-safe-degradation | application-team | QE scoring failure — whether caused by model load error, COMET library exception, device OOM, or any other exception — MUST NOT cause the translation job to transition to `status: "failed"` or block delivery of the translated output. The failure must be caught, logged at WARNING level (exception type + job_id), and recorded as `qe_status: "unavailable"` on the `JobQualityRecord`. The translation result is always delivered regardless of QE outcome. | tests/test_quality_evaluation.py |
+| BR-57 | qe-enable-disable-flag | application-team | When `QE_ENABLED=false` (default), the QE scoring step is entirely skipped — no model is loaded, no scoring is attempted, and no `BlockQualityScore` records are produced. `GET /api/jobs/{id}/quality` returns HTTP 200 with `status: "disabled"` for all jobs. When `QE_ENABLED=true`, scoring runs per BR-55 using the model named in `QE_MODEL_NAME` on the device specified by `QE_DEVICE`. The flag takes effect at startup (restart required per env-contract.md). | tests/test_quality_evaluation.py |
+| BR-58 | qe-block-id-best-effort | application-team | For PDF files translated through the IR-based path, `BlockQualityScore.block_id` is the stable `element_id` from the `TranslatableElement`. For non-IR formats (DOCX, PPTX, XLSX) and the PDF-PyPDF2 fallback, `block_id` is a synthetic positional identifier (`"{ext}:{file_stem}:{index}"`) that is stable within a single job run but is not globally durable across re-submissions. A missing or colliding synthetic `block_id` MUST degrade gracefully (score omitted or overwritten) rather than fail the job (subordinate to BR-56). Consumers of `GET /api/jobs/{id}/quality` MUST NOT rely on `block_id` stability across re-submissions for non-IR formats. | tests/test_quality_evaluation.py |
 
 ## Decision Tables
 
@@ -232,6 +237,21 @@ breaking-change-policy: deprecate-2-minors
 | One chunk's translation fails | Chunk-level error surfaced; BR-25 placeholder set on failed elements; job transitions to failed (BR-51) | tests/test_doc_chunker.py |
 | Document has zero elements or all should_translate=False | Returns immediately; no LLM call; no chunking | tests/test_doc_chunker.py |
 | translate_texts() called after this change | Behavior identical to pre-change; no regression (BR-53) | tests/test_translation_strategy.py |
+
+### Table P — QE scoring behavior (BR-54 through BR-58)
+| condition | behavior | test id |
+|---|---|---|
+| `QE_ENABLED=false` (default) | QE step skipped; no model loaded; `JobQualityRecord.qe_status = "disabled"`; endpoint returns HTTP 200 `status: "disabled"` | tests/test_quality_evaluation.py |
+| `QE_ENABLED=true`, model loads successfully, translation completes | Scoring runs post-translation; one `BlockQualityScore` per `TranslatableElement` with `should_translate=True`; `qe_status = "available"` | tests/test_quality_evaluation.py |
+| `QE_ENABLED=true`, model load raises exception | Exception caught; WARNING logged; `qe_status = "unavailable"`; translation not affected | tests/test_quality_evaluation.py |
+| `QE_ENABLED=true`, scoring call raises exception | Exception caught; WARNING logged; `qe_status = "unavailable"`; job status stays `completed` | tests/test_quality_evaluation.py |
+| `QE_ENABLED=true`, `QE_DEVICE` is invalid value | Falls back to `cpu` with WARNING logged; QE proceeds on cpu | tests/test_quality_evaluation.py |
+| `GET /api/jobs/{id}/quality`, job not yet completed | HTTP 200, `status: "pending"`, empty scores array | tests/test_quality_evaluation.py |
+| `GET /api/jobs/{id}/quality`, unknown `job_id` | HTTP 404 `{"detail": "Job not found"}` | tests/test_quality_evaluation.py |
+| `GET /api/jobs/{id}/quality`, `qe_status = "unavailable"` | HTTP 200, `status: "unavailable"`, empty scores array | tests/test_quality_evaluation.py |
+| `GET /api/jobs/{id}/quality`, `qe_status = "available"` | HTTP 200, `status: "available"`, `scores` array with one entry per translated block | tests/test_quality_evaluation.py |
+| Document has zero `should_translate=True` elements | Scoring step is a no-op; `scores` is empty list; `qe_status = "available"` (scoring ran; result is vacuously complete) | tests/test_quality_evaluation.py |
+| Non-IR format (DOCX/PPTX/XLSX) or PDF-PyPDF2 fallback — `block_id` collision or missing | Colliding entry overwritten (last-write wins) or entry omitted; job is not failed; consumer must not rely on `block_id` stability across re-runs (BR-58) | tests/test_quality_evaluation.py |
 
 ## Change Policy
 

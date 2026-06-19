@@ -3,7 +3,7 @@ contract: env
 summary: Environment variable inventory, secret handling, and deployment sync policy.
 owner: platform-team
 surface: runtime-config
-schema-version: 0.5.0
+schema-version: 0.6.0
 last-changed: 2026-06-19
 breaking-change-policy: deprecate-2-minors
 ---
@@ -34,6 +34,9 @@ breaking-change-policy: deprecate-2-minors
 | CRITIQUE_MAX_ITERATIONS | backend | all | no | no | 3 | 3 | application-team | positive integer | no | Maximum translate-then-critique loop iterations per translatable segment. Loop terminates at this count even if critique suggests further revision. See BR-44. |
 | CRITIQUE_TIMEOUT_SECONDS | backend | all | no | no | 60 | 60 | application-team | positive float (seconds) | no | Per-segment critique loop wall-clock timeout. On timeout, loop degrades to last valid draft; job does not fail. See BR-44. |
 | CHUNK_OVERLAP_TOKENS | backend | all | no | no | 50 | 50 | application-team | positive integer | no | Number of tokens of overlap shared between adjacent chunks during long-document chunking. Has no effect when the full document fits within the LLM context window (single-chunk path). See BR-47 and BR-49. |
+| QE_ENABLED | backend | all | no | no | false | false | application-team | boolean (true/false or 1/0) | yes | When false (or 0), QE scoring step is skipped entirely; GET /jobs/{id}/quality returns status: "disabled". Opt-in by default — set to true to enable. See BR-57. |
+| QE_MODEL_NAME | backend | all | no | no | Unbabel/wmt22-cometkiwi-da | Unbabel/wmt22-cometkiwi-da | application-team | non-empty string | yes | COMET/xCOMET model identifier (HuggingFace hub name or local path). Used only when QE_ENABLED=true. See BR-54. LICENSE WARNING: default model wmt22-cometkiwi-da and all CometKiwi/xCOMET models are CC-BY-NC-SA 4.0 (non-commercial). Legal review required before enabling in commercial deployments. For commercial use, consider wmt22-comet-da (Apache-2.0, reference-based). |
+| QE_DEVICE | backend | all | no | no | cpu | cpu | application-team | string (cpu, cuda, mps) | yes | Inference device for QE model. Accepted values: cpu, cuda, mps. Falls back to cpu on invalid value with WARNING logged. Ignored when QE_ENABLED=false. See BR-57. |
 
 ## Public Frontend Env Policy
 

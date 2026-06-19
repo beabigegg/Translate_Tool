@@ -153,3 +153,17 @@ class MetricsResponse(BaseModel):
     provider_failure_count: int
     font_cache_hits: int
     font_cache_misses: int
+
+
+class BlockQualityScore(BaseModel):
+    """Per-block quality score returned by the QE endpoint (p2-comet-qe)."""
+    block_id: str
+    score: float
+    model: str
+
+
+class JobQualityResponse(BaseModel):
+    """Response body for GET /jobs/{job_id}/quality (p2-comet-qe)."""
+    job_id: str
+    status: str  # available | pending | disabled | unavailable
+    scores: List[BlockQualityScore] = []

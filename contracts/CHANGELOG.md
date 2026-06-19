@@ -8,6 +8,24 @@ While a contract is at 0.x (draft), entries here are optional.
 Once a contract reaches 1.0.0, every schema-version bump must have
 a corresponding entry below.
 
+## [data 0.7.0] — 2026-06-19
+Updated: `BlockQualityScore.block_id` clarified — `element_id` for PDF-IR path; synthetic positional `"{ext}:{file_stem}:{index}"` for non-IR formats (DOCX/PPTX/XLSX) and PDF-PyPDF2-fallback; run-stable only, not durable across re-submissions. Added: non-IR block_id collision row to nullability/invalid-data rules. (DR-1 resolution for p2-comet-qe)
+
+## [business 0.11.0] — 2026-06-19
+Added: BR-58 (qe-block-id-best-effort — non-IR formats use synthetic positional block_id; collision/missing must degrade not fail; consumers must not rely on stability across re-submissions). Updated: Table P with new BR-58 condition row.
+
+## [business 0.10.0] — 2026-06-19
+Added: BR-54 (qe-score-model-and-range — score range is model-dependent; consumers must check `model` field). Added: BR-55 (qe-invocation-timing — synchronous post-translation step; re-classify if moved async). Added: BR-56 (qe-safe-degradation — QE failure never fails the translation job; caught + WARNING + qe_status unavailable). Added: BR-57 (qe-enable-disable-flag — QE_ENABLED=false skips step entirely; default opt-out). Added: Table P (QE scoring decision table).
+
+## [env 0.6.0] — 2026-06-19
+Added: QE_ENABLED (bool, default false — opt-in enable flag for COMET/xCOMET scoring; restart required). Added: QE_MODEL_NAME (string, default Unbabel/wmt22-cometkiwi-da — HuggingFace model name or local path). Added: QE_DEVICE (enum cpu/cuda/mps, default cpu — inference device; invalid value falls back to cpu with WARNING). Updated: .env.example.template and env.schema.json.
+
+## [data 0.6.0] — 2026-06-19
+Added: `## Quality Evaluation (QE) Score Representation` section — BlockQualityScore shape, JobQualityRecord in-memory shape, nullability/invalid-data rules. QE scores are stored separately from the IR; no IR wire-schema change. Added: quality_evaluator.py to Known consumers of the IR table (read-only consumer of element_id, content, translated_content). Added: two rows to Invalid Data Behavior table.
+
+## [api 0.5.0] — 2026-06-19
+Added: GET /jobs/{job_id}/quality endpoint — per-block COMET/xCOMET quality scores; 200 (status: available/pending/disabled/unavailable), 404 job not found. Added: BlockQualityScore schema (block_id, score, model). Added: JobQualityResponse schema (job_id, status enum, scores array). Updated: api-inventory.md 0.1.0→0.2.0 with new route. Non-breaking additive endpoint.
+
 ## [ci 0.4.0] — 2026-06-18
 Added: `layout-detector-dependency-gate` — verifies onnxruntime (CPU only) is the only new ML runtime; blocks on ultralytics or onnxruntime-gpu in requirements. Added: `## Layout Detector Dependency Gate` section with pass/fail conditions and model-weight bundling note.
 

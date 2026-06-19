@@ -13,7 +13,9 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 
 from app.backend.api.schemas import (
+    BlockQualityScore,
     JobCreateResponse,
+    JobQualityResponse,
     JobStatus,
     MetricsResponse,
     ModelConfigItem,
@@ -35,7 +37,7 @@ from app.backend.api.schemas import (
 )
 from app.backend.services.metrics import get_metrics as _get_metrics_snapshot
 from app.backend.clients.ollama_client import list_ollama_models
-from app.backend.config import ModelType, VRAM_METADATA, load_providers_config
+from app.backend.config import ModelType, QE_ENABLED, VRAM_METADATA, load_providers_config
 from app.backend.services.model_router import RouteGroup, get_route_info, resolve_route_groups
 
 # Load provider config once at module initialisation.  Returns None when
@@ -267,6 +269,35 @@ def cancel_job(job_id: str) -> dict:
     if not job_manager.cancel_job(job_id):
         raise HTTPException(status_code=404, detail="Job not found")
     return {"status": "cancelled"}
+
+
+@router.get("/jobs/{job_id}/quality", response_model=JobQualityResponse)
+def job_quality(job_id: str) -> JobQualityResponse:
+    """Return quality evaluation scores for a completed job (p2-comet-qe).
+
+    Status semantics (HTTP 200 in all non-404 cases):
+    - disabled: QE_ENABLED=false (default).
+    - pending: job not yet completed or QE record not yet attached.
+    - unavailable: QE was enabled but scoring failed.
+    - available: scores are populated.
+    Unknown job → HTTP 404.
+    """
+    job = job_manager.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if not QE_ENABLED:
+        return JobQualityResponse(job_id=job_id, status="disabled", scores=[])
+    record = job_manager.get_quality(job_id)
+    if record is None or record.qe_status == "pending":
+        return JobQualityResponse(job_id=job_id, status="pending", scores=[])
+    return JobQualityResponse(
+        job_id=job_id,
+        status=record.qe_status,
+        scores=[
+            BlockQualityScore(block_id=s.block_id, score=s.score, model=s.model)
+            for s in (record.scores or [])
+        ],
+    )
 
 
 @router.get("/jobs/{job_id}/download")

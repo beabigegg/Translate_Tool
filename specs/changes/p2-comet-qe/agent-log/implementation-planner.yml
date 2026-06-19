@@ -1,0 +1,15 @@
+agent: implementation-planner
+change-id: p2-comet-qe
+status: done
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/p2-comet-qe/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer (IP-1..IP-11); dependency-security-reviewer (IP-8 exact pins)" }
+  - { type: scope-summary, pointer: "In: quality_evaluator.py + QE config + post_translate_hook through process_files+5 processors + per-job accumulator/JobQualityRecord + schemas + GET /jobs/{id}/quality + unbabel-comet dep + openapi regen + new tests. Out: wiring translate_document into processors (explicitly avoided per DR-1 Resolution), translate_texts/translate_document behavior changes, IR rewrite/serialization, eager startup load, contract edits." }
+  - { type: blocked-reason, pointer: "RESOLVED — DR-1 closed via candidate (a) (post_translate_hook observer; design.md §DR-1 Resolution). No remaining blocker; plan is ready for backend-engineer." }
+notes: >
+  Re-plan after DR-1 resolution. Confirmed pre_translate_hook plumbing already exists
+  end-to-end (orchestrator dispatch 695/725/743/756/771; processor sigs pdf 74/185/321/418,
+  docx 482, pptx 194, xlsx 53) before mirroring it for post_translate_hook. IP-4 flagged as
+  most invasive (orchestrator + 5 processors), dedicated commit after IP-2/IP-3.
+  code-map.yml shows process_files ending ~705 but dispatch runs to ~771 (slightly stale);
+  IP-4 line numbers re-verified by direct read.

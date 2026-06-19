@@ -1,0 +1,20 @@
+{
+  "change_id": "p2-comet-qe",
+  "phase": "changed-area",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/ -v --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-comet-qe/test-runs/20260619-141533/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 13585,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests.test_quality_evaluation::test_quality_endpoint_returns_200_available_with_scores",
+    "message": "AttributeError: 'FakeJobManager' object has no attribute 'jobs'"
+  },
+  "artifacts": {
+    "summary": "specs/changes/p2-comet-qe/test-runs/20260619-141533/summary.json",
+    "stdout": "specs/changes/p2-comet-qe/test-runs/20260619-141533/stdout.log",
+    "stderr": "specs/changes/p2-comet-qe/test-runs/20260619-141533/stderr.log",
+    "junit": "specs/changes/p2-comet-qe/test-runs/20260619-141533/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

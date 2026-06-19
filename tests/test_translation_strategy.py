@@ -335,3 +335,135 @@ def test_doc2doc_does_not_mutate_shared_cache_state():
     # The cache may be consulted but should not be mutated in a way that breaks translate_texts
     # (No assertion on exact call count; just verify no exception raised)
     assert True  # If we get here, no shared-state corruption occurred
+
+
+# ---------------------------------------------------------------------------
+# p2-comet-qe integration tests
+# Mock boundary: app.backend.services.quality_evaluator.load_model
+# Anti-tautology: assert call_count on the hook, not on job result (CLAUDE.md)
+# ---------------------------------------------------------------------------
+
+def test_qe_hook_called_after_translation():
+    """AC-1 integration: post_translate_hook is invoked by the XLSX processor with
+    (block_id, src, mt) tuples after translation.
+
+    Anti-tautological: asserts on hook_calls (not just the job/file result).
+    Mock boundary: app.backend.processors.xlsx_processor.translate_texts (consumer path).
+    """
+    import inspect
+    import os
+    import tempfile
+    import openpyxl
+    from app.backend.processors.orchestrator import process_files
+    from app.backend.processors.xlsx_processor import translate_xlsx_xls
+
+    # 1. Verify post_translate_hook is wired in process_files and the XLSX processor
+    assert "post_translate_hook" in inspect.signature(process_files).parameters, (
+        "process_files must accept post_translate_hook (orchestrator wiring)"
+    )
+    assert "post_translate_hook" in inspect.signature(translate_xlsx_xls).parameters, (
+        "translate_xlsx_xls must accept post_translate_hook (processor wiring)"
+    )
+
+    # 2. Functional test: create a minimal XLSX, run translation with a hook,
+    #    assert the hook fires and receives (block_id, src, mt) tuples.
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["Hello", "World"])
+
+    hook_calls: list = []
+
+    def _hook(tuples):
+        hook_calls.extend(tuples)
+
+    client = _make_client()
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        in_path = os.path.join(tmpdir, "test.xlsx")
+        out_path = os.path.join(tmpdir, "test_out.xlsx")
+        wb.save(in_path)
+
+        with patch(
+            "app.backend.processors.xlsx_processor.translate_texts",
+            return_value=(
+                {("fr", "Hello"): "Bonjour", ("fr", "World"): "Monde"},
+                2, 0, False,
+            ),
+        ):
+            translate_xlsx_xls(
+                in_path=in_path,
+                out_path=out_path,
+                targets=["fr"],
+                src_lang="en",
+                client=client,
+                post_translate_hook=_hook,
+            )
+
+    # Anti-tautological: assert hook was called with real tuples (not just file output)
+    assert len(hook_calls) > 0, (
+        "post_translate_hook must be called with (block_id, src, mt) tuples after translation"
+    )
+    block_ids = [t[0] for t in hook_calls]
+    srcs = [t[1] for t in hook_calls]
+    mts = [t[2] for t in hook_calls]
+    assert all(bid.startswith("xlsx:") for bid in block_ids), (
+        f"XLSX block_ids must use 'xlsx:{{file_stem}}:{{idx}}' format; got {block_ids}"
+    )
+    assert "Hello" in srcs or "World" in srcs, "src must include original cell text"
+    assert "Bonjour" in mts or "Monde" in mts, "mt must include translated cell text"
+
+
+def test_qe_hook_not_called_when_disabled():
+    """AC-7 integration: when QE_ENABLED=False the load_model seam is never called.
+
+    Patches load_model at the consumer boundary.  Asserts call_count == 0.
+    """
+    import app.backend.config as _cfg
+    from app.backend.services.translation_service import translate_document
+
+    elements = [_make_element("e1", "Hello")]
+    doc = _make_doc(elements)
+    client = _make_client()
+
+    with patch("app.backend.services.quality_evaluator.load_model") as mock_load, \
+         patch.object(_cfg, "QE_ENABLED", False), \
+         patch("app.backend.services.translation_service.translate_blocks_batch",
+               return_value=[(True, "Bonjour")]), \
+         patch("app.backend.services.translation_service.get_cache", return_value=None):
+        translate_document(doc, targets=["fr"], src_lang="en", client=client, num_ctx=4096)
+
+    assert mock_load.call_count == 0, (
+        "load_model must NOT be called when QE_ENABLED=False"
+    )
+
+
+def test_translate_texts_unaffected_by_qe_change():
+    """AC-8, BR-53 regression guard: translate_texts returns same shape after QE wiring.
+
+    Verifies the return type and basic contract of translate_texts is unchanged.
+    """
+    from app.backend.services import translation_service
+
+    client = _make_client()
+    texts = ["Sentence one.", "Sentence two."]
+
+    with patch("app.backend.services.translation_service.translate_blocks_batch",
+               return_value=[(True, "一."), (True, "二.")]) as mock_batch, \
+         patch("app.backend.services.translation_service.get_cache", return_value=None), \
+         patch.object(translation_service, "CRITIQUE_LOOP_ENABLED", False):
+        tmap, done, fail_cnt, stopped = translation_service.translate_texts(
+            texts=texts,
+            targets=["zh-TW"],
+            src_lang="en",
+            client=client,
+        )
+
+    # Shape must be identical to pre-QE contract
+    assert isinstance(tmap, dict), "tmap must be a dict"
+    assert isinstance(done, int), "done must be int"
+    assert isinstance(fail_cnt, int), "fail_cnt must be int"
+    assert isinstance(stopped, bool), "stopped must be bool"
+    assert fail_cnt == 0
+    assert not stopped
+    # Verify mock_batch was actually used (anti-tautology: hook was called)
+    assert mock_batch.call_count >= 1, "translate_blocks_batch must have been called"

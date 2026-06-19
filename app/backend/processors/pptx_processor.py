@@ -192,6 +192,7 @@ def translate_pptx(
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
     refine_client: Optional[OllamaClient] = None,
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
+    post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
 ) -> bool:
     prs = pptx.Presentation(in_path)
     # segs: List of (segment_type, object_ref, text)
@@ -310,6 +311,17 @@ def translate_pptx(
         if smartart_tmap:
             _update_smartart_texts(out_path, out_path, smartart_tmap)
             log(f"[PPTX] SmartArt translated: {len(smartart_tmap)} items")
+
+    if post_translate_hook is not None:
+        import os as _os
+        file_stem = _os.path.splitext(_os.path.basename(in_path))[0]
+        tuples: List[Tuple[str, str, str]] = []
+        for idx, src_text in enumerate(uniq):
+            for tgt in targets:
+                if (tgt, src_text) in tmap:
+                    tuples.append((f"pptx:{file_stem}:{idx}", src_text, tmap[(tgt, src_text)]))
+        if tuples:
+            post_translate_hook(tuples)
 
     if stopped:
         log(f"[PPTX] partial output: {os.path.basename(out_path)}")

@@ -2,8 +2,8 @@
 contract: api-inventory
 summary: Endpoint inventory categories and ownership map for non-standard API surfaces.
 owner: application-team
-schema-version: 0.1.0
-last-changed: 2026-06-18
+schema-version: 0.2.0
+last-changed: 2026-06-19
 surface: api
 ---
 
@@ -22,6 +22,7 @@ All routes are served under the `/api` prefix (mounted in `app/backend/main.py`)
 | GET | /api/jobs/{job_id} | standard-json | application-team | — | job status + progress; 404 |
 | POST | /api/jobs/{job_id}/cancel | standard-json | application-team | — | sets stop flag; 404 |
 | GET | /api/jobs/{job_id}/download | stream-download-exception | application-team | — | zip output; 404 if not ready |
+| GET | /api/jobs/{job_id}/quality | standard-json | application-team | tests/contract/ | per-block COMET/xCOMET quality scores; 200 (status: available/pending/disabled/unavailable), 404 job not found; requires QE_ENABLED=true and model available |
 | GET | /api/stats | standard-json | application-team | — | job queue stats |
 | GET | /api/cache/stats | standard-json | application-team | — | translation cache stats |
 | DELETE | /api/cache | standard-json | application-team | — | clear cache; query `model` |

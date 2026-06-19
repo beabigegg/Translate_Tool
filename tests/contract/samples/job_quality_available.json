@@ -1,0 +1,11 @@
+{
+  "job_id": "abc123",
+  "status": "available",
+  "scores": [
+    {
+      "block_id": "docx:my_doc:0",
+      "score": 0.87,
+      "model": "Unbabel/wmt22-cometkiwi-da"
+    }
+  ]
+}

@@ -14,6 +14,19 @@ reportlab>=4.0.0
 onnxruntime>=1.20.0
 huggingface_hub>=0.22.0
 numpy>=1.24.0
+# p2-comet-qe: COMET/xCOMET neural QE (lazy-loaded only when QE_ENABLED=true).
+# CPU-only install: use --extra-index-url https://download.pytorch.org/whl/cpu
+# to avoid pulling CUDA packages on Linux. onnxruntime-gpu must NOT appear in
+# the transitive tree (layout-detector-dependency-gate fails if it does).
+# LICENSE NOTE: default model wmt22-cometkiwi-da is CC-BY-NC-SA (non-commercial).
+# Legal review required before commercial deployment. See env-contract.md QE_MODEL_NAME.
+unbabel-comet
+# Transitive floor pins required by dep-security-reviewer (p2-comet-qe):
+torch>=2.6.0               # fixes GHSA-53q9-r3pm-6pq6 (RCE via torch.load)
+pytorch-lightning>=2.6.1   # fixes GHSA-75m9-98v2-hjpm (checkpoint deserialization)
+transformers>=4.52.1       # fixes ReDoS vulns GHSA-37mw-44qp-f5jm et al.
+sentencepiece>=0.2.1       # fixes GHSA-38vq-g6vr-w8wf (heap overflow)
+protobuf>=4.25.8,<5.0.0    # fixes GHSA-8qvm-5x2c-j2w7 (DoS); stays within unbabel-comet bound
 
 # Testing
 pytest>=8.0.0

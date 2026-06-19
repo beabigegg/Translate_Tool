@@ -51,3 +51,30 @@ class TestEnvContractDeclared:
             f"{ENV_CONTRACT_PATH}. "
             "Add it to the env-contract table per AC-3 / BR-47 requirement."
         )
+
+    def test_qe_enabled_declared(self):
+        """AC-6: QE_ENABLED must be declared in env-contract.md (p2-comet-qe)."""
+        text = _contract_text()
+        assert "QE_ENABLED" in text, (
+            "QE_ENABLED is not declared in "
+            f"{ENV_CONTRACT_PATH}. "
+            "Add it to the env-contract table per AC-6 / BR-57 requirement."
+        )
+
+    def test_qe_model_name_declared(self):
+        """AC-6: QE_MODEL_NAME must be declared in env-contract.md (p2-comet-qe)."""
+        text = _contract_text()
+        assert "QE_MODEL_NAME" in text, (
+            "QE_MODEL_NAME is not declared in "
+            f"{ENV_CONTRACT_PATH}. "
+            "Add it to the env-contract table per AC-6 requirement."
+        )
+
+    def test_qe_device_declared(self):
+        """AC-6: QE_DEVICE must be declared in env-contract.md (p2-comet-qe)."""
+        text = _contract_text()
+        assert "QE_DEVICE" in text, (
+            "QE_DEVICE is not declared in "
+            f"{ENV_CONTRACT_PATH}. "
+            "Add it to the env-contract table per AC-6 requirement."
+        )

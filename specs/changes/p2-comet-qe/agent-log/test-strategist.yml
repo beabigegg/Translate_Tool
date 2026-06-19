@@ -1,0 +1,12 @@
+agent: test-strategist
+change-id: p2-comet-qe
+date: 2026-06-19
+status: complete
+
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/p2-comet-qe/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_quality_evaluation.py → app/backend/services/quality_evaluator.py" }
+  - { type: tdd-pairs, pointer: "tests/test_translation_strategy.py (extended) → app/backend/services/translation_service.py" }
+  - { type: tdd-pairs, pointer: "tests/test_env_contract.py (extended) → contracts/env/env-contract.md + .env.example.template" }
+  - { type: coverage-tiers, pointer: "unit, endpoint, data-boundary, resilience, integration, contract" }
+  - { type: mapping-completeness, pointer: "all 8 ACs covered; 22 test functions named; Table P rows each map to one test" }

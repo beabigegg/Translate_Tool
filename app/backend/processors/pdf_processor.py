@@ -72,6 +72,7 @@ def translate_pdf(
     layout_mode: str = "inline",
     draw_mask: Optional[bool] = None,
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
+    post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
 ) -> bool:
     """Translate a PDF file.
 
@@ -118,6 +119,7 @@ def translate_pdf(
             layout_mode,
             draw_mask,
             pre_translate_hook=pre_translate_hook,
+            post_translate_hook=post_translate_hook,
         )
 
     # Try Windows COM conversion first (highest quality)
@@ -135,6 +137,7 @@ def translate_pdf(
                 stop_flag=stop_flag,
                 log=log,
                 pre_translate_hook=pre_translate_hook,
+                post_translate_hook=post_translate_hook,
             )
             try:
                 os.remove(temp_docx)
@@ -159,6 +162,7 @@ def translate_pdf(
             log,
             skip_header_footer,
             pre_translate_hook=pre_translate_hook,
+            post_translate_hook=post_translate_hook,
         )
     else:
         return _translate_pdf_with_pypdf2(
@@ -170,6 +174,7 @@ def translate_pdf(
             stop_flag,
             log,
             pre_translate_hook=pre_translate_hook,
+            post_translate_hook=post_translate_hook,
         )
 
 
@@ -183,6 +188,7 @@ def _translate_pdf_with_pymupdf(
     log: Callable[[str], None],
     skip_header_footer: Optional[bool],
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
+    post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
 ) -> bool:
     """Translate PDF using PyMuPDF parser with bbox support.
 
@@ -296,6 +302,17 @@ def _translate_pdf_with_pymupdf(
 
         output_doc.save(out_path)
 
+        if post_translate_hook is not None:
+            import os as _os
+            file_stem = _os.path.splitext(_os.path.basename(in_path))[0]
+            tuples: List[Tuple[str, str, str]] = []
+            for idx, src_text in enumerate(unique_texts):
+                for tgt in targets:
+                    if tgt in translations_by_target and src_text in translations_by_target[tgt]:
+                        tuples.append((f"pdf:{file_stem}:{idx}", src_text, translations_by_target[tgt][src_text]))
+            if tuples:
+                post_translate_hook(tuples)
+
         if stopped:
             log(f"[PDF] Partial output: {os.path.basename(out_path)}")
         else:
@@ -306,7 +323,8 @@ def _translate_pdf_with_pymupdf(
     except Exception as exc:
         log(f"[PDF] PyMuPDF parsing failed, falling back to PyPDF2: {exc}")
         return _translate_pdf_with_pypdf2(
-            in_path, out_path, targets, src_lang, client, stop_flag, log
+            in_path, out_path, targets, src_lang, client, stop_flag, log,
+            post_translate_hook=post_translate_hook,
         )
 
 
@@ -319,6 +337,7 @@ def _translate_pdf_with_pypdf2(
     stop_flag: Optional[threading.Event],
     log: Callable[[str], None],
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
+    post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
 ) -> bool:
     """Translate PDF using PyPDF2 (fallback method).
 
@@ -395,6 +414,17 @@ def _translate_pdf_with_pypdf2(
     except Exception as exc:
         doc.add_paragraph(f"[PDF extract error] {exc}")
 
+    if post_translate_hook is not None and translations_by_target:
+        import os as _os
+        file_stem = _os.path.splitext(_os.path.basename(in_path))[0]
+        tuples: List[Tuple[str, str, str]] = []
+        for idx, src_text in enumerate(unique_texts):
+            for tgt in targets:
+                if tgt in translations_by_target and src_text in translations_by_target[tgt]:
+                    tuples.append((f"pdf:{file_stem}:{idx}", src_text, translations_by_target[tgt][src_text]))
+        if tuples:
+            post_translate_hook(tuples)
+
     doc.save(out_path)
     if stopped:
         log(f"[PDF] partial output: {os.path.basename(out_path)}")
@@ -416,6 +446,7 @@ def _translate_pdf_to_pdf(
     layout_mode: str,
     draw_mask: Optional[bool] = None,
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
+    post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
 ) -> bool:
     """Translate PDF to PDF with layout preservation.
 
@@ -532,6 +563,18 @@ def _translate_pdf_to_pdf(
                     from app.backend.utils.translation_verification import verify_and_fill_dict
                     verify_and_fill_dict(translations, tgt, client, src_lang, stop_flag=stop_flag, log=log)
 
+            if post_translate_hook is not None:
+                tuples: List[Tuple[str, str, str]] = []
+                for element in translatable:
+                    content = element.content.strip()
+                    if content in translations:
+                        translated_text = translations[content]
+                        # Only emit real translations (skip failure-placeholder entries)
+                        if not translated_text.startswith("[翻譯失敗]"):
+                            tuples.append((element.element_id, content, translated_text))
+                if tuples:
+                    post_translate_hook(tuples)
+
             # Generate PDF for this language (fitz primary / ReportLab fallback per BR-34)
             _dispatch_render(
                 doc=doc,
@@ -559,7 +602,8 @@ def _translate_pdf_to_pdf(
         log("[PDF] Falling back to DOCX output")
         docx_out = str(Path(out_path).with_suffix(".docx"))
         return _translate_pdf_with_pymupdf(
-            in_path, docx_out, targets, src_lang, client, stop_flag, log, skip_header_footer
+            in_path, docx_out, targets, src_lang, client, stop_flag, log, skip_header_footer,
+            post_translate_hook=post_translate_hook,
         )
 
 

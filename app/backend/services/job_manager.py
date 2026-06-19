@@ -11,7 +11,7 @@ import uuid
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import (
@@ -21,13 +21,37 @@ from app.backend.config import (
     JOB_TTL_HOURS,
     JOBS_DIR,
     MAX_JOBS_IN_MEMORY,
+    QE_DEVICE,
+    QE_ENABLED,
+    QE_MODEL_NAME,
     TimeoutConfig,
 )
 from app.backend.processors.orchestrator import process_files
 from app.backend.services.model_router import RouteGroup
+from app.backend.services.quality_evaluator import load_model, score_blocks
 from app.backend.translation_profiles import get_profile as _get_translation_profile
 from app.backend.utils.logging_utils import logger
 from app.backend.utils.resource_utils import release_resources
+
+
+@dataclass
+class BlockQualityScore:
+    """Per-block quality score (in-memory only, D-2)."""
+    block_id: str
+    score: float
+    model: str
+
+
+@dataclass
+class JobQualityRecord:
+    """Quality evaluation record attached to a completed job (in-memory only, D-2).
+
+    qe_status mirrors the HTTP status enum: available | pending | disabled | unavailable.
+    """
+    job_id: str
+    scores: List[BlockQualityScore]
+    qe_status: str  # available | pending | disabled | unavailable
+    model: Optional[str]
 
 
 @dataclass
@@ -55,6 +79,7 @@ class JobRecord:
     mode: str = "translation"
     term_summary: Optional[Dict] = None
     provider: Optional[str] = None  # p1-cloud-providers: winning provider ID
+    quality: Optional[JobQualityRecord] = None  # p2-comet-qe: QE result
 
 
 class JobLogger:
@@ -272,6 +297,9 @@ class JobManager:
                 timeout_config = TimeoutConfig()
                 multi_group = len(route_groups) > 1
 
+                # p2-comet-qe: per-job block accumulator (one list, mutated by single worker thread)
+                qe_blocks: List[Tuple[str, str, str]] = []
+
                 # Initialise shared TermDB for Phase 0
                 from app.backend.services.term_db import TermDB
                 term_db = TermDB()
@@ -311,6 +339,7 @@ class JobManager:
                         mode=mode,
                         term_db=term_db,
                         provider_id=group.provider,
+                        post_translate_hook=qe_blocks.extend,
                     )
                     # process_files returns (processed, total, stopped, last_client,
                     # term_summary[, winning_provider]) — unpack flexibly for forward compat
@@ -337,6 +366,37 @@ class JobManager:
                 archive_path: Optional[Path] = None
                 if mode != "extraction_only":
                     archive_path = self._archive_outputs(job)
+
+                # p2-comet-qe: score blocks before status → completed (BR-55, BR-56)
+                if QE_ENABLED and mode != "extraction_only":
+                    try:
+                        qe_model = load_model(QE_MODEL_NAME, QE_DEVICE)
+                        scores_raw = score_blocks(qe_model, [(src, mt) for _, src, mt in qe_blocks])
+                        if scores_raw:
+                            qe_score_list = [
+                                BlockQualityScore(block_id=bid, score=s, model=QE_MODEL_NAME)
+                                for (bid, _, _), s in zip(qe_blocks, scores_raw)
+                            ]
+                            job.quality = JobQualityRecord(
+                                job_id=job_id,
+                                scores=qe_score_list,
+                                qe_status="available",
+                                model=QE_MODEL_NAME,
+                            )
+                        else:
+                            job.quality = JobQualityRecord(
+                                job_id=job_id, scores=[], qe_status="unavailable", model=None
+                            )
+                    except Exception as qe_exc:
+                        log(f"[QE] job {job_id}: {type(qe_exc).__name__}: {qe_exc}")
+                        job.quality = JobQualityRecord(
+                            job_id=job_id, scores=[], qe_status="unavailable", model=None
+                        )
+                elif not QE_ENABLED:
+                    job.quality = JobQualityRecord(
+                        job_id=job_id, scores=[], qe_status="disabled", model=None
+                    )
+
                 with job.lock:
                     job.processed_files = total_processed
                     job.output_zip = archive_path
@@ -368,6 +428,13 @@ class JobManager:
 
     def get_job(self, job_id: str) -> Optional[JobRecord]:
         return self.jobs.get(job_id)
+
+    def get_quality(self, job_id: str) -> Optional[JobQualityRecord]:
+        """Return the quality record for a job, or None if the job is unknown."""
+        job = self.jobs.get(job_id)
+        if job is None:
+            return None
+        return job.quality
 
     def cancel_job(self, job_id: str) -> bool:
         job = self.jobs.get(job_id)

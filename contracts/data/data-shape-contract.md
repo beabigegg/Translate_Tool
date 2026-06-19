@@ -3,7 +3,7 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.5.0
+schema-version: 0.7.0
 last-changed: 2026-06-19
 breaking-change-policy: deprecate-2-minors
 ---
@@ -64,6 +64,8 @@ See `contracts/api/api-contract.md > ## Schemas > JobStatus` for the authoritati
 | `render_truncated` absent in serialized IR (old-format document) | `from_dict` defaults to `False`; element is valid | — | tests/test_translatable_document.py |
 | `CHUNK_OVERLAP_TOKENS` ≥ `num_ctx` at chunker init | `ValueError` raised; job transitions to `status: "failed"` | — | tests/test_doc_chunker.py |
 | Single element token count > `num_ctx` (atomic oversize) | Element placed in own chunk; LLM call proceeds; failure surfaced if LLM rejects; not silently dropped | — | tests/test_doc_chunker.py |
+| `GET /api/jobs/{id}/quality` when job not complete | HTTP 200 `status: "pending"`, empty scores array | — | tests/test_quality_evaluation.py |
+| QE model unavailable or scoring exception | QE step skipped; job completes normally; `qe_status = "unavailable"` | — | tests/test_quality_evaluation.py |
 
 ## Export / Import Format
 
@@ -230,6 +232,7 @@ All pre-existing keys (`element_id`, `content`, `element_type`, `page_num`, `bbo
 | `app/backend/processors/orchestrator.py` | processor | no IR schema change required; reads elements after parsing |
 | `app/backend/services/doc_chunker.py` | consumer + transformer (p2-long-doc-chunking) | reads elements to build ChunkRecords; does not mutate element fields other than triggering per-chunk translation |
 | `app/backend/services/translation_service.py` (Doc2Doc path) | consumer + transformer (p2-long-doc-chunking) | receives full TranslatableDocument; invokes chunker; merges translated_content back into elements; returns the same document instance |
+| `app/backend/services/quality_evaluator.py` | consumer (p2-comet-qe) | reads `element_id`, `content`, `translated_content` from IR elements; never mutates IR fields; score stored separately in `JobQualityRecord` |
 
 ### Renderer IR-consumption contract
 
@@ -313,3 +316,40 @@ Rationale for dropping from the start of N+1 rather than the end of N: the head 
 | Single element whose token count alone exceeds `num_ctx` | Element is placed in its own chunk; LLM call proceeds; not silently dropped (BR-48) |
 | `CHUNK_OVERLAP_TOKENS` ≥ chunk token ceiling | `ValueError` raised at chunker initialization; job transitions to `failed` |
 | Empty string element content | Treated as a zero-token element; `translated_content` set to empty string |
+
+---
+
+## Quality Evaluation (QE) Score Representation
+
+**Added in p2-comet-qe.**
+
+QE scores are produced post-translation by the `quality_evaluator.py` service and attached to the job record in the in-memory job store. They are read-only via `GET /api/jobs/{id}/quality`. Scores are not serialized as part of `TranslatableDocument.to_dict()` and are not part of the IR wire schema.
+
+### BlockQualityScore — data shape
+
+| field | type | nullable | default | notes |
+|---|---|---:|---|---|
+| block_id | string | no | — | For PDF-IR path: the `element_id` of the scored `TranslatableElement` (stable, globally unique within the document). For non-IR formats (DOCX, PPTX, XLSX) and PDF-PyPDF2-fallback: a synthetic positional id `"{ext}:{file_stem}:{index}"` that is run-stable but not durable across re-submissions (see BR-58). Consumers MUST NOT rely on `block_id` stability across re-submissions for non-IR formats. |
+| score | number | no | — | COMET/xCOMET model output; float; range and interpretation are model-dependent (see BR-54). The model field identifies which scale applies. |
+| model | string | no | — | Full model name/version string used to produce this score (e.g. `Unbabel/wmt22-cometkiwi-da`). Consumers must not hard-code interpretation without checking this field. |
+
+### JobQualityRecord — in-memory store shape
+
+| field | type | nullable | notes |
+|---|---|---:|---|
+| job_id | string | no | matches the parent job |
+| scores | BlockQualityScore[] | no | one entry per `TranslatableElement` with `should_translate=True`; empty list when QE is disabled or failed |
+| qe_status | enum(available, pending, disabled, unavailable) | no | mirrors the `status` field in the HTTP response (see api-contract.md `JobQualityResponse`) |
+| model | string | yes | model name; null when `qe_status != available` |
+
+### Nullability and invalid-data rules
+
+| condition | expected behavior |
+|---|---|
+| `QE_ENABLED=false` | No `BlockQualityScore` records are produced; `JobQualityRecord.qe_status = "disabled"`; endpoint returns HTTP 200 with `status: "disabled"` |
+| QE model unavailable (load failure) | `JobQualityRecord.qe_status = "unavailable"`; endpoint returns HTTP 200 with `status: "unavailable"`; scores array is empty |
+| QE scoring raises exception during post-translation step | Exception is caught; job not failed; `qe_status = "unavailable"` recorded; translation result delivered normally (BR-56) |
+| Job not yet complete | `JobQualityRecord` not yet attached; endpoint returns HTTP 200 with `status: "pending"` |
+| Unknown `job_id` | `JobQualityRecord` absent and job absent; endpoint returns HTTP 404 |
+| `block_id` in scores not matching any current IR element | Consumers MUST treat this as a stale score and ignore it; the IR is authoritative; never raise on unknown `block_id` |
+| Non-IR format job — `block_id` collision across files in the same job | Colliding entry overwritten (last-write wins) or omitted; `qe_status` stays `"available"`; never raises (BR-58, BR-56) |

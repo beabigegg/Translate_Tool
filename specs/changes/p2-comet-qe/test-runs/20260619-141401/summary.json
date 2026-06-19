@@ -1,0 +1,16 @@
+{
+  "change_id": "p2-comet-qe",
+  "phase": "changed-area",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/ -v --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-comet-qe/test-runs/20260619-141401/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 15347,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p2-comet-qe/test-runs/20260619-141401/summary.json",
+    "stdout": "specs/changes/p2-comet-qe/test-runs/20260619-141401/stdout.log",
+    "stderr": "specs/changes/p2-comet-qe/test-runs/20260619-141401/stderr.log",
+    "junit": "specs/changes/p2-comet-qe/test-runs/20260619-141401/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

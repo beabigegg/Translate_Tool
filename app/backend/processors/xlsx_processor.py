@@ -51,6 +51,7 @@ def translate_xlsx_xls(
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
     refine_client: Optional[OllamaClient] = None,
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
+    post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
 ) -> bool:
     ext = Path(in_path).suffix.lower()
     out_xlsx = Path(out_path).with_suffix(".xlsx")
@@ -82,6 +83,8 @@ def translate_xlsx_xls(
                 max_segments=max_segments,
                 max_text_length=max_text_length,
                 max_batch_chars=max_batch_chars,
+                pre_translate_hook=pre_translate_hook,
+                post_translate_hook=post_translate_hook,
             )
         finally:
             try:
@@ -183,6 +186,18 @@ def translate_xlsx_xls(
             cell.alignment = Alignment(wrap_text=True)
 
     wb.save(out_xlsx)
+
+    if post_translate_hook is not None:
+        import os as _os
+        _ext = _os.path.splitext(in_path)[1].lstrip(".")
+        file_stem = _os.path.splitext(_os.path.basename(in_path))[0]
+        tuples: List[Tuple[str, str, str]] = []
+        for idx, src_text in enumerate(uniq):
+            for tgt in targets:
+                if (tgt, src_text) in tmap:
+                    tuples.append((f"{_ext}:{file_stem}:{idx}", src_text, tmap[(tgt, src_text)]))
+        if tuples:
+            post_translate_hook(tuples)
 
     if stopped:
         log(f"[Excel] partial output: {out_xlsx.name}")
