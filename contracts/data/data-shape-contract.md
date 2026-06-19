@@ -3,8 +3,8 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.4.4
-last-changed: 2026-06-18
+schema-version: 0.5.0
+last-changed: 2026-06-19
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -62,6 +62,8 @@ See `contracts/api/api-contract.md > ## Schemas > JobStatus` for the authoritati
 | `element_type` value in serialized IR not in current enum | `from_dict` raises `ValueError` | not caught; propagated to caller | tests/test_translatable_document.py |
 | `reading_order` absent in serialized IR (old-format document) | `from_dict` defaults to `None`; element is valid | — | tests/test_translatable_document.py |
 | `render_truncated` absent in serialized IR (old-format document) | `from_dict` defaults to `False`; element is valid | — | tests/test_translatable_document.py |
+| `CHUNK_OVERLAP_TOKENS` ≥ `num_ctx` at chunker init | `ValueError` raised; job transitions to `status: "failed"` | — | tests/test_doc_chunker.py |
+| Single element token count > `num_ctx` (atomic oversize) | Element placed in own chunk; LLM call proceeds; failure surfaced if LLM rejects; not silently dropped | — | tests/test_doc_chunker.py |
 
 ## Export / Import Format
 
@@ -226,6 +228,8 @@ All pre-existing keys (`element_id`, `content`, `element_type`, `page_num`, `bbo
 | `app/backend/renderers/inline_renderer.py` | consumer | same as base |
 | `app/backend/renderers/fitz_renderer.py` | consumer — fitz primary renderer (p2-renderer-convergence) | fitz primary PDF renderer; consumes IR via shared bbox-reflow component; see BR-34. Writes `render_truncated=True` on elements where cascade step (e) fires (BR-38). |
 | `app/backend/processors/orchestrator.py` | processor | no IR schema change required; reads elements after parsing |
+| `app/backend/services/doc_chunker.py` | consumer + transformer (p2-long-doc-chunking) | reads elements to build ChunkRecords; does not mutate element fields other than triggering per-chunk translation |
+| `app/backend/services/translation_service.py` (Doc2Doc path) | consumer + transformer (p2-long-doc-chunking) | receives full TranslatableDocument; invokes chunker; merges translated_content back into elements; returns the same document instance |
 
 ### Renderer IR-consumption contract
 
@@ -257,3 +261,55 @@ Both render paths MUST handle the following conditions deterministically and ide
 | `elements` list is empty | Produce an empty (but valid) output page; do not raise. |
 
 "Identically" means: for the same input IR, both paths must produce the same element-level decisions (skip vs. render, placement region source, text source) even if the visual output differs due to renderer capabilities.
+
+---
+
+## Chunk Representation
+
+**Added in p2-long-doc-chunking. Source of truth: `app/backend/services/doc_chunker.py`.**
+
+The chunk representation is a pure in-memory structure used exclusively within the chunking → translation → reassembly pipeline. It is not serialized to disk, not sent over HTTP, and not part of any `TranslatableDocument.to_dict()` or `from_dict()` surface. The existing `TranslatableDocument` wire schema is unchanged.
+
+### ChunkRecord — internal data shape
+
+| field | type | nullable | notes |
+|---|---|---:|---|
+| chunk_index | integer | no | 0-based sequential index; determines reassembly order |
+| token_span | tuple[int, int] | no | `(start_token, end_token)` inclusive–exclusive token positions in the source element sequence |
+| elements | list[TranslatableElement] | no | ordered list of `TranslatableElement` instances included in this chunk; references the same objects as the parent `TranslatableDocument` — do not deep-copy |
+| overlap_tokens | integer | no | number of tokens at the start of this chunk that are shared with the previous chunk's tail; 0 for chunk_index 0 |
+
+`ChunkRecord` is never serialized. Consumers must not persist or transmit it. If a future change requires persistence, a versioned serialized form must be defined and added to this contract.
+
+### Doc2Doc — service entry point contract
+
+`translation_service.translate_document(doc: TranslatableDocument, ...) -> TranslatableDocument`
+
+| aspect | contract |
+|---|---|
+| Input | A fully parsed `TranslatableDocument` instance (all elements populated; `translated_content` fields may be null) |
+| Output | The same `TranslatableDocument` instance with `translated_content` populated on every element that has `should_translate=True`; all other fields unchanged |
+| Mutation | The input document is mutated in place and returned; callers MUST NOT rely on the pre-call state of `translated_content` after this method returns |
+| Chunking transparency | Chunking is applied automatically when the document's estimated token count exceeds the resolved `num_ctx` ceiling. Callers do not pre-split the document |
+| Single-chunk optimization | When the document's estimated token count is at or below `num_ctx`, exactly one chunk is produced and one LLM call is made (AC-6); no splitting overhead is incurred |
+| Backward-compatibility | The existing `translate_texts()` per-segment path is entirely separate from this entry point and is unaffected (AC-8) |
+
+### Reassembly contract
+
+After each chunk's elements are translated independently, they are reassembled into the final document in strict `chunk_index` ascending order.
+
+**Overlap de-duplication rule:** The overlap region is defined as the `overlap_tokens` leading tokens of each chunk (chunk_index > 0). After translation, the de-duplication rule drops the translated output of the leading `overlap_tokens`-worth of elements from the **start of each non-first chunk's translated output**. Concretely: for chunk N (N > 0), the elements in positions `[0, overlap_element_count)` of that chunk's translated output are discarded; only elements `[overlap_element_count, ...)` are appended to the reassembled document. `overlap_element_count` is the number of elements whose combined token span covers the `overlap_tokens` count recorded in the `ChunkRecord`.
+
+Rationale for dropping from the start of N+1 rather than the end of N: the head of N+1 has already been seen in context by the LLM when it translated N; the tail of N is the "anchor" that carries semantic continuity forward.
+
+**Content integrity invariant:** After reassembly, every element with `should_translate=True` in the original document that was successfully translated MUST have a non-null `translated_content`. No element may appear more than once in the reassembled document. No element may be silently dropped. If a single chunk's translation fails, the failure MUST be surfaced; partial reassembly from remaining chunks is permitted only if the implementation explicitly records which chunks succeeded and which failed (see BR-51).
+
+### Invalid-data behavior — chunking path
+
+| condition | expected behavior |
+|---|---|
+| Document has zero elements | `translate_document` returns the input unchanged; no LLM call is made |
+| Document has all `should_translate=False` elements | Single pass; no chunking; no LLM call; returned immediately |
+| Single element whose token count alone exceeds `num_ctx` | Element is placed in its own chunk; LLM call proceeds; not silently dropped (BR-48) |
+| `CHUNK_OVERLAP_TOKENS` ≥ chunk token ceiling | `ValueError` raised at chunker initialization; job transitions to `failed` |
+| Empty string element content | Treated as a zero-token element; `translated_content` set to empty string |

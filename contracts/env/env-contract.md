@@ -3,7 +3,7 @@ contract: env
 summary: Environment variable inventory, secret handling, and deployment sync policy.
 owner: platform-team
 surface: runtime-config
-schema-version: 0.4.1
+schema-version: 0.5.0
 last-changed: 2026-06-19
 breaking-change-policy: deprecate-2-minors
 ---
@@ -33,6 +33,7 @@ breaking-change-policy: deprecate-2-minors
 | CRITIQUE_LOOP_ENABLED | backend | all | no | no | 1 | 1 | application-team | boolean (1/0 or true/false) | no | When false (or 0), translate-then-critique self-refinement loop is skipped; initial draft returned without critique pass. Glossary substitution (BR-41) still runs. Rollback switch for p2-prompt-fewshot-glossary. |
 | CRITIQUE_MAX_ITERATIONS | backend | all | no | no | 3 | 3 | application-team | positive integer | no | Maximum translate-then-critique loop iterations per translatable segment. Loop terminates at this count even if critique suggests further revision. See BR-44. |
 | CRITIQUE_TIMEOUT_SECONDS | backend | all | no | no | 60 | 60 | application-team | positive float (seconds) | no | Per-segment critique loop wall-clock timeout. On timeout, loop degrades to last valid draft; job does not fail. See BR-44. |
+| CHUNK_OVERLAP_TOKENS | backend | all | no | no | 50 | 50 | application-team | positive integer | no | Number of tokens of overlap shared between adjacent chunks during long-document chunking. Has no effect when the full document fits within the LLM context window (single-chunk path). See BR-47 and BR-49. |
 
 ## Public Frontend Env Policy
 

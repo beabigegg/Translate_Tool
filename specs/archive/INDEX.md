@@ -16,3 +16,4 @@
 | p2-renderer-convergence | 2026 | 2026-06-18 | specs/archive/2026/p2-renderer-convergence/ |
 | p2-text-expansion | 2026 | 2026-06-18 | specs/archive/2026/p2-text-expansion/ |
 | p2-table-border-protection | 2026 | 2026-06-19 | specs/archive/2026/p2-table-border-protection/ |
+| p2-prompt-fewshot-glossary | 2026 | 2026-06-19 | specs/archive/2026/p2-prompt-fewshot-glossary/ |

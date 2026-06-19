@@ -1,1 +1,0 @@
-/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/ -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-table-border-protection/test-runs/20260619-100106/junit.xml' -ra

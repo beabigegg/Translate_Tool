@@ -115,6 +115,12 @@ CROSS_MODEL_REFINEMENT_ENABLED = os.environ.get("CROSS_MODEL_REFINEMENT_ENABLED"
 CONTEXT_DETECTION_ENABLED = True
 CONTEXT_SAMPLE_CHARS = 500  # Max chars to sample from file for context detection
 
+# Long-document chunking overlap (p2-long-doc-chunking, BR-47, BR-49)
+# Number of tokens of overlap shared between adjacent chunks.
+# Must be a positive integer and must be < num_ctx (enforced at chunker init).
+# Has no effect when the document fits in one chunk (BR-52).
+CHUNK_OVERLAP_TOKENS: int = int(os.environ.get("CHUNK_OVERLAP_TOKENS", "50"))
+
 # Critique loop configuration (p2-prompt-fewshot-glossary, BR-44)
 CRITIQUE_LOOP_ENABLED: bool = os.environ.get("CRITIQUE_LOOP_ENABLED", "1").lower() in ("1", "true", "yes")
 CRITIQUE_MAX_ITERATIONS: int = int(os.environ.get("CRITIQUE_MAX_ITERATIONS", "3"))

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple
 
 from app.backend.clients.base_llm_client import LLMClient
 from app.backend.config import (
+    CHUNK_OVERLAP_TOKENS,
     CROSS_MODEL_REFINEMENT_ENABLED,
     CRITIQUE_LOOP_ENABLED,
     CRITIQUE_MAX_ITERATIONS,
@@ -32,6 +33,7 @@ from app.backend.utils.translation_helpers import translate_blocks_batch
 
 if TYPE_CHECKING:
     from app.backend.models.term import Term
+    from app.backend.models.translatable_document import TranslatableDocument
 
 logger = logging.getLogger(__name__)
 
@@ -428,3 +430,159 @@ def translate_texts(
             cache.put_batch(refine_cache_entries)
 
     return tmap, done, fail_cnt, stopped
+
+
+# ---------------------------------------------------------------------------
+# Doc2Doc entry point (p2-long-doc-chunking, BR-47..BR-53, AC-4, AC-6, AC-7)
+# ---------------------------------------------------------------------------
+
+def translate_document(
+    doc: "TranslatableDocument",
+    targets: List[str],
+    src_lang: Optional[str],
+    client: LLMClient,
+    num_ctx: int = 4096,
+    overlap_tokens: Optional[int] = None,
+    stop_flag=None,
+    log: Callable[[str], None] = lambda s: None,
+    terms: "Optional[List[Term]]" = None,
+    max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
+) -> "TranslatableDocument":
+    """Translate a complete TranslatableDocument, chunking automatically when needed.
+
+    Implements the Doc2Doc service entry point (data-shape §Doc2Doc contract).
+    Splits the document into chunks per BR-47..BR-52, translates each chunk
+    independently with one LLM call per chunk (AC-4), then reassembles in order
+    (AC-5) with overlap de-duplication (data-shape §Reassembly contract).
+
+    Args:
+        doc: Fully parsed TranslatableDocument (translated_content fields may be null).
+        targets: Target language codes.
+        src_lang: Source language code or None (auto-detect).
+        client: Primary LLM client.
+        num_ctx: Resolved LLM context window size (token ceiling per chunk, BR-49).
+        overlap_tokens: Override for CHUNK_OVERLAP_TOKENS env default (BR-47).
+        stop_flag: Optional threading.Event for job cancellation.
+        log: Progress log callback.
+        terms: Optional list of Term objects for glossary injection.
+        max_batch_chars: Character batching budget passed to translate_blocks_batch.
+
+    Returns:
+        The same TranslatableDocument instance with translated_content populated
+        in-place on every element that has should_translate=True (mutation in place,
+        same object reference returned — data-shape Doc2Doc contract).
+
+    Raises:
+        Exception: When a chunk translation fails and no retry strategy is configured
+                   (job transitions to failed per BR-51, BR-7).
+    """
+    from app.backend.models.translatable_document import TranslatableDocument as _TD
+    from app.backend.services.doc_chunker import (
+        ChunkRecord,
+        reassemble_document,
+        split_document,
+    )
+
+    _overlap = overlap_tokens if overlap_tokens is not None else CHUNK_OVERLAP_TOKENS
+
+    # Split document into chunks (BR-47..BR-52)
+    chunks = split_document(doc, num_ctx=num_ctx, overlap_tokens=_overlap)
+
+    if not chunks:
+        # Empty document: return unchanged (data-shape §Invalid-data-behavior)
+        log("[DOC2DOC] Empty document — no chunks; returning unchanged")
+        return doc
+
+    log(f"[DOC2DOC] {len(chunks)} chunk(s) for doc with {len(doc.elements)} elements")
+
+    any_chunk_failed = False
+    chunk_errors: List[Tuple[int, Exception]] = []
+
+    for chunk in sorted(chunks, key=lambda c: c.chunk_index):
+        # Collect texts for this chunk's translatable elements
+        chunk_texts = [
+            e.content for e in chunk.elements if e.should_translate and e.content.strip()
+        ]
+
+        if not chunk_texts:
+            # Chunk has no translatable content — mark empty-string translations
+            for elem in chunk.elements:
+                if elem.should_translate and elem.translated_content is None:
+                    elem.translated_content = ""
+            log(f"[DOC2DOC] chunk {chunk.chunk_index}: no translatable texts; skipped")
+            continue
+
+        log(f"[DOC2DOC] translating chunk {chunk.chunk_index} ({len(chunk_texts)} texts)")
+
+        for tgt in targets:
+            if stop_flag and stop_flag.is_set():
+                log(f"[DOC2DOC] stop flag set; halting at chunk {chunk.chunk_index} target {tgt}")
+                break
+
+            try:
+                results = translate_blocks_batch(
+                    chunk_texts,
+                    tgt,
+                    src_lang,
+                    client,
+                    max_batch_chars=max_batch_chars,
+                    log=log,
+                    stop_flag=stop_flag,
+                )
+            except Exception as exc:
+                # BR-51: chunk failure surfaced; set BR-25 placeholder on all elements in chunk
+                logger.warning(
+                    "[DOC2DOC] chunk %d target %s raised exception: %s",
+                    chunk.chunk_index,
+                    tgt,
+                    exc,
+                )
+                for elem in chunk.elements:
+                    if elem.should_translate:
+                        placeholder = f"[Translation failed|{tgt}] {elem.content}"
+                        elem.translated_content = placeholder
+                any_chunk_failed = True
+                chunk_errors.append((chunk.chunk_index, exc))
+                continue
+
+            # Map results back to elements (same order as chunk_texts)
+            text_iter = iter(results)
+            for elem in chunk.elements:
+                if not elem.should_translate or not elem.content.strip():
+                    continue
+                try:
+                    ok, translated = next(text_iter)
+                except StopIteration:
+                    # Fewer results than texts — treat as failure for remaining
+                    ok, translated = False, ""
+
+                if ok:
+                    elem.translated_content = translated
+                else:
+                    # BR-51, BR-25: set failure placeholder on failed element
+                    placeholder = f"[Translation failed|{tgt}] {elem.content}"
+                    elem.translated_content = placeholder
+                    any_chunk_failed = True
+                    logger.warning(
+                        "[DOC2DOC] chunk %d element %s failed (target=%s)",
+                        chunk.chunk_index,
+                        elem.element_id,
+                        tgt,
+                    )
+
+    # Reassemble in chunk_index order with overlap de-duplication
+    # (data-shape §Reassembly contract)
+    reassemble_document(doc, chunks)
+
+    log(f"[DOC2DOC] reassembly complete; {len(doc.elements)} elements in output")
+
+    # BR-51, BR-7: if any chunk failed, surface the error so the job transitions to failed
+    if any_chunk_failed and chunk_errors:
+        first_idx, first_exc = chunk_errors[0]
+        raise RuntimeError(
+            f"[DOC2DOC] Translation failed on chunk {first_idx}: {first_exc}; "
+            f"job transitions to failed (BR-51). "
+            f"Failed elements carry BR-25 placeholders."
+        ) from first_exc
+
+    return doc

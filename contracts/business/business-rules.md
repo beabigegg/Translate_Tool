@@ -3,7 +3,7 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.8.0
+schema-version: 0.9.0
 last-changed: 2026-06-19
 breaking-change-policy: deprecate-2-minors
 ---
@@ -59,6 +59,13 @@ breaking-change-policy: deprecate-2-minors
 | BR-44 | critique-loop-policy | application-team | The translate-then-critique self-refinement loop MUST run ≥1 iteration per translation request. Maximum iterations is bounded by `CRITIQUE_MAX_ITERATIONS` (default: 3; must be configurable). Per-request cost cap is enforced by `CRITIQUE_TIMEOUT_SECONDS` (default: 60 s). When a critique call fails (exception or timeout), the loop MUST degrade gracefully to the last valid draft and MUST NOT propagate the exception to the caller or transition the job to `failed`. | tests/test_hy_mt_quality_refinement.py |
 | BR-45 | critique-loop-cache-key | application-team | The translation cache key MUST incorporate a glossary-state digest (e.g. sorted hash of injected term set) and the active critique-iteration count (or refinement-pass marker). A cache hit MUST NOT serve a result produced without glossary injection or without the critique pass. Stale pre-glossary or pre-critique cache entries must be treated as misses. | tests/test_translation_strategy.py |
 | BR-46 | critique-loop-metrics | application-team | `metrics.py` MUST expose: `critique_loop_invocations` (total critique-loop calls since process start), `critique_iterations_total` (cumulative iterations across all requests since process start), and `glossary_match_rate` (float ratio 0.0–1.0, last-request value or running mean — defined by design.md). All three counters follow BR-20 lifetime semantics (in-process memory, reset on restart). | tests/test_metrics_counters.py |
+| BR-47 | chunk-overlap-policy | application-team | Adjacent chunks share `CHUNK_OVERLAP_TOKENS` tokens of overlap (default 50; configurable via env). The overlap region is the tail of chunk N duplicated as the head of chunk N+1. The overlap token count applies to the source-side token span. The overlap MUST NOT equal or exceed the chunk token ceiling (num_ctx). Overlap for chunk_index 0 is always 0. | tests/test_doc_chunker.py |
+| BR-48 | atomic-segment-oversize | application-team | When a single element's token count alone exceeds the `num_ctx` ceiling, the element is placed in its own chunk and translated in a single LLM call. The chunk is not split further (elements are atomic). No content is silently dropped; if the LLM context window rejects the call, the failure is surfaced as a chunk-level translation error (see BR-51). | tests/test_doc_chunker.py |
+| BR-49 | chunk-token-ceiling | application-team | No chunk's source-side token count (including its overlap region) may exceed the resolved `num_ctx` value. The chunker MUST produce chunks that satisfy this ceiling for all normal inputs. The only permitted exception is an atomic oversized element per BR-48. | tests/test_doc_chunker.py |
+| BR-50 | semantic-boundary-priority | application-team | When selecting a chunk split point, the chunker MUST prefer higher-priority boundary types over lower-priority ones within the available token budget. Priority order (highest to lowest): (1) paragraph break — a blank line or boundary between two text-type elements not in the same logical block; (2) section heading — an element of type `title`; (3) sentence boundary — a sentence-ending punctuation mark (`.`, `?`, `!`) followed by whitespace within a `text` element. The chunker MAY split at a lower-priority boundary only when no higher-priority boundary exists within the remaining token budget. | tests/test_doc_chunker.py |
+| BR-51 | chunk-translation-failure-isolation | application-team | A translation failure on a single chunk MUST be surfaced as an error (raised exception or job-level `fail_cnt` increment) and MUST NOT silently corrupt or drop the reassembly of other chunks. The job transitions to `status: "failed"` if any chunk fails and no retry strategy is configured. The `translated_content` of elements in the failed chunk MUST be set to the BR-25 failure placeholder format — not left null or silently omitted. | tests/test_doc_chunker.py |
+| BR-52 | single-chunk-optimization | application-team | A document whose estimated token count is at or below the resolved `num_ctx` ceiling produces exactly one chunk and exactly one LLM call. The chunker MUST NOT produce more than one chunk for such a document. No split-point detection, overlap insertion, or reassembly logic is executed in this path. | tests/test_doc_chunker.py |
+| BR-53 | translate-texts-backward-compat | application-team | The existing per-segment `translate_texts()` entry point on `translation_service.py` MUST produce results identical to its pre-change behavior for all inputs. The Doc2Doc path (`translate_document()`) MUST NOT alter any shared state, cache key structure, prompt template, or LLM call pattern that `translate_texts()` depends on. | tests/test_translation_strategy.py |
 
 ## Decision Tables
 
@@ -208,6 +215,23 @@ breaking-change-policy: deprecate-2-minors
 | Source contains term matching only `unverified` term with confidence below threshold (strict gate) | term not enforced; no substitution; BR-29 injection gate governs | tests/test_term_state_machine.py |
 | Source contains `rejected` or `needs_review` term | term not enforced; BR-29 governs; no match expected in output | tests/test_term_state_machine.py |
 | No terms in `term_db` for this (source_lang, target_lang) pair | enforcement step is a no-op; job completes normally | tests/test_hy_mt_quality_refinement.py |
+
+### Table O — long-document chunking (BR-47 through BR-53)
+
+| condition | behavior | test id |
+|---|---|---|
+| Document token count ≤ num_ctx | Single chunk; single LLM call; no split-point detection; no overlap; no reassembly (BR-52) | tests/test_doc_chunker.py |
+| Document token count > num_ctx | Chunker splits at highest-priority available boundary within budget; overlap of CHUNK_OVERLAP_TOKENS applied between adjacent chunks (BR-47, BR-50) | tests/test_doc_chunker.py |
+| Boundary candidate is a paragraph break (highest priority) | Split at paragraph break if one exists within token budget | tests/test_doc_chunker.py |
+| No paragraph break in budget; heading exists | Split at section heading boundary (priority 2) | tests/test_doc_chunker.py |
+| No paragraph break or heading in budget; sentence boundary exists | Split at sentence boundary (priority 3) | tests/test_doc_chunker.py |
+| No boundary of any priority available in budget | Split at token ceiling (hard truncation at element boundary); emit oversized chunk if the next element is atomic and larger than ceiling (BR-48) | tests/test_doc_chunker.py |
+| Single element token count > num_ctx | Placed in own chunk; translated as-is; failure surfaced if LLM rejects (BR-48) | tests/test_doc_chunker.py |
+| CHUNK_OVERLAP_TOKENS ≥ num_ctx | ValueError at chunker init; job fails immediately (BR-47, BR-49) | tests/test_doc_chunker.py |
+| Chunk N (N > 0) translation completes | Overlap elements at head of chunk N's translated output discarded; remaining elements appended in chunk_index order (data-shape-contract §Reassembly contract) | tests/test_doc_chunker.py |
+| One chunk's translation fails | Chunk-level error surfaced; BR-25 placeholder set on failed elements; job transitions to failed (BR-51) | tests/test_doc_chunker.py |
+| Document has zero elements or all should_translate=False | Returns immediately; no LLM call; no chunking | tests/test_doc_chunker.py |
+| translate_texts() called after this change | Behavior identical to pre-change; no regression (BR-53) | tests/test_translation_strategy.py |
 
 ## Change Policy
 

@@ -1,0 +1,1 @@
+python -m pytest tests/test_doc_chunker.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-long-doc-chunking/test-runs/20260619-114044/junit.xml' -ra

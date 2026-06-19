@@ -1,0 +1,41 @@
+change-id: p2-long-doc-chunking
+status: in-progress
+tier: 2
+context-governance: v1
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on: []
+
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: done, note: "design.md written by spec-architect; 6 decisions resolved: module boundary, token counting, overlap de-dup, Doc2Doc signature, chunk failure handling, cache key" }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: skipped, note: "Doc2Doc is internal service method, not HTTP endpoint; no api-contract.md change needed" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no CSS/UI surface" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: done, note: "CHUNK_OVERLAP_TOKENS added; schema-version 0.4.1→0.5.0; .env.example.template and env.schema.json updated" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: done, note: "Chunk Representation section added (ChunkRecord + Doc2Doc + Reassembly contract); Known consumers + Invalid Data Behavior rows added; schema-version 0.4.4→0.5.0" }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: done, note: "BR-47–53 + Table O added; schema-version 0.8.0→0.9.0" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no new gate type required" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done, note: "test-plan.md: TestChunkerTokenCeiling, TestBoundaryPriority, TestOverlapInsertion, TestReassembly (unit); test_chunk_overlap_tokens_declared (contract env); 24 named tests in test_doc_chunker.py" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: done, note: "test-plan.md: TestDoc2DocPath in test_translation_strategy.py; TestTranslateTextsRegression for AC-8" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: done, note: "test-plan.md: TestChunkFailureIsolation in test_doc_chunker.py; chunk failure → BR-25 placeholder; no corruption of remaining chunks" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "data-boundary covered in test_doc_chunker.py; no interactive UI surface for monkey tests" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "per-chunk single LLM calls; not a soak surface at this tier" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: done, note: "doc_chunker.py (new), translation_service.translate_document (new), config.CHUNK_OVERLAP_TOKENS; 38 new tests in test_doc_chunker.py + extensions in 3 existing test files; full suite green; gate passes" }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no UI change" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: done, note: "CHUNK_OVERLAP_TOKENS wired in config.py; env-contract.md, .env.example.template, env.schema.json all updated" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: done, note: "cdd-kit gate p2-long-doc-chunking wired in contract-and-fast-tests; no new jobs" }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI surface" }
+  - { id: "5.2", section: Review, title: "Visual review", status: skipped, note: "no visual surface" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done, note: "all contract updates applied before implementation; cdd-kit validate --contracts passes; env/data-shape/business contracts all updated" }
+  - { id: "5.4", section: Review, title: "QA review", status: done, note: "approved-with-risk → AC-2 gap fixed by test-strategist (substantive position assertions added + test_paragraph_break_preferred_over_heading added); test-plan.md names reconciled; gate re-passed" }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "cdd-kit gate passes; change-gate wired in contract-and-fast-tests" }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: skipped, note: "none" }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "none" }
+  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }

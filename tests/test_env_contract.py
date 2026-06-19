@@ -42,3 +42,12 @@ class TestEnvContractDeclared:
             "LAYOUT_DETECTOR_ENABLED is not declared in "
             f"{ENV_CONTRACT_PATH}."
         )
+
+    def test_chunk_overlap_tokens_declared(self):
+        """AC-3: CHUNK_OVERLAP_TOKENS must be declared in env-contract.md (BR-47, BR-49)."""
+        text = _contract_text()
+        assert "CHUNK_OVERLAP_TOKENS" in text, (
+            "CHUNK_OVERLAP_TOKENS is not declared in "
+            f"{ENV_CONTRACT_PATH}. "
+            "Add it to the env-contract table per AC-3 / BR-47 requirement."
+        )

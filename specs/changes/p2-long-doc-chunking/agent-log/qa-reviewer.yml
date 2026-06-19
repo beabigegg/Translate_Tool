@@ -1,0 +1,20 @@
+agent: qa-reviewer
+change-id: p2-long-doc-chunking
+timestamp: 2026-06-19
+status: approved-with-risk
+
+artifacts:
+  - { type: gate-results, pointer: "contracts: pass; api-semantic: pass; env: pass; ci-gates: pass; contract-versions: pass; full suite 669 passed/4 skipped/0 failed" }
+  - { type: evidence-quality, pointer: "gate re-ran live; test-evidence.yml final-status: passed; required phases (collect/targeted/changed-area/full) all present; no waiver fields" }
+  - { type: decision, pointer: "approved-with-risk" }
+  - { type: failure-routing, pointer: "AC-2 boundary-priority tests tautological (count-only; tests/test_doc_chunker.py:125-165) → test-strategist; stale AC->test name mapping in test-plan.md:15-39 → test-strategist" }
+  - { type: residual-risk, pointer: "AC-2 boundary-priority test gap: tests assert chunk count only; implementation is correct but regression net absent. Doc2Doc unwired entry point (no processor calls translate_document yet) — follow-up required." }
+
+notes: |
+  AC-1,3-8: all covered by substantive assertions. Implementation correct.
+  AC-2: tautological tests — TestBoundaryPriority asserts only len(chunks), not which
+  element started each chunk. Docstrings claim priority assertions but none are made.
+  Also missing test_paragraph_break_preferred_over_heading. Routes to test-strategist.
+  Stale test-plan.md AC→name mapping (8 names differ from implementation). Also test-strategist.
+  Response-shape: correctly skipped (Doc2Doc is internal; no API response body changed).
+  Full suite 669t/4skip/0fail. Gate exit 0. No blocker; cleared once AC-2 tests strengthened.

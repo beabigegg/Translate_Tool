@@ -1,1 +1,0 @@
-/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_table_border_protection.py --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-table-border-protection/test-runs/20260619-095804/junit.xml' --maxfail=1 --tb=short -ra

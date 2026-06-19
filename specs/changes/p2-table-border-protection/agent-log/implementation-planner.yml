@@ -1,7 +1,0 @@
-agent: implementation-planner
-change-id: p2-table-border-protection
-artifacts:
-  - { type: plan-written, pointer: "specs/changes/p2-table-border-protection/implementation-plan.md" }
-  - { type: owner-map, pointer: "bug-fix-engineer (primary), backend-engineer (handoff if scope widens)" }
-  - { type: scope-summary, pointer: "2 source edits in fitz_renderer.py (overlay borders + side-by-side right-panel mask) + 1 new test file; all other renderer files out of scope" }
-  - { type: blocked-reason, pointer: "not blocked; code-map.yml stale (indexes old pdf_generator.py) — plan uses live fitz_renderer.py line numbers" }

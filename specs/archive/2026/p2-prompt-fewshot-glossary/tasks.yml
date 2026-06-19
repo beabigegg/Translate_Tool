@@ -1,0 +1,41 @@
+change-id: p2-prompt-fewshot-glossary
+status: in-progress
+tier: 2
+context-governance: v1
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on: []
+
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: done }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: done, note: "MetricsResponse +3 optional fields (critique_loop_invocations, critique_iterations_total, glossary_match_rate); schema-version 0.4.1→0.4.2; openapi.yml regenerated" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no CSS/UI surface" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: done, note: "CRITIQUE_LOOP_ENABLED, CRITIQUE_MAX_ITERATIONS, CRITIQUE_TIMEOUT_SECONDS added; schema-version 0.4.0→0.4.1" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: skipped, note: "no IR shape changes; cache-key format decision deferred to design.md" }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: done, note: "BR-41–BR-46 added + Decision Tables M and N; schema-version 0.7.2→0.8.0" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no new gate type; existing gates apply" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done, note: "test-plan.md: TestGlossaryEnforcement, TestGlossaryMatchRate, TestFewShotInjection, TestGlossarySourceOfTruth, TestCritiqueLoop, TestCritiqueLoopBounds, TestCritiqueCacheKey, TestCritiqueMetrics — all in tests/test_fewshot_glossary.py" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: done, note: "test_hy_mt_quality_refinement.py extended; test_golden_regression.py referenced for AC-7" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: done, note: "TestCritiqueLoopBounds covers degradation on exception/timeout (AC-5)" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "no adversarial input surface" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "Tier 2: cost cap documented in design.md, not mandated at this tier" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: done, note: "tests/test_fewshot_glossary.py (25 tests); context_prompts.py, translation_service.py, translation_strategy.py, metrics.py, config.py; 621 passed full suite" }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no UI change" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: skipped, note: "no new env vars unless design mandates it" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: done, note: "change-gate wired in contract-and-fast-tests; no new jobs" }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI surface" }
+  - { id: "5.2", section: Review, title: "Visual review", status: skipped, note: "no visual surface" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done, note: "BR-41–46 + Tables M/N in business-rules.md; MetricsResponse +3 fields in api-contract.md; CRITIQUE_* in env-contract.md; openapi.yml regenerated" }
+  - { id: "5.4", section: Review, title: "QA review", status: done, note: "approved-with-risk; AC-1–AC-8 met; VR-1 response-shape sample P3; VR-2 match_rate concurrency P3; see agent-log/qa-reviewer.yml" }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "cdd-kit gate passes; change-gate wired in contract-and-fast-tests" }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: skipped, note: "none" }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "none" }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: skipped, note: "BR-41–46 already in contracts; VR-1 response-shape P3 advisory (no enforcing gate repo-wide, ADR 0007); no net-new cross-change workflow rules" }

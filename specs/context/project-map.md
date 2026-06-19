@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
 visible-dirs: 57
-visible-files: 188
+visible-files: 190
 omitted-dirs: 12
 truncated-dirs: 0
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -256,6 +256,7 @@ Translate_Tool/
 |   |-- test_coordinate_renderer.py
 |   |-- test_docx_parser.py
 |   |-- test_env_contract.py
+|   |-- test_fewshot_glossary.py
 |   |-- test_font_utils.py
 |   |-- test_golden_regression.py
 |   |-- test_hy_mt_quality_refinement.py
@@ -275,6 +276,7 @@ Translate_Tool/
 |   |-- test_provider_fallback.py
 |   |-- test_renderer_convergence.py
 |   |-- test_sentence_mode_consistency.py
+|   |-- test_table_border_protection.py
 |   |-- test_term_api.py
 |   |-- test_term_db.py
 |   |-- test_term_extractor.py
