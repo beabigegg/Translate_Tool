@@ -1,1 +1,0 @@
-/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_doc_chunker.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-long-doc-chunking/test-runs/20260619-114113/junit.xml' -ra

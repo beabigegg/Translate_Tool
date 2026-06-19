@@ -1,1 +1,0 @@
-conda run -n translate-tool python -m pytest tests/test_doc_chunker.py --collect-only -q

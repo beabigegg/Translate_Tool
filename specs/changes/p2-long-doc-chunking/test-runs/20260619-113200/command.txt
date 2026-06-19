@@ -1,1 +1,0 @@
-conda run -n translate-tool python -m pytest tests/test_doc_chunker.py tests/test_env_contract.py tests/test_sentence_mode_consistency.py tests/test_translation_strategy.py -x -q --tb=short

@@ -1,6 +1,0 @@
-artifacts:
-  - { type: plan-written, pointer: "specs/changes/p2-long-doc-chunking/implementation-plan.md" }
-  - { type: owner-map, pointer: "test-strategist, backend-engineer, contract-reviewer, qa-reviewer" }
-  - { type: scope-summary, pointer: "In: doc_chunker.py + translate_document() + CHUNK_OVERLAP_TOKENS config/env + TDD tests. Out: orchestrator/processor wiring, HTTP surface, translate_texts() changes, new tokenizer, ChunkRecord serialization." }
-notes:
-  - "code-map.yml stale for translation_service.py (map ~271 lines/OllamaClient; live 431 lines/LLMClient + critique+glossary). Backend-engineer must read live source before editing; recommend cdd-kit code-map refresh."

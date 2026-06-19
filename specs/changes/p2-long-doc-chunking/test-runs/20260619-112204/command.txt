@@ -1,1 +1,0 @@
-pytest tests/test_doc_chunker.py --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-long-doc-chunking/test-runs/20260619-112204/junit.xml' --maxfail=1 --tb=short -ra
