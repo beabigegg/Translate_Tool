@@ -1,0 +1,43 @@
+change-id: p2-comet-qe
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_quality_evaluation.py
+      tests/test_env_contract.py tests/test_translation_strategy.py --collect-only -q
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-comet-qe/test-runs/20260619-141521/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/p2-comet-qe/test-runs/20260619-141521/summary.json
+    junit: specs/changes/p2-comet-qe/test-runs/20260619-141521/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_quality_evaluation.py
+      tests/test_env_contract.py tests/test_translation_strategy.py -v
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-comet-qe/test-runs/20260619-141654/junit.xml' -q
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/p2-comet-qe/test-runs/20260619-141654/summary.json
+    junit: specs/changes/p2-comet-qe/test-runs/20260619-141654/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/ -v
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-comet-qe/test-runs/20260619-141701/junit.xml' -q
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/p2-comet-qe/test-runs/20260619-141701/summary.json
+    junit: specs/changes/p2-comet-qe/test-runs/20260619-141701/junit.xml
+  - phase: full
+    status: passed
+    command: >-
+      pytest tests/ -q
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p2-comet-qe/test-runs/20260619-144130/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/p2-comet-qe/test-runs/20260619-144130/summary.json
+    junit: specs/changes/p2-comet-qe/test-runs/20260619-144130/junit.xml
+final-status: passed

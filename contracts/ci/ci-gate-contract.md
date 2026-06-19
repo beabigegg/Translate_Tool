@@ -3,8 +3,8 @@ contract: ci
 summary: CI gate inventory, artifact retention, and rollback requirements.
 owner: platform-team
 surface: delivery-pipeline
-schema-version: 0.4.2
-last-changed: 2026-06-18
+schema-version: 0.4.3
+last-changed: 2026-06-19
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -84,6 +84,16 @@ All gates in the Gate Inventory marked `required: yes` must pass before a PR is 
 ## Informational Gate Promotion Policy
 
 When a required gate produces results that vary across runner versions due to third-party library non-determinism (e.g. PyMuPDF table-detection variance), the affected field or sub-check MUST be quarantined to an informational sub-job rather than disabling or deleting the gate. The informational sub-job must record: the affected gate name, the non-deterministic field, the library and version range exhibiting the behavior, an assigned owner, and an exit date. The parent gate remains required and continues to block on all deterministic fields.
+
+## Validator Dependencies
+
+The `cdd-kit validate --contracts` gate requires Python packages beyond the application runtime. These must be present in `app/backend/requirements.txt` (not installed ad-hoc) so that a clean CI environment can run the gate:
+
+| validator | required package | gate step |
+|---|---|---|
+| response-shape | `jsonschema>=4.0.0` | Validate contracts |
+
+**Invariant**: `jsonschema>=4.0.0` must remain in `app/backend/requirements.txt` as long as `tests/contract/response-samples.json` exists. If `response-samples.json` is removed, the package may be dropped if no other consumer requires it.
 
 ## Artifact Retention Policy
 

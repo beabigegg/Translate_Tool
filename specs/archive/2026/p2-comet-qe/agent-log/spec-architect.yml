@@ -1,0 +1,11 @@
+agent: spec-architect
+change-id: p2-comet-qe
+date: 2026-06-19
+status: complete
+
+artifacts:
+  - { type: design-doc-path, pointer: "specs/changes/p2-comet-qe/design.md" }
+  - { type: adr-written, pointer: "none (decisions constrained by accepted BR-55/56/57 + data-shape contract; no novel reversible trade-off)" }
+  - { type: affected-areas, pointer: "quality_evaluator (new), job_manager, translation_service, api routes/schemas, config, deps" }
+  - { type: decision-summary, pointer: "sync in-thread post-completion QE; in-memory JobQualityRecord; dedicated in-process module; reference-free (content,translated_content); lazy cached model load" }
+  - { type: risks-noted, pointer: "0 high, 3 medium (torch dep size, code-map not consulted, IR reachability from _run_job for planner to confirm)" }

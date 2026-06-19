@@ -1,0 +1,41 @@
+change-id: p2-comet-qe
+status: in-progress
+tier: 2
+context-governance: v1
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on: []
+
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done, note: "api-contract 0.5.0 (BlockQualityScore, JobQualityResponse, GET /jobs/{id}/quality), api-inventory 0.2.0, data-shape 0.6.0 (QE Score Representation section), env 0.6.0 (QE_ENABLED, QE_MODEL_NAME, QE_DEVICE), business-rules 0.10.0 (BR-54–BR-57, Table P); cdd-kit validate --contracts passes" }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: done, note: "design.md written by spec-architect; 5 decisions resolved: D-1 sync QE in worker thread, D-2 in-memory JobQualityRecord in job store, D-3 quality_evaluator.py module boundary, D-4 reference-free COMET input shape, D-5 lazy process-cached model load" }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done, note: "ci-gates.md written; tier-floor-override: 2; 5 required gates (all pre-existing steps); dependency gate note for unbabel-comet transitive GPU dep; change-gate wired in contract-driven-gates.yml" }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done, note: "implementation-plan.md written; DR-1 resolved via post_translate_hook observer (candidate a); 11 IPs in TDD order; pre_translate_hook pattern confirmed in all 5 processors; IP-4 flagged as most invasive step" }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: done, note: "BlockQualityScore + JobQualityResponse schemas added; GET /jobs/{job_id}/quality endpoint added; api-inventory row added; version 0.5.0" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no CSS/UI surface" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: done, note: "QE_ENABLED, QE_MODEL_NAME, QE_DEVICE added; .env.example.template and env.schema.json updated; version 0.6.0" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: done, note: "QE Score Representation section added (BlockQualityScore, JobQualityRecord); Known consumers + Invalid Data Behavior rows added; version 0.6.0" }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: done, note: "BR-54–BR-57 added; Table P added; version 0.10.0" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no new gate required; existing unit-tests and contract-validate gates cover QE changes" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done, note: "test-plan.md: 14 unit/data-boundary tests in tests/test_quality_evaluation.py; 3 contract rows in tests/test_env_contract.py" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: done, note: "test-plan.md: 3 integration tests in tests/test_translation_strategy.py (QE hook wiring, disabled path, translate_texts regression)" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: skipped, note: "no E2E user journey surface at Tier 2" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "no monkey tests at Tier 2; data-boundary covered in unit tests" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "no stress/soak at Tier 2" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: done, note: "quality_evaluator.py created; post_translate_hook threaded through orchestrator + 5 processors; job_manager.py QE scoring + JobQualityRecord; api schemas + route; test stubs + extensions written; openapi.yml regenerated; cdd-kit gate passes" }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no UI change" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: done, note: "QE_ENABLED, QE_MODEL_NAME, QE_DEVICE added to config.py; .env.example.template already updated in contract phase; unbabel-comet added to requirements.txt" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: done, note: "contract-driven-gates.yml: change gate step set to cdd-kit gate p2-comet-qe; active comment updated" }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI surface" }
+  - { id: "5.2", section: Review, title: "Visual review", status: skipped, note: "no visual surface" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done, note: "contract-reviewer approved with changes-required; all changes applied; validate --contracts passes" }
+  - { id: "5.4", section: Review, title: "QA review", status: done, note: "qa-reviewer: changes-required-applied: F-1 response-samples.json created + openapi.json exported; F-2 test_qe_hook_called_after_translation rewrote to use real XLSX processor + hook_calls assertion; F-3 test_score_block_id_matches_element_id rewrote to use real processor emission; F-4 test_qe_disabled/test_qe_invalid_device rewrote to call production code; all 690 tests pass; gate passes" }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done, note: "cdd-kit gate p2-comet-qe passes; cdd-kit validate --contracts passes (response-shape: 1 endpoint checked/passed); openapi export --check passes; full suite 690 passed" }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "all gates green locally; CI equivalent: contract-validate, change-gate, openapi-sync, unit-tests, layout-detector-dependency-gate (no onnxruntime-gpu in transitive tree)" }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: skipped, note: "none" }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "none" }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "A: jsonschema dep rule → contracts/ci/ci-gate-contract.md §Validator Dependencies v0.4.3; B: wrong-entry-point tautology subcase → CLAUDE.md managed region, merged into tautological-tests line" }

@@ -1,0 +1,31 @@
+change-id: p2-comet-qe
+agent: architecture-reviewer
+timestamp: "2026-06-19T00:00:00Z"
+status: complete
+artifacts:
+  - { type: adr-written, pointer: "none (decision recorded in design.md DR-1 Resolution; reversible flag-gated hook, no boundary move)" }
+  - { type: affected-areas, pointer: "job_manager, orchestrator, pdf/docx/pptx/xlsx processors, quality_evaluator" }
+  - { type: decision-summary, pointer: "post_translate_hook observer callback into per-job accumulator; no IR rewrite; translate_document stays unwired" }
+  - { type: risks-noted, pointer: "0 high, 1 medium (synthetic positional block_id for non-IR formats is run-stable not durable)" }
+next-action: none
+notes: >
+  DR-1 resolved with candidate (a): post_translate_hook param mirrors the existing
+  pre_translate_hook plumbing through process_files into every processor; zero
+  process_files return-type change. Corrected the task's "Option C" framing —
+  wiring translate_document() into DOCX/PPTX/XLSX is NOT needed (forbidden IR
+  rewrite); the existing tmap (keyed (tgt,src_text)) and PDF IR element_id already
+  surface (src, mt). block_id = element_id for PDF-IR, synthetic
+  "{ext}:{file_stem}:{index}" for tmap formats + PDF PyPDF2 fallback. Accumulator
+  owned by single _run_job thread (thread-safe, no lock); appends across files and
+  route groups. Two contract deltas noted for implementation-planner (NOT edited
+  here): data-shape-contract block_id clarification + a new BR (e.g. BR-58) for
+  best-effort non-IR block identity, subordinate to BR-56.
+files-read:
+  - app/backend/services/job_manager.py
+  - app/backend/processors/orchestrator.py
+  - app/backend/processors/pdf_processor.py
+  - app/backend/processors/docx_processor.py
+  - app/backend/processors/pptx_processor.py
+  - app/backend/processors/xlsx_processor.py
+  - app/backend/services/translation_service.py
+  - app/backend/models/translatable_document.py
