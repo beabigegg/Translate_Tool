@@ -65,13 +65,19 @@ def load_model(model_name: str, device: str) -> object:
     return model
 
 
-def score_blocks(model: object, blocks: List[Tuple[str, str]]) -> List[float]:
+def score_blocks(
+    model: object,
+    blocks: List[Tuple[str, str]],
+    device: str = "cpu",
+) -> List[float]:
     """Score translated blocks with a reference-free COMET model.
 
     Args:
         model: Loaded COMET model (returned by :func:`load_model`).
         blocks: List of ``(src, mt)`` pairs — NO block_id (block_id is owned
             by the caller in IP-5).
+        device: Torch device string used at load time (``"cpu"`` or ``"cuda"``).
+            When ``"cuda"``, prediction runs on 1 GPU (PyTorch Lightning gpus=1).
 
     Returns:
         List of float scores, one per input block.
@@ -82,7 +88,8 @@ def score_blocks(model: object, blocks: List[Tuple[str, str]]) -> List[float]:
         return []
     try:
         data = [{"src": src, "mt": mt} for src, mt in blocks]
-        prediction = model.predict(data, batch_size=8, gpus=0)  # type: ignore[union-attr]
+        gpus = 1 if device == "cuda" else 0
+        prediction = model.predict(data, batch_size=8, gpus=gpus)  # type: ignore[union-attr]
         # unbabel-comet returns a ModelOutput with .scores list
         scores: List[float] = prediction.scores
         return scores

@@ -373,7 +373,7 @@ class JobManager:
                 if QE_ENABLED and mode != "extraction_only":
                     try:
                         qe_model = load_model(QE_MODEL_NAME, QE_DEVICE)
-                        scores_raw = score_blocks(qe_model, [(src, mt) for _, src, mt in qe_blocks])
+                        scores_raw = score_blocks(qe_model, [(src, mt) for _, src, mt in qe_blocks], device=QE_DEVICE)
                         if scores_raw:
                             qe_score_list = [
                                 BlockQualityScore(block_id=bid, score=s, model=QE_MODEL_NAME)

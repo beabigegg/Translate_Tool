@@ -1203,3 +1203,15 @@
   color: var(--text-muted);
   font-size: var(--text-sm);
 }
+
+/* ===================================================================
+   TranslationProgress Phase 2
+   =================================================================== */
+.progress-details { margin-top: 0.5rem; color: var(--text-muted); font-size: 0.875rem; }
+.progress-file { font-style: italic; }
+.progress-segs, .progress-speed, .progress-eta { margin: 0.15rem 0; }
+.completion-panel { margin-top: 1.25rem; border-top: 1px solid var(--border); padding-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.result-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; }
+.result-label { color: var(--text-muted); }
+.result-value { font-weight: 500; }
+.provider-badge { background: var(--surface-2, #f3f4f6); padding: 0.1rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-family: monospace; }

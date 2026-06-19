@@ -80,7 +80,7 @@ export default function TranslatePage() {
     try {
       const form = new FormData();
       files.forEach(f => form.append('files', f));
-      selectedTargets.forEach(t => form.append('target_langs', t));
+      form.append('targets', selectedTargets.join(','));
       form.append('src_lang', srcLang);
       form.append('profile', selectedProfile);
       form.append('mode', jobMode);

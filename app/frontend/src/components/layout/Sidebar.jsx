@@ -34,7 +34,7 @@ export function Sidebar() {
       <div className="sidebar-footer">
         <div className="health-indicator">
           <span className={`health-dot ${isOnline ? 'health-dot-online' : 'health-dot-offline'}`} />
-          <span>{isOnline ? 'Ollama 連線中' : 'Ollama 離線'}</span>
+          <span>{isOnline ? '後端連線中' : '後端離線'}</span>
         </div>
       </div>
     </aside>

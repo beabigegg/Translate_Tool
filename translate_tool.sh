@@ -27,11 +27,13 @@ OLLAMA_URL="${OLLAMA_BASE_URL:-http://localhost:11434}"
 
 usage() {
   cat <<'EOF'
-Usage: ./translate_tool.sh <start|stop|status>
+Usage: ./translate_tool.sh <start|stop|restart|status> [--dev]
 
-start  - launch backend and frontend services
-stop   - stop running services
-status - show current service status
+start        - build frontend and launch backend (production mode)
+start --dev  - launch backend + Vite dev server (dev mode, port 5173)
+stop         - stop running services
+restart      - stop then start (pass --dev to keep dev mode)
+status       - show current service status
 EOF
 }
 
@@ -360,9 +362,22 @@ show_urls() {
   echo ""
 }
 
+DEV_MODE=false; [[ "${2:-}" == "--dev" ]] && DEV_MODE=true
+
 command="${1:-}"
 case "$command" in
   start)
+    # Source .env for app-level environment variables
+    if [[ -f "$ROOT_DIR/.env" ]]; then
+      set -a
+      source "$ROOT_DIR/.env"
+      set +a
+    fi
+
+    # QE env var defaults
+    export QE_ENABLED="${QE_ENABLED:-true}"
+    export QE_DEVICE="${QE_DEVICE:-cuda}"
+
     ensure_conda
     ensure_node
     ensure_deps
@@ -370,20 +385,45 @@ case "$command" in
     # Release any occupied resources before starting
     release_resources
 
-    # Start backend with conda python
-    start_process "backend" python -m app.backend.main
-
-    # Start frontend
-    start_process "frontend" bash -c "cd \"$ROOT_DIR/app/frontend\" && npm run dev"
-
-    # Wait for backend and show URLs
-    wait_for_backend 20 || true
-    show_urls
+    if [[ "$DEV_MODE" == "true" ]]; then
+      # Dev mode: Vite dev server + backend
+      start_process "backend" python -m app.backend.main
+      start_process "frontend" bash -c "cd \"$ROOT_DIR/app/frontend\" && npm run dev"
+      wait_for_backend 20 || true
+      echo ""
+      echo "========================================"
+      echo "  Translate Tool is running! (dev mode)"
+      echo "----------------------------------------"
+      echo "  Frontend:  http://localhost:${FRONTEND_PORT}"
+      echo "  Backend:   http://${BACKEND_HOST}:${BACKEND_PORT}"
+      echo "========================================"
+      echo ""
+    else
+      # Production mode: build frontend, serve via backend static files
+      echo "Building frontend..."
+      (cd "$ROOT_DIR/app/frontend" && npm run build)
+      start_process "backend" python -m app.backend.main
+      wait_for_backend 20 || true
+      echo ""
+      echo "========================================"
+      echo "  Translate Tool is running!"
+      echo "----------------------------------------"
+      echo "  URL: http://${BACKEND_HOST}:${BACKEND_PORT}"
+      echo "========================================"
+      echo ""
+    fi
     ;;
   stop)
     stop_process "frontend"
     stop_process "backend"
     release_resources
+    ;;
+  restart)
+    stop_process "frontend"
+    stop_process "backend"
+    release_resources
+    # Re-invoke start with optional --dev flag
+    "$0" start "${2:-}"
     ;;
   status)
     status_process "backend"

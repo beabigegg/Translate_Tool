@@ -2,10 +2,10 @@
 set -eo pipefail
 
 # Activate conda
-eval "$(~/miniconda3/bin/conda shell.bash hook)"
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
 conda activate translate-tool
 
-cd /home/egg/project/Translate_Tool
+cd /home/egg/Projects/Translate_Tool
 
 echo "Python: $(which python)"
 echo ""

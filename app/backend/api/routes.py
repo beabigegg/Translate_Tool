@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 
 from app.backend.api.schemas import (
     BlockQualityScore,
+    JobAuditResponse,
     JobCreateResponse,
     JobQualityResponse,
     JobStatus,
@@ -221,6 +222,8 @@ def job_status(job_id: str) -> JobStatus:
         started_at = job.started_at
         term_summary = job.term_summary
         job_provider = getattr(job, "provider", None)  # p1-cloud-providers (AC-6)
+        job_quality = getattr(job, "quality", None)
+        job_audit = getattr(job, "audit", None)
 
     output_ready = output_zip is not None and output_zip.exists()
 
@@ -243,6 +246,18 @@ def job_status(job_id: str) -> JobStatus:
     if overall_progress > 0.01 and status == "running":
         eta = elapsed * (1.0 - overall_progress) / overall_progress
 
+    # Compute quality_score_avg from QE scores
+    quality_score_avg: Optional[float] = None
+    if job_quality and job_quality.scores:
+        scores_list = [s.score for s in job_quality.scores]
+        if scores_list:
+            quality_score_avg = sum(scores_list) / len(scores_list)
+
+    # Compute audit_hit_rate from terminology audit result
+    audit_hit_rate: Optional[float] = None
+    if job_audit is not None:
+        audit_hit_rate = job_audit.terminology_hit_rate
+
     return JobStatus(
         job_id=job.job_id,
         status=status,
@@ -261,6 +276,8 @@ def job_status(job_id: str) -> JobStatus:
         eta_seconds=round(eta, 1) if eta is not None else None,
         term_summary=term_summary,
         provider=job_provider,  # p1-cloud-providers (AC-6)
+        quality_score_avg=quality_score_avg,
+        audit_hit_rate=audit_hit_rate,
     )
 
 
@@ -297,6 +314,25 @@ def job_quality(job_id: str) -> JobQualityResponse:
             BlockQualityScore(block_id=s.block_id, score=s.score, model=s.model)
             for s in (record.scores or [])
         ],
+    )
+
+
+@router.get("/jobs/{job_id}/audit", response_model=JobAuditResponse)
+def job_audit(job_id: str) -> JobAuditResponse:
+    """Return terminology audit result for a completed job (p2-term-audit)."""
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.audit is None:
+        return JobAuditResponse(job_id=job_id, status="disabled")
+    return JobAuditResponse(
+        job_id=job_id,
+        status="available",
+        hit_rate=job.audit.terminology_hit_rate,
+        unapplied_terms=job.audit.unapplied_terms,
+        rejected_injections=job.audit.rejected_injections,
+        total_approved=job.audit.total_approved,
+        matched_approved=job.audit.matched_approved,
     )
 
 

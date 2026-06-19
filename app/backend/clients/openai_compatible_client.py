@@ -61,6 +61,7 @@ class OpenAICompatibleClient:
         provider_id: str = "openai-compatible",
         connect_timeout: float = _CONNECT_TIMEOUT_S,
         read_timeout: float = _READ_TIMEOUT_S,
+        verify_ssl: bool = True,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
@@ -70,6 +71,7 @@ class OpenAICompatibleClient:
         self._read_timeout = read_timeout
         self._session = requests.Session()
         self._session.headers.update({"Content-Type": "application/json"})
+        self._session.verify = verify_ssl
         # API key is always passed as an explicit per-request header so that test
         # mocks that intercept requests.Session.post can inspect it in kwargs.
         # The header dict is reused on every call (no allocation per request).
