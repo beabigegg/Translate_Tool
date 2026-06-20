@@ -545,10 +545,11 @@ class TestFallbackChainConfig:
         os.environ.setdefault("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
         os.environ.setdefault("DEEPSEEK_API", "test-deepseek-key")
         os.environ.setdefault("OLLAMA_BASE_URL", "http://localhost:11434")
+        _example_yml = str(_REPO_ROOT / "config" / "providers.yml.example")
         try:
             import app.backend.config as cfg_module
             importlib.reload(cfg_module)
-            config = cfg_module.load_providers_config()
+            config = cfg_module.load_providers_config(config_path=_example_yml)
         finally:
             # Restore environment
             os.environ.clear()
@@ -583,10 +584,11 @@ class TestFallbackChainConfig:
         os.environ.setdefault("PANJIT_API", "test-key")
         os.environ.setdefault("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
         os.environ.setdefault("OLLAMA_BASE_URL", "http://localhost:11434")
+        _example_yml = str(_REPO_ROOT / "config" / "providers.yml.example")
         try:
             import app.backend.config as cfg_module
             importlib.reload(cfg_module)
-            config = cfg_module.load_providers_config()
+            config = cfg_module.load_providers_config(config_path=_example_yml)
         finally:
             os.environ.clear()
             os.environ.update(env_backup)
