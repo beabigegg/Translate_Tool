@@ -1,0 +1,14 @@
+- type: tier-floor-override
+  change-id: settings-page-cloud-redesign
+  timestamp: '2026-06-20T08:27:10.386Z'
+  declared-tier: 2
+  floor-tier: 0
+  label: critical surface (auth / payments / data migration / concurrency / secrets)
+  matched:
+    - api key
+    - endpoint
+    - password
+    - session
+  reason: >-
+    true — auth/endpoint/integration vocab triggers false floor; actual risk medium/cross-module
+    (localStorage-only key, additive endpoints, no DDL)

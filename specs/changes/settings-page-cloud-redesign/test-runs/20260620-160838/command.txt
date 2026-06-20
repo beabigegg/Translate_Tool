@@ -1,0 +1,1 @@
+pytest tests/test_providers_api.py -v --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/settings-page-cloud-redesign/test-runs/20260620-160838/junit.xml' -q --maxfail=1 -ra

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class JobCreateResponse(BaseModel):
@@ -181,3 +181,45 @@ class JobAuditResponse(BaseModel):
     rejected_injections: List[str] = []
     total_approved: int = 0
     matched_approved: int = 0
+
+
+# ---------------------------------------------------------------------------
+# Provider API schemas (settings-page-cloud-redesign, BR-63/BR-64/BR-65)
+# ---------------------------------------------------------------------------
+
+class ProviderHealthItem(BaseModel):
+    """Single element in GET /providers/health response (BR-63)."""
+    provider: str
+    status: str  # "online" | "offline" | "not_configured"
+    latency_ms: Optional[float] = None
+
+
+class ProviderModelEntry(BaseModel):
+    """Single element in GET /providers/models response (BR-63)."""
+    provider: str
+    translate_model: Optional[str] = None
+    long_doc_model: Optional[str] = None
+
+
+class TestTranslationRequest(BaseModel):
+    """Request body for POST /providers/test-translation (BR-64, BR-65)."""
+    text: str = Field(..., min_length=1)
+    src_lang: str
+    targets: List[str] = Field(..., min_length=1)
+    profile: Optional[str] = None
+    models: Optional[List[str]] = None
+    deepseek_api_key: Optional[str] = None
+
+
+class TestTranslationResult(BaseModel):
+    """Single element in POST /providers/test-translation response (BR-64).
+
+    comet_score is Optional — serialise with exclude_none=True so the field is
+    entirely absent (not null) when QE_ENABLED=False (BR-64 / AC-6 / AC-8).
+    """
+    model_id: str
+    provider: str
+    duration_ms: float
+    translation: Optional[str] = None
+    comet_score: Optional[float] = None
+    error: Optional[str] = None

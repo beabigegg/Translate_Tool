@@ -553,6 +553,85 @@
         ],
         "x-cdd-errors": "200 (status: available/pending/disabled/unavailable); 404 job not found"
       }
+    },
+    "/providers/health": {
+      "get": {
+        "summary": "GET /providers/health",
+        "responses": {
+          "200": {
+            "description": "Contract response: ProviderHealthItem[]",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderHealthItem"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-cdd-errors": "-"
+      }
+    },
+    "/providers/models": {
+      "get": {
+        "summary": "GET /providers/models",
+        "responses": {
+          "200": {
+            "description": "Contract response: ProviderModelEntry[]",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderModelEntry"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-cdd-errors": "-"
+      }
+    },
+    "/providers/test-translation": {
+      "post": {
+        "summary": "POST /providers/test-translation",
+        "responses": {
+          "201": {
+            "description": "Contract response: TestTranslationResult[]",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TestTranslationResult"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error response (see contract error format)"
+          },
+          "422": {
+            "description": "Error response (see contract error format)"
+          }
+        },
+        "requestBody": {
+          "description": "Contract request: TestTranslationRequest",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestTranslationRequest"
+              }
+            }
+          }
+        },
+        "x-cdd-errors": "400, 422"
+      }
     }
   },
   "x-cdd-generated-from": "contracts/api/api-contract.md",
@@ -1140,6 +1219,103 @@
         "required": [
           "job_id",
           "status"
+        ]
+      },
+      "ProviderHealthItem": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "latency_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "provider",
+          "status"
+        ]
+      },
+      "TestTranslationRequest": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "src_lang": {
+            "type": "string"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "profile": {
+            "type": "string"
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "deepseek_api_key": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "src_lang",
+          "targets"
+        ]
+      },
+      "TestTranslationResult": {
+        "type": "object",
+        "properties": {
+          "model_id": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "translation": {
+            "type": "string"
+          },
+          "duration_ms": {
+            "type": "number"
+          },
+          "comet_score": {
+            "type": "number"
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "model_id",
+          "provider",
+          "duration_ms"
+        ]
+      },
+      "ProviderModelEntry": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "translate_model": {
+            "type": "string"
+          },
+          "long_doc_model": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider"
         ]
       }
     }

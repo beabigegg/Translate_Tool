@@ -1,0 +1,22 @@
+agent: backend-engineer
+change-id: settings-page-cloud-redesign
+date: 2026-06-20
+status: done
+
+artifacts:
+  - { type: files-changed, pointer: "app/backend/api/schemas.py:186-226 (4 new Pydantic models)" }
+  - { type: files-changed, pointer: "app/backend/api/routes.py:1-60 (imports: asyncio, logging, OpenAICompatibleClient, QE_DEVICE/QE_MODEL_NAME)" }
+  - { type: files-changed, pointer: "app/backend/api/routes.py:627-900 (3 new route handlers: GET /providers/health, GET /providers/models, POST /providers/test-translation)" }
+  - { type: tests-added, pointer: "n/a (test_providers_api.py to be written by test-strategist; existing 764 tests all pass)" }
+  - { type: test-output, pointer: "764 passed, 4 skipped, 1 warning in 23.53s" }
+  - { type: contracts-touched, pointer: "contracts/api/openapi.yml regenerated (28 endpoints); contracts/api/openapi.json regenerated" }
+
+notes: |
+  - All 3 endpoints degrade gracefully when _providers_config is None (return [])
+  - GET /providers/health: PANJIT uses verify_ssl=False; DeepSeek probed only when key supplied (BR-63)
+  - POST /providers/test-translation: blocking requests calls wrapped in asyncio.to_thread;
+    asyncio.gather with return_exceptions=True for parallel slots; deepseek_api_key never logged (BR-65);
+    comet_score serialised with model_dump(exclude_none=True) so field absent when QE_ENABLED=False (BR-64)
+  - ollama-local provider is skipped in /providers/health and /providers/models because it has
+    no 'models' map (no translate model), so it naturally produces no slot in test-translation default path
+  - Test evidence recorded: collect (pass), changed-area (98 tests pass)

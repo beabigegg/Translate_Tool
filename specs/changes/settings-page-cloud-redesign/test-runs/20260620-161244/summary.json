@@ -1,0 +1,15 @@
+{
+  "change_id": "settings-page-cloud-redesign",
+  "phase": "collect",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "conda run -n translate-tool pytest tests/ --collect-only -q",
+  "duration_ms": 2549,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/settings-page-cloud-redesign/test-runs/20260620-161244/summary.json",
+    "stdout": "specs/changes/settings-page-cloud-redesign/test-runs/20260620-161244/stdout.log",
+    "stderr": "specs/changes/settings-page-cloud-redesign/test-runs/20260620-161244/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

@@ -1,1 +1,0 @@
-python -m pytest tests/ --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/download-url-in-jobstatus/test-runs/20260620-103054/junit.xml' --maxfail=1 --tb=short -ra

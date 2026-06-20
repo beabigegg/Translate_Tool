@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
 visible-dirs: 57
-visible-files: 203
+visible-files: 206
 omitted-dirs: 12
 truncated-dirs: 0
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -238,6 +238,7 @@ Translate_Tool/
 |   |   |   |-- pptx/
 |   |   |   |   \-- ... (max depth)
 |   |   |   \-- README.md
+|   |   |-- minimal_phase0.docx
 |   |   \-- test.pdf
 |   |-- templates/
 |   |   |-- data-boundary/
@@ -281,6 +282,7 @@ Translate_Tool/
 |   |-- test_model_router.py
 |   |-- test_ollama_client_dynamic_strategy.py
 |   |-- test_openai_compatible_client.py
+|   |-- test_orchestrator_phase0.py
 |   |-- test_pdf_generator.py
 |   |-- test_pdf_parser.py
 |   |-- test_pptx_parser.py
@@ -292,6 +294,7 @@ Translate_Tool/
 |   |-- test_term_api.py
 |   |-- test_term_audit.py
 |   |-- test_term_db.py
+|   |-- test_term_extractor_resilience.py
 |   |-- test_term_extractor.py
 |   |-- test_term_state_machine.py
 |   |-- test_text_expansion_benchmark.py

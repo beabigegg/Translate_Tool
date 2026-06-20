@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.13, pytest-9.1.1, pluggy-1.6.0 -- /home/egg/miniforge3/bin/python
+cachedir: .pytest_cache
+rootdir: /home/egg/Projects/Translate_Tool
+plugins: anyio-4.14.0
+collecting ... ERROR: file or directory not found: tests/test_providers_api.py
+
+collected 0 items
+
+============================ no tests ran in 0.01s =============================

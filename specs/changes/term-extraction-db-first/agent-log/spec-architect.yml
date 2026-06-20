@@ -1,5 +1,0 @@
-artifacts:
-  - { type: adr-written, pointer: "none (trade-off captured in design.md Key Decisions; reversal path is an explicit non-goal, no silent-regression risk)" }
-  - { type: affected-areas, pointer: "term-extraction (term_extractor, term_db), orchestrator Phase 0 hook, openai_compatible_client embeddings, config" }
-  - { type: decision-summary, pointer: "DB-first embedding-gated Phase 0: cosine-match DB then PANJIT gemma4 extract on miss; Ollama removed from translation path" }
-  - { type: risks-noted, pointer: "0 high, 3 medium (per-call embed cost, PANJIT response-shape unconfirmed, OLLAMA_BASE_URL removal)" }

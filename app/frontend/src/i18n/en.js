@@ -20,6 +20,9 @@ export default {
   // Buttons
   'btn.next': 'Next',
   'btn.prev': 'Previous',
+  'btn.refresh': 'Refresh',
+  'btn.save': 'Save',
+  'btn.clear': 'Clear',
   'btn.submit': 'Start Translation',
   'btn.submitExtract': 'Start Extraction',
   'btn.submitting': 'Submitting...',
@@ -39,6 +42,12 @@ export default {
   // Labels
   'label.srcLang': 'Source Language',
   'label.autoDetect': 'Auto-detect',
+  'label.provider': 'Provider',
+  'label.status': 'Status',
+  'label.translateModel': 'Translate Model',
+  'label.longDocModel': 'Long Doc Model',
+  'label.sourceText': 'Source Text',
+  'label.providers': 'Select Providers',
   'label.profile': 'Translation Profile',
   'label.targetLangs': 'Target Languages',
   'label.translate': 'Translate',
@@ -51,6 +60,7 @@ export default {
   'label.gpuVram': 'GPU VRAM',
 
   // Feedback
+  'msg.noModels': 'No model configuration available',
   'msg.translationComplete': 'Translation complete',
   'msg.translationFailed': 'Translation failed',
   'msg.translationCancelled': 'Translation cancelled',
@@ -77,6 +87,19 @@ export default {
   'settings.themeLight': 'Light',
   'settings.themeDark': 'Dark',
   'settings.themeSystem': 'System',
+  'settings.providerStatus': 'Provider Status',
+  'settings.modelConfig': 'Model Configuration',
+  'settings.deepseekKey': 'DeepSeek API Key',
+  'settings.deepseekKeyDesc': 'Your DeepSeek API key is stored locally in the browser only — it is never sent to the server or persisted.',
+  'settings.deepseekKeyPlaceholder': 'Enter DeepSeek API key...',
+  'settings.keyConfigured': 'Configured',
+  'settings.keyNotConfigured': 'Not configured',
+  'settings.deepseekKeyRequired': 'Configure a DeepSeek API key first',
+  'settings.testTranslation': 'Test Translation',
+  'settings.testTextPlaceholder': 'Enter a sentence to test...',
+  'settings.runTest': 'Run Test',
+  'settings.testRunning': 'Running...',
+  'settings.testResults': 'Results',
 
   // Terms
   'terms.total': 'Total Terms',
@@ -97,4 +120,10 @@ export default {
   'status.offline': 'Ollama Offline',
   'status.completed': 'Completed',
   'status.failed': 'Failed',
+  'settings.warnNoText': 'Please enter source text',
+  'settings.warnNoTarget': 'Please select at least one target language',
+  'settings.warnNoProvider': 'Please select at least one provider',
+  'provider.online': 'Online',
+  'provider.offline': 'Offline',
+  'provider.notConfigured': 'Not configured',
 };

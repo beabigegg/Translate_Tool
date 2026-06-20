@@ -1,0 +1,21 @@
+change-id: settings-page-cloud-redesign
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: collect
+    status: passed
+    command: conda run -n translate-tool pytest tests/ --collect-only -q
+    summary: specs/changes/settings-page-cloud-redesign/test-runs/20260620-161244/summary.json
+  - phase: changed-area
+    status: passed
+    command: conda run -n translate-tool pytest tests/ -q --tb=short
+    summary: specs/changes/settings-page-cloud-redesign/test-runs/20260620-162635/summary.json
+  - phase: targeted
+    status: passed
+    command: conda run -n translate-tool pytest tests/test_providers_api.py -v
+    summary: specs/changes/settings-page-cloud-redesign/test-runs/20260620-161301/summary.json
+final-status: passed

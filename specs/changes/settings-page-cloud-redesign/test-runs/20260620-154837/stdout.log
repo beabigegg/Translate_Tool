@@ -1,0 +1,10 @@
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR tests/test_jobstatus_download_url.py
+ERROR tests/test_metrics_endpoint.py
+ERROR tests/test_model_config_api.py
+ERROR tests/test_term_api.py
+ERROR tests/test_term_state_machine.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 5 errors during collection !!!!!!!!!!!!!!!!!!!!
+720 tests collected, 5 errors in 1.26s

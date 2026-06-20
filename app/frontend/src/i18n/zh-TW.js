@@ -20,6 +20,9 @@ export default {
   // Buttons
   'btn.next': '下一步',
   'btn.prev': '上一步',
+  'btn.refresh': '重新整理',
+  'btn.save': '儲存',
+  'btn.clear': '清除',
   'btn.submit': '開始翻譯',
   'btn.submitExtract': '開始萃取',
   'btn.submitting': '提交中...',
@@ -39,6 +42,12 @@ export default {
   // Labels
   'label.srcLang': '來源語言',
   'label.autoDetect': '自動偵測',
+  'label.provider': '供應商',
+  'label.status': '狀態',
+  'label.translateModel': '翻譯模型',
+  'label.longDocModel': '長文件模型',
+  'label.sourceText': '來源文字',
+  'label.providers': '選擇供應商',
   'label.profile': '翻譯情境',
   'label.targetLangs': '目標語言',
   'label.translate': '翻譯',
@@ -51,6 +60,7 @@ export default {
   'label.gpuVram': 'GPU 顯存容量',
 
   // Feedback
+  'msg.noModels': '無可用模型設定',
   'msg.translationComplete': '翻譯完成',
   'msg.translationFailed': '翻譯失敗',
   'msg.translationCancelled': '翻譯已取消',
@@ -77,6 +87,19 @@ export default {
   'settings.themeLight': '淺色',
   'settings.themeDark': '暗色',
   'settings.themeSystem': '跟隨系統',
+  'settings.providerStatus': '供應商狀態',
+  'settings.modelConfig': '模型設定',
+  'settings.deepseekKey': 'DeepSeek API 金鑰',
+  'settings.deepseekKeyDesc': '您的 DeepSeek API 金鑰僅儲存於本地瀏覽器，不會傳送至伺服器或持久化。',
+  'settings.deepseekKeyPlaceholder': '輸入 DeepSeek API 金鑰…',
+  'settings.keyConfigured': '已設定',
+  'settings.keyNotConfigured': '未設定',
+  'settings.deepseekKeyRequired': '請先設定 DeepSeek API 金鑰',
+  'settings.testTranslation': '測試翻譯',
+  'settings.testTextPlaceholder': '輸入一句話進行測試…',
+  'settings.runTest': '執行測試',
+  'settings.testRunning': '測試中…',
+  'settings.testResults': '測試結果',
 
   // Terms
   'terms.total': '總術語數',
@@ -97,4 +120,10 @@ export default {
   'status.offline': 'Ollama 離線',
   'status.completed': '完成',
   'status.failed': '失敗',
+  'settings.warnNoText': '請輸入來源文字',
+  'settings.warnNoTarget': '請選擇至少一個目標語言',
+  'settings.warnNoProvider': '請選擇至少一個翻譯供應商',
+  'provider.online': '連線中',
+  'provider.offline': '離線',
+  'provider.notConfigured': '未設定',
 };

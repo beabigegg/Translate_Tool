@@ -1,0 +1,5 @@
+artifacts:
+  - { type: adr-written, pointer: "none (decisions captured in design.md; no boundary/persistence/auth-substrate move)" }
+  - { type: affected-areas, pointer: "provider-api-routes, settings-page-frontend, quality-eval-reuse, env-secret-policy" }
+  - { type: decision-summary, pointer: "additive 3 read/test endpoints; DeepSeek key client-only in request body; sync parallel fan-out; models from static providers.yml" }
+  - { type: risks-noted, pointer: "0 high, 0 medium (additive, no persistence/migration); client-stored secret is the only sensitive boundary, contained by env Secret Policy" }

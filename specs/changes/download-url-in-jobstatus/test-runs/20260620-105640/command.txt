@@ -1,1 +1,0 @@
-/home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_jobstatus_download_url.py tests/test_provider_fallback.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/download-url-in-jobstatus/test-runs/20260620-105640/junit.xml' -ra

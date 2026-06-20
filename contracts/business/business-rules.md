@@ -3,7 +3,7 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.14.0
+schema-version: 0.15.0
 last-changed: 2026-06-20
 breaking-change-policy: deprecate-2-minors
 ---
@@ -292,3 +292,13 @@ breaking-change-policy: deprecate-2-minors
 ## Change Policy
 
 Any business logic change must update this file, the relevant decision table, and regression tests.
+
+---
+
+## Provider Settings Page Rules
+
+| rule | slug | owner | detail |
+|---|---|---|---|
+| BR-63 | provider-health-and-models | application-team | `GET /api/providers/health` probes each configured provider with a lightweight call and returns `{provider, status, latency_ms}`. PANJIT is always probed. DeepSeek is probed only when the `X-DeepSeek-Api-Key` request header is supplied; without it DeepSeek status is `"not_configured"`. The header is used instead of a query parameter to prevent key exposure in server access logs and browser history (BR-65). `GET /api/providers/models` returns model names from the in-memory `providers.yml` config (already loaded via `load_providers_config()`); it MUST NOT make a live `/v1/models` network call. | tests/test_providers_api.py |
+| BR-64 | test-translation-orchestration | application-team | `POST /api/providers/test-translation` is synchronous (no `job_id`, no `BackgroundTasks`) — single-sentence latency is acceptable. Model calls run in parallel via `asyncio.gather(..., return_exceptions=True)`. Partial failure is isolated per model: one failure does NOT fail the full response. HTTP 200 is always returned when the request parses successfully, even if every model errors. The response is `TestTranslationResult[]` with one element per requested model. COMET score is added to each successful result when `QE_ENABLED=true` using the existing `load_model` + `score_blocks` pattern from `quality_evaluator.py`; the `comet_score` field is omitted (not null) when `QE_ENABLED=false`. | tests/test_providers_api.py |
+| BR-65 | deepseek-key-client-only | application-team | The DeepSeek API key used for `POST /api/providers/test-translation` MUST be supplied per-request in the request body field `deepseek_api_key`. The backend MUST NOT read `DEEPSEEK_API` from `.env` for this surface. The key MUST NOT be logged at any level. When `deepseek_api_key` is absent or empty in the request, the DeepSeek slot in the response MUST return `error: "DeepSeek API key not provided"` without making any network call — no cost is incurred. Frontend stores the key only in `localStorage` key `deepseek_api_key`; it is never persisted to backend env. | tests/test_providers_api.py |

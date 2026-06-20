@@ -1,0 +1,42 @@
+change-id: settings-page-cloud-redesign
+status: in-progress
+tier: 2
+tier-floor-override: "true — auth/endpoint/integration vocab triggers false floor; actual risk medium/cross-module (localStorage-only key, additive endpoints, no DDL)"
+context-governance: v1
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on: []
+
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: done }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done, note: "no new gate needed; existing cdd-kit gate + openapi --check cover it" }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: done }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: done }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: done }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: done }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: done }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no new gate needed" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: done }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: done, note: "covered by TestProvidersTestTranslation partial-failure/error-slot tests" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: done, note: "422 for missing text/targets, error-slot for bad key; no fuzz needed" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "single-sentence synchronous endpoint, no load risk" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: done }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: done }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: done, note: "no new env vars; DeepSeek key is client-side only" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: done, note: "no new workflow changes needed" }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: done }
+  - { id: "5.2", section: Review, title: "Visual review", status: done }
+  - { id: "5.3", section: Review, title: "Contract review", status: done }
+  - { id: "5.4", section: Review, title: "QA review", status: done }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "local gate passes; CI run after push" }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: skipped, note: "no informational-only gates for Tier 2" }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly gates for this change" }
+  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }

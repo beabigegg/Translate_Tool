@@ -3,7 +3,7 @@ contract: env
 summary: Environment variable inventory, secret handling, and deployment sync policy.
 owner: platform-team
 surface: runtime-config
-schema-version: 0.8.0
+schema-version: 0.9.0
 last-changed: 2026-06-20
 breaking-change-policy: deprecate-2-minors
 ---
@@ -48,6 +48,8 @@ Variables such as `VITE_`, `NEXT_PUBLIC_`, and `PUBLIC_` are browser-exposed. Ne
 ## Secret Policy
 
 API keys (`PANJIT_API`, `DEEPSEEK_API`) must be stored in `.env` only. `.env` is gitignored and must never be committed. `config/providers.yml` must reference these via `${PANJIT_API}` / `${DEEPSEEK_API}` interpolation only — never embed literal key values. An unresolved `${VAR}` reference must disable the affected provider, not propagate the literal template string to the endpoint. Never log secret env var values.
+
+**DeepSeek user-supplied key (settings-page-cloud-redesign, BR-65):** The DeepSeek API key entered via the Settings UI is a user-supplied, per-session secret that is distinct from the backend `DEEPSEEK_API` env var. It is stored ONLY in browser `localStorage` under key `deepseek_api_key`. It is transmitted per-request in the request body field `deepseek_api_key` to `POST /api/providers/test-translation`. The backend MUST NOT fall back to reading `DEEPSEEK_API` from `.env` for this surface. The backend MUST NOT persist, log, or cache this key beyond the lifetime of the single request. The frontend MUST NOT auto-populate the field from a backend env var — it reads only from `localStorage`. This pattern intentionally trades the inconvenience of re-entry across sessions for avoiding server-side secret storage for a user-owned key.
 
 ## Deployment Sync Policy
 

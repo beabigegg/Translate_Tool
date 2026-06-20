@@ -1,0 +1,5 @@
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/settings-page-cloud-redesign/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_providers_api.py → app/backend/api/routes.py (providers_health, providers_models, providers_test_translation)" }
+  - { type: coverage-tiers, pointer: "unit, contract, data-boundary, resilience (backend); e2e, visual (frontend noted, not implemented by this agent)" }
+  - { type: mapping-completeness, pointer: "all 8 ACs mapped; AC-1/AC-2/AC-4/AC-5 frontend-only noted as e2e; AC-3/AC-6/AC-7/AC-8 fully covered by tests/test_providers_api.py (22 backend test cases)" }

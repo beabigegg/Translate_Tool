@@ -1,0 +1,23 @@
+agent: frontend-engineer
+change-id: settings-page-cloud-redesign
+date: 2026-06-20
+status: complete
+
+artifacts:
+  - { type: files-changed, pointer: "app/frontend/src/api/system.js:1-24" }
+  - { type: files-changed, pointer: "app/frontend/src/hooks/useHealthCheck.js:1-52" }
+  - { type: files-changed, pointer: "app/frontend/src/pages/SettingsPage.jsx:1-355" }
+  - { type: files-changed, pointer: "app/frontend/src/i18n/zh-TW.js (added settings.providerStatus, settings.modelConfig, settings.deepseekKey*, settings.testTranslation*, label.provider, label.status, label.translateModel, label.longDocModel, label.sourceText, label.providers, btn.refresh, btn.save, btn.clear, msg.noModels)" }
+  - { type: files-changed, pointer: "app/frontend/src/i18n/en.js (same keys as zh-TW)" }
+  - { type: components-affected, pointer: "SettingsPage, ProviderStatusBadge (inline), ResultCard (inline)" }
+  - { type: screenshot-paths, pointer: "n/a (no browser available in this environment)" }
+  - { type: accessibility-audit, pointer: "All interactive elements have aria-label or visible text labels; result cards use role=region with aria-label; table uses role=table; DeepSeek disabled checkbox has title explaining why" }
+
+notes: |
+  - VramCalculator import removed from SettingsPage; grep confirms only VramCalculator.jsx itself contains the symbol.
+  - Vite production build passes cleanly (1796 modules transformed).
+  - DeepSeek key: read from localStorage only on mount and at call time; never fetched from backend; never stored in component state beyond draft input.
+  - useHealthCheck updated to export checkProviders (callable from SettingsPage refresh button) and providerHealth/providerHealthLoading state.
+  - No hardcoded hex/px values in SettingsPage — all colors and spacing use CSS vars from tokens.css.
+  - i18n pattern maintained: useTranslation() hook, keys added to both zh-TW.js and en.js.
+  - test-evidence: collect/targeted/changed-area all passed.

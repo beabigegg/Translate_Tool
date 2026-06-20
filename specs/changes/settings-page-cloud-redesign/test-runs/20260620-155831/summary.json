@@ -1,0 +1,15 @@
+{
+  "change_id": "settings-page-cloud-redesign",
+  "phase": "collect",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest tests/ --collect-only -q 2>&1 | tail -5",
+  "duration_ms": 783,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/settings-page-cloud-redesign/test-runs/20260620-155831/summary.json",
+    "stdout": "specs/changes/settings-page-cloud-redesign/test-runs/20260620-155831/stdout.log",
+    "stderr": "specs/changes/settings-page-cloud-redesign/test-runs/20260620-155831/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

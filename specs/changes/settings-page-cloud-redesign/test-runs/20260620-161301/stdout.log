@@ -1,0 +1,39 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0 -- /home/egg/miniforge3/envs/translate-tool/bin/python
+cachedir: .pytest_cache
+rootdir: /home/egg/Projects/Translate_Tool
+plugins: anyio-4.14.0, Faker-40.23.0
+collecting ... collected 24 items
+
+tests/test_providers_api.py::TestProvidersHealth::test_health_panjit_online PASSED [  4%]
+tests/test_providers_api.py::TestProvidersHealth::test_health_panjit_offline PASSED [  8%]
+tests/test_providers_api.py::TestProvidersHealth::test_health_deepseek_not_configured_when_no_key PASSED [ 12%]
+tests/test_providers_api.py::TestProvidersHealth::test_health_deepseek_online_when_key_supplied PASSED [ 16%]
+tests/test_providers_api.py::TestProvidersHealth::test_health_returns_list PASSED [ 20%]
+tests/test_providers_api.py::TestProvidersHealth::test_health_graceful_when_config_none PASSED [ 25%]
+tests/test_providers_api.py::TestProvidersModels::test_models_returns_provider_list PASSED [ 29%]
+tests/test_providers_api.py::TestProvidersModels::test_models_includes_translate_model_from_config PASSED [ 33%]
+tests/test_providers_api.py::TestProvidersModels::test_models_graceful_when_config_none PASSED [ 37%]
+tests/test_providers_api.py::TestProvidersModels::test_models_omits_long_doc_when_absent PASSED [ 41%]
+tests/test_providers_api.py::TestProvidersTestTranslation::test_test_translation_panjit_success PASSED [ 45%]
+tests/test_providers_api.py::TestProvidersTestTranslation::test_test_translation_deepseek_no_key_returns_error_slot PASSED [ 50%]
+tests/test_providers_api.py::TestProvidersTestTranslation::test_test_translation_deepseek_key_is_not_logged PASSED [ 54%]
+tests/test_providers_api.py::TestProvidersTestTranslation::test_test_translation_partial_failure_isolated PASSED [ 58%]
+tests/test_providers_api.py::TestProvidersTestTranslation::test_test_translation_comet_score_present_when_qe_enabled PASSED [ 62%]
+tests/test_providers_api.py::TestProvidersTestTranslation::test_test_translation_comet_score_absent_when_qe_disabled PASSED [ 66%]
+tests/test_providers_api.py::TestProvidersTestTranslation::test_test_translation_empty_text_returns_422 PASSED [ 70%]
+tests/test_providers_api.py::TestProvidersTestTranslation::test_test_translation_missing_text_field_returns_422 PASSED [ 75%]
+tests/test_providers_api.py::TestProvidersTestTranslation::test_test_translation_missing_targets_returns_422 PASSED [ 79%]
+tests/test_providers_api.py::TestProvidersTestTranslation::test_test_translation_all_slots_fail_still_200 PASSED [ 83%]
+tests/test_providers_api.py::TestProvidersTestTranslation::test_test_translation_graceful_when_config_none PASSED [ 87%]
+tests/test_providers_api.py::TestContractShapes::test_health_response_shape_matches_contract PASSED [ 91%]
+tests/test_providers_api.py::TestContractShapes::test_models_response_shape_matches_contract PASSED [ 95%]
+tests/test_providers_api.py::TestContractShapes::test_test_translation_result_shape_matches_contract PASSED [100%]
+
+=============================== warnings summary ===============================
+tests/test_providers_api.py::TestProvidersHealth::test_health_panjit_online
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21: DeprecationWarning: PyPDF2 is deprecated. Please move to the pypdf library instead.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 24 passed, 1 warning in 10.95s ========================

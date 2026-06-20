@@ -45,6 +45,9 @@ breaking-change-policy: deprecate-2-minors
 | POST | /terms/wikidata/import | none | WikidataImportRequest | - | 422 | tests/contract/ |
 | GET | /api/metrics | none | - | MetricsResponse | - | tests/contract/ |
 | GET | /jobs/{job_id}/quality | none | - | JobQualityResponse | 200 (status: available/pending/disabled/unavailable); 404 job not found | tests/contract/ |
+| GET | /providers/health | none | - | ProviderHealthItem[] | - | tests/test_providers_api.py |
+| GET | /providers/models | none | - | ProviderModelEntry[] | - | tests/test_providers_api.py |
+| POST | /providers/test-translation | none | TestTranslationRequest | TestTranslationResult[] | 400, 422 | tests/test_providers_api.py |
 
 ## Schemas
 
@@ -262,6 +265,40 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 | status | enum(available, pending, disabled, unavailable) | yes |  | available — scores ready; pending — translation not yet complete or scoring still running; disabled — QE_ENABLED=false; unavailable — model load failed or scoring failed for this job |
 | scores | BlockQualityScore[] | no |  | present and non-empty when status = available; omitted or empty array when status is any other value |
 
+### ProviderHealthItem
+| field | type | required | format | notes |
+|---|---|---|---|---|
+| provider | string | yes |  |  |
+| status | string | yes |  |  |
+| latency_ms | number | no |  |  |
+
+### TestTranslationRequest
+| field | type | required | format | notes |
+|---|---|---|---|---|
+| text | string | yes |  |  |
+| src_lang | string | yes |  |  |
+| targets | string[] | yes |  |  |
+| profile | string | no |  |  |
+| models | string[] | no |  |  |
+| deepseek_api_key | string | no |  |  |
+
+### TestTranslationResult
+| field | type | required | format | notes |
+|---|---|---|---|---|
+| model_id | string | yes |  |  |
+| provider | string | yes |  |  |
+| translation | string | no |  |  |
+| duration_ms | number | yes |  |  |
+| comet_score | number | no |  |  |
+| error | string | no |  |  |
+
+### ProviderModelEntry
+| field | type | required | format | notes |
+|---|---|---|---|---|
+| provider | string | yes |  |  |
+| translate_model | string | no |  |  |
+| long_doc_model | string | no |  |  |
+
 ## Endpoint Notes
 
 **GET /terms/export** — the `status` query parameter accepts `approved`, `unverified`, `needs_review`, and `rejected`. When omitted, all terms are exported. See BR-6 (extended by BR-28) and Table G in `contracts/business/business-rules.md`.
@@ -271,6 +308,12 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 **POST /terms/flag-needs-review** — flags a term for human review by transitioning it to `needs_review` status. Terms in `needs_review` are not injected until approved (BR-29). Returns HTTP 200 `{"status": "needs_review"}` on success; HTTP 404 `{"detail": "Term not found"}` when the term does not exist.
 
 **GET /jobs/{job_id}** — `download_url` is set to `/api/jobs/{job_id}/download` only when `status == "completed"` AND the output archive exists on disk; it is `null` in all other states (running, failed, stopped, or completed with missing archive). The download endpoint itself (`GET /jobs/{job_id}/download`) is a separate route and is not changed by this field addition.
+
+**GET /providers/health** — returns health status for each configured provider. Each element: `{provider, status, latency_ms}` where `status` is one of `online`, `offline`, `not_configured`. `latency_ms` is omitted when `status` is `not_configured`. PANJIT is always probed; DeepSeek is probed only when a valid key is supplied via the `X-DeepSeek-Api-Key` request header, otherwise returned as `not_configured`. The key is transmitted as a header (not a query parameter) to prevent exposure in server access logs and browser history (BR-65). See BR-63.
+
+**GET /providers/models** — returns the model list for each provider, sourced from `config/providers.yml` in-memory (already loaded via `load_providers_config()`). NOT a live `/v1/models` network call. Returns `ProviderModelEntry[]` where each entry has `{provider, translate_model, long_doc_model}`. See BR-63.
+
+**POST /providers/test-translation** — runs a parallel test translation across the requested models. Synchronous (no `job_id`). Request: `TestTranslationRequest` with fields `text`, `src_lang`, `targets[]`, optional `profile`, `models[]`, `deepseek_api_key`. Response: `TestTranslationResult[]` — `{model_id, provider, duration_ms}` plus optional `translation`, `comet_score` (omitted when `QE_ENABLED=false`), and `error` (present when that model call failed). Partial failure is isolated per model. DeepSeek path not invoked without a key — returns `error: "DeepSeek API key not provided"`. See BR-64, BR-65.
 
 **GET /jobs/{job_id}/quality** — returns quality evaluation scores produced by the COMET/xCOMET model after job completion. Returns HTTP 200 with `status: "available"` and a populated `scores` array when scores are ready. Returns HTTP 200 with `status: "pending"` when the job exists but has not yet completed or scores are not yet attached. Returns HTTP 200 with `status: "disabled"` when `QE_ENABLED=false`. Returns HTTP 200 with `status: "unavailable"` when the QE model failed to load or scoring failed for this job. Returns HTTP 404 `{"detail": "Job not found"}` for an unknown `job_id`. See BR-54, BR-55, BR-56, BR-57. QE scoring never blocks translation job completion (BR-56).
 

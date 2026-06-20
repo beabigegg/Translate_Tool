@@ -3,7 +3,7 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.9.0
+schema-version: 0.10.0
 last-changed: 2026-06-20
 breaking-change-policy: deprecate-2-minors
 ---
@@ -434,3 +434,65 @@ This field is additive and optional. It is parallel to `JobRecord.quality` (the 
 | PANJIT embedding response missing `data[].embedding` field | Caught as parse error; returns empty list; WARNING logged |
 | Zero-length segment_text | Returns empty list; no embedding call made |
 | All DB terms embed but none meet threshold | Returns empty list; caller proceeds to extraction path |
+
+---
+
+## Provider API Response Shapes
+
+**Added in settings-page-cloud-redesign.**
+
+### ProviderHealthItem
+
+Returned by `GET /api/providers/health` as an array element.
+
+| field | type | required | notes |
+|---|---|---|---|
+| provider | string | yes | Provider identifier, e.g. `"panjit"`, `"deepseek"` |
+| status | string | yes | One of `"online"`, `"offline"`, `"not_configured"` |
+| latency_ms | number | no | Round-trip latency in milliseconds; omitted when `status = "not_configured"` |
+
+### ProviderModelEntry
+
+Returned by `GET /api/providers/models` as an array element.
+
+| field | type | required | notes |
+|---|---|---|---|
+| provider | string | yes | Provider identifier |
+| translate_model | string | no | Default translation model name from providers.yml |
+| long_doc_model | string | no | Long-document model name from providers.yml; omitted if not configured |
+
+### TestTranslationRequest
+
+Request body for `POST /api/providers/test-translation`.
+
+| field | type | required | notes |
+|---|---|---|---|
+| text | string | yes | Source sentence to translate (single sentence; cost-bounded) |
+| src_lang | string | yes | BCP-47 source language code, e.g. `"zh-TW"` |
+| targets | string[] | yes | Target language codes, e.g. `["en", "ja"]` |
+| profile | string | no | Translation profile name; omitted = default profile |
+| models | string[] | no | Specific model IDs to test; omitted = test all enabled providers |
+| deepseek_api_key | string | no | User-supplied DeepSeek API key; NOT read from backend .env; absent → DeepSeek slot skipped |
+
+### TestTranslationResult
+
+Single element in the response array of `POST /api/providers/test-translation`.
+
+| field | type | required | notes |
+|---|---|---|---|
+| model_id | string | yes | Model identifier, e.g. `"gemma4:latest"` |
+| provider | string | yes | Provider name, e.g. `"panjit"` |
+| duration_ms | number | yes | Wall-clock time for this model's translation |
+| translation | string | no | Translated text; omitted when `error` is present |
+| comet_score | number | no | COMET/xCOMET quality score (0–1); omitted when `QE_ENABLED=false` |
+| error | string | no | Error message; present when this model's call failed; does NOT affect sibling results |
+
+### Invalid-data rules (provider endpoints)
+
+| condition | expected behavior |
+|---|---|
+| `deepseek_api_key` absent/empty in test-translation request | DeepSeek slot returns `{model_id, provider, duration_ms: 0, error: "DeepSeek API key not provided"}` |
+| DeepSeek API returns 401 | DeepSeek slot returns `{..., error: "DeepSeek authentication failed"}` |
+| Provider timeout | That provider's slot returns `{..., error: "Provider timeout"}` |
+| All model slots fail | Response is `TestTranslationResult[]` where every element has `error`; HTTP 200 still returned |
+| `text` field empty or missing | HTTP 422 Pydantic validation error |

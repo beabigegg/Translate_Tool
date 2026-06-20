@@ -1,0 +1,11 @@
+change-id: settings-page-cloud-redesign
+agent: ci-cd-gatekeeper
+timestamp: "2026-06-20T00:00:00Z"
+status: complete
+artifacts:
+  - { type: tiers-modified, pointer: "1 (required gates), 2 (informational gates)" }
+  - { type: gate-promotions, pointer: "none — existing cdd-kit gate + openapi --check cover all required gates per change-classification.md" }
+  - { type: workflow-files-changed, pointer: ".github/workflows/contract-driven-gates.yml:47-49" }
+  - { type: required-status-checks, pointer: "contract-and-fast-tests (validate-contracts, change-gate, openapi-sync, secret-scan, targeted-tests, full-suite)" }
+next-action: none
+notes: "Tier 2 change; no new workflow jobs added. Change gate step activated with cdd-kit gate settings-page-cloud-redesign. Revert to echo no-op at /cdd-close per CLAUDE.md promoted learnings."

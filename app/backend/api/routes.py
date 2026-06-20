@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import asyncio
 import io
+import logging
 import shutil
 import tempfile
 import time
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+logger = logging.getLogger(__name__)
+
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 
 from app.backend.api.schemas import (
@@ -22,6 +26,8 @@ from app.backend.api.schemas import (
     ModelConfigItem,
     ModelsResponse,
     ProfileItem,
+    ProviderHealthItem,
+    ProviderModelEntry,
     RouteInfoEntry,
     RouteInfoResponse,
     TermApproveRequest,
@@ -31,6 +37,8 @@ from app.backend.api.schemas import (
     TermItem,
     TermRejectRequest,
     TermStatsResponse,
+    TestTranslationRequest,
+    TestTranslationResult,
     WikidataCandidate,
     WikidataImportRequest,
     WikidataSearchRequest,
@@ -38,7 +46,15 @@ from app.backend.api.schemas import (
 )
 from app.backend.services.metrics import get_metrics as _get_metrics_snapshot
 from app.backend.clients.ollama_client import list_ollama_models
-from app.backend.config import ModelType, QE_ENABLED, VRAM_METADATA, load_providers_config
+from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+from app.backend.config import (
+    ModelType,
+    QE_DEVICE,
+    QE_ENABLED,
+    QE_MODEL_NAME,
+    VRAM_METADATA,
+    load_providers_config,
+)
 from app.backend.services.model_router import RouteGroup, get_route_info, resolve_route_groups
 
 # Load provider config once at module initialisation.  Returns None when
@@ -606,3 +622,299 @@ def wikidata_import(body: WikidataImportRequest):
     )
     result = _term_db.insert(term, strategy="merge")
     return {"ok": True, "result": result}
+
+
+# ---------------------------------------------------------------------------
+# Provider API routes (settings-page-cloud-redesign, BR-63/BR-64/BR-65)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/providers/health", response_model=List[ProviderHealthItem], response_model_exclude_none=True)
+def providers_health(request: Request) -> List[ProviderHealthItem]:
+    """Return health status for each configured provider (BR-63).
+
+    PANJIT is always probed with a lightweight GET /v1/models call.
+    DeepSeek is probed only when the ``X-DeepSeek-Api-Key`` request header is
+    non-empty; otherwise status is ``"not_configured"`` and NO network call is
+    made.  The key is read from a header (not a query param) to prevent exposure
+    in server access logs and browser history.
+    Gracefully returns [] when ``_providers_config`` is None.
+    """
+    deepseek_api_key: Optional[str] = request.headers.get("X-DeepSeek-Api-Key") or None
+    if not _providers_config:
+        return []
+
+    results: List[ProviderHealthItem] = []
+    providers = _providers_config.get("providers", [])
+
+    for provider in providers:
+        pid = provider.get("id", "")
+        if not pid:
+            continue
+        if not provider.get("enabled", False):
+            continue
+
+        base_url = provider.get("base_url", "")
+        api_key = provider.get("api_key", "")
+
+        if pid == "deepseek":
+            # BR-63 / BR-65: probe only when caller supplies a key
+            supplied_key = (deepseek_api_key or "").strip()
+            if not supplied_key:
+                results.append(ProviderHealthItem(provider=pid, status="not_configured"))
+                continue
+            probe_key = supplied_key
+        else:
+            probe_key = api_key
+
+        # Skip providers without a base_url (misconfigured)
+        if not base_url:
+            results.append(ProviderHealthItem(provider=pid, status="offline"))
+            continue
+
+        # PANJIT uses verify_ssl=False (self-signed internal cert, per existing pattern)
+        verify_ssl = pid != "panjit"
+
+        client = OpenAICompatibleClient(
+            base_url=base_url,
+            api_key=probe_key,
+            model="",
+            provider_id=pid,
+            # Use shorter timeouts for health probes to keep the UI responsive
+            connect_timeout=10.0,
+            read_timeout=30.0,
+            verify_ssl=verify_ssl,
+        )
+        t0 = time.monotonic()
+        try:
+            ok, _msg = client.health()
+            latency_ms = (time.monotonic() - t0) * 1000.0
+            status = "online" if ok else "offline"
+        except Exception:
+            latency_ms = (time.monotonic() - t0) * 1000.0
+            status = "offline"
+
+        results.append(ProviderHealthItem(
+            provider=pid,
+            status=status,
+            latency_ms=round(latency_ms, 1),
+        ))
+
+    return results
+
+
+@router.get("/providers/models", response_model=List[ProviderModelEntry], response_model_exclude_none=True)
+def providers_models() -> List[ProviderModelEntry]:
+    """Return model names from the in-memory providers config (BR-63).
+
+    Sources ``models.translate`` → ``translate_model`` and
+    ``models.long_doc`` → ``long_doc_model`` from each enabled provider entry.
+    NO live /v1/models network call is made.
+    Gracefully returns [] when ``_providers_config`` is None.
+    """
+    if not _providers_config:
+        return []
+
+    results: List[ProviderModelEntry] = []
+    providers = _providers_config.get("providers", [])
+
+    for provider in providers:
+        pid = provider.get("id", "")
+        if not pid:
+            continue
+        if not provider.get("enabled", False):
+            continue
+
+        models_map = provider.get("models") or {}
+        translate_model: Optional[str] = models_map.get("translate") or None
+        long_doc_model: Optional[str] = models_map.get("long_doc") or None
+
+        results.append(ProviderModelEntry(
+            provider=pid,
+            translate_model=translate_model,
+            long_doc_model=long_doc_model,
+        ))
+
+    return results
+
+
+@router.post("/providers/test-translation", response_model=List[TestTranslationResult], response_model_exclude_none=True, status_code=200)
+async def providers_test_translation(req: TestTranslationRequest) -> List[TestTranslationResult]:
+    """Run a parallel test translation across requested models (BR-64, BR-65).
+
+    - Synchronous response (no job_id, no BackgroundTasks).
+    - All model slots run in parallel via asyncio.gather.
+    - Blocking requests-based client calls are wrapped in asyncio.to_thread.
+    - Partial failure is isolated per slot; HTTP 200 always returned when body parses.
+    - DeepSeek slot without a key returns error without any network call (BR-65).
+    - COMET score added when QE_ENABLED=True (BR-64).
+    - Response serialised with exclude_none=True so comet_score is absent when
+      QE_ENABLED=False (not null, per contract).
+
+    SECURITY (BR-65):
+    - deepseek_api_key comes ONLY from req.deepseek_api_key — never from .env.
+    - The key is NEVER logged at any level.
+    - The key is discarded at the end of this request.
+    """
+    if not _providers_config:
+        return []
+
+    providers_by_id = {
+        p["id"]: p
+        for p in _providers_config.get("providers", [])
+        if p.get("id") and p.get("enabled", False)
+    }
+
+    # Resolve (model_id, provider_id) slots to run.
+    # If req.models is supplied, use those; otherwise default to all enabled providers.
+    if req.models:
+        # Map requested model strings to providers.  A model ID may appear in
+        # any provider's ``models`` map.  If the model is not found, emit an
+        # error slot so the caller knows.
+        slots: List[tuple] = []
+        for model_id in req.models:
+            found = False
+            for pid, pdata in providers_by_id.items():
+                pmodels = pdata.get("models") or {}
+                if model_id in pmodels.values():
+                    slots.append((model_id, pid))
+                    found = True
+                    break
+            if not found:
+                # Unknown model — include an error slot so the caller sees it
+                slots.append((model_id, "unknown"))
+    else:
+        # Default: one slot per enabled provider using its translate model
+        slots = []
+        for pid, pdata in providers_by_id.items():
+            pmodels = pdata.get("models") or {}
+            translate_model = pmodels.get("translate")
+            if translate_model:
+                slots.append((translate_model, pid))
+
+    async def _run_slot(model_id: str, provider_id: str) -> dict:
+        """Execute one translation slot and return a result dict."""
+        t_start = time.monotonic()
+
+        # Unknown provider — error immediately, no network call
+        if provider_id == "unknown":
+            return TestTranslationResult(
+                model_id=model_id,
+                provider=provider_id,
+                duration_ms=0.0,
+                error=f"Model '{model_id}' not found in any enabled provider",
+            ).model_dump(exclude_none=True)
+
+        pdata = providers_by_id.get(provider_id, {})
+
+        # DeepSeek: require caller-supplied key (BR-65) — no .env fallback
+        if provider_id == "deepseek":
+            supplied_key = (req.deepseek_api_key or "").strip()
+            if not supplied_key:
+                return TestTranslationResult(
+                    model_id=model_id,
+                    provider=provider_id,
+                    duration_ms=0.0,
+                    error="DeepSeek API key not provided",
+                ).model_dump(exclude_none=True)
+            effective_api_key = supplied_key
+        else:
+            effective_api_key = pdata.get("api_key", "")
+
+        base_url = pdata.get("base_url", "")
+        if not base_url:
+            return TestTranslationResult(
+                model_id=model_id,
+                provider=provider_id,
+                duration_ms=round((time.monotonic() - t_start) * 1000.0, 1),
+                error=f"Provider '{provider_id}' has no base_url configured",
+            ).model_dump(exclude_none=True)
+
+        verify_ssl = provider_id != "panjit"
+
+        client = OpenAICompatibleClient(
+            base_url=base_url,
+            api_key=effective_api_key,
+            model=model_id,
+            provider_id=provider_id,
+            connect_timeout=120.0,
+            read_timeout=300.0,
+            verify_ssl=verify_ssl,
+        )
+
+        # Translate each target language; collect the first successful result
+        # (test translation is a single sentence — we take the first target).
+        target = req.targets[0] if req.targets else "en"
+        try:
+            ok, translation_text = await asyncio.to_thread(
+                client.translate_once, req.text, target, req.src_lang
+            )
+        except Exception as exc:
+            duration_ms = round((time.monotonic() - t_start) * 1000.0, 1)
+            return TestTranslationResult(
+                model_id=model_id,
+                provider=provider_id,
+                duration_ms=duration_ms,
+                error=str(exc),
+            ).model_dump(exclude_none=True)
+
+        duration_ms = round((time.monotonic() - t_start) * 1000.0, 1)
+
+        if not ok:
+            return TestTranslationResult(
+                model_id=model_id,
+                provider=provider_id,
+                duration_ms=duration_ms,
+                error=translation_text,
+            ).model_dump(exclude_none=True)
+
+        # Successful translation — optionally score with COMET (BR-64)
+        comet_score: Optional[float] = None
+        if QE_ENABLED and translation_text:
+            try:
+                from app.backend.services import quality_evaluator as _qe
+                model_obj = await asyncio.to_thread(
+                    _qe.load_model, QE_MODEL_NAME, QE_DEVICE
+                )
+                scores = await asyncio.to_thread(
+                    _qe.score_blocks,
+                    model_obj,
+                    [(req.text, translation_text)],
+                    QE_DEVICE,
+                )
+                if scores:
+                    comet_score = scores[0]
+            except Exception as exc:
+                logger.warning(
+                    "[providers/test-translation] QE scoring failed for model=%s: %s: %s",
+                    model_id, type(exc).__name__, exc,
+                )
+
+        return TestTranslationResult(
+            model_id=model_id,
+            provider=provider_id,
+            duration_ms=duration_ms,
+            translation=translation_text,
+            comet_score=comet_score,
+        ).model_dump(exclude_none=True)
+
+    # Fan out all slots in parallel
+    coros = [_run_slot(model_id, provider_id) for model_id, provider_id in slots]
+    results_raw = await asyncio.gather(*coros, return_exceptions=True)
+
+    # Convert any unexpected exceptions to error slots
+    final_results: List[dict] = []
+    for (model_id, provider_id), raw in zip(slots, results_raw):
+        if isinstance(raw, Exception):
+            final_results.append(
+                TestTranslationResult(
+                    model_id=model_id,
+                    provider=provider_id,
+                    duration_ms=0.0,
+                    error=f"Unexpected error: {raw}",
+                ).model_dump(exclude_none=True)
+            )
+        else:
+            final_results.append(raw)
+
+    return final_results
