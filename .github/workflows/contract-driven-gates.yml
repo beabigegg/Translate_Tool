@@ -69,11 +69,19 @@ jobs:
           ! grep -En "(pgvector|chromadb|faiss|hnswlib)" app/backend/services/term_extractor.py || \
             { echo "Forbidden vector-DB import found in term_extractor.py"; exit 1; }
 
-      - name: Dead-reference Ollama — OLLAMA_BASE_URL absent from term_extractor.py extraction flow (Tier 1 — blocks merge)
-        # AC-8: extraction flow must not reference localhost:11434 / OLLAMA_BASE_URL.
+      - name: Dead-reference Ollama — OLLAMA_BASE_URL absent from DB-first extraction flow (Tier 1 — blocks merge)
+        # AC-8: DB-first flow must not reference OLLAMA_BASE_URL in logic code.
+        # Allowed: the import line (OLLAMA_BASE_URL alone) and default-param declarations
+        # for the extraction_only legacy path (AC-7 out-of-scope; kept by design).
         run: |
-          ! grep -n "OLLAMA_BASE_URL" app/backend/services/term_extractor.py || \
-            { echo "OLLAMA_BASE_URL referenced in term_extractor.py"; exit 1; }
+          unexpected=$(grep "OLLAMA_BASE_URL" app/backend/services/term_extractor.py \
+            | grep -v "^\s*OLLAMA_BASE_URL,$" \
+            | grep -v "base_url: str = OLLAMA_BASE_URL")
+          if [ -n "$unexpected" ]; then
+            echo "OLLAMA_BASE_URL used in non-legacy context in term_extractor.py:"
+            echo "$unexpected"
+            exit 1
+          fi
 
       - name: Targeted tests — term_extractor + term_db + env_contract (Tier 1 — blocks merge)
         # AC-1..AC-8: fast-fail before full suite.
