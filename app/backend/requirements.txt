@@ -14,6 +14,7 @@ reportlab>=4.0.0
 onnxruntime>=1.20.0
 huggingface_hub>=0.22.0
 numpy>=1.24.0
+pyyaml>=6.0.0
 # p2-comet-qe: COMET/xCOMET neural QE (lazy-loaded only when QE_ENABLED=true).
 # CPU-only install: use --extra-index-url https://download.pytorch.org/whl/cpu
 # to avoid pulling CUDA packages on Linux. onnxruntime-gpu must NOT appear in
