@@ -7,6 +7,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.backend.api.routes import router
@@ -35,10 +36,22 @@ app.add_middleware(
 
 app.include_router(router, prefix="/api")
 
-# Serve frontend build if present
+# Serve frontend build if present (SPA mode: index.html for all non-API routes)
 frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 if frontend_dist.exists():
-    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
+    # Mount /assets first so Vite's hashed bundles are served as static files
+    assets_dir = frontend_dist / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+    # Catch-all: React Router handles client-side routing, so every non-API,
+    # non-asset path must return index.html (Starlette 1.x StaticFiles(html=True)
+    # does NOT fall back to index.html for unknown paths — it 404s instead).
+    _spa_index = frontend_dist / "index.html"
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str) -> FileResponse:
+        return FileResponse(str(_spa_index))
 
 
 def run() -> None:

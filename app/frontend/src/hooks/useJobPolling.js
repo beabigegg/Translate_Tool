@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { fetchJobStatus } from '../api/jobs.js';
 
-export function useJobPolling(jobId, onUpdate, intervalMs = 2000) {
+export function useJobPolling(jobId, onUpdate, onJobLost, intervalMs = 2000) {
   const timer = useRef(null);
 
   const stop = useCallback(() => {
@@ -16,7 +16,13 @@ export function useJobPolling(jobId, onUpdate, intervalMs = 2000) {
         onUpdate(data);
         if (['completed', 'failed', 'cancelled'].includes(data.status)) stop();
       } catch (err) {
-        console.error('Polling error:', err);
+        // Job not found means backend restarted — reset to initial state
+        if (err.message === 'Job not found' || err.message.includes('HTTP 404')) {
+          stop();
+          onJobLost?.();
+        } else {
+          console.error('Polling error:', err);
+        }
       }
     }
     poll();

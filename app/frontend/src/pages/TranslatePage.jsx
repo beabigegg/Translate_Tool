@@ -73,7 +73,7 @@ export default function TranslatePage() {
     }
   }
 
-  useJobPolling(jobId, handleJobUpdate);
+  useJobPolling(jobId, handleJobUpdate, () => dispatch({ type: 'RESET' }));
 
   async function handleSubmit() {
     dispatch({ type: 'SET_LOADING', payload: true });
