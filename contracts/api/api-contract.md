@@ -3,8 +3,8 @@ contract: api
 summary: API behavior, compatibility rules, and endpoint contract requirements.
 owner: application-team
 surface: api
-schema-version: 0.5.0
-last-changed: 2026-06-19
+schema-version: 0.6.0
+last-changed: 2026-06-20
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -144,7 +144,10 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 | segments_per_second | number | yes |  |  |
 | eta_seconds | number | no |  |  |
 | term_summary | string | no |  | per-language/domain term extraction counts as JSON-serialized map; null when mode != extraction_only |
-| provider | string | no |  | provider ID that successfully processed this job (e.g. panjit, deepseek, ollama-local); null if not yet determined or Ollama-only legacy job |
+| provider | string | no |  | provider ID that successfully processed this job (e.g. panjit, deepseek); null if not yet determined |
+| quality_score_avg | number | no |  | average COMET/xCOMET quality score across all blocks; null when QE disabled or job not complete; see BR-54 |
+| audit_hit_rate | number | no |  | terminology audit hit rate 0.0-1.0; null when audit did not run or mode==extraction_only; see BR-59 |
+| download_url | string | no |  | URL to download translated zip; set to /api/jobs/{job_id}/download only when status==completed AND output_zip exists on disk; null otherwise |
 
 ### TermStatsResponse
 | field | type | required | format | notes |
@@ -266,6 +269,8 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 **POST /terms/reject** — transitions a term to `rejected` status. Rejected terms are never injected into translation prompts regardless of the loose gate flag (BR-29). Returns HTTP 200 `{"status": "rejected"}` on success; HTTP 404 `{"detail": "Term not found"}` when the term does not exist.
 
 **POST /terms/flag-needs-review** — flags a term for human review by transitioning it to `needs_review` status. Terms in `needs_review` are not injected until approved (BR-29). Returns HTTP 200 `{"status": "needs_review"}` on success; HTTP 404 `{"detail": "Term not found"}` when the term does not exist.
+
+**GET /jobs/{job_id}** — `download_url` is set to `/api/jobs/{job_id}/download` only when `status == "completed"` AND the output archive exists on disk; it is `null` in all other states (running, failed, stopped, or completed with missing archive). The download endpoint itself (`GET /jobs/{job_id}/download`) is a separate route and is not changed by this field addition.
 
 **GET /jobs/{job_id}/quality** — returns quality evaluation scores produced by the COMET/xCOMET model after job completion. Returns HTTP 200 with `status: "available"` and a populated `scores` array when scores are ready. Returns HTTP 200 with `status: "pending"` when the job exists but has not yet completed or scores are not yet attached. Returns HTTP 200 with `status: "disabled"` when `QE_ENABLED=false`. Returns HTTP 200 with `status: "unavailable"` when the QE model failed to load or scoring failed for this job. Returns HTTP 404 `{"detail": "Job not found"}` for an unknown `job_id`. See BR-54, BR-55, BR-56, BR-57. QE scoring never blocks translation job completion (BR-56).
 

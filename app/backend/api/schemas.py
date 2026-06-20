@@ -31,6 +31,7 @@ class JobStatus(BaseModel):
     provider: Optional[str] = None  # p1-cloud-providers: winning provider ID (AC-6)
     quality_score_avg: Optional[float] = None   # average COMET score when QE is enabled
     audit_hit_rate: Optional[float] = None       # terminology hit rate when audit ran
+    download_url: Optional[str] = None           # populated when job is completed and output zip exists
 
 
 class TermImportResult(BaseModel):

@@ -1,0 +1,50 @@
+change-id: download-url-in-jobstatus
+timestamp: 2026-06-20T10:31:30Z
+agent: bug-fix-engineer
+status: complete
+files-read:
+  - specs/changes/download-url-in-jobstatus/implementation-plan.md
+  - specs/changes/download-url-in-jobstatus/test-plan.md
+  - specs/changes/download-url-in-jobstatus/ci-gates.md
+  - app/backend/api/schemas.py
+  - app/backend/api/routes.py
+  - app/backend/services/job_manager.py
+  - tests/test_provider_fallback.py
+  - app/backend/main.py
+artifacts:
+  - { type: symptom, pointer: "GET /api/jobs/{id} response never contains download_url; frontend download button has no URL to use even after job completes" }
+  - { type: root-cause, pointer: "app/backend/api/schemas.py:33 and app/backend/api/routes.py:261-281 — JobStatus schema had no download_url field and the route never derived or passed it" }
+  - { type: files-changed, pointer: "app/backend/api/schemas.py, app/backend/api/routes.py, tests/test_provider_fallback.py, tests/test_jobstatus_download_url.py (new)" }
+  - { type: regression-evidence, pointer: "specs/changes/download-url-in-jobstatus/test-runs/20260620-103116/summary.json (targeted: pass), specs/changes/download-url-in-jobstatus/test-runs/20260620-103122/summary.json (changed-area: pass)" }
+  - { type: residual-risk, pointer: "none" }
+bug-fix:
+  schema-version: 0.1.0
+  symptom: "After a translation job completes, GET /jobs/{job_id} never returns a download_url field; the frontend download button cannot render the link."
+  expected_behavior: "GET /jobs/{job_id} returns download_url='/api/jobs/{job_id}/download' when status==completed and the output zip exists on disk; null in all other states."
+  actual_behavior: "The download_url field was absent from the JobStatus schema and the job_status route never computed or passed it, so clients always received null/missing."
+  observed_surface: "GET /api/jobs/{job_id} JSON response body"
+  reproduction:
+    status: test-reproduced
+    command: "/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_jobstatus_download_url.py tests/test_provider_fallback.py::TestJobStatusShape::test_download_url_field_defaults_to_none tests/test_provider_fallback.py::TestJobStatusShape::test_download_url_field_accepts_string -x -q --tb=short"
+    failing_before_fix: true
+    summary: "specs/changes/download-url-in-jobstatus/test-runs/20260620-105600/summary.json"
+  hypotheses:
+    - { id: H1, candidate: "app/backend/api/schemas.py::JobStatus", reason: "JobStatus schema had no download_url field; any response would omit the key", result: confirmed }
+    - { id: H2, candidate: "app/backend/api/routes.py::job_status", reason: "Even if schema had the field, the route never derived or passed a value", result: confirmed }
+    - { id: H3, candidate: "app/backend/services/job_manager.py::JobRecord", reason: "Considered whether the URL should be stored on JobRecord; rejected per implementation-plan.md (route concern not lifecycle state)", result: rejected }
+  root_cause:
+    pointer: "app/backend/api/schemas.py:33 / app/backend/api/routes.py:261-281"
+    summary: "JobStatus schema lacked download_url field (IP-1) and the job_status route never derived or injected the URL from the already-available status and output_ready signal (IP-2)"
+  fix:
+    files_changed:
+      - app/backend/api/schemas.py
+      - app/backend/api/routes.py
+      - tests/test_provider_fallback.py
+      - tests/test_jobstatus_download_url.py
+    summary: "Added download_url: Optional[str] = None to JobStatus; derived the URL in job_status() using the existing output_ready and status locals; added 2 tests to TestJobStatusShape and created tests/test_jobstatus_download_url.py (15 tests covering AC-2 through AC-7 derivation matrix + endpoint tests)"
+  regression:
+    status: passed
+    command: "/home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_jobstatus_download_url.py tests/test_provider_fallback.py tests/ -x -q --tb=short -k 'jobstatus or download_url or job_status'"
+    summary: "specs/changes/download-url-in-jobstatus/test-runs/20260620-103122/summary.json"
+  residual_risk: none
+next-action: "qa-reviewer release-readiness review"

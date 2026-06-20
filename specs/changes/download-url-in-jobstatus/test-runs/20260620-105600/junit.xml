@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.552" timestamp="2026-06-20T10:56:00.988714+08:00" hostname="EGG"><testcase classname="tests.test_jobstatus_download_url.TestDownloadUrlDerivation" name="test_completed_with_existing_zip" time="0.377"><failure message="KeyError: 'download_url'">tests/test_jobstatus_download_url.py:78: in test_completed_with_existing_zip
+    assert data["download_url"] == "/api/jobs/job-xyz/download"
+           ^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'download_url'</failure></testcase></testsuite></testsuites>

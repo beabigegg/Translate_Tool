@@ -279,6 +279,33 @@ class TestJobStatusShape:
         )
         assert status.provider is None
 
+    def test_download_url_field_defaults_to_none(self):
+        """JobStatus.download_url must default to None (AC-1)."""
+        from app.backend.api.schemas import JobStatus
+
+        job_status = JobStatus(
+            job_id="j3",
+            status="running",
+            processed_files=0,
+            total_files=1,
+            output_ready=False,
+        )
+        assert job_status.download_url is None
+
+    def test_download_url_field_accepts_string(self):
+        """JobStatus.download_url must accept a string value without errors (AC-1)."""
+        from app.backend.api.schemas import JobStatus
+
+        job_status = JobStatus(
+            job_id="j4",
+            status="completed",
+            processed_files=1,
+            total_files=1,
+            output_ready=True,
+            download_url="/api/jobs/abc123/download",
+        )
+        assert job_status.download_url == "/api/jobs/abc123/download"
+
 
 # ── TestOrchestratorProviderWiring ───────────────────────────────────────────
 

@@ -258,6 +258,13 @@ def job_status(job_id: str) -> JobStatus:
     if job_audit is not None:
         audit_hit_rate = job_audit.terminology_hit_rate
 
+    # Derive download_url: only when completed and zip file is present on disk
+    download_url: Optional[str] = (
+        f"/api/jobs/{job_id}/download"
+        if (status == "completed" and output_ready)
+        else None
+    )
+
     return JobStatus(
         job_id=job.job_id,
         status=status,
@@ -278,6 +285,7 @@ def job_status(job_id: str) -> JobStatus:
         provider=job_provider,  # p1-cloud-providers (AC-6)
         quality_score_avg=quality_score_avg,
         audit_hit_rate=audit_hit_rate,
+        download_url=download_url,
     )
 
 

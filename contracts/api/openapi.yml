@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "API behavior, compatibility rules, and endpoint contract requirements.",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "description": "- response style: JSON (Pydantic response models); binary endpoints return file streams (FileResponse / StreamingResponse)."
   },
   "paths": {
@@ -755,7 +755,19 @@
           },
           "provider": {
             "type": "string",
-            "description": "provider ID that successfully processed this job (e.g. panjit, deepseek, ollama-local); null if not yet determined or Ollama-only legacy job"
+            "description": "provider ID that successfully processed this job (e.g. panjit, deepseek); null if not yet determined"
+          },
+          "quality_score_avg": {
+            "type": "number",
+            "description": "average COMET/xCOMET quality score across all blocks; null when QE disabled or job not complete; see BR-54"
+          },
+          "audit_hit_rate": {
+            "type": "number",
+            "description": "terminology audit hit rate 0.0-1.0; null when audit did not run or mode==extraction_only; see BR-59"
+          },
+          "download_url": {
+            "type": "string",
+            "description": "URL to download translated zip; set to /api/jobs/{job_id}/download only when status==completed AND output_zip exists on disk; null otherwise"
           }
         },
         "required": [

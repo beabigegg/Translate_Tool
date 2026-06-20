@@ -1,0 +1,18 @@
+{
+  "change_id": "download-url-in-jobstatus",
+  "phase": "targeted",
+  "status": "failed",
+  "exit_code": 127,
+  "command": "pytest tests/test_jobstatus_download_url.py tests/test_provider_fallback.py::TestJobStatusShape::test_download_url_field_defaults_to_none tests/test_provider_fallback.py::TestJobStatusShape::test_download_url_field_accepts_string -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/download-url-in-jobstatus/test-runs/20260620-105549/junit.xml' -ra",
+  "duration_ms": 37,
+  "first_failure": {
+    "kind": "unknown",
+    "message": "/bin/sh: 1: pytest: not found"
+  },
+  "artifacts": {
+    "summary": "specs/changes/download-url-in-jobstatus/test-runs/20260620-105549/summary.json",
+    "stdout": "specs/changes/download-url-in-jobstatus/test-runs/20260620-105549/stdout.log",
+    "stderr": "specs/changes/download-url-in-jobstatus/test-runs/20260620-105549/stderr.log"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}
