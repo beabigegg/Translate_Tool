@@ -16,6 +16,7 @@ class TranslationProfile:
     model: str
     system_prompt: str
     model_type: str = ModelType.GENERAL.value
+    user_facing: bool = True
 
 
 def _build_system_prompt(role: str, terminology: str, register_tone: str) -> str:
@@ -169,6 +170,7 @@ PROFILES: Dict[str, TranslationProfile] = {
             ),
             register_tone="Use formal and precise financial register suitable for reports and disclosures.",
         ),
+        user_facing=False,
     ),
     "legal": TranslationProfile(
         id="legal",
@@ -183,6 +185,7 @@ PROFILES: Dict[str, TranslationProfile] = {
             ),
             register_tone="Use strict legal wording; do not paraphrase obligations, rights, or conditions.",
         ),
+        user_facing=False,
     ),
     "hymt": TranslationProfile(
         id="hymt",
@@ -191,15 +194,26 @@ PROFILES: Dict[str, TranslationProfile] = {
         model=DEFAULT_MODEL,
         system_prompt="",
         model_type=ModelType.GENERAL.value,
+        user_facing=False,
     ),
 }
+
+
+_USER_FACING_ORDER = [
+    "technical_process", "business_finance", "legal_contract",
+    "marketing_pr", "daily_communication",
+    "general", "government", "semiconductor",
+]
 
 
 def get_profile(profile_id: Optional[str]) -> TranslationProfile:
     if not profile_id:
         return PROFILES["general"]
-    return PROFILES.get(profile_id, PROFILES["general"])
+    profile = PROFILES.get(profile_id)
+    if profile is None or not profile.user_facing:
+        return PROFILES["general"]
+    return profile
 
 
 def list_profiles() -> List[TranslationProfile]:
-    return list(PROFILES.values())
+    return [PROFILES[id] for id in _USER_FACING_ORDER if id in PROFILES]

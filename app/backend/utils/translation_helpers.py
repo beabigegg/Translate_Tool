@@ -399,9 +399,24 @@ def translate_blocks_batch(
 
     # Paragraph granularity: translate each block individually with sliding context
     if use_granularity == "paragraph":
+        _total_for_tr = len(texts)
+        _user_progress_log = progress_log
+        # Emit [TR] progress only when the caller didn't supply its own progress_log
+        # (callers that do supply one — e.g. translation_service — handle [TR] themselves).
+        _emit_tr = log is not None and progress_log is None
+
+        def _tr_progress_log(done: int) -> None:
+            if _emit_tr and (done % 10 == 0 or done == _total_for_tr):
+                log(f"[TR] {done}/{_total_for_tr} {tgt} len=~")  # type: ignore[misc]
+            if _user_progress_log is not None:
+                _user_progress_log(done)
+
+        if _emit_tr:
+            log(f"[TR] 0/{_total_for_tr} {tgt} len=0")  # type: ignore[misc]
+
         return translate_merged_paragraphs(
             texts, tgt, src_lang, client, MAX_PARAGRAPH_CHARS,
-            progress_log=progress_log, log=log, on_segment_done=on_segment_done,
+            progress_log=_tr_progress_log, log=log, on_segment_done=on_segment_done,
         )
 
     # Legacy sentence-level batch translation

@@ -127,12 +127,13 @@ class PyMuPDFParser(BaseParser):
                 "LAYOUT_DETECTOR_ENABLED", "true"
             ).lower() in ("1", "true", "yes")
             if _detector_enabled:
-                self._run_layout_detector(doc, elements)
+                layout_viz = self._run_layout_detector(doc, elements)
             else:
                 # Heuristic path (detector disabled or LAYOUT_DETECTOR_ENABLED=false)
                 elements = self._sort_by_reading_order(elements)
                 for idx, elem in enumerate(elements):
                     elem.reading_order = idx
+                layout_viz = []
 
             # Build metadata
             metadata = self._extract_metadata(doc, len(pages), total_chars)
@@ -143,6 +144,7 @@ class PyMuPDFParser(BaseParser):
                 elements=elements,
                 pages=pages,
                 metadata=metadata,
+                layout_viz=layout_viz,
             )
         finally:
             doc.close()
@@ -364,7 +366,7 @@ class PyMuPDFParser(BaseParser):
         self,
         doc: Any,  # fitz.Document
         elements: List[TranslatableElement],
-    ) -> None:
+    ) -> List[dict]:
         """Run the layout detector on each page; write element_type + reading_order.
 
         Rasterises each page via page.get_pixmap(), passes the numpy array to
@@ -375,6 +377,9 @@ class PyMuPDFParser(BaseParser):
         Args:
             doc: PyMuPDF document.
             elements: All elements (all pages); mutated in-place.
+
+        Returns:
+            List[dict]: one viz dict per processed page.
         """
         import numpy as np
 
@@ -390,12 +395,14 @@ class PyMuPDFParser(BaseParser):
             elements[:] = self._sort_by_reading_order(elements)
             for idx, elem in enumerate(elements):
                 elem.reading_order = idx
-            return
+            return []
 
         # Build page → elements lookup
         page_elements: Dict[int, List[TranslatableElement]] = {}
         for elem in elements:
             page_elements.setdefault(elem.page_num, []).append(elem)
+
+        viz_pages: List[dict] = []
 
         for page_num_0 in range(len(doc)):
             page_num_1 = page_num_0 + 1
@@ -403,9 +410,10 @@ class PyMuPDFParser(BaseParser):
             if not page_elems:
                 continue
 
+            page = doc[page_num_0]
+
             # Rasterise page to numpy array (pixmap created, consumed, not stored)
             try:
-                page = doc[page_num_0]
                 pixmap = page.get_pixmap(matrix=fitz.Matrix(1, 1))
                 page_array = np.frombuffer(pixmap.samples, dtype=np.uint8).reshape(
                     pixmap.height, pixmap.width, pixmap.n
@@ -433,8 +441,34 @@ class PyMuPDFParser(BaseParser):
                 continue
 
             # Run detector (fail-soft: LayoutDetector.detect never raises, D-2)
-            detector.detect(page_array, page_elems)
+            page_viz = detector.detect(page_array, page_elems)
             # page_array goes out of scope here; GC reclaims it
+
+            if page_viz is not None:
+                page_viz["page_num"] = page_num_1
+                page_viz["width"] = float(page.rect.width)
+                page_viz["height"] = float(page.rect.height)
+                # For heuristic fallback, build boxes from elements
+                if page_viz.get("detector") == "heuristic":
+                    page_viz["boxes"] = [
+                        {
+                            "type": e.element_type.value if e.element_type else "text",
+                            "bbox": [
+                                float(e.bbox.x0 / page.rect.width) if e.bbox else 0.0,
+                                float(e.bbox.y0 / page.rect.height) if e.bbox else 0.0,
+                                float(e.bbox.x1 / page.rect.width) if e.bbox else 1.0,
+                                float(e.bbox.y1 / page.rect.height) if e.bbox else 1.0,
+                            ],
+                            "score": 1.0,
+                            "preview": (e.content or "")[:60],
+                        }
+                        for e in page_elems if e.bbox is not None
+                    ]
+                else:
+                    # For ONNX detections, leave preview empty (hard to match exactly)
+                    for box_entry in page_viz.get("boxes", []):
+                        box_entry["preview"] = ""
+                viz_pages.append(page_viz)
 
         # Re-sequence globally: detect() assigns 0-based reading_order per page;
         # after all pages we must produce a single 0..N-1 sequence across the document.
@@ -448,6 +482,8 @@ class PyMuPDFParser(BaseParser):
         all_sorted = sorted(elements, key=_global_sort_key)
         for idx, elem in enumerate(all_sorted):
             elem.reading_order = idx
+
+        return viz_pages
 
     def _sort_by_reading_order(
         self,

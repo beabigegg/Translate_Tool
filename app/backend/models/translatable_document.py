@@ -256,6 +256,7 @@ class TranslatableDocument:
     elements: List[TranslatableElement]
     pages: List[PageInfo]
     metadata: DocumentMetadata
+    layout_viz: Optional[List[dict]] = None
 
     def get_translatable_elements(self) -> List[TranslatableElement]:
         """Get elements that should be translated."""

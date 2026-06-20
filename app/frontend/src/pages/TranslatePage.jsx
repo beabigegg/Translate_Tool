@@ -1,4 +1,4 @@
-import React, { useReducer } from 'react';
+import React, { useReducer, useState } from 'react';
 import { toast } from 'sonner';
 import { StepWizard } from '../components/domain/StepWizard.jsx';
 import { FileDropZone } from '../components/domain/FileDropZone.jsx';
@@ -14,6 +14,7 @@ import { useSettings } from '../contexts/SettingsContext.jsx';
 import { createJob, cancelJob } from '../api/jobs.js';
 import { ALL_LANGUAGES } from '../constants/languages.js';
 import { DEFAULT_SRC_LANG, DEFAULT_PROFILE, HISTORY_MAX_ENTRIES } from '../constants/defaults.js';
+import { LayoutViewer } from '../components/domain/LayoutViewer.jsx';
 
 const STEPS = [
   { id: 'upload', label: '上傳檔案' },
@@ -25,14 +26,28 @@ const initialState = {
   step: 1,
   files: [],
   selectedTargets: [],
-  srcLang: DEFAULT_SRC_LANG,
   selectedProfile: DEFAULT_PROFILE,
   jobMode: 'translate',
+  enableTermExtraction: true,
   jobId: null,
   jobStatus: null,
   error: null,
   loading: false,
 };
+
+const ACTIVE_JOB_KEY = 'activeJobId';
+
+function makeInitialState() {
+  let srcLang = DEFAULT_SRC_LANG;
+  try { srcLang = JSON.parse(localStorage.getItem('defaultSrcLang')) || DEFAULT_SRC_LANG; } catch {}
+  let selectedTargets = [];
+  try { selectedTargets = JSON.parse(localStorage.getItem('defaultTargets')) || []; } catch {}
+  // Restore in-progress job so navigating away and back keeps progress visible
+  let jobId = null;
+  try { jobId = localStorage.getItem(ACTIVE_JOB_KEY) || null; } catch {}
+  const step = jobId ? 3 : 1;
+  return { ...initialState, srcLang, selectedTargets, jobId, step };
+}
 
 function reducer(state, action) {
   switch (action.type) {
@@ -42,22 +57,30 @@ function reducer(state, action) {
     case 'SET_SRC_LANG': return { ...state, srcLang: action.payload };
     case 'SET_PROFILE': return { ...state, selectedProfile: action.payload };
     case 'SET_MODE': return { ...state, jobMode: action.payload };
+    case 'SET_ENABLE_TERM': return { ...state, enableTermExtraction: action.payload };
     case 'SET_STEP': return { ...state, step: action.payload };
-    case 'SET_JOB_ID': return { ...state, jobId: action.payload };
+    case 'SET_JOB_ID': {
+      try { if (action.payload) localStorage.setItem(ACTIVE_JOB_KEY, action.payload); } catch {}
+      return { ...state, jobId: action.payload };
+    }
     case 'SET_JOB_STATUS': return { ...state, jobStatus: action.payload };
     case 'SET_ERROR': return { ...state, error: action.payload };
     case 'SET_LOADING': return { ...state, loading: action.payload };
-    case 'RESET': return { ...initialState };
+    case 'RESET': {
+      try { localStorage.removeItem(ACTIVE_JOB_KEY); } catch {}
+      return { ...initialState };
+    }
     default: return state;
   }
 }
 
 export default function TranslatePage() {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(reducer, null, makeInitialState);
+  const [showLayout, setShowLayout] = useState(false);
   const { state: settings } = useSettings();
   const [history, setHistory] = useLocalStorage('translationHistory', []);
 
-  const { step, files, selectedTargets, srcLang, selectedProfile, jobMode, jobId, jobStatus, loading } = state;
+  const { step, files, selectedTargets, srcLang, selectedProfile, jobMode, enableTermExtraction, jobId, jobStatus, loading } = state;
   const isTranslating = jobStatus && !['completed', 'failed', 'cancelled'].includes(jobStatus.status);
 
   function handleJobUpdate(data) {
@@ -84,6 +107,7 @@ export default function TranslatePage() {
       form.append('src_lang', srcLang);
       form.append('profile', selectedProfile);
       form.append('mode', jobMode);
+      form.append('enable_term_extraction', String(enableTermExtraction));
       const data = await createJob(form);
       dispatch({ type: 'SET_JOB_ID', payload: data.job_id });
       dispatch({ type: 'SET_STEP', payload: 3 });
@@ -147,6 +171,17 @@ export default function TranslatePage() {
             </div>
             <Select label="來源語言" options={srcLangOptions} value={srcLang} onChange={e => dispatch({ type: 'SET_SRC_LANG', payload: e.target.value })} />
             <Select label="翻譯情境" options={profileOptions} value={selectedProfile} onChange={e => dispatch({ type: 'SET_PROFILE', payload: e.target.value })} />
+            {jobMode === 'translate' && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', cursor: 'pointer', marginTop: 'var(--space-3)' }}>
+                <input
+                  type="checkbox"
+                  checked={enableTermExtraction}
+                  onChange={e => dispatch({ type: 'SET_ENABLE_TERM', payload: e.target.checked })}
+                  style={{ width: 16, height: 16, cursor: 'pointer' }}
+                />
+                啟用術語抽取與注入
+              </label>
+            )}
           </div>
           <div className="step-actions">
             <Button variant="secondary" onClick={() => dispatch({ type: 'SET_STEP', payload: 1 })}>上一步</Button>
@@ -166,12 +201,28 @@ export default function TranslatePage() {
               <a href="/terms/review" className="btn btn-primary">前往術語庫審核</a>
             </div>
           )}
+          {jobStatus?.layout_viz_available && (
+            <div style={{ marginTop: 'var(--space-4)' }}>
+              <button
+                className="btn btn-secondary"
+                style={{ fontSize: 'var(--text-sm)' }}
+                onClick={() => setShowLayout(v => !v)}
+              >
+                {showLayout ? '隱藏版面偵測' : '查看版面偵測結果'}
+              </button>
+              {showLayout && (
+                <div style={{ marginTop: 'var(--space-4)', padding: 'var(--space-4)', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)' }}>
+                  <LayoutViewer jobId={jobId} onClose={() => setShowLayout(false)} />
+                </div>
+              )}
+            </div>
+          )}
           <div className="step-actions">
             {isTranslating && <Button variant="danger" onClick={handleCancel}>取消翻譯</Button>}
             {jobStatus?.status === 'completed' && (
               <>
                 {jobStatus.download_url && <a className="btn btn-primary" href={jobStatus.download_url} download>下載譯文</a>}
-                <Button variant="secondary" onClick={() => dispatch({ type: 'RESET' })}>開始新翻譯</Button>
+                <Button variant="secondary" onClick={() => { dispatch({ type: 'RESET' }); setShowLayout(false); }}>開始新翻譯</Button>
               </>
             )}
             {jobStatus?.status === 'failed' && <Button variant="secondary" onClick={() => dispatch({ type: 'RESET' })}>重新開始</Button>}

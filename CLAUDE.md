@@ -4,15 +4,73 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project overview
 
-<TODO: one-sentence description of what this repo does and who uses it>
+Full-stack document translation platform (DOCX/PPTX/XLSX/PDF) that preserves layout and formatting using local or cloud LLMs, with terminology management, neural quality evaluation, and a React UI; aimed at translators and teams needing layout-faithful multilingual output.
 
 ## Dev commands
 
-<TODO: fill in install / dev / test / lint / build commands for this project>
+```bash
+# Backend — requires conda env
+conda env update -n translate-tool -f app/backend/environment.yml
+conda activate translate-tool
+pip install -r app/backend/requirements.txt
+
+# Frontend
+cd app/frontend && npm install
+
+# Run (full stack — handles conda activation, build, process management)
+./translate_tool.sh start --dev      # dev mode (Vite HMR + uvicorn reload)
+./translate_tool.sh start            # prod mode
+
+# Run individually
+python -m app.backend.main           # backend only (port 8765, needs Ollama at :11434)
+cd app/frontend && npm run dev       # frontend only (port 5173, proxies to :8765)
+
+# Tests
+pytest                               # full suite from project root
+
+# Frontend build
+cd app/frontend && npm run build
+```
 
 ## Architecture
 
-<TODO: describe main modules, service boundaries, and entry points>
+**Backend (FastAPI, `app/backend/`)**
+
+| Layer | Key files | Responsibility |
+|---|---|---|
+| Entry point | `main.py` | FastAPI app, CORS, serves SPA |
+| API | `api/routes.py`, `api/schemas.py` | ~30 REST endpoints: jobs, terms, providers, models, profiles |
+| Orchestration | `processors/orchestrator.py` | Main pipeline hub — scenario routing, chunking, translation, rendering |
+| Job lifecycle | `services/job_manager.py` | In-memory job store (50-job cap, 24h TTL), async worker dispatch |
+| Translation | `services/translation_service.py` | Batch LLM calls, critique loops, context windows |
+| Chunking | `services/doc_chunker.py` | Long-document semantic chunking (50-token overlap) |
+| Terminology | `services/term_db.py` | SQLite-backed term store; UNVERIFIED → APPROVED/REJECTED state machine |
+| Quality eval | `services/quality_evaluator.py` | COMET/xCOMET neural QE (optional, lazy-loaded) |
+| Model routing | `services/model_router.py` | Multi-provider fallback chain (Ollama → DeepSeek → PANJIT) |
+| Parsers | `parsers/` | Per-format extraction: DOCX, PPTX, PDF (PyMuPDF), XLS (LibreOffice) |
+| Layout detect | `parsers/layout_detector.py` | ONNX heron-101 classifier (auto-downloads from HF, optional) |
+| Renderers | `renderers/` | Coordinate-based text reflow (`bbox_reflow.py`), PDF synthesis (ReportLab) |
+| LLM clients | `clients/` | Ollama (local default) + OpenAI-compatible (cloud); shared retry/timeout base |
+| Config | `config.py` | Feature flags (`QE_ENABLED`, `CRITIQUE_LOOP_ENABLED`, `DYNAMIC_SCENARIO_STRATEGY_ENABLED`), VRAM metadata, font config |
+| Profiles | `translation_profiles.py` | Domain-specific translation strategy presets |
+| Data model | `models/translatable_document.py` | Unified IR: `BoundingBox`, `ElementType` (TEXT/TABLE/FIGURE/…) |
+
+**Frontend (React/Vite, `app/frontend/src/`)**
+
+| Layer | Key files | Responsibility |
+|---|---|---|
+| Entry | `main.jsx` | App bootstrap, router |
+| Pages | `pages/` | TranslatePage, TermsPage, TermsReviewPage, SettingsPage, HistoryPage (lazy-loaded) |
+| Contexts | `contexts/SettingsContext.jsx` | Model selection, provider config (persisted to localStorage) |
+| Hooks | `hooks/useJobPolling.js` | Polls `GET /api/jobs/{id}` until terminal state |
+| API layer | `src/api/` | REST client wrappers (jobs, terms, settings, layout) |
+| Components | `components/domain/LayoutViewer.jsx` | Coordinate overlay preview of detected layout |
+
+**Data & config**
+
+- Runtime data: `~/.translate_tool/jobs/`, `~/.translate_tool/logs/`, `~/.translate_tool/cache/`
+- Provider routing: `config/providers.yml` (gitignored runtime, templated from `providers.yml.example`)
+- API keys: `.env` (DeepSeek, PANJIT)
 
 ---
 

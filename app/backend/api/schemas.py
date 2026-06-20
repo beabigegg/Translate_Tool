@@ -32,6 +32,7 @@ class JobStatus(BaseModel):
     quality_score_avg: Optional[float] = None   # average COMET score when QE is enabled
     audit_hit_rate: Optional[float] = None       # terminology hit rate when audit ran
     download_url: Optional[str] = None           # populated when job is completed and output zip exists
+    layout_viz_available: bool = False           # True once layout_viz.json exists (PDF jobs only)
 
 
 class TermImportResult(BaseModel):
@@ -223,3 +224,33 @@ class TestTranslationResult(BaseModel):
     translation: Optional[str] = None
     comet_score: Optional[float] = None
     error: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Layout visualization schemas (layout-viz change)
+# ---------------------------------------------------------------------------
+
+class LayoutBoxSchema(BaseModel):
+    type: str
+    bbox: List[float]
+    score: float
+    preview: str = ""
+
+
+class LayoutPageSchema(BaseModel):
+    page_num: int
+    width: float
+    height: float
+    detector: str
+    boxes: List[LayoutBoxSchema] = []
+
+
+class LayoutFileVizResponse(BaseModel):
+    file_name: str
+    total_pages: int
+    pages: List[LayoutPageSchema] = []
+
+
+class LayoutVizResponse(BaseModel):
+    job_id: str
+    files: List[LayoutFileVizResponse] = []

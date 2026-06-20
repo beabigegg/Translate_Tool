@@ -233,7 +233,7 @@ class LayoutDetector:
         self,
         page_pixmap_array: np.ndarray,
         elements: List[TranslatableElement],
-    ) -> None:
+    ) -> Optional[dict]:
         """Detect layout regions and assign element_type + reading_order in-place.
 
         The page_pixmap_array is consumed and discarded inside this method;
@@ -245,16 +245,17 @@ class LayoutDetector:
             elements: Page elements to type and order in-place.
 
         Returns:
-            None (mutates elements).
+            Optional[dict]: viz page dict with "detector" and "boxes" keys,
+                            or None when there is nothing to visualise.
         """
         # Check LAYOUT_DETECTOR_ENABLED flag
         enabled_raw = os.environ.get("LAYOUT_DETECTOR_ENABLED", "true").lower()
         if enabled_raw not in ("1", "true", "yes"):
             _heuristic_reading_order(elements)
-            return
+            return {"detector": "disabled", "boxes": []}
 
         if not elements:
-            return
+            return None
 
         # Validate pixmap (fail-soft on bad input, D-2)
         if page_pixmap_array is None:
@@ -263,7 +264,7 @@ class LayoutDetector:
                 "falling back to heuristic."
             )
             _heuristic_reading_order(elements)
-            return
+            return {"detector": "heuristic", "boxes": []}
 
         try:
             if not isinstance(page_pixmap_array, np.ndarray) or page_pixmap_array.ndim != 3:
@@ -278,12 +279,12 @@ class LayoutDetector:
                 exc,
             )
             _heuristic_reading_order(elements)
-            return
+            return {"detector": "heuristic", "boxes": []}
 
         # Load ONNX session (lazy, cached, fail-soft)
         if not self._load_session():
             _heuristic_reading_order(elements)
-            return
+            return {"detector": "heuristic", "boxes": []}
 
         # Run inference (D-2: any error → WARNING + fallback)
         try:
@@ -297,7 +298,7 @@ class LayoutDetector:
                 type(exc).__name__,
             )
             _heuristic_reading_order(elements)
-            return
+            return {"detector": "heuristic", "boxes": []}
         # page_pixmap_array reference is no longer used; let GC reclaim it
 
         # Filter by confidence threshold
@@ -310,7 +311,7 @@ class LayoutDetector:
         if not accepted_regions:
             # No confident detections — fall back to heuristic
             _heuristic_reading_order(elements)
-            return
+            return {"detector": "heuristic", "boxes": []}
 
         # Assign element_type from enclosing region (geometric containment, D-3)
         self._assign_element_types(
@@ -319,6 +320,20 @@ class LayoutDetector:
 
         # Assign reading_order: column-aware ordering (D-3)
         self._assign_reading_order(elements, accepted_regions, page_height, page_width)
+
+        # Build viz dict for ONNX detections
+        return {
+            "detector": "onnx",
+            "boxes": [
+                {
+                    "type": _map_class_index(int(label_idx)).value,
+                    "bbox": box.tolist(),
+                    "score": float(score),
+                    "preview": "",
+                }
+                for box, score, label_idx in accepted_regions
+            ],
+        }
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -334,7 +349,7 @@ class LayoutDetector:
 
         Model: docling-layout-heron-onnx (RT-DETRv2 variant).
         Inputs:  images (batch,3,640,640) uint8
-                 orig_target_sizes (batch,2) int64  — original [H, W]
+                 orig_target_sizes (batch,2) int64  — original [W, H] (width first)
         Outputs: labels (batch,300) int64
                  boxes  (batch,300,4) float — pixel coords in original image space
                  scores (batch,300) float
@@ -355,9 +370,10 @@ class LayoutDetector:
         img = np.transpose(img, (2, 0, 1))  # CHW
         img = np.expand_dims(img, 0)        # 1CHW uint8
 
-        # Both inputs are required; orig_target_sizes tells the model the original
-        # page dimensions so it can scale boxes back to pixel coordinates.
-        orig_sizes = np.array([[page_height, page_width]], dtype=np.int64)
+        # orig_target_sizes: this heron model variant uses [W, H] order (width first),
+        # NOT the standard [H, W] that most RT-DETR implementations use.
+        # Evidence: with [H, W], x values exceed 1.0 and y values max at W/H ≈ 0.76.
+        orig_sizes = np.array([[page_width, page_height]], dtype=np.int64)
         input_names = [inp.name for inp in self._session.get_inputs()]
         feed = {input_names[0]: img, input_names[1]: orig_sizes}
 

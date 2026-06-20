@@ -22,6 +22,8 @@ from app.backend.api.schemas import (
     JobCreateResponse,
     JobQualityResponse,
     JobStatus,
+    LayoutFileVizResponse,
+    LayoutVizResponse,
     MetricsResponse,
     ModelConfigItem,
     ModelsResponse,
@@ -61,7 +63,7 @@ from app.backend.services.model_router import RouteGroup, get_route_info, resolv
 # providers.yml is absent/malformed — callers fall back to Ollama table.
 _providers_config = load_providers_config()
 from app.backend.translation_profiles import get_profile, list_profiles
-from app.backend.services.job_manager import JobManager
+from app.backend.services.job_manager import JobManager, JOBS_DIR
 from app.backend.services.translation_cache import get_cache
 from app.backend.services.term_db import TermDB, _VALID_STATUSES
 
@@ -146,6 +148,7 @@ async def create_job(
     pdf_output_format: str = Form("docx"),  # "docx" or "pdf"
     pdf_layout_mode: str = Form("overlay"),  # "overlay" or "side_by_side"
     mode: str = Form("translation"),  # "translation" or "extraction_only"
+    enable_term_extraction: bool = Form(True),
 ) -> JobCreateResponse:
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded")
@@ -229,6 +232,7 @@ async def create_job(
             pdf_output_format=pdf_output_format,
             pdf_layout_mode=pdf_layout_mode,
             mode=mode,
+            enable_term_extraction=enable_term_extraction,
         )
         return JobCreateResponse(job_id=job.job_id)
     finally:
@@ -299,6 +303,10 @@ def job_status(job_id: str) -> JobStatus:
         else None
     )
 
+    # layout_viz.json is written during PDF parsing (before translation begins),
+    # so it can become available while the job is still running.
+    layout_viz_available = (JOBS_DIR / job_id / "layout_viz.json").exists()
+
     return JobStatus(
         job_id=job.job_id,
         status=status,
@@ -320,6 +328,7 @@ def job_status(job_id: str) -> JobStatus:
         quality_score_avg=quality_score_avg,
         audit_hit_rate=audit_hit_rate,
         download_url=download_url,
+        layout_viz_available=layout_viz_available,
     )
 
 
@@ -376,6 +385,61 @@ def job_audit(job_id: str) -> JobAuditResponse:
         total_approved=job.audit.total_approved,
         matched_approved=job.audit.matched_approved,
     )
+
+
+@router.get("/jobs/{job_id}/layout", response_model=LayoutVizResponse)
+def job_layout(job_id: str) -> LayoutVizResponse:
+    """Return layout detection visualization data for a PDF job.
+
+    Supports multi-file jobs: each PDF's viz is stored under its filename key.
+    Returns 404 when job not found or layout data has not yet been written (non-PDF
+    jobs or jobs where parsing has not started).
+    """
+    import json
+
+    if job_id not in job_manager.jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    viz_path = JOBS_DIR / job_id / "layout_viz.json"
+    if not viz_path.exists():
+        raise HTTPException(status_code=404, detail="Layout data not available for this job")
+
+    try:
+        data = json.loads(viz_path.read_text(encoding="utf-8"))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to read layout data")
+
+    # Support both new multi-file format {"files": {...}} and legacy single-file format
+    if "files" in data:
+        files_raw = data["files"]
+    else:
+        # Legacy: {"file_name": ..., "pages": [...]}
+        files_raw = {data.get("file_name", "unknown.pdf"): data}
+
+    files = [
+        LayoutFileVizResponse(
+            file_name=f.get("file_name", name),
+            total_pages=f.get("total_pages", len(f.get("pages", []))),
+            pages=f.get("pages", []),
+        )
+        for name, f in files_raw.items()
+    ]
+    return LayoutVizResponse(job_id=job_id, files=files)
+
+
+@router.get("/jobs/{job_id}/layout/page/{file_stem}/{page_num}")
+def job_layout_page(job_id: str, file_stem: str, page_num: int):
+    """Serve a rendered JPEG thumbnail for the layout viz page overlay.
+
+    file_stem: filename without extension (e.g. "document" for "document.pdf").
+    page_num: 1-based page number.
+    """
+    if job_id not in job_manager.jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    img_path = JOBS_DIR / job_id / "layout_pages" / file_stem / f"page_{page_num}.jpg"
+    if not img_path.exists():
+        raise HTTPException(status_code=404, detail="Page image not available")
+    return FileResponse(str(img_path), media_type="image/jpeg")
 
 
 @router.get("/jobs/{job_id}/download")

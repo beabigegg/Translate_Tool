@@ -16,7 +16,6 @@ function settingsReducer(state, action) {
     case 'SET_MODEL_CONFIG': return { ...state, modelConfig: action.payload };
     case 'SET_DEFAULT_SRC_LANG': return { ...state, defaultSrcLang: action.payload };
     case 'SET_DEFAULT_TARGETS': return { ...state, defaultTargets: action.payload };
-    case 'SET_NUM_CTX': return { ...state, numCtx: action.payload };
     default: return state;
   }
 }
@@ -34,7 +33,6 @@ export function SettingsProvider({ children }) {
     modelConfig: [],
     defaultSrcLang: loadFromStorage('defaultSrcLang', 'auto'),
     defaultTargets: loadFromStorage('defaultTargets', []),
-    numCtx: null,
   });
 
   useEffect(() => {
@@ -66,6 +64,7 @@ export function SettingsProvider({ children }) {
 
   useEffect(() => { localStorage.setItem('gpuVram', JSON.stringify(state.gpuVram)); }, [state.gpuVram]);
   useEffect(() => { localStorage.setItem('uiLanguage', JSON.stringify(state.uiLanguage)); }, [state.uiLanguage]);
+  useEffect(() => { localStorage.setItem('defaultTargets', JSON.stringify(state.defaultTargets)); }, [state.defaultTargets]);
 
   return <SettingsContext.Provider value={{ state, dispatch }}>{children}</SettingsContext.Provider>;
 }

@@ -7,23 +7,28 @@ import { useTheme } from '../hooks/useTheme.js';
 import { useHealthCheck } from '../hooks/useHealthCheck.js';
 import { getProviderModels, testTranslation } from '../api/system.js';
 import { useTranslation } from '../i18n/index.js';
+import { TARGET_LANGUAGES } from '../constants/languages.js';
 
 const SRC_LANG_OPTIONS = [
-  { value: 'zh-TW', label: '繁體中文 (zh-TW)' },
-  { value: 'en', label: 'English (en)' },
-  { value: 'ja', label: '日本語 (ja)' },
-  { value: 'ko', label: '한국어 (ko)' },
-  { value: 'de', label: 'Deutsch (de)' },
-  { value: 'fr', label: 'Français (fr)' },
+  { value: 'Traditional Chinese', label: '繁體中文' },
+  { value: 'English', label: 'English' },
+  { value: 'Japanese', label: 'Japanese 日語' },
+  { value: 'Korean', label: 'Korean 韓語' },
+  { value: 'German', label: 'German 德語' },
+  { value: 'French', label: 'French 法語' },
+  { value: 'Simplified Chinese', label: '簡體中文' },
+  { value: 'Vietnamese', label: 'Vietnamese 越南語' },
 ];
 
 const TARGET_OPTIONS = [
-  { value: 'en', label: 'English' },
-  { value: 'zh-TW', label: '繁體中文' },
-  { value: 'ja', label: '日本語' },
-  { value: 'ko', label: '한국어' },
-  { value: 'de', label: 'Deutsch' },
-  { value: 'fr', label: 'Français' },
+  { value: 'English', label: 'English' },
+  { value: 'Traditional Chinese', label: '繁體中文' },
+  { value: 'Japanese', label: 'Japanese 日語' },
+  { value: 'Korean', label: 'Korean 韓語' },
+  { value: 'German', label: 'German 德語' },
+  { value: 'French', label: 'French 法語' },
+  { value: 'Simplified Chinese', label: '簡體中文' },
+  { value: 'Vietnamese', label: 'Vietnamese 越南語' },
 ];
 
 // --- Provider Status Badge ---
@@ -126,8 +131,8 @@ export default function SettingsPage() {
 
   // --- Test Translation ---
   const [testText, setTestText] = useState('');
-  const [testSrcLang, setTestSrcLang] = useState('zh-TW');
-  const [testTargets, setTestTargets] = useState(['en']);
+  const [testSrcLang, setTestSrcLang] = useState('Traditional Chinese');
+  const [testTargets, setTestTargets] = useState(['English']);
   const [testModels, setTestModels] = useState(['panjit']);
   const [testRunning, setTestRunning] = useState(false);
   const [testResults, setTestResults] = useState([]);
@@ -530,6 +535,27 @@ export default function SettingsPage() {
               <option value="Traditional Chinese">Traditional Chinese</option>
               <option value="English">English</option>
             </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">預設目標語言</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
+              {TARGET_LANGUAGES.map(lang => (
+                <label key={lang.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={state.defaultTargets.includes(lang.id)}
+                    onChange={() => {
+                      const next = state.defaultTargets.includes(lang.id)
+                        ? state.defaultTargets.filter(t => t !== lang.id)
+                        : [...state.defaultTargets, lang.id];
+                      dispatch({ type: 'SET_DEFAULT_TARGETS', payload: next });
+                      localStorage.setItem('defaultTargets', JSON.stringify(next));
+                    }}
+                  />
+                  {lang.label}
+                </label>
+              ))}
+            </div>
           </div>
         </CardBody>
       </Card>

@@ -78,6 +78,7 @@ class JobRecord:
     stop_flag: threading.Event = field(default_factory=threading.Event)
     thread: Optional[threading.Thread] = None
     output_zip: Optional[Path] = None
+    layout_viz_path: Optional[Path] = None
     mode: str = "translation"
     term_summary: Optional[Dict] = None
     provider: Optional[str] = None  # p1-cloud-providers: winning provider ID
@@ -253,6 +254,7 @@ class JobManager:
         pdf_output_format: str = "docx",
         pdf_layout_mode: str = "overlay",
         mode: str = "translation",
+        enable_term_extraction: bool = True,
     ) -> JobRecord:
         # Cleanup by capacity before creating new job
         self._cleanup_by_capacity()
@@ -303,8 +305,8 @@ class JobManager:
                 # p2-comet-qe: per-job block accumulator (one list, mutated by single worker thread)
                 qe_blocks: List[Tuple[str, str, str]] = []
 
-                # Initialise shared TermDB for Phase 0
-                term_db = TermDB()
+                # Initialise shared TermDB for Phase 0 (skipped when enable_term_extraction=False)
+                term_db = TermDB() if enable_term_extraction else None
 
                 for group in route_groups:
                     if job.stop_flag.is_set():
@@ -420,6 +422,7 @@ class JobManager:
                 with job.lock:
                     job.processed_files = total_processed
                     job.output_zip = archive_path
+                    job.layout_viz_path = JOBS_DIR / job_id / "layout_viz.json"
                     job.status = "stopped" if overall_stopped else "completed"
                     job.term_summary = agg_term_summary
                     job.provider = winning_provider  # p1-cloud-providers: BR-16
