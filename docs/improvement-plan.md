@@ -331,11 +331,13 @@ fallback_chain: [panjit]
 ### 4.4 表格與圖表處理 (Table & Figure Handling)
 
 1. **表格結構辨識**：以 **TableFormer / TATR** 做 row/col/cell 拓樸辨識，cell 級獨立翻譯後回填，取代純 `find_tables()` bbox（最佳實踐 / 痛點 13）。
+   - **數值 / 單位 cell passthrough**：純數字、單位、版本號（如 `120`、`°C`、`0.5 g/ml`、`v1.2.3`）不送翻譯，直接原文保留，避免無效 API 請求與誤譯風險。辨識規則：cell 文字 match `^[\d\s\.\-\+\%\/°℃℉µΩ]+$` 或純英數縮寫（≤ 5 字元且無空格）。
+   - **同表格 cell 批次合送**：同一表格內需翻譯的多個 text cell 合併為單一請求（以 `\n---\n` 分隔），回應以同分隔符切回，減少 API 呼叫次數與 system prompt 重複負擔（技術規格書常見 40–100 個 cell，批次可減少 80% 呼叫數）。
 2. **表格框線保護**（痛點 13）：redaction 改為僅遮文字 quad（非整 cell），或先擷取框線向量於回寫後重繪。
 3. **圖片區域遮罩**：figure region 排除翻譯、原樣 pass-through；相鄰 caption 獨立翻譯並重新定位。
 4. **side-by-side 右側 redaction 修正**（PDF 痛點）：side-by-side 模式對右側複本套用 redaction，避免原文透出。
 
-**驗收**：含合併儲存格表格 cell 對位正確；表格細線不被 mask 擦除；圖片區塊原樣保留。
+**驗收**：含合併儲存格表格 cell 對位正確；表格細線不被 mask 擦除；圖片區塊原樣保留；數值/單位 cell 0 誤送翻譯；40-cell 技術規格表 API 呼叫數較 P2 基線減少 ≥ 70%。
 
 ---
 
@@ -390,7 +392,7 @@ fallback_chain: [panjit]
 |---|---|---|---|
 | P3-1 | 掃描檔 OCR 路由（Surya / PaddleOCR-VL） | `parsers/ocr_router.py` | 12 PD |
 | P3-2 | 公式 LaTeX pass-through（pix2text / Mathpix 選配） | `parsers/formula_handler.py` | 8 PD |
-| P3-3 | 表格結構辨識（TableFormer/TATR）cell 級翻譯 | `parsers/table_recognizer.py` | 12 PD |
+| P3-3 | 表格結構辨識（TableFormer/TATR）cell 級翻譯 + 數值 cell passthrough + 同表格 cell 批次合送 | `parsers/table_recognizer.py` | 14 PD |
 | P3-4 | RTL 頁面鏡像 + BIDI + HarfBuzz shaping | `renderers/text_region_renderer.py` | 10 PD |
 | P3-5 | CJK 垂直書寫支援 | `renderers/*`, `utils/font_utils.py` | 6 PD |
 | P3-6 | XLIFF 2.1 / TMX / TBX 往返（CAT 互通） | `processors/xliff_processor.py`, `services/term_db.py` | 12 PD |
@@ -401,7 +403,7 @@ fallback_chain: [panjit]
 **P3 Milestone 驗收標準**
 - 掃描 PDF 端到端可譯，OCR 字元錯誤率 < 10%（樣本評）。
 - 數學公式區塊還原率 > 95%、0 誤譯。
-- 合併儲存格表格 cell 對位正確；XLIFF 往返可與 Trados/memoQ 交換。
+- 合併儲存格表格 cell 對位正確；數值/單位 cell 0 誤送翻譯；40-cell 技術規格表 API 呼叫數減少 ≥ 70%；XLIFF 往返可與 Trados/memoQ 交換。
 - RTL（Arabic）輸出頁面鏡像正確、無字序反轉。
 
 ### 5.1 風險評估 (Risk Assessment)

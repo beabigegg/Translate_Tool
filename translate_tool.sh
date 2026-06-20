@@ -382,6 +382,23 @@ case "$command" in
     ensure_node
     ensure_deps
 
+    # Expose NVIDIA CUDA/cuDNN libraries installed via pip (nvidia-* packages).
+    # onnxruntime-gpu 1.27 requires CUDA 13.x + cuDNN 9.x, which are present as
+    # Python packages but not on the default LD_LIBRARY_PATH.
+    _SITE_PKG="$(python -c 'import site; print(site.getsitepackages()[0])' 2>/dev/null || true)"
+    if [[ -n "$_SITE_PKG" ]]; then
+      for _NVIDIA_LIB_DIR in \
+          "$_SITE_PKG/nvidia/cu13/lib" \
+          "$_SITE_PKG/nvidia/cudnn/lib" \
+          "$_SITE_PKG/nvidia/cublas/lib"; do
+        if [[ -d "$_NVIDIA_LIB_DIR" ]]; then
+          export LD_LIBRARY_PATH="${_NVIDIA_LIB_DIR}:${LD_LIBRARY_PATH:-}"
+        fi
+      done
+    fi
+    # WSL CUDA driver (libcuda.so) is in /usr/lib/wsl/lib
+    [[ -d /usr/lib/wsl/lib ]] && export LD_LIBRARY_PATH="/usr/lib/wsl/lib:${LD_LIBRARY_PATH:-}"
+
     # Release any occupied resources before starting
     release_resources
 

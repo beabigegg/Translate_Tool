@@ -626,3 +626,68 @@ class TestContractShapes:
                 assert isinstance(item["comet_score"], float)
             if "error" in item:
                 assert isinstance(item["error"], str)
+
+
+class TestProvidersBugFixes:
+    """Regression tests for bug fixes after initial release."""
+
+    def _make_providers_config_deepseek_disabled(self) -> dict:
+        """Providers config where deepseek is explicitly disabled (DEEPSEEK_ENABLED=false)."""
+        cfg = _make_providers_config()
+        for p in cfg["providers"]:
+            if p["id"] == "deepseek":
+                p["enabled"] = False
+        return cfg
+
+    def test_health_disabled_deepseek_probed_when_key_supplied(self):
+        """Regression: DEEPSEEK_ENABLED=false must NOT prevent probe when caller supplies a key.
+
+        Bug: backend skipped disabled providers unconditionally, so even a user-supplied
+        key returned null health data and the UI showed 'offline' as a fallback default.
+        Fix: probe DeepSeek when key is provided regardless of enabled flag.
+        """
+        client = _make_client()
+
+        panjit_mock = MagicMock()
+        panjit_mock.health.return_value = (True, "OK; provider=panjit")
+        deepseek_mock = MagicMock()
+        deepseek_mock.health.return_value = (True, "OK; provider=deepseek")
+        call_sequence = [panjit_mock, deepseek_mock]
+
+        with patch("app.backend.api.routes._providers_config", self._make_providers_config_deepseek_disabled()), \
+             patch("app.backend.api.routes.OpenAICompatibleClient", side_effect=call_sequence):
+            resp = client.get("/api/providers/health", headers={"X-DeepSeek-Api-Key": "sk-test"})
+
+        assert resp.status_code == 200
+        items = resp.json()
+        deepseek_item = next((i for i in items if i["provider"] == "deepseek"), None)
+        assert deepseek_item is not None, "DeepSeek must appear in health response when key is supplied"
+        assert deepseek_item["status"] == "online"
+
+    def test_test_translation_accepts_provider_id_as_model(self):
+        """Regression: models=['panjit'] (provider ID) must resolve to panjit's translate_model.
+
+        Bug: slot resolver only matched model_id against pmodels.values() (actual model names
+        like 'gpt-oss:120b'), so sending a provider id like 'panjit' produced an unknown-model
+        error slot. Fix: if model_id matches a provider id, use that provider's translate_model.
+        """
+        client = _make_client()
+        mock_instance = MagicMock()
+        mock_instance.translate_once.return_value = (True, "Hello")
+
+        with patch("app.backend.api.routes._providers_config", _make_providers_config()), \
+             patch("app.backend.api.routes.OpenAICompatibleClient", return_value=mock_instance), \
+             patch("app.backend.api.routes.QE_ENABLED", False):
+            resp = client.post("/api/providers/test-translation", json={
+                "text": "你好",
+                "src_lang": "zh-TW",
+                "targets": ["en"],
+                "models": ["panjit"],
+            })
+
+        assert resp.status_code == 200
+        results = resp.json()
+        assert len(results) == 1, f"Expected 1 result for provider 'panjit', got {results}"
+        assert results[0]["provider"] == "panjit"
+        assert "error" not in results[0], f"Unexpected error: {results[0].get('error')}"
+        assert results[0].get("model_id") == "gemma4:latest"

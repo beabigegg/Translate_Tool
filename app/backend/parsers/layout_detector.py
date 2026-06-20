@@ -332,11 +332,15 @@ class LayoutDetector:
     ):
         """Run ONNX session and return (boxes, scores, labels).
 
-        Output format: RT-DETRv2 style — session.run returns
-        [pred_boxes (1,N,4), pred_scores (1,N), pred_labels (1,N)].
-        Boxes are normalised [x0,y0,x1,y1] 0..1.
+        Model: docling-layout-heron-onnx (RT-DETRv2 variant).
+        Inputs:  images (batch,3,640,640) uint8
+                 orig_target_sizes (batch,2) int64  — original [H, W]
+        Outputs: labels (batch,300) int64
+                 boxes  (batch,300,4) float — pixel coords in original image space
+                 scores (batch,300) float
+        Boxes are returned normalised [x0,y0,x1,y1] 0..1 for compatibility.
         """
-        # Preprocess: resize to 640x640, normalise
+        # Preprocess: resize to 640x640, keep uint8 (model requires uint8 input)
         try:
             import cv2  # optional; fall back to PIL if not installed
             img = cv2.resize(page_pixmap_array, (640, 640))
@@ -347,19 +351,29 @@ class LayoutDetector:
             pil = pil.resize((640, 640))
             img = np.array(pil)
 
-        # HWC uint8 → CHW float32 normalised [0,1]
-        img = img.astype(np.float32) / 255.0
+        # HWC uint8 → CHW uint8 (do NOT convert to float; model expects uint8)
         img = np.transpose(img, (2, 0, 1))  # CHW
-        img = np.expand_dims(img, 0)        # 1CHW
+        img = np.expand_dims(img, 0)        # 1CHW uint8
 
-        input_name = self._session.get_inputs()[0].name
-        outputs = self._session.run(None, {input_name: img})
+        # Both inputs are required; orig_target_sizes tells the model the original
+        # page dimensions so it can scale boxes back to pixel coordinates.
+        orig_sizes = np.array([[page_height, page_width]], dtype=np.int64)
+        input_names = [inp.name for inp in self._session.get_inputs()]
+        feed = {input_names[0]: img, input_names[1]: orig_sizes}
 
-        pred_boxes  = outputs[0][0]   # (N, 4) normalised xyxy
-        pred_scores = outputs[1][0]   # (N,)
-        pred_labels = outputs[2][0]   # (N,) int
+        outputs = self._session.run(None, feed)
 
-        return pred_boxes, pred_scores, pred_labels
+        # Output order: labels (batch,300), boxes (batch,300,4), scores (batch,300)
+        pred_labels = outputs[0][0].astype(np.int32)   # (300,) int
+        pred_boxes  = outputs[1][0].astype(np.float32) # (300, 4) pixel coords
+        pred_scores = outputs[2][0].astype(np.float32) # (300,) float
+
+        # Normalise boxes to [0,1] so the rest of the pipeline is unchanged
+        norm_boxes = pred_boxes.copy()
+        norm_boxes[:, [0, 2]] /= max(page_width, 1)
+        norm_boxes[:, [1, 3]] /= max(page_height, 1)
+
+        return norm_boxes, pred_scores, pred_labels
 
     def _assign_element_types(
         self,

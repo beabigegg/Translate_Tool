@@ -159,15 +159,33 @@ async def create_job(
         target_list, profile_override=profile, provider_config=_providers_config
     )
     if route_groups_result is None:
-        # Manual profile override: all targets in one group with explicit profile's model
+        # Manual profile override: profile selects system-prompt; model/provider still come
+        # from cloud routing when providers.yml is configured (p1-cloud-providers).
         explicit_profile = get_profile(profile)
-        route_groups = [RouteGroup(
-            targets=target_list,
-            model=explicit_profile.model,
-            profile_id=explicit_profile.id,
-            model_type=explicit_profile.model_type,
-        )]
-        ref_model_type = explicit_profile.model_type
+        cloud_groups = resolve_route_groups(
+            target_list, profile_override=None, provider_config=_providers_config
+        ) if _providers_config else None
+        if cloud_groups:
+            # Use cloud provider + model, but apply the selected profile's system prompt.
+            route_groups = [
+                RouteGroup(
+                    targets=g.targets,
+                    model=g.model,
+                    profile_id=explicit_profile.id,
+                    model_type=g.model_type,
+                    provider=g.provider,
+                )
+                for g in cloud_groups
+            ]
+        else:
+            # No cloud config — fall back to profile's Ollama model (legacy path).
+            route_groups = [RouteGroup(
+                targets=target_list,
+                model=explicit_profile.model,
+                profile_id=explicit_profile.id,
+                model_type=explicit_profile.model_type,
+            )]
+        ref_model_type = route_groups[0].model_type
     else:
         route_groups = route_groups_result
         ref_model_type = route_groups[0].model_type if route_groups else ModelType.GENERAL.value
@@ -651,8 +669,15 @@ def providers_health(request: Request) -> List[ProviderHealthItem]:
         pid = provider.get("id", "")
         if not pid:
             continue
+
+        # Probe disabled DeepSeek when a caller-supplied key is present so the
+        # user can verify their key even if DEEPSEEK_ENABLED=false in providers.yml.
+        # All other disabled providers are still skipped.
         if not provider.get("enabled", False):
-            continue
+            if pid == "deepseek" and (deepseek_api_key or "").strip():
+                pass  # allow probe below
+            else:
+                continue
 
         base_url = provider.get("base_url", "")
         api_key = provider.get("api_key", "")
@@ -768,9 +793,10 @@ async def providers_test_translation(req: TestTranslationRequest) -> List[TestTr
     # Resolve (model_id, provider_id) slots to run.
     # If req.models is supplied, use those; otherwise default to all enabled providers.
     if req.models:
-        # Map requested model strings to providers.  A model ID may appear in
-        # any provider's ``models`` map.  If the model is not found, emit an
-        # error slot so the caller knows.
+        # Map requested model strings to providers.  Accept either a model name
+        # (e.g. "gpt-oss:120b") found in a provider's models map, or a provider
+        # id shortcut (e.g. "panjit") which resolves to that provider's
+        # translate model.  If neither matches, emit an error slot.
         slots: List[tuple] = []
         for model_id in req.models:
             found = False
@@ -778,6 +804,12 @@ async def providers_test_translation(req: TestTranslationRequest) -> List[TestTr
                 pmodels = pdata.get("models") or {}
                 if model_id in pmodels.values():
                     slots.append((model_id, pid))
+                    found = True
+                    break
+                if model_id == pid:
+                    translate_model = pmodels.get("translate")
+                    if translate_model:
+                        slots.append((translate_model, pid))
                     found = True
                     break
             if not found:

@@ -20,6 +20,7 @@ from __future__ import annotations
 import logging
 from typing import List, Optional, Tuple
 
+import urllib3
 import requests
 
 logger = logging.getLogger(__name__)
@@ -72,6 +73,8 @@ class OpenAICompatibleClient:
         self._session = requests.Session()
         self._session.headers.update({"Content-Type": "application/json"})
         self._session.verify = verify_ssl
+        if not verify_ssl:
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         # API key is always passed as an explicit per-request header so that test
         # mocks that intercept requests.Session.post can inspect it in kwargs.
         # The header dict is reused on every call (no allocation per request).

@@ -46,16 +46,16 @@ export default function TermsPage() {
     <div className="terms-page">
       <div className="page-header">
         <h2 className="page-title">術語庫</h2>
-        <Link to="/terms/review" className="btn btn-primary">審核待審術語 {stats?.pending_count ? `(${stats.pending_count})` : ''}</Link>
+        <Link to="/terms/review" className="btn btn-primary">審核待審術語 {stats?.needs_review ? `(${stats.needs_review})` : ''}</Link>
       </div>
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
       {activeTab === 'overview' && (
         <div className="stats-grid">
-          <Card><CardBody><div className="stat-card"><p className="stat-label">總術語數</p><p className="stat-value">{stats?.total_count ?? 0}</p></div></CardBody></Card>
-          <Card><CardBody><div className="stat-card"><p className="stat-label">待審核</p><p className="stat-value">{stats?.pending_count ?? 0}</p></div></CardBody></Card>
-          <Card><CardBody><div className="stat-card"><p className="stat-label">已核准</p><p className="stat-value">{stats?.approved_count ?? 0}</p></div></CardBody></Card>
+          <Card><CardBody><div className="stat-card"><p className="stat-label">總術語數</p><p className="stat-value">{stats?.total ?? 0}</p></div></CardBody></Card>
+          <Card><CardBody><div className="stat-card"><p className="stat-label">待審核</p><p className="stat-value">{stats?.needs_review ?? 0}</p></div></CardBody></Card>
+          <Card><CardBody><div className="stat-card"><p className="stat-label">已核准</p><p className="stat-value">{stats?.approved ?? 0}</p></div></CardBody></Card>
         </div>
       )}
 
