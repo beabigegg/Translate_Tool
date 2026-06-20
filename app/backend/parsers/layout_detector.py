@@ -411,6 +411,9 @@ class LayoutDetector:
                 # Don't overwrite TABLE_CELL (set by _detect_and_mark_tables)
                 if elem.element_type != ElementType.TABLE_CELL:
                     elem.element_type = element_type
+                    # Figures and formulas contain no translatable text
+                    if element_type in (ElementType.FIGURE, ElementType.FORMULA):
+                        elem.should_translate = False
                 # Store provenance in metadata (D-3 — no parallel struct)
                 elem.metadata["layout_region"] = [float(v) for v in box]
                 elem.metadata["layout_confidence"] = float(score)

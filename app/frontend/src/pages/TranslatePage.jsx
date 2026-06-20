@@ -29,6 +29,8 @@ const initialState = {
   selectedProfile: DEFAULT_PROFILE,
   jobMode: 'translate',
   enableTermExtraction: true,
+  pdfOutputFormat: 'docx',
+  pdfLayoutMode: 'overlay',
   jobId: null,
   jobStatus: null,
   error: null,
@@ -58,6 +60,7 @@ function reducer(state, action) {
     case 'SET_PROFILE': return { ...state, selectedProfile: action.payload };
     case 'SET_MODE': return { ...state, jobMode: action.payload };
     case 'SET_ENABLE_TERM': return { ...state, enableTermExtraction: action.payload };
+    case 'SET_PDF_OUTPUT': return { ...state, pdfOutputFormat: action.payload.format, pdfLayoutMode: action.payload.mode };
     case 'SET_STEP': return { ...state, step: action.payload };
     case 'SET_JOB_ID': {
       try { if (action.payload) localStorage.setItem(ACTIVE_JOB_KEY, action.payload); } catch {}
@@ -80,7 +83,7 @@ export default function TranslatePage() {
   const { state: settings } = useSettings();
   const [history, setHistory] = useLocalStorage('translationHistory', []);
 
-  const { step, files, selectedTargets, srcLang, selectedProfile, jobMode, enableTermExtraction, jobId, jobStatus, loading } = state;
+  const { step, files, selectedTargets, srcLang, selectedProfile, jobMode, enableTermExtraction, pdfOutputFormat, pdfLayoutMode, jobId, jobStatus, loading } = state;
   const isTranslating = jobStatus && !['completed', 'failed', 'cancelled'].includes(jobStatus.status);
 
   function handleJobUpdate(data) {
@@ -108,6 +111,11 @@ export default function TranslatePage() {
       form.append('profile', selectedProfile);
       form.append('mode', jobMode);
       form.append('enable_term_extraction', String(enableTermExtraction));
+      const hasPdf = files.some(f => f.name.toLowerCase().endsWith('.pdf'));
+      if (hasPdf) {
+        form.append('pdf_output_format', pdfOutputFormat);
+        form.append('pdf_layout_mode', pdfLayoutMode);
+      }
       const data = await createJob(form);
       dispatch({ type: 'SET_JOB_ID', payload: data.job_id });
       dispatch({ type: 'SET_STEP', payload: 3 });
@@ -181,6 +189,32 @@ export default function TranslatePage() {
                 />
                 啟用術語抽取與注入
               </label>
+            )}
+            {jobMode === 'translate' && files.some(f => f.name.toLowerCase().endsWith('.pdf')) && (
+              <div style={{ marginTop: 'var(--space-4)' }}>
+                <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 'var(--space-2)' }}>PDF 輸出格式</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                  {[
+                    { format: 'docx', mode: 'overlay', label: 'DOCX', desc: '匯出為 Word 文件（最高相容性）' },
+                    { format: 'pdf', mode: 'overlay', label: 'PDF 疊加', desc: '譯文貼回原始 PDF 版面' },
+                    { format: 'pdf', mode: 'side_by_side', label: 'PDF 對照', desc: '原文 ｜ 譯文左右並排' },
+                  ].map(opt => (
+                    <label key={opt.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-2)', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="pdfOutput"
+                        checked={pdfOutputFormat === opt.format && pdfLayoutMode === opt.mode}
+                        onChange={() => dispatch({ type: 'SET_PDF_OUTPUT', payload: { format: opt.format, mode: opt.mode } })}
+                        style={{ marginTop: 2, cursor: 'pointer' }}
+                      />
+                      <span>
+                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--text-primary)' }}>{opt.label}</span>
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'block' }}>{opt.desc}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
           <div className="step-actions">
