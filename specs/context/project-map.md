@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
 visible-dirs: 57
-visible-files: 199
+visible-files: 203
 omitted-dirs: 12
 truncated-dirs: 0
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -192,6 +192,7 @@ Translate_Tool/
 |-- scripts/
 |   |-- benchmark_full_factorial.py
 |   |-- benchmark_realfile_pipeline.py
+|   |-- e2e_smoke.py
 |   \-- run_full_factorial.sh
 |-- specs/
 |   |-- context/
@@ -257,18 +258,21 @@ Translate_Tool/
 |   |       |-- load-profile.md
 |   |       \-- locust-example.py
 |   |-- __init__.py
+|   |-- conftest.py
 |   |-- test_bbox_utils.py
 |   |-- test_context_prompt_i18n.py
 |   |-- test_coordinate_renderer.py
+|   |-- test_dead_references.py
 |   |-- test_doc_chunker.py
 |   |-- test_docx_parser.py
 |   |-- test_env_contract.py
 |   |-- test_fewshot_glossary.py
 |   |-- test_font_utils.py
+|   |-- test_glossary_enforcement.py
 |   |-- test_golden_regression.py
-|   |-- test_hy_mt_quality_refinement.py
 |   |-- test_inline_renderer.py
 |   |-- test_ir_pipeline_decoupling.py
+|   |-- test_jobstatus_download_url.py
 |   |-- test_layout_detector.py
 |   |-- test_llm_client_protocol.py
 |   |-- test_metrics_counters.py

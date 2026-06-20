@@ -1,0 +1,35 @@
+change-id: download-url-in-jobstatus
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/ --collect-only -q
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/download-url-in-jobstatus/test-runs/20260620-103108/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/download-url-in-jobstatus/test-runs/20260620-103108/summary.json
+    junit: specs/changes/download-url-in-jobstatus/test-runs/20260620-103108/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_jobstatus_download_url.py
+      tests/test_provider_fallback.py -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/download-url-in-jobstatus/test-runs/20260620-105640/junit.xml'
+      -ra
+    summary: specs/changes/download-url-in-jobstatus/test-runs/20260620-105640/summary.json
+    junit: specs/changes/download-url-in-jobstatus/test-runs/20260620-105640/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      /home/egg/miniforge3/envs/translate-tool/bin/python -m pytest tests/test_jobstatus_download_url.py
+      tests/test_provider_fallback.py tests/ -x -q --tb=short -k 'jobstatus or download_url or job_status'
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/download-url-in-jobstatus/test-runs/20260620-103122/junit.xml'
+      -ra
+    summary: specs/changes/download-url-in-jobstatus/test-runs/20260620-103122/summary.json
+    junit: specs/changes/download-url-in-jobstatus/test-runs/20260620-103122/junit.xml
+final-status: passed

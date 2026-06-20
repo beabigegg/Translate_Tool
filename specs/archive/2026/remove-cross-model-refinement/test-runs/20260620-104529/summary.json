@@ -1,0 +1,20 @@
+{
+  "change_id": "remove-cross-model-refinement",
+  "phase": "full",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/ -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/remove-cross-model-refinement/test-runs/20260620-104529/junit.xml' -ra",
+  "duration_ms": 15564,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests.test_translation_profiles_scenarios::test_technical_process_profile_uses_translation_model_type",
+    "message": "AssertionError: assert 'general' == 'translation'\n  \n  - translation\n  + general"
+  },
+  "artifacts": {
+    "summary": "specs/changes/remove-cross-model-refinement/test-runs/20260620-104529/summary.json",
+    "stdout": "specs/changes/remove-cross-model-refinement/test-runs/20260620-104529/stdout.log",
+    "stderr": "specs/changes/remove-cross-model-refinement/test-runs/20260620-104529/stderr.log",
+    "junit": "specs/changes/remove-cross-model-refinement/test-runs/20260620-104529/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

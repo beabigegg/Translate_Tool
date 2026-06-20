@@ -1,0 +1,14 @@
+...........F
+=================================== FAILURES ===================================
+_________ TestCritiqueLoop.test_critique_loop_runs_with_glossary_terms _________
+tests/test_glossary_enforcement.py:53: in test_critique_loop_runs_with_glossary_terms
+    terms = [_make_term("source_word", "target_word")]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_glossary_enforcement.py:27: in _make_term
+    return Term(source_text=source, target_text=target, confidence=confidence)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: Term.__init__() missing 3 required positional arguments: 'source_lang', 'target_lang', and 'domain'
+=========================== short test summary info ============================
+FAILED tests/test_glossary_enforcement.py::TestCritiqueLoop::test_critique_loop_runs_with_glossary_terms
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 11 passed in 0.37s

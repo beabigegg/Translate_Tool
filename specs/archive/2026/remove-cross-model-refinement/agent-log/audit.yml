@@ -1,0 +1,11 @@
+- type: tier-floor-override
+  change-id: remove-cross-model-refinement
+  timestamp: '2026-06-20T02:48:28.497Z'
+  declared-tier: 2
+  floor-tier: 0
+  label: critical surface (auth / payments / data migration / concurrency / secrets)
+  matched:
+    - session
+  reason: >-
+    Dead-code removal only: the word 'session' in HTTP_POOL matches the session-vocabulary floor
+    trigger but no auth/session/payment logic is added or changed. No security surface change.

@@ -1,0 +1,18 @@
+{
+  "change_id": "download-url-in-jobstatus",
+  "phase": "collect",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "python -m pytest tests/ --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/download-url-in-jobstatus/test-runs/20260620-103054/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 26,
+  "first_failure": {
+    "kind": "import-error",
+    "message": "/home/egg/miniforge3/bin/python: No module named pytest"
+  },
+  "artifacts": {
+    "summary": "specs/changes/download-url-in-jobstatus/test-runs/20260620-103054/summary.json",
+    "stdout": "specs/changes/download-url-in-jobstatus/test-runs/20260620-103054/stdout.log",
+    "stderr": "specs/changes/download-url-in-jobstatus/test-runs/20260620-103054/stderr.log"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

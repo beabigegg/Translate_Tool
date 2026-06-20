@@ -1,0 +1,16 @@
+{
+  "change_id": "remove-cross-model-refinement",
+  "phase": "full",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/ -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/remove-cross-model-refinement/test-runs/20260620-104730/junit.xml' --maxfail=1 -ra",
+  "duration_ms": 15181,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/remove-cross-model-refinement/test-runs/20260620-104730/summary.json",
+    "stdout": "specs/changes/remove-cross-model-refinement/test-runs/20260620-104730/stdout.log",
+    "stderr": "specs/changes/remove-cross-model-refinement/test-runs/20260620-104730/stderr.log",
+    "junit": "specs/changes/remove-cross-model-refinement/test-runs/20260620-104730/junit.xml"
+  },
+  "next_action": "all phases green"
+}
