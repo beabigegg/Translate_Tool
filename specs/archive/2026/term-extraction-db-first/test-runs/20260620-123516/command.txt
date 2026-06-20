@@ -1,0 +1,1 @@
+/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_term_extractor.py tests/test_term_db.py tests/test_env_contract.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/term-extraction-db-first/test-runs/20260620-123516/junit.xml' -ra

@@ -1,0 +1,1 @@
+python -m pytest --collect-only -q tests/test_term_extractor.py tests/test_term_db.py tests/test_env_contract.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/term-extraction-db-first/test-runs/20260620-123508/junit.xml' --maxfail=1 --tb=short -ra

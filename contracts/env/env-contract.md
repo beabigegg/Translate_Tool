@@ -3,7 +3,7 @@ contract: env
 summary: Environment variable inventory, secret handling, and deployment sync policy.
 owner: platform-team
 surface: runtime-config
-schema-version: 0.7.0
+schema-version: 0.8.0
 last-changed: 2026-06-20
 breaking-change-policy: deprecate-2-minors
 ---
@@ -52,3 +52,5 @@ API keys (`PANJIT_API`, `DEEPSEEK_API`) must be stored in `.env` only. `.env` is
 ## Deployment Sync Policy
 
 Any new env var must be added here and to `contracts/env/.env.example.template` and `contracts/env/env.schema.json` in the same change. Secrets (column `secret: yes`) must be provisioned out-of-band; `.env.example.template` uses placeholder values only.
+
+Gate grep commands in `ci-gates.md` that assert env-var presence (e.g. the `env-sync-*` gates) must use the exact canonical names recorded in the table above. When an env var is added or renamed, update the ci-gates.md grep pattern in the same change — a stale pattern passes silently even if the var is absent from the deployment artifacts.
