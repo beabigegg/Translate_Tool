@@ -24,3 +24,4 @@
 | remove-cross-model-refinement | 2026 | 2026-06-20 | specs/archive/2026/remove-cross-model-refinement/ |
 | fallback-chain-cloud-providers | 2026 | 2026-06-20 | specs/archive/2026/fallback-chain-cloud-providers/ |
 | term-extraction-db-first | 2026 | 2026-06-20 | specs/archive/2026/term-extraction-db-first/ |
+| settings-page-cloud-redesign | 2026 | 2026-06-20 | specs/archive/2026/settings-page-cloud-redesign/ |

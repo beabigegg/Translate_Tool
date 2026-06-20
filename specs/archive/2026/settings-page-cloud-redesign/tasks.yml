@@ -38,5 +38,5 @@ tasks:
   - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "local gate passes; CI run after push" }
   - { id: "6.3", section: Verification, title: "Informational gates", status: skipped, note: "no informational-only gates for Tier 2" }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly gates for this change" }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: skipped, note: "all product behavior already in contracts (BR-63/64/65, env Secret Policy); no new cross-change workflow guidance" }

@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 contract-count: 9
 missing-summary-count: 0
-inputs-digest: d5613d62642d4b6881bb71e61ac20fd1e0d9993cb3e6ebe359f6c72c53551b23
+inputs-digest: 6bb24a6dab3846e394c94aeba08438ad202c2b58d06870742f492f84d6ac4e82
 ---
 
 # Contracts Index
@@ -69,7 +69,7 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: Business Rules
 - owner: application-team
 - surface: domain-behavior
-- schema-version: 0.14.0
+- schema-version: 0.15.0
 - last-changed: 2026-06-20
 - breaking-change-policy: deprecate-2-minors
 - summary: Business decision tables, rule inventory, and change policy for behavior updates.
@@ -95,8 +95,8 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: CSS / UI Contract
 - owner: application-team
 - surface: ui
-- schema-version: 0.1.0
-- last-changed: 2026-04-27
+- schema-version: 0.2.0
+- last-changed: 2026-06-20
 - breaking-change-policy: deprecate-2-minors
 - summary: UI token policy, component styling rules, and visual review constraints.
 
@@ -118,7 +118,7 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: Data Shape Contract
 - owner: application-team
 - surface: data
-- schema-version: 0.9.0
+- schema-version: 0.10.0
 - last-changed: 2026-06-20
 - breaking-change-policy: deprecate-2-minors
 - summary: Data schema, invalid-data handling, and row-level compatibility rules.
@@ -131,7 +131,7 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: Env Contract
 - owner: platform-team
 - surface: runtime-config
-- schema-version: 0.8.0
+- schema-version: 0.9.0
 - last-changed: 2026-06-20
 - breaking-change-policy: deprecate-2-minors
 - summary: Environment variable inventory, secret handling, and deployment sync policy.
