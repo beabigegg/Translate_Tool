@@ -85,6 +85,9 @@ class OpenAICompatibleClient:
     def _chat_completions_url(self) -> str:
         return f"{self.base_url}/v1/chat/completions"
 
+    def _embeddings_url(self) -> str:
+        return f"{self.base_url}/v1/embeddings"
+
     def _models_url(self) -> str:
         return f"{self.base_url}/v1/models"
 
@@ -124,6 +127,39 @@ class OpenAICompatibleClient:
             msg = f"Response parse error: {exc}"
             logger.warning("[%s] %s", self.provider_id, msg)
             return False, msg
+
+    def embed(self, texts: List[str], model_name: str) -> List[List[float]]:
+        """POST to /v1/embeddings and return a list of embedding vectors.
+
+        Args:
+            texts: List of strings to embed.
+            model_name: Embedding model to use (e.g. config.TERM_EMBEDDING_MODEL).
+
+        Returns:
+            List of float vectors, one per input text.  Returns [] on any failure
+            (connection error, timeout, HTTP error, or parse failure) so the caller
+            can treat embedding unavailability as non-fatal.
+        """
+        if not texts:
+            return []
+        payload = {"model": model_name, "input": texts}
+        try:
+            resp = self._session.post(
+                self._embeddings_url(),
+                json=payload,
+                headers=self._auth_headers,
+                timeout=self._timeout,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            # Parse data[i].embedding for each item, preserving input order.
+            items = data["data"]
+            return [item["embedding"] for item in items]
+        except Exception as exc:
+            logger.warning(
+                "[%s] embed() failed (non-fatal): %s", self.provider_id, exc
+            )
+            return []
 
     def translate_once(self, text: str, tgt: str, src_lang: Optional[str]) -> Tuple[bool, str]:
         """Translate a single text segment via /v1/chat/completions.

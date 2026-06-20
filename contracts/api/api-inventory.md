@@ -2,8 +2,8 @@
 contract: api-inventory
 summary: Endpoint inventory categories and ownership map for non-standard API surfaces.
 owner: application-team
-schema-version: 0.2.0
-last-changed: 2026-06-19
+schema-version: 0.3.0
+last-changed: 2026-06-20
 surface: api
 ---
 
@@ -38,6 +38,15 @@ All routes are served under the `/api` prefix (mounted in `app/backend/main.py`)
 | POST | /api/terms/wikidata/search | standard-json | application-team | — | external Wikidata lookup |
 | POST | /api/terms/wikidata/import | standard-json | application-team | — | insert lookup result (confidence 0.9, unverified) |
 | GET | /api/metrics | standard-json | application-team | — | in-process operational counters; unauthenticated by design (see BR-1, BR-20) |
+
+## Outbound Integrations (PANJIT)
+
+Backend-to-PANJIT HTTP calls introduced by `term-extraction-db-first`. Not served routes; not covered by `openapi.yml` or `cdd-kit openapi export --check`.
+
+| direction | method | url pattern | model | purpose | TLS | auth | failure behavior |
+|---|---|---|---|---|---|---|---|
+| outbound | POST | `{PANJIT_LLM_BASE_URL}/v1/embeddings` | Qwen3-Embedding-8B | Vectorise source segments for term DB cosine lookup | verify_ssl=False (self-signed) | Bearer ${PANJIT_API} | Non-fatal: returns empty list; term injection skipped; translation proceeds |
+| outbound | POST | `{PANJIT_LLM_BASE_URL}/v1/chat/completions` | gemma4:latest | Term extraction on DB miss only | verify_ssl=False (self-signed) | Bearer ${PANJIT_API} | Non-fatal: injection skipped; translation proceeds; WARNING logged |
 
 ## Categories
 

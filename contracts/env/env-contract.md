@@ -3,7 +3,7 @@ contract: env
 summary: Environment variable inventory, secret handling, and deployment sync policy.
 owner: platform-team
 surface: runtime-config
-schema-version: 0.6.0
+schema-version: 0.7.0
 last-changed: 2026-06-20
 breaking-change-policy: deprecate-2-minors
 ---
@@ -18,7 +18,7 @@ breaking-change-policy: deprecate-2-minors
 | TRANSLATION_CACHE_ENABLED | backend | all | no | no | 1 | 1 | application-team | 0 or 1 | no | Cache disabled if falsy; performance degradation |
 | MAX_JOBS_IN_MEMORY | backend | all | no | no | 100 | 100 | platform-team | positive int | no | Fewer jobs retained in memory |
 | JOB_TTL_HOURS | backend | all | no | no | 24 | 24 | platform-team | positive int | no | Jobs expire sooner or later |
-| PANJIT_LLM_BASE_URL | backend | all | no | no | | https://ollama_pjapi.theaken.com | platform-team | valid URL | yes | Panjit provider disabled if absent or blank; provider skipped in fallback chain |
+| PANJIT_LLM_BASE_URL | backend | all | no | no | | https://ollama_pjapi.theaken.com | platform-team | valid URL | yes | Panjit provider disabled if absent or blank; provider skipped in fallback chain. PANJIT calls (embedding and extraction) use verify_ssl=False (self-signed internal cert); set tls_verify: true in providers.yml if cert is replaced. |
 | PANJIT_API | backend | all | no | yes | | <your-panjit-api-key> | platform-team | non-empty string | yes | Panjit provider disabled if absent or blank; never log this value |
 | DEEPSEEK_BASE_URL | backend | all | no | no | https://api.deepseek.com | https://api.deepseek.com | platform-team | valid URL | yes | DeepSeek provider uses this base URL; required when DEEPSEEK_ENABLED=true |
 | DEEPSEEK_API | backend | all | no | yes | | <your-deepseek-api-key> | platform-team | non-empty string | yes | DeepSeek provider disabled if absent or blank; never log this value |
@@ -37,6 +37,9 @@ breaking-change-policy: deprecate-2-minors
 | QE_ENABLED | backend | all | no | no | false | false | application-team | boolean (true/false or 1/0) | yes | When false (or 0), QE scoring step is skipped entirely; GET /jobs/{id}/quality returns status: "disabled". Opt-in by default — set to true to enable. See BR-57. |
 | QE_MODEL_NAME | backend | all | no | no | Unbabel/wmt22-cometkiwi-da | Unbabel/wmt22-cometkiwi-da | application-team | non-empty string | yes | COMET/xCOMET model identifier (HuggingFace hub name or local path). Used only when QE_ENABLED=true. See BR-54. LICENSE WARNING: default model wmt22-cometkiwi-da and all CometKiwi/xCOMET models are CC-BY-NC-SA 4.0 (non-commercial). Legal review required before enabling in commercial deployments. For commercial use, consider wmt22-comet-da (Apache-2.0, reference-based). |
 | QE_DEVICE | backend | all | no | no | cpu | cpu | application-team | string (cpu, cuda, mps) | yes | Inference device for QE model. Accepted values: cpu, cuda, mps. Falls back to cpu on invalid value with WARNING logged. Ignored when QE_ENABLED=false. See BR-57. |
+| TERM_EMBEDDING_MODEL | backend | all | no | no | Qwen3-Embedding-8B | Qwen3-Embedding-8B | application-team | non-empty string | yes | Embedding model name on the PANJIT endpoint used to vectorise source segments for term DB lookup. See BR-62. |
+| TERM_EMBEDDING_THRESHOLD | backend | all | no | no | 0.75 | 0.75 | application-team | float in (0.0, 1.0] | yes | Cosine similarity cutoff for a DB hit; values ≥ threshold inject without extraction call. Default: 0.75. See BR-62. |
+| TERM_EXTRACTION_MODEL | backend | all | no | no | gemma4:latest | gemma4:latest | application-team | non-empty string | yes | LLM model name on the PANJIT endpoint used for term extraction on DB miss. See BR-62. |
 
 ## Public Frontend Env Policy
 

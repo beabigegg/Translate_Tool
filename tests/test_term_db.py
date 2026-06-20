@@ -196,3 +196,108 @@ def test_import_skip_preserves_existing(db, tmp_path):
     db.approve("Pin", "vi", "technical")
     terms = db.get_top_terms("vi", "technical")
     assert terms[0].confidence == 1.0
+
+
+# ---------------------------------------------------------------------------
+# get_similar_terms_by_embedding (term-extraction-db-first, AC-5/AC-6)
+# ---------------------------------------------------------------------------
+
+def test_get_similar_terms_by_embedding_cosine(db):
+    """AC-6: cosine path is used; no vector DB; approved term returned above threshold."""
+    import numpy as np
+
+    # Insert an approved term.
+    t = _make_term(source_text="Pin", status="approved")
+    db.insert(t)
+    db.approve("Pin", "vi", "technical")
+
+    # Query vector and candidate vector pointing in the same direction → cosine = 1.0.
+    query_vectors = [[1.0, 0.0, 0.0]]
+    candidate_vector = [1.0, 0.0, 0.0]
+
+    # embed_fn returns the candidate vector for the term text.
+    def embed_fn(texts):
+        return [candidate_vector for _ in texts]
+
+    hits = db.get_similar_terms_by_embedding(
+        query_vectors=query_vectors,
+        target_lang="vi",
+        domain="technical",
+        threshold=0.75,
+        embed_fn=embed_fn,
+    )
+
+    assert len(hits) == 1
+    assert hits[0].source_text == "Pin"
+
+
+def test_get_similar_terms_by_embedding_below_threshold(db):
+    """AC-5: term below threshold is NOT returned."""
+    import numpy as np
+
+    t = _make_term(source_text="Pin", status="approved")
+    db.insert(t)
+    db.approve("Pin", "vi", "technical")
+
+    # Orthogonal vectors → cosine = 0.0 < threshold 0.75.
+    query_vectors = [[1.0, 0.0]]
+    candidate_vector = [0.0, 1.0]
+
+    def embed_fn(texts):
+        return [candidate_vector for _ in texts]
+
+    hits = db.get_similar_terms_by_embedding(
+        query_vectors=query_vectors,
+        target_lang="vi",
+        domain="technical",
+        threshold=0.75,
+        embed_fn=embed_fn,
+    )
+
+    assert hits == []
+
+
+def test_get_similar_terms_by_embedding_embed_fn_failure(db):
+    """AC-3: embed_fn returning [] is treated as non-fatal; returns empty list."""
+    t = _make_term(source_text="Pin", status="approved")
+    db.insert(t)
+    db.approve("Pin", "vi", "technical")
+
+    query_vectors = [[1.0, 0.0]]
+
+    def embed_fn(texts):
+        return []  # Simulate embedding failure.
+
+    hits = db.get_similar_terms_by_embedding(
+        query_vectors=query_vectors,
+        target_lang="vi",
+        domain="technical",
+        threshold=0.75,
+        embed_fn=embed_fn,
+    )
+
+    assert hits == []
+
+
+def test_get_similar_terms_by_embedding_empty_query(db):
+    """Empty query_vectors → returns [] without calling embed_fn."""
+    t = _make_term(source_text="Pin", status="approved")
+    db.insert(t)
+    db.approve("Pin", "vi", "technical")
+
+    embed_called = []
+
+    def embed_fn(texts):
+        embed_called.append(texts)
+        return [[1.0, 0.0] for _ in texts]
+
+    hits = db.get_similar_terms_by_embedding(
+        query_vectors=[],
+        target_lang="vi",
+        domain="technical",
+        threshold=0.75,
+        embed_fn=embed_fn,
+    )
+
+    assert hits == []
+    assert embed_called == [], "embed_fn must not be called for empty query_vectors"

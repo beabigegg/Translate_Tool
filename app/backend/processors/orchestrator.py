@@ -551,6 +551,11 @@ def process_files(
         _phase0_hook = None
         if term_db is not None:
             from app.backend.services.term_extractor import run_phase0_multi, SCENARIO_TO_DOMAIN
+            from app.backend.config import (
+                TERM_EMBEDDING_MODEL,
+                TERM_EMBEDDING_THRESHOLD,
+                TERM_EXTRACTION_MODEL,
+            )
             _scenario_name = (
                 (scenario.value if hasattr(scenario, "value") else str(scenario))
                 if DYNAMIC_SCENARIO_STRATEGY_ENABLED else "general"
@@ -559,8 +564,27 @@ def process_files(
             _source_lang = src_lang or "Chinese"
             _target_langs = targets if targets else ["English"]
 
+            # Resolve PANJIT config for the DB-first embedding path.
+            # Reuse the already-loaded provider config (panjit provider).
+            _panjit_base_url: Optional[str] = None
+            _panjit_api_key: str = ""
+            _panjit_tls_verify: bool = False
+            try:
+                from app.backend.config import load_providers_config
+                _p_cfg = load_providers_config()
+                if _p_cfg:
+                    _p_providers = {p["id"]: p for p in _p_cfg.get("providers", [])}
+                    _panjit_prov = _p_providers.get("panjit")
+                    if _panjit_prov and _panjit_prov.get("enabled") is True:
+                        _panjit_base_url = _panjit_prov.get("base_url") or None
+                        _panjit_api_key = _panjit_prov.get("api_key", "")
+                        _panjit_tls_verify = bool(_panjit_prov.get("tls_verify", False))
+            except Exception as _p_exc:
+                logger.warning("[PHASE0] Could not resolve PANJIT config for embedding: %s", _p_exc)
+
             if extraction_only:
                 # Standalone extraction: use 2K-char chunks from _extract_all_segments
+                # extraction_only keeps the legacy Ollama path (AC-7, out of scope).
                 phase0_segments = _extract_all_segments(src)
                 try:
                     term_summary = run_phase0_multi(
@@ -581,7 +605,8 @@ def process_files(
                     log(f"[PHASE0] Unexpected error (non-fatal): {_ph0_exc}")
                     logger.warning("[PHASE0] Unexpected error: %s", _ph0_exc)
             else:
-                # Translation mode: build hook for processors to call with their actual segments
+                # Translation mode: build hook for processors to call with their actual segments.
+                # Uses the DB-first PANJIT embedding-gated flow when panjit config is available.
                 def _phase0_hook(uniq_texts: List[str]) -> None:
                     """Phase 0 hook: extract terms from translation segments, inject into prompts."""
                     try:
@@ -596,6 +621,12 @@ def process_files(
                             base_url=OLLAMA_BASE_URL,
                             timeout=timeout_config,
                             log=log,
+                            panjit_base_url=_panjit_base_url,
+                            panjit_api_key=_panjit_api_key,
+                            panjit_tls_verify=_panjit_tls_verify,
+                            embedding_model=TERM_EMBEDDING_MODEL,
+                            extraction_model=TERM_EXTRACTION_MODEL,
+                            embedding_threshold=TERM_EMBEDDING_THRESHOLD,
                         )
                         for k in aggregate_term_summary:
                             aggregate_term_summary[k] += _ts.get(k, 0)

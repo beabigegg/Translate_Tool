@@ -1,6 +1,6 @@
 # Contract-driven gates
 # Tier semantics: ci/gate-policy.md
-# Active change gates: none (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection, p2-prompt-fewshot-glossary, p2-long-doc-chunking, p2-comet-qe, p2-term-audit, download-url-in-jobstatus, remove-cross-model-refinement, fallback-chain-cloud-providers)
+# Active change gates: term-extraction-db-first (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection, p2-prompt-fewshot-glossary, p2-long-doc-chunking, p2-comet-qe, p2-term-audit, download-url-in-jobstatus, remove-cross-model-refinement, fallback-chain-cloud-providers)
 
 name: contract-driven-gates
 
@@ -44,25 +44,44 @@ jobs:
         run: cdd-kit validate --contracts
 
       - name: Change gate (Tier 1 — blocks merge)
-        run: echo "No active change gates — all changes archived."
+        run: cdd-kit gate term-extraction-db-first
 
       - name: OpenAPI sync gate
         run: cdd-kit openapi export --check --out contracts/api/openapi.yml
 
-      - name: Env schema sync — DEEPSEEK_ENABLED in .env.example.template and env.schema.json (Tier 1 — blocks merge)
-        # AC-4: DEEPSEEK_ENABLED must be present in both deployment sync artefacts.
+      - name: Env schema sync — DEEPSEEK_ENABLED and TERM_EMBEDDING vars in .env.example.template and env.schema.json (Tier 1 — blocks merge)
+        # AC-4 (fallback-chain): DEEPSEEK_ENABLED must be present in both deployment sync artefacts.
+        # AC-4 (term-extraction): TERM_EMBEDDING_MODEL/THRESHOLD and TERM_EXTRACTION_MODEL must be present.
         # Deployment Sync Policy: contracts/env/env-contract.md §Deployment Sync Policy
         run: |
           grep -q "DEEPSEEK_ENABLED" contracts/env/.env.example.template || \
             { echo "DEEPSEEK_ENABLED missing from .env.example.template"; exit 1; }
           grep -q "DEEPSEEK_ENABLED" contracts/env/env.schema.json || \
             { echo "DEEPSEEK_ENABLED missing from env.schema.json"; exit 1; }
+          grep -q "TERM_EMBEDDING_MODEL\|TERM_EMBEDDING_THRESHOLD\|TERM_EXTRACTION_MODEL" contracts/env/.env.example.template || \
+            { echo "TERM_EMBEDDING_* missing from .env.example.template"; exit 1; }
+          grep -q "TERM_EMBEDDING_MODEL\|TERM_EMBEDDING_THRESHOLD\|TERM_EXTRACTION_MODEL" contracts/env/env.schema.json || \
+            { echo "TERM_EMBEDDING_* missing from env.schema.json"; exit 1; }
 
-      - name: Targeted tests — provider_fallback + env_contract (Tier 1 — blocks merge)
-        # AC-1, AC-3, AC-5, AC-6, AC-7, AC-8: fast-fail before full suite.
-        # ollama-local never selected; DeepSeek excluded when DEEPSEEK_ENABLED=false;
-        # graceful failure path; env schema entry present.
-        run: pytest tests/test_provider_fallback.py tests/test_env_contract.py -x -q --tb=short
+      - name: Dead-import assertion — no vector-DB packages in term_extractor.py (Tier 1 — blocks merge)
+        # AC-6: only in-process NumPy cosine is permitted; no pgvector/chromadb/faiss/hnswlib.
+        run: |
+          ! grep -En "(pgvector|chromadb|faiss|hnswlib)" app/backend/services/term_extractor.py || \
+            { echo "Forbidden vector-DB import found in term_extractor.py"; exit 1; }
+
+      - name: Dead-reference Ollama — OLLAMA_BASE_URL absent from term_extractor.py extraction flow (Tier 1 — blocks merge)
+        # AC-8: extraction flow must not reference localhost:11434 / OLLAMA_BASE_URL.
+        run: |
+          ! grep -n "OLLAMA_BASE_URL" app/backend/services/term_extractor.py || \
+            { echo "OLLAMA_BASE_URL referenced in term_extractor.py"; exit 1; }
+
+      - name: Targeted tests — term_extractor + term_db + env_contract (Tier 1 — blocks merge)
+        # AC-1..AC-8: fast-fail before full suite.
+        run: pytest tests/test_term_extractor.py tests/test_term_db.py tests/test_env_contract.py -x -q --tb=short
+
+      - name: Targeted tests — provider_fallback (Tier 1 — blocks merge)
+        # Regression guard: fallback-chain changes must not break.
+        run: pytest tests/test_provider_fallback.py -x -q --tb=short
 
       - name: Secret scan — no literal API keys in source (Tier 1 — blocks merge)
         run: |

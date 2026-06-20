@@ -199,6 +199,11 @@ VERIFY_MAX_RETRIES = 2  # Retries per failed segment during post-translation ver
 TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED: bool = os.getenv("TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED", "false").lower() == "true"
 TERM_INJECT_CONF_THRESHOLD: float = float(os.getenv("TERM_INJECT_CONF_THRESHOLD", "0.9"))
 
+# DB-first term extraction configuration (term-extraction-db-first, BR-62)
+TERM_EMBEDDING_MODEL: str = os.environ.get("TERM_EMBEDDING_MODEL", "Qwen3-Embedding-8B")
+TERM_EMBEDDING_THRESHOLD: float = float(os.environ.get("TERM_EMBEDDING_THRESHOLD", "0.75"))
+TERM_EXTRACTION_MODEL: str = os.environ.get("TERM_EXTRACTION_MODEL", "gemma4:latest")
+
 SUPPORTED_EXTENSIONS = {".docx", ".doc", ".pptx", ".xlsx", ".xls", ".pdf"}
 
 LANG_CODE_MAP = {

@@ -1,0 +1,43 @@
+agent: e2e-resilience-engineer
+date: 2026-06-20
+change-id: term-extraction-db-first
+
+artifacts:
+  - { type: test-files, pointer: "tests/test_term_extractor_resilience.py" }
+  - { type: test-files, pointer: "tests/test_orchestrator_phase0.py" }
+  - { type: test-files, pointer: "tests/fixtures/minimal_phase0.docx (created for orchestrator tests)" }
+  - type: scenarios-covered
+    pointer: >
+      resilience/AC-3: ConnectionError, Timeout, 5xx HTTPError, SSLError (all non-fatal);
+      data-boundary: empty embed response, missing embedding key, missing data key,
+      wrong vector type, zero cosine similarity triggers DB miss, empty DB triggers
+      extraction path, oversized segment (50K chars) graceful degradation;
+      integration/AC-1: _phase0_hook calls run_phase0_multi with PANJIT config from
+      load_providers_config; _phase0_hook passes correct panjit_base_url and panjit_api_key;
+      disabled PANJIT provider → panjit_base_url=None passed (legacy Ollama path)
+  - { type: mutation-checks, pointer: "n/a (mutation tooling not configured in this repo)" }
+  - { type: trace-artifacts, pointer: "n/a (no browser/network traces; unit/integration tests)" }
+
+test-counts:
+  new-tests: 16
+  total-suite: 764 passed, 4 skipped, 0 failed
+
+tautology-notes: |
+  - embed() failure tests patch at class level (OpenAICompatibleClient.embed) and assert
+    on the returned summary dict (extracted_source_texts == []), not just call counts.
+  - zero-similarity test uses side_effect to return orthogonal vectors, asserts extraction_called[].
+  - orchestrator integration tests assert specific arg values (panjit_base_url,
+    panjit_api_key, segments) against known config fixture values.
+  - _fake_translate_docx actively calls pre_translate_hook(["Pin腳焊接作業"]) so
+    assert_called() on run_phase0_mock actually fails if the hook is bypassed.
+
+fix-notes: |
+  - test_embed_zero_similarity_all_terms: initial fake_embed function had
+    signature clash with patched class method (Python passes self as first arg).
+    Fixed by using MagicMock(side_effect=...) with positional arg inspection.
+  - test_phase0_hook_*: run_phase0_multi is a lazy import inside process_files
+    (not a module-level import in orchestrator.py) so
+    'app.backend.processors.orchestrator.run_phase0_multi' does not exist at
+    patch time.  Fixed by patching at
+    'app.backend.services.term_extractor.run_phase0_multi' (definition module),
+    which the lazy import picks up fresh on each process_files call.

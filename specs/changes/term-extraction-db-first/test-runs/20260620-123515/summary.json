@@ -1,0 +1,16 @@
+{
+  "change_id": "term-extraction-db-first",
+  "phase": "collect",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/pytest --collect-only -q tests/test_term_extractor.py tests/test_term_db.py tests/test_env_contract.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/term-extraction-db-first/test-runs/20260620-123515/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 230,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/term-extraction-db-first/test-runs/20260620-123515/summary.json",
+    "stdout": "specs/changes/term-extraction-db-first/test-runs/20260620-123515/stdout.log",
+    "stderr": "specs/changes/term-extraction-db-first/test-runs/20260620-123515/stderr.log",
+    "junit": "specs/changes/term-extraction-db-first/test-runs/20260620-123515/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

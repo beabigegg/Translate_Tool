@@ -1,0 +1,10 @@
+agent: test-strategist
+date: 2026-06-20
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/term-extraction-db-first/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_term_extractor.py → app/backend/services/term_extractor.py" }
+  - { type: tdd-pairs, pointer: "tests/test_term_db.py → app/backend/services/term_db.py" }
+  - { type: tdd-pairs, pointer: "tests/test_term_extractor_resilience.py → app/backend/services/term_extractor.py (new test file)" }
+  - { type: tdd-pairs, pointer: "tests/test_orchestrator_phase0.py → app/backend/processors/orchestrator.py (new test file)" }
+  - { type: coverage-tiers, pointer: "unit, static/dead-reference, resilience, data-boundary, integration, contract" }
+  - { type: mapping-completeness, pointer: "all 8 ACs covered; 24 named test nodes across 4 test files" }

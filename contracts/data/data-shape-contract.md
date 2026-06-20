@@ -3,8 +3,8 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.8.0
-last-changed: 2026-06-19
+schema-version: 0.9.0
+last-changed: 2026-06-20
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -402,3 +402,35 @@ This field is additive and optional. It is parallel to `JobRecord.quality` (the 
 | `app/backend/services/job_manager.py` | producer | sets `JobRecord.audit` after `_run_job` post-translate step |
 | `app/backend/services/term_audit.py` | producer (new, p2-term-audit) | computes `TerminologyAuditResult`; calls `term_db.get_approved()` and the new `term_db.get_rejected()` read query |
 | `tests/test_term_audit.py` | test consumer (new, p2-term-audit) | asserts result shape conforms to this section |
+
+---
+
+## Term DB — Embedding Similarity Query
+
+**Added in term-extraction-db-first.**
+
+`get_similar_terms_by_embedding()` is an in-process query method on `term_db.py`. It is not serialized, not exposed over HTTP, and not part of any IR wire schema.
+
+### Function contract
+
+`term_db.get_similar_terms_by_embedding(segment_text: str, target_lang: str, domain: Optional[str] = None, similarity_threshold: float = 0.75) -> list[tuple[Term, float]]`
+
+| aspect | contract |
+|---|---|
+| Input: segment_text | Single source-language text segment. Length bounded by the PANJIT embedding model context window (32K tokens for Qwen3-Embedding-8B). |
+| Input: target_lang | Target language code; used to filter candidate DB terms by language. |
+| Input: domain | Optional; when supplied, candidate terms are further filtered to this domain. When None, all domains are searched. |
+| Input: similarity_threshold | Cosine similarity floor (default: 0.75); only (Term, score) pairs with score >= threshold are returned. |
+| Output | Ordered list of (Term, float) tuples, descending by similarity score. Empty list when no terms meet the threshold, when term_db is empty, or when embedding fails. |
+| Cosine computation | Computed on-the-fly in Python (NumPy). Embeddings are NOT persisted. No vector-DB package (pgvector, chromadb, faiss) is introduced. |
+| Embedding call | Targets `POST {PANJIT_LLM_BASE_URL}/v1/embeddings` with model `Qwen3-Embedding-8B` and `verify_ssl=False`. |
+| Failure semantics | Any exception from the embedding API is caught; returns an empty list; caller logs at WARNING and skips injection. Never raises into the translation path. |
+
+### Nullability and invalid-data rules
+
+| condition | expected behavior |
+|---|---|
+| term_db is empty for the given target_lang/domain | Returns empty list immediately; no embedding call made |
+| PANJIT embedding response missing `data[].embedding` field | Caught as parse error; returns empty list; WARNING logged |
+| Zero-length segment_text | Returns empty list; no embedding call made |
+| All DB terms embed but none meet threshold | Returns empty list; caller proceeds to extraction path |

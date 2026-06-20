@@ -3,7 +3,7 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.13.0
+schema-version: 0.14.0
 last-changed: 2026-06-20
 breaking-change-policy: deprecate-2-minors
 ---
@@ -74,6 +74,7 @@ breaking-change-policy: deprecate-2-minors
 | BR-59 | terminology-audit-scope | application-team | Only `approved` terms (per the BR-28 state machine) are included in the hit-rate denominator. Terms with status `unverified`, `needs_review`, or `rejected` are excluded from `total_approved` and do not count as hits or misses. The approved set is filtered by `(target_lang, domain)` matching the job request. | tests/test_term_audit.py |
 | BR-60 | terminology-audit-match-algorithm | application-team | Default matching algorithm: case-insensitive exact substring search of each approved term's `target_text` against the concatenated `mt` text of each translated block. Match is deterministic, requires no NLP runtime dependency, and must be consistent across Python interpreter versions (str.lower() only). Optional lemmatized match mode: disabled by default; enabled via a boolean parameter to `audit_terms()`; when enabled, uses the already-present `blingfire` tokenizer plus simple suffix-stripping for lightweight normalization. The lemmatized path MUST be imported lazily inside `term_audit.py` so the default exact path loads nothing extra. No spaCy or NLTK dependency is permitted. | tests/test_term_audit.py |
 | BR-61 | terminology-audit-safe-degradation | application-team | If `audit_terms()` raises any exception, the exception MUST be caught in `_run_job`, logged at WARNING level (exception type + job_id), and `JobRecord.audit` MUST be set to `None`. The job MUST NOT transition to `status: "failed"` and the translated output MUST be delivered normally. Mirrors BR-56 (QE safe degradation). The audit is read-only and inert by construction; no mutation of translated content occurs at any point in the audit path. | tests/test_term_audit.py |
+| BR-62 | term-extraction-db-first | application-team | Phase 0 term extraction uses a DB-first flow. Source segments are embedded via PANJIT `Qwen3-Embedding-8B` (`POST {PANJIT_LLM_BASE_URL}/v1/embeddings`). Cosine similarity is computed in-process (no vector-DB package). If any term meets `TERM_EMBEDDING_THRESHOLD` (default 0.75), matched terms are injected via `build_terminology_block()` into the system prompt and NO extraction LLM call is made. On DB miss, PANJIT `gemma4:latest` (`POST {PANJIT_LLM_BASE_URL}/v1/chat/completions`) is called; new terms saved to term_db and then injected. The translation term-extraction path MUST NOT call `localhost:11434` (Ollama). `extraction_only` mode is unchanged. Embedding API failure is non-fatal: injection skipped, translation continues, WARNING logged. | tests/test_term_extractor.py |
 
 ## Decision Tables
 
@@ -271,6 +272,22 @@ breaking-change-policy: deprecate-2-minors
 | Optional lemmatized mode disabled (default) | case-insensitive exact substring match only; no `blingfire` import at module load time | tests/test_term_audit.py |
 | Optional lemmatized mode enabled | `blingfire` tokenizer + suffix-stripping applied before match; import is lazy | tests/test_term_audit.py |
 | Rejected term is a substring of an approved term's `target_text` | rejected-injection matching MUST use whole-token boundary check (not bare substring) to avoid false positives from approved-term text | tests/test_term_audit.py |
+
+### Table R — DB-first term extraction (BR-62)
+
+| condition | behavior | test id |
+|---|---|---|
+| DB has ≥1 term with cosine similarity ≥ `TERM_EMBEDDING_THRESHOLD` for any source segment | Terms injected into system prompt via `build_terminology_block()`; PANJIT extraction LLM call NOT made | tests/test_term_extractor.py |
+| DB has no terms with cosine similarity ≥ `TERM_EMBEDDING_THRESHOLD` (DB miss) | PANJIT `gemma4:latest` called for extraction; new terms saved to `term_db`; terms injected | tests/test_term_extractor.py |
+| PANJIT embedding API fails (connection/timeout/5xx/SSL) | Term injection skipped; translation continues normally; WARNING logged; job NOT failed | tests/test_term_extractor.py |
+| PANJIT extraction LLM fails on DB miss | Term injection skipped for that document; translation continues; WARNING logged; job NOT failed | tests/test_term_extractor.py |
+| `mode == extraction_only` | Full extraction flow runs unchanged; DB-first shortcut NOT applied; Ollama NOT called | tests/test_term_extractor.py |
+| `TERM_EMBEDDING_THRESHOLD` omitted | Default 0.75 used | tests/test_env_contract.py |
+| Similarity == `TERM_EMBEDDING_THRESHOLD` exactly (boundary) | Treated as DB hit (≥ threshold) | tests/test_term_extractor.py |
+| Similarity < `TERM_EMBEDDING_THRESHOLD` | Treated as DB miss | tests/test_term_extractor.py |
+| `term_db` is empty for given `target_lang`/`domain` | Similarity skipped; falls through to DB miss path (extraction called if mode != extraction_only) | tests/test_term_extractor.py |
+| `ollama-local` appears in `fallback_chain` (misconfiguration) | `ollama-local` entry skipped for translation; WARNING logged; remaining chain continues | tests/test_provider_fallback.py |
+| PANJIT fails AND `DEEPSEEK_ENABLED=false` | fallback chain exhausted; job transitions to `status: "failed"`; `JobStatus.provider` remains null; no local translation attempt made | tests/test_provider_fallback.py |
 
 ## Change Policy
 

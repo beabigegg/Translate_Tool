@@ -1,0 +1,10 @@
+agent: implementation-planner
+change-id: term-extraction-db-first
+status: complete
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/term-extraction-db-first/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer (IP-1..IP-6), e2e-resilience-engineer (IP-7)" }
+  - { type: scope-summary, pointer: "6 files edited + 2 test files created; extraction_only / CRUD API / vector-DB persistence / workflow file out of scope" }
+notes:
+  - "Env-var name drift flagged (Known Risks #1): contracts use TERM_EMBEDDING_MODEL/TERM_EMBEDDING_THRESHOLD/TERM_EXTRACTION_MODEL; test-plan/ci-gates reference stale TERM_SIMILARITY_THRESHOLD/PANJIT_EMBEDDING_MODEL. env-sync gate grep must be corrected by ci-cd-gatekeeper before workflow promotion."
+  - "tier-floor-override required in tasks.yml frontmatter (integration/api key/endpoint vocab trips Tier-2 false-positive)."

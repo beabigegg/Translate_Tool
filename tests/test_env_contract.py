@@ -87,3 +87,56 @@ class TestEnvContractDeclared:
             f"{ENV_CONTRACT_PATH}. "
             "Add it to the env-contract table per AC-4 requirement."
         )
+
+    def test_term_embedding_model_declared(self):
+        """AC-env: TERM_EMBEDDING_MODEL must be declared in env-contract.md (term-extraction-db-first)."""
+        text = _contract_text()
+        assert "TERM_EMBEDDING_MODEL" in text, (
+            "TERM_EMBEDDING_MODEL is not declared in "
+            f"{ENV_CONTRACT_PATH}. "
+            "Add it to the env-contract table per term-extraction-db-first."
+        )
+
+    def test_term_embedding_threshold_declared(self):
+        """AC-env: TERM_EMBEDDING_THRESHOLD must be declared in env-contract.md (term-extraction-db-first)."""
+        text = _contract_text()
+        assert "TERM_EMBEDDING_THRESHOLD" in text, (
+            "TERM_EMBEDDING_THRESHOLD is not declared in "
+            f"{ENV_CONTRACT_PATH}. "
+            "Add it to the env-contract table per term-extraction-db-first."
+        )
+
+    def test_term_extraction_model_declared(self):
+        """AC-env: TERM_EXTRACTION_MODEL must be declared in env-contract.md (term-extraction-db-first)."""
+        text = _contract_text()
+        assert "TERM_EXTRACTION_MODEL" in text, (
+            "TERM_EXTRACTION_MODEL is not declared in "
+            f"{ENV_CONTRACT_PATH}. "
+            "Add it to the env-contract table per term-extraction-db-first."
+        )
+
+    def test_term_embedding_model_wired_in_config(self):
+        """TERM_EMBEDDING_MODEL must be read in config.py."""
+        from app.backend import config
+        assert hasattr(config, "TERM_EMBEDDING_MODEL"), (
+            "TERM_EMBEDDING_MODEL constant missing from config.py"
+        )
+        assert isinstance(config.TERM_EMBEDDING_MODEL, str)
+        assert config.TERM_EMBEDDING_MODEL  # non-empty
+
+    def test_term_embedding_threshold_wired_in_config(self):
+        """TERM_EMBEDDING_THRESHOLD must be a float in config.py."""
+        from app.backend import config
+        assert hasattr(config, "TERM_EMBEDDING_THRESHOLD"), (
+            "TERM_EMBEDDING_THRESHOLD constant missing from config.py"
+        )
+        assert isinstance(config.TERM_EMBEDDING_THRESHOLD, float)
+
+    def test_term_extraction_model_wired_in_config(self):
+        """TERM_EXTRACTION_MODEL must be read in config.py."""
+        from app.backend import config
+        assert hasattr(config, "TERM_EXTRACTION_MODEL"), (
+            "TERM_EXTRACTION_MODEL constant missing from config.py"
+        )
+        assert isinstance(config.TERM_EXTRACTION_MODEL, str)
+        assert config.TERM_EXTRACTION_MODEL  # non-empty
