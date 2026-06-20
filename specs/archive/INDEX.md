@@ -20,3 +20,6 @@
 | p2-long-doc-chunking | 2026 | 2026-06-19 | specs/archive/2026/p2-long-doc-chunking/ |
 | p2-comet-qe | 2026 | 2026-06-19 | specs/archive/2026/p2-comet-qe/ |
 | p2-term-audit | 2026 | 2026-06-19 | specs/archive/2026/p2-term-audit/ |
+| download-url-in-jobstatus | 2026 | 2026-06-20 | specs/archive/2026/download-url-in-jobstatus/ |
+| remove-cross-model-refinement | 2026 | 2026-06-20 | specs/archive/2026/remove-cross-model-refinement/ |
+| fallback-chain-cloud-providers | 2026 | 2026-06-20 | specs/archive/2026/fallback-chain-cloud-providers/ |

@@ -1,0 +1,1 @@
+/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_provider_fallback.py tests/test_model_router.py tests/test_env_contract.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/fallback-chain-cloud-providers/test-runs/20260620-115140/junit.xml' -ra
