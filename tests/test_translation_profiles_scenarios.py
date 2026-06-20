@@ -18,12 +18,14 @@ def test_user_scenario_profiles_exist() -> None:
     assert required.issubset(profiles.keys())
 
 
-def test_technical_process_profile_uses_translation_model_type() -> None:
+def test_technical_process_profile_has_system_prompt() -> None:
+    """technical_process profile must have a non-empty system prompt; model_type is now general (R-2)."""
     profile = get_profile("technical_process")
-    assert profile.model_type == ModelType.TRANSLATION.value
+    assert profile.model_type == ModelType.GENERAL.value
     assert profile.system_prompt
 
 
-def test_business_finance_and_marketing_profiles_use_translation_model_type() -> None:
-    assert get_profile("business_finance").model_type == ModelType.TRANSLATION.value
-    assert get_profile("marketing_pr").model_type == ModelType.TRANSLATION.value
+def test_business_finance_and_marketing_profiles_exist() -> None:
+    """business_finance and marketing_pr profiles exist; model_type is now general (R-2)."""
+    assert get_profile("business_finance").model_type == ModelType.GENERAL.value
+    assert get_profile("marketing_pr").model_type == ModelType.GENERAL.value

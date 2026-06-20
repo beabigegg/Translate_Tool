@@ -164,28 +164,6 @@ class OpenAICompatibleClient:
 
         return all_ok, results
 
-    def refine_translation(
-        self,
-        source_text: str,
-        draft: str,
-        tgt: str,
-        src_lang: Optional[str],
-    ) -> Tuple[bool, str]:
-        """Refine a draft translation against the source text.
-
-        Returns:
-            (ok, refined_text) — caller should keep draft on failure.
-        """
-        prompt = (
-            f"[SOURCE]: {source_text}\n"
-            f"[DRAFT]: {draft}\n\n"
-            f"Corrected {tgt} (output only the corrected translation):"
-        )
-        ok, result = self._post_completion(prompt)
-        if not ok or not result.strip():
-            return False, draft
-        return True, result
-
     def health(self) -> Tuple[bool, str]:
         """Probe /v1/models to check provider reachability.
 
@@ -246,7 +224,7 @@ class OpenAICompatibleClient:
         return False
 
     def _is_translategemma_model(self) -> bool:
-        """Cloud providers are not the TranslateGemma model."""
+        """Cloud providers are not a dedicated translation model variant."""
         return False
 
     def set_runtime_options_override(self, options: Optional[dict]) -> None:

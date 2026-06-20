@@ -478,7 +478,6 @@ def translate_docx(
     stop_flag: Optional[threading.Event] = None,
     log: Callable[[str], None] = lambda s: None,
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
-    refine_client: Optional[OllamaClient] = None,
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
 ) -> bool:
@@ -514,7 +513,6 @@ def translate_docx(
         max_batch_chars=max_batch_chars,
         stop_flag=stop_flag,
         log=log,
-        refine_client=refine_client,
     )
 
     if fail_cnt:

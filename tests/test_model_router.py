@@ -8,20 +8,20 @@ from app.backend.services.model_router import (
     RouteGroup,
     resolve_route_groups,
     GREEDY_PRESET,
-    TGEMMA_DEFAULT_MODEL,
     RouteDecision,
     get_route_info,
     resolve_route,
 )
-from app.backend.config import DEFAULT_MODEL, HYMT_DEFAULT_MODEL
+from app.backend.config import DEFAULT_MODEL
 
 
 class TestResolveRoute:
-    def test_vietnamese_routes_to_hymt(self):
+    def test_vietnamese_routes_to_default(self):
+        """After dedicated-model routing removal, Vietnamese falls to DEFAULT_MODEL via legacy path (R-2)."""
         decision = resolve_route(["Vietnamese"])
         assert decision is not None
-        assert decision.model == HYMT_DEFAULT_MODEL
-        assert decision.model_type == "translation"
+        assert decision.model == DEFAULT_MODEL
+        assert decision.model_type == "general"
         assert decision.target == "Vietnamese"
 
     def test_english_routes_to_qwen(self):
@@ -31,15 +31,17 @@ class TestResolveRoute:
         assert decision.profile_id == "general"
         assert decision.model_type == "general"
 
-    def test_japanese_routes_to_hymt(self):
+    def test_japanese_routes_to_default(self):
+        """After dedicated-model routing removal, Japanese falls to DEFAULT_MODEL via legacy path (R-2)."""
         decision = resolve_route(["Japanese"])
         assert decision is not None
-        assert decision.model == HYMT_DEFAULT_MODEL
+        assert decision.model == DEFAULT_MODEL
 
-    def test_korean_routes_to_tgemma(self):
+    def test_korean_routes_to_default(self):
+        """After TGEMMA removal, Korean falls to DEFAULT_MODEL via legacy path (R-2)."""
         decision = resolve_route(["Korean"])
         assert decision is not None
-        assert decision.model == TGEMMA_DEFAULT_MODEL
+        assert decision.model == DEFAULT_MODEL
         assert decision.model_type == "general"
 
     def test_unlisted_language_defaults_to_qwen(self):
@@ -56,7 +58,7 @@ class TestResolveRoute:
     def test_multi_target_routes_by_first(self):
         decision = resolve_route(["Vietnamese", "English"])
         assert decision is not None
-        assert decision.model == HYMT_DEFAULT_MODEL
+        assert decision.model == DEFAULT_MODEL
         assert decision.target == "Vietnamese"
 
     def test_manual_override_returns_none(self):
@@ -66,12 +68,12 @@ class TestResolveRoute:
     def test_auto_override_routes_normally(self):
         decision = resolve_route(["Vietnamese"], profile_override="auto")
         assert decision is not None
-        assert decision.model == HYMT_DEFAULT_MODEL
+        assert decision.model == DEFAULT_MODEL
 
     def test_no_override_routes_normally(self):
         decision = resolve_route(["Japanese"], profile_override=None)
         assert decision is not None
-        assert decision.model == HYMT_DEFAULT_MODEL
+        assert decision.model == DEFAULT_MODEL
 
 
 class TestGreedyPreset:
@@ -93,10 +95,11 @@ class TestGreedyPreset:
 
 class TestGetRouteInfo:
     def test_single_target(self):
+        """After dedicated-model routing removal, Vietnamese routes to DEFAULT_MODEL (R-2)."""
         info = get_route_info(["Vietnamese"])
         assert len(info) == 1
         assert info[0]["target"] == "Vietnamese"
-        assert info[0]["model"] == HYMT_DEFAULT_MODEL
+        assert info[0]["model"] == DEFAULT_MODEL
         assert info[0]["is_primary"] is True
 
     def test_multiple_targets(self):
@@ -120,43 +123,39 @@ class TestGetRouteInfo:
 
 
 class TestResolveRouteGroups:
-    def test_english_vietnamese_gives_two_groups(self):
+    def test_english_vietnamese_gives_one_group(self):
+        """After dedicated-model routing removal, English and Vietnamese both map to DEFAULT_MODEL → 1 group (R-2)."""
         groups = resolve_route_groups(["English", "Vietnamese"])
         assert groups is not None
-        assert len(groups) == 2
-        models = {g.model for g in groups}
-        assert DEFAULT_MODEL in models
-        assert HYMT_DEFAULT_MODEL in models
+        assert len(groups) == 1
+        assert groups[0].model == DEFAULT_MODEL
 
-    def test_english_group_targets(self):
+    def test_all_targets_in_one_group(self):
+        """All languages now use DEFAULT_MODEL in Ollama-local path → one group."""
         groups = resolve_route_groups(["English", "Vietnamese"])
         assert groups is not None
-        qwen_group = next(g for g in groups if g.model == DEFAULT_MODEL)
-        assert qwen_group.targets == ["English"]
-
-    def test_vietnamese_group_targets(self):
-        groups = resolve_route_groups(["English", "Vietnamese"])
-        assert groups is not None
-        hymt_group = next(g for g in groups if g.model == HYMT_DEFAULT_MODEL)
-        assert hymt_group.targets == ["Vietnamese"]
+        group = groups[0]
+        assert set(group.targets) == {"English", "Vietnamese"}
 
     def test_vietnamese_japanese_german_gives_one_group(self):
+        """After dedicated-model routing removal, vi/ja/de all fall to DEFAULT_MODEL → 1 group (R-2)."""
         groups = resolve_route_groups(["Vietnamese", "Japanese", "German"])
         assert groups is not None
         assert len(groups) == 1
-        assert groups[0].model == HYMT_DEFAULT_MODEL
+        assert groups[0].model == DEFAULT_MODEL
         assert set(groups[0].targets) == {"Vietnamese", "Japanese", "German"}
 
-    def test_mixed_three_languages_two_groups(self):
+    def test_mixed_three_languages_one_group(self):
+        """All languages map to DEFAULT_MODEL in legacy path → 1 group (R-2)."""
         groups = resolve_route_groups(["English", "Vietnamese", "Japanese"])
         assert groups is not None
-        assert len(groups) == 2
+        assert len(groups) == 1
 
-    def test_insertion_order_preserved(self):
+    def test_single_group_uses_default_model(self):
+        """Legacy path: single group is DEFAULT_MODEL."""
         groups = resolve_route_groups(["English", "Vietnamese", "Japanese"])
         assert groups is not None
         assert groups[0].model == DEFAULT_MODEL
-        assert groups[1].model == HYMT_DEFAULT_MODEL
 
     def test_manual_override_returns_none(self):
         result = resolve_route_groups(["English", "Vietnamese"], profile_override="general")
@@ -165,17 +164,18 @@ class TestResolveRouteGroups:
     def test_auto_override_routes_normally(self):
         result = resolve_route_groups(["English", "Vietnamese"], profile_override="auto")
         assert result is not None
-        assert len(result) == 2
+        assert len(result) == 1
 
     def test_empty_targets_returns_empty_list(self):
         result = resolve_route_groups([])
         assert result == []
 
-    def test_route_group_has_correct_profile_id(self):
+    def test_route_group_uses_general_profile(self):
+        """After dedicated-model routing removal, Vietnamese no longer has technical_process profile (R-2)."""
         groups = resolve_route_groups(["Vietnamese"])
         assert groups is not None
-        assert groups[0].profile_id == "technical_process"
-        assert groups[0].model_type == "translation"
+        assert groups[0].profile_id == "general"
+        assert groups[0].model_type == "general"
 
     def test_unlisted_language_uses_default_route(self):
         groups = resolve_route_groups(["Swahili"])
@@ -493,19 +493,19 @@ class TestResolveRouteGroupsPerLanguage:
 # ---------------------------------------------------------------------------
 
 class TestLegacyOllamaPath:
-    """Regression: provider_config=None still uses _OLLAMA_ROUTING_TABLE."""
+    """Regression: provider_config=None still uses _OLLAMA_ROUTING_TABLE (now empty, all fall to DEFAULT_MODEL)."""
 
-    def test_provider_config_none_uses_ollama_grouping(self):
-        """Without provider_config, resolve_route_groups uses legacy Ollama grouping (AC-6)."""
-        # Vietnamese, German, Japanese all map to HYMT in legacy table → 1 group
+    def test_provider_config_none_falls_to_default_model(self):
+        """Without provider_config, all targets fall through to DEFAULT_MODEL (R-2: dedicated routing rows removed)."""
+        from app.backend.config import DEFAULT_MODEL
         groups = resolve_route_groups(
             ["Vietnamese", "German", "Japanese"], provider_config=None
         )
         assert groups is not None
         assert len(groups) == 1, (
-            f"Legacy path: vi/de/ja should share one HYMT group, got {len(groups)}"
+            f"Legacy path: vi/de/ja should share one default group, got {len(groups)}"
         )
-        assert groups[0].model == HYMT_DEFAULT_MODEL
+        assert groups[0].model == DEFAULT_MODEL
 
     def test_legacy_single_language_batch(self):
         """Single target, provider_config=None returns exactly one group."""

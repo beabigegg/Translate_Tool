@@ -19,10 +19,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.backend.config import DEFAULT_MODEL, HYMT_DEFAULT_MODEL
-
-# TranslateGemma model — best for Korean (benchmark March 2026)
-TGEMMA_DEFAULT_MODEL = os.environ.get("TGEMMA_DEFAULT_MODEL", "translategemma:4b")
+from app.backend.config import DEFAULT_MODEL
 
 # Greedy decode preset — universally optimal across all models (benchmark March 2026)
 GREEDY_PRESET: Dict[str, object] = {
@@ -39,12 +36,7 @@ GREEDY_PRESET: Dict[str, object] = {
 # When providers.yml is loaded and injected via provider_config, this table
 # is bypassed entirely.
 # ---------------------------------------------------------------------------
-_OLLAMA_ROUTING_TABLE: Dict[str, Tuple[str, str, str]] = {
-    "Vietnamese": (HYMT_DEFAULT_MODEL, "technical_process", "translation"),
-    "German": (HYMT_DEFAULT_MODEL, "technical_process", "translation"),
-    "Japanese": (HYMT_DEFAULT_MODEL, "technical_process", "translation"),
-    "Korean": (TGEMMA_DEFAULT_MODEL, "general", "general"),
-}
+_OLLAMA_ROUTING_TABLE: Dict[str, Tuple[str, str, str]] = {}
 _OLLAMA_DEFAULT_ROUTE: Tuple[str, str, str] = (DEFAULT_MODEL, "general", "general")
 _OLLAMA_PROVIDER_ID = "ollama-local"
 
@@ -68,7 +60,6 @@ class RouteGroup:
     model: str = ""
     profile_id: str = ""
     model_type: str = ""
-    refine_model: Optional[str] = None  # Cross-model refiner (None = no refinement)
     provider: Optional[str] = None  # p1-cloud-providers: resolved provider ID
 
 
@@ -197,7 +188,6 @@ def resolve_route_groups(
                     model=model,
                     profile_id=profile_id,
                     model_type=model_type,
-                    refine_model=None,  # Cloud groups do not use cross-model refinement
                     provider=provider_id,
                 )
             seen[key].targets.append(target)
@@ -209,18 +199,11 @@ def resolve_route_groups(
         ollama_key = _OLLAMA_ROUTING_TABLE.get(target, _OLLAMA_DEFAULT_ROUTE)
         if ollama_key not in seen:
             model, profile_id, model_type = ollama_key
-            # HY-MT and TranslateGemma groups get Qwen as cross-model refiner.
-            # Qwen group (DEFAULT_ROUTE) keeps refine_model=None (no self-refinement).
-            if ollama_key != _OLLAMA_DEFAULT_ROUTE:
-                refine_model: Optional[str] = DEFAULT_MODEL
-            else:
-                refine_model = None
             seen[ollama_key] = RouteGroup(
                 targets=[],
                 model=model,
                 profile_id=profile_id,
                 model_type=model_type,
-                refine_model=refine_model,
                 provider=_OLLAMA_PROVIDER_ID,
             )
         seen[ollama_key].targets.append(target)

@@ -1,0 +1,23 @@
+agent: ci-cd-gatekeeper
+change-id: remove-cross-model-refinement
+date: 2026-06-20
+status: complete
+
+summary: >
+  Wrote ci-gates.md and applied two workflow step additions to
+  contract-driven-gates.yml for the remove-cross-model-refinement Tier 2
+  dead-code removal. No new CI jobs required; all new gates are inline steps
+  within the existing contract-and-fast-tests job.
+
+artifacts:
+  - { type: tiers-modified, pointer: "1, 2" }
+  - { type: gate-promotions, pointer: "n/a (no existing gates moved between tiers)" }
+  - { type: workflow-files-changed, pointer: ".github/workflows/contract-driven-gates.yml:47-61" }
+  - { type: required-status-checks, pointer: "contract-and-fast-tests (contains: contract-validation, dead-reference-grep, change-gate, business-rules-orphan-check, full-test-suite, openapi-sync, secret-scan)" }
+
+notes: >
+  business-rules-orphan-check is labeled Tier 2 informational in ci-gates.md
+  but is implemented as a blocking exit-1 step in CI because a non-zero hit
+  means IP-11 (BR-41/BR-44 proof-pointer retargeting) is incomplete and the
+  change is not safe to merge. The Tier 2 label means it was not pre-planned
+  as a standard gate; the blocking behavior is intentional per promotion policy.

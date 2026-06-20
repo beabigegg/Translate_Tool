@@ -1,6 +1,6 @@
 """Abstract Protocol for LLM provider clients.
 
-Defines the six-method surface that translation consumers depend on.
+Defines the five-method surface that translation consumers depend on.
 Import only stdlib ``typing`` — no import of ``ollama_client`` (avoids cycle).
 """
 
@@ -13,7 +13,7 @@ from typing import List, Optional, Protocol, Tuple, runtime_checkable
 class LLMClient(Protocol):
     """Structural Protocol for LLM translation provider clients.
 
-    Any class that implements these six methods is a structural subtype,
+    Any class that implements these five methods is a structural subtype,
     regardless of inheritance.  ``OllamaClient`` satisfies this Protocol
     via three thin alias methods; future cloud providers (``p1-cloud-providers``)
     implement it directly.
@@ -32,17 +32,6 @@ class LLMClient(Protocol):
 
         Returns:
             (ok, translated_texts) where ok=False signals a failure.
-        """
-        ...
-
-    def refine_translation(
-        self, source_text: str, draft: str, tgt: str, src_lang: Optional[str]
-    ) -> Tuple[bool, str]:
-        """Refine a draft translation by comparing with the source text.
-
-        Returns:
-            (ok, refined_text) where ok=False signals a failure; caller should
-            keep the draft on failure.
         """
         ...
 

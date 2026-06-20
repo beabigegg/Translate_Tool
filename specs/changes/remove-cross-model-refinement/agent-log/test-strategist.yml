@@ -1,0 +1,18 @@
+agent: test-strategist
+timestamp: 2026-06-20
+status: done
+
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/remove-cross-model-refinement/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_glossary_enforcement.py → app/backend/services/translation_service.py (critique/glossary path)" }
+  - { type: tdd-pairs, pointer: "tests/test_dead_references.py → app/ (post-deletion symbol absence)" }
+  - { type: coverage-tiers, pointer: "unit, dead-reference, integration, contract" }
+  - { type: mapping-completeness, pointer: "AC-1 through AC-8 mapped; BR-41 and BR-44 retargeted from deleted file to new test_glossary_enforcement.py; 6 business-rules.md rows identified for contract-reviewer retargeting" }
+
+notes: |
+  test_translation_strategy.py already covers BR-45 (cache key with glossary digest + _crit marker).
+  test_metrics_counters.py already covers BR-46 (critique_loop_invocations, critique_iterations_total).
+  Neither needs new tests for this change — existing coverage is sufficient for AC-7.
+  TestLegacyOllamaPath in test_model_router.py will need assertions updated (R-2): after HY-MT/TGEMMA
+  routing rows are removed, vi/de/ja fall through to DEFAULT_MODEL not HYMT_DEFAULT_MODEL.
+  This is an expected update, not a waiver.

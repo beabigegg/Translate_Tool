@@ -1,6 +1,6 @@
 # Contract-driven gates
 # Tier semantics: ci/gate-policy.md
-# Active change gates: none (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection, p2-prompt-fewshot-glossary, p2-long-doc-chunking, p2-comet-qe, p2-term-audit)
+# Active change gates: remove-cross-model-refinement (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection, p2-prompt-fewshot-glossary, p2-long-doc-chunking, p2-comet-qe, p2-term-audit)
 
 name: contract-driven-gates
 
@@ -44,7 +44,20 @@ jobs:
         run: cdd-kit validate --contracts
 
       - name: Change gate (Tier 1 — blocks merge)
-        run: echo "No active change gates — all changes archived."
+        run: cdd-kit gate remove-cross-model-refinement
+
+      - name: Dead-reference grep — removed refinement symbols (Tier 1 — blocks merge)
+        run: |
+          ! grep -rn \
+            'refine_translation\|refine_client\|refine_model\|CROSS_MODEL_REFINEMENT\|HY-MT\|TranslateGemma' \
+            app/
+
+      - name: Business-rules orphan check — test pointer retargeting confirmed (Tier 2 — informational)
+        run: |
+          if grep -qn 'test_hy_mt_quality_refinement' contracts/business/business-rules.md; then
+            echo "WARNING: contracts/business/business-rules.md still references deleted test file. IP-11 incomplete." >&2
+            exit 1
+          fi
 
       - name: OpenAPI sync gate
         run: cdd-kit openapi export --check --out contracts/api/openapi.yml

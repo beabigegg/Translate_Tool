@@ -23,7 +23,6 @@ class ModelType(str, Enum):
 
 APP_NAME = "Translate Tool"
 DEFAULT_MODEL = "qwen3.5:9b"
-HYMT_DEFAULT_MODEL = os.environ.get("HYMT_DEFAULT_MODEL", "demonbyron/HY-MT1.5-7B:Q4_K_M")
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_NUM_GPU = int(os.environ.get("OLLAMA_NUM_GPU", "99"))
 OLLAMA_KV_CACHE_TYPE = os.environ.get("OLLAMA_KV_CACHE_TYPE", "q4_0")
@@ -104,12 +103,6 @@ MAX_MERGE_SEGMENTS = 4  # Max segments per merged batch (reduced for 4B model to
 # understands the domain without an explicit glossary.  Only the last segment is translated.
 CONTEXT_WINDOW_SEGMENTS = 2  # Number of preceding segments to include as context
 CONTEXT_MAX_CHARS = 300  # Max total chars for context (truncate if longer)
-# Two-pass refinement: send draft + source back to LLM for quality improvement
-REFINEMENT_ENABLED = False  # Disabled: 4B models hallucinate/add content during refinement
-REFINEMENT_MIN_CHARS = 3  # Skip refinement only for truly trivial 1-2 char tokens
-# Cross-model refinement: HY-MT translates → Qwen refines for semantic naturalness.
-# Unlike REFINEMENT_ENABLED (same-model), this separates translation and polishing roles.
-CROSS_MODEL_REFINEMENT_ENABLED = os.environ.get("CROSS_MODEL_REFINEMENT_ENABLED", "1").lower() in ("1", "true", "yes")
 # Auto-detect document context: sample file text and ask LLM to describe the document
 # before translating, then inject the description into the system prompt.
 CONTEXT_DETECTION_ENABLED = True

@@ -22,8 +22,8 @@ _REPO_ROOT = Path(__file__).parent.parent
 # ---------------------------------------------------------------------------
 
 class TestProtocolDefinition:
-    def test_protocol_defines_six_methods(self):
-        """LLMClient Protocol must define exactly 6 methods."""
+    def test_protocol_defines_five_methods(self):
+        """LLMClient Protocol must define exactly 5 methods."""
         from app.backend.clients.base_llm_client import LLMClient
         # Collect non-dunder methods defined on the Protocol
         methods = [
@@ -31,10 +31,10 @@ class TestProtocolDefinition:
             if not name.startswith("_")
             and callable(getattr(LLMClient, name, None))
         ]
-        assert len(methods) == 6, f"Expected 6 Protocol methods, got {len(methods)}: {methods}"
+        assert len(methods) == 5, f"Expected 5 Protocol methods, got {len(methods)}: {methods}"
 
     def test_protocol_method_signatures(self):
-        """All 6 Protocol method signatures must match design.md table."""
+        """All 5 Protocol method signatures must match design.md table."""
         from app.backend.clients.base_llm_client import LLMClient
 
         sig_translate_once = inspect.signature(LLMClient.translate_once)
@@ -44,10 +44,6 @@ class TestProtocolDefinition:
         sig_translate_batch = inspect.signature(LLMClient.translate_batch)
         params = list(sig_translate_batch.parameters.keys())
         assert params == ["self", "texts", "tgt", "src_lang"], f"translate_batch params: {params}"
-
-        sig_refine = inspect.signature(LLMClient.refine_translation)
-        params = list(sig_refine.parameters.keys())
-        assert params == ["self", "source_text", "draft", "tgt", "src_lang"], f"refine_translation params: {params}"
 
         sig_health = inspect.signature(LLMClient.health)
         params = list(sig_health.parameters.keys())
@@ -68,11 +64,11 @@ class TestProtocolDefinition:
 
 class TestOllamaClientConformance:
     def test_ollama_client_satisfies_protocol(self):
-        """OllamaClient must have all 6 Protocol methods."""
+        """OllamaClient must have all 5 Protocol methods."""
         from app.backend.clients.base_llm_client import LLMClient
         from app.backend.clients.ollama_client import OllamaClient
 
-        for method_name in ["translate_once", "translate_batch", "refine_translation",
+        for method_name in ["translate_once", "translate_batch",
                              "health", "list_models", "unload"]:
             assert hasattr(OllamaClient, method_name), (
                 f"OllamaClient missing Protocol method: {method_name}"
@@ -132,7 +128,6 @@ class TestOllamaClientFrozenPublicApi:
             "unload_model",
             "translate_once",
             "translate_batch",
-            "refine_translation",
         ]
         for method_name in frozen_methods:
             assert hasattr(OllamaClient, method_name), (
@@ -166,55 +161,6 @@ class TestOllamaClientFrozenPublicApi:
             result = client.list_models()
             mock_lm.assert_called_once_with(client.base_url)
             assert result == ["model-a"]
-
-
-# ---------------------------------------------------------------------------
-# AC-5: context-detection uses public Protocol method
-# ---------------------------------------------------------------------------
-
-class TestContextDetectionPublicMethod:
-    def test_context_detection_uses_public_method(self):
-        """translate_texts deferred-context-detection must use a public Protocol method."""
-        from unittest.mock import MagicMock, patch
-        from app.backend.clients.ollama_client import OllamaClient
-        from app.backend.services.translation_service import translate_texts
-
-        primary = MagicMock(spec=OllamaClient)
-        primary.model = "hymt-model"
-        primary.cache_model_key = "hymt-model"
-
-        refiner = MagicMock(spec=OllamaClient)
-        refiner.model = "qwen-model"
-        refiner.cache_model_key = "qwen-model"
-        refiner.refine_translation.return_value = (True, "refined")
-
-        # Set deferred_context_sample to trigger the detection block
-        refiner._deferred_context_sample = "sample document text for context detection"
-        refiner._deferred_context_profile = "general"
-        refiner._deferred_context_target = "Vietnamese"
-
-        # The detection call should use a public Protocol method — we verify by confirming
-        # that at least one public method on refiner is called during context detection.
-        # Specifically: translate_once should be called for detection.
-        refiner.translate_once.return_value = (True, "這是技術文件，涉及工業製程。")
-
-        long_text = "A" * 50  # long enough to trigger refinement
-
-        with patch("app.backend.services.translation_service.CROSS_MODEL_REFINEMENT_ENABLED", True), \
-             patch("app.backend.services.translation_service.get_cache", return_value=None), \
-             patch("app.backend.services.translation_service.translate_blocks_batch",
-                   return_value=[(True, "B" * 50)]):
-            translate_texts(
-                texts=[long_text],
-                targets=["Vietnamese"],
-                src_lang="English",
-                client=primary,
-                refine_client=refiner,
-            )
-
-        # The detection block must have called a public Protocol method
-        # (translate_once) rather than private _build_no_system_payload/_call_ollama
-        refiner.translate_once.assert_called()
 
 
 # ---------------------------------------------------------------------------
@@ -280,12 +226,12 @@ class TestNoGovernedContractModified:
 
 class TestOpenAICompatibleClientConformance:
     def test_openai_compatible_client_satisfies_protocol(self):
-        """OpenAICompatibleClient must have all 6 Protocol methods."""
+        """OpenAICompatibleClient must have all 5 Protocol methods."""
         from app.backend.clients.base_llm_client import LLMClient
         from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
 
         for method_name in [
-            "translate_once", "translate_batch", "refine_translation",
+            "translate_once", "translate_batch",
             "health", "list_models", "unload",
         ]:
             assert hasattr(OpenAICompatibleClient, method_name), (

@@ -337,7 +337,6 @@ class JobManager:
                         layout_mode=pdf_layout_mode,
                         output_format=pdf_output_format,
                         output_suffix=output_suffix,
-                        refine_model=group.refine_model,
                         mode=mode,
                         term_db=term_db,
                         provider_id=group.provider,

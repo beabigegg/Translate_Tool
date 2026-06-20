@@ -11,8 +11,6 @@ from app.backend.config import (
     MAX_MAX_BATCH_CHARS,
     MAX_PARAGRAPH_CHARS,
     MIN_MAX_BATCH_CHARS,
-    REFINEMENT_ENABLED,
-    REFINEMENT_MIN_CHARS,
     TRANSLATION_GRANULARITY,
 )
 from app.backend.utils.logging_utils import logger
@@ -21,24 +19,6 @@ from app.backend.utils.text_utils import is_cjk_language, split_sentences
 # Segment marker for merged paragraph translation
 SEGMENT_MARKER_PREFIX = "<<<SEG_"
 SEGMENT_MARKER_SUFFIX = ">>>"
-
-
-def _maybe_refine(
-    client: LLMClient,
-    source_text: str,
-    translation: str,
-    tgt: str,
-    src_lang: Optional[str],
-) -> str:
-    """Apply refinement pass if enabled and text is long enough."""
-    if not REFINEMENT_ENABLED:
-        return translation
-    if len(source_text) < REFINEMENT_MIN_CHARS:
-        return translation
-    ok, refined = client.refine_translation(source_text, translation, tgt, src_lang)
-    if ok and refined:
-        return refined
-    return translation
 
 
 def _get_sentence_joiner(target_lang: str) -> str:
@@ -193,7 +173,6 @@ def translate_merged_paragraphs(
 
         ok, translated = client.translate_once(text, tgt, src_lang)
         if ok:
-            translated = _maybe_refine(client, text, translated, tgt, src_lang)
             results[i] = (True, translated)
             if on_segment_done:
                 on_segment_done(text, translated)
@@ -232,8 +211,6 @@ def translate_block_as_paragraph(
     # If text is within reasonable length, translate as whole
     if len(text) <= MAX_PARAGRAPH_CHARS:
         ok, result = client.translate_once(text, tgt, src_lang)
-        if ok:
-            result = _maybe_refine(client, text, result, tgt, src_lang)
         return ok, result
 
     # For very long texts, split by paragraphs (double newlines) or sentences
@@ -262,7 +239,6 @@ def translate_block_as_paragraph(
     for chunk in final_chunks:
         ok, result = client.translate_once(chunk, tgt, src_lang)
         if ok:
-            result = _maybe_refine(client, chunk, result, tgt, src_lang)
             translated_chunks.append(result)
         else:
             all_ok = False

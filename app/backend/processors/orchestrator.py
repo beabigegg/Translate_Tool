@@ -12,7 +12,6 @@ from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import (
     CONTEXT_DETECTION_ENABLED,
     CONTEXT_SAMPLE_CHARS,
-    CROSS_MODEL_REFINEMENT_ENABLED,
     DEFAULT_MAX_BATCH_CHARS,
     DEFAULT_MODEL,
     DYNAMIC_SCENARIO_STRATEGY_ENABLED,
@@ -355,8 +354,6 @@ def process_files(
     layout_mode: Optional[str] = None,
     output_format: Optional[str] = None,
     output_suffix: str = "",
-    refine_model: Optional[str] = None,
-    refiner_num_ctx: Optional[int] = None,
     mode: str = "translation",
     term_db=None,
     provider_id: Optional[str] = None,
@@ -491,20 +488,6 @@ def process_files(
         _provider_id = "ollama-local"  # BR-16: record the provider that will actually process the job
         log("[PROVIDER] Primary translation client: ollama-local")
 
-    # Build cross-model refine client (Qwen) for HY-MT/TranslateGemma jobs
-    refine_client: Optional[OllamaClient] = None
-    if refine_model and CROSS_MODEL_REFINEMENT_ENABLED and targets:
-        refine_system_prompt = OllamaClient._build_refine_system_prompt(targets[0], profile_id)
-        refine_client = OllamaClient(
-            model=refine_model,
-            model_type="general",
-            system_prompt=refine_system_prompt,
-            num_ctx_override=refiner_num_ctx,
-            timeout=timeout_config,
-            log=log,
-        )
-        log(f"[REFINE] Cross-model refiner configured: {refine_model} (profile={profile_id}, tgt={targets[0]})")
-
     processed_count = 0
     total_count = len(files)
     stopped = False
@@ -538,19 +521,6 @@ def process_files(
             and sample
         ):
             doc_context = _detect_document_context(ollama_client, sample, log, target_lang=targets[0] if targets else "")
-
-        # For dedicated primary models (e.g. HY-MT), defer context detection to
-        # Phase 2 so it runs after HY-MT is evicted from VRAM.
-        if (
-            refine_client is not None
-            and client._is_translation_dedicated()
-            and CONTEXT_DETECTION_ENABLED
-            and QWEN_CONTEXT_FLOW_ENABLED
-            and sample
-        ):
-            refine_client._deferred_context_sample = sample
-            refine_client._deferred_context_profile = profile_id
-            refine_client._deferred_context_target = targets[0] if targets else ""
 
         if DYNAMIC_SCENARIO_STRATEGY_ENABLED:
             scenario = forced_scenario or detect_translation_scenario(src.name, sample_text=sample, detected_context=doc_context)
@@ -649,7 +619,7 @@ def process_files(
                     if not _top_terms:
                         return
 
-                    # Phase 1: inject unless TranslateGemma
+                    # Phase 1: inject unless a dedicated translation variant (backward-compat guard)
                     if not client._is_translategemma_model():
                         _p1_ctx = TRANSLATION_NUM_CTX if client._is_translation_dedicated() else GENERAL_NUM_CTX
                         _p1_terms = _cap_terms_by_budget(_top_terms, _p1_ctx, client.system_prompt or "")
@@ -663,18 +633,6 @@ def process_files(
                             log(f"[PHASE0] Injected {len(_p1_terms)}/{len(_top_terms)} terms into Phase 1 (budget: {_p1_ctx} ctx)")
                         elif _top_terms:
                             log(f"[PHASE0] WARNING: No room for terms in Phase 1 (ctx={_p1_ctx})")
-
-                    # Phase 2 Refiner: always inject
-                    if refine_client is not None:
-                        _p2_terms = _cap_terms_by_budget(_top_terms, GENERAL_NUM_CTX, refine_client.system_prompt or "")
-                        if _p2_terms:
-                            _block2 = build_terminology_block(_p2_terms)
-                            refine_client.system_prompt = (
-                                refine_client.system_prompt.rstrip() + "\n\n" + _block2
-                                if refine_client.system_prompt.strip()
-                                else _block2
-                            )
-                            log(f"[PHASE0] Injected {len(_p2_terms)}/{len(_top_terms)} terms into Phase 2 (budget: {GENERAL_NUM_CTX} ctx)")
 
         # extraction_only mode: skip translation
         if extraction_only:
@@ -694,7 +652,6 @@ def process_files(
                     stop_flag=stop_flag,
                     log=log,
                     max_batch_chars=max_batch_chars,
-                    refine_client=refine_client,
                     pre_translate_hook=_phase0_hook,
                     post_translate_hook=post_translate_hook,
                 )
@@ -725,7 +682,6 @@ def process_files(
                         stop_flag=stop_flag,
                         log=log,
                         max_batch_chars=max_batch_chars,
-                        refine_client=refine_client,
                         pre_translate_hook=_phase0_hook,
                         post_translate_hook=post_translate_hook,
                     )
@@ -744,7 +700,6 @@ def process_files(
                     stop_flag=stop_flag,
                     log=log,
                     max_batch_chars=max_batch_chars,
-                    refine_client=refine_client,
                     pre_translate_hook=_phase0_hook,
                     post_translate_hook=post_translate_hook,
                 )
@@ -758,7 +713,6 @@ def process_files(
                     stop_flag=stop_flag,
                     log=log,
                     max_batch_chars=max_batch_chars,
-                    refine_client=refine_client,
                     pre_translate_hook=_phase0_hook,
                     post_translate_hook=post_translate_hook,
                 )

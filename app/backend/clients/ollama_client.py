@@ -353,7 +353,7 @@ class OllamaClient:
 
     @staticmethod
     def _involves_chinese(target_language: str, source_language: Optional[str] = None) -> bool:
-        """Check if Chinese is involved as source or target (for HY-MT template selection)."""
+        """Check if Chinese is involved as source or target (for template selection)."""
         cn_keywords = ("chinese", "zh-tw", "zh-cn", "zh")
         if any(kw in target_language.lower() for kw in cn_keywords):
             return True
@@ -505,90 +505,6 @@ class OllamaClient:
             "Keep every <<<SEG_N>>> marker. Output only translations.\n\n"
             f"{merged_text}\n\n"
             f"Output:\n{example_lines}"
-        )
-
-    def refine_translation(
-        self, source_text: str, draft: str, tgt: str, src_lang: Optional[str],
-    ) -> Tuple[bool, str]:
-        """Refine a draft translation by comparing with the source text.
-
-        Uses the same system prompt as translation (profile terminology applies).
-        Single attempt — if refinement fails, caller should keep the draft.
-        """
-        prompt = self._build_refine_prompt(source_text, draft, tgt, src_lang)
-        payload = self._build_payload(prompt)
-        try:
-            ok, result = self._call_ollama(payload)
-            if ok and result.strip():
-                sanitized = self._sanitize_translation(result)
-                # If sanitization removed everything, keep draft
-                if not sanitized.strip():
-                    logger.warning("[REFINE] Sanitization removed all content, keeping draft")
-                    return False, draft
-                return True, sanitized
-            return False, draft
-        except requests.exceptions.RequestException:
-            return False, draft
-
-    @staticmethod
-    def _build_refine_prompt(
-        source_text: str, draft: str, target_language: str, source_language: Optional[str],
-    ) -> str:
-        return (
-            f"[SOURCE]: {source_text}\n"
-            f"[DRAFT]: {draft}\n\n"
-            f"Corrected {target_language}:"
-        )
-
-    @staticmethod
-    def _build_refine_system_prompt(target_language: str, profile_id: str) -> str:
-        """Build domain+persona system prompt for cross-model Qwen refiner.
-
-        Maps (target_language, profile_id) to a role-grounded persona that
-        constrains Qwen to the correction role rather than free translation.
-        """
-        _NATIONALITY_MAP = {
-            "Vietnamese": ("Vietnamese", "manufacturing"),
-            "Japanese": ("Japanese", "manufacturing"),
-            "German": ("German", "manufacturing"),
-            "Korean": ("Korean", "manufacturing"),
-            "French": ("French", "manufacturing"),
-            "Spanish": ("Spanish", "manufacturing"),
-            "Italian": ("Italian", "manufacturing"),
-            "Portuguese": ("Portuguese", "manufacturing"),
-            "Dutch": ("Dutch", "manufacturing"),
-            "Thai": ("Thai", "manufacturing"),
-            "Indonesian": ("Indonesian", "manufacturing"),
-        }
-        nationality, _ = _NATIONALITY_MAP.get(target_language, ("", "manufacturing"))
-        nationality_phrase = f"{nationality} " if nationality else ""
-
-        if profile_id == "technical_process":
-            vi_dept_rule = (
-                "\n3. Department names: Chinese '部' (bù) in a factory context = 'Phòng' in Vietnamese "
-                "(e.g., 工务部 → Phòng Kỹ thuật, 品质部 → Phòng Chất lượng, 生产部 → Phòng Sản xuất). "
-                "Never use 'Bộ' for internal factory departments — 'Bộ' denotes a national ministry."
-            ) if target_language == "Vietnamese" else ""
-            return (
-                f"You are a senior {nationality_phrase}process/manufacturing engineer at a discrete component plant "
-                f"reviewing a machine-translated SOP/maintenance manual draft.\n\n"
-                "Rules:\n"
-                f"1. Cross-reference the [SOURCE] to verify professional terminology in the [DRAFT].\n"
-                "2. Correct unnatural literal renderings to standard industrial terms."
-                f"{vi_dept_rule}\n"
-                f"{'4' if vi_dept_rule else '3'}. Ensure register matches standard SOP/work instruction formality.\n"
-                f"{'5' if vi_dept_rule else '4'}. Output ONLY the corrected {target_language}. No explanations, no dialogue."
-            )
-
-        # Generic manufacturing persona for other profiles
-        return (
-            f"You are a senior {nationality_phrase}professional reviewing a machine-translated document draft "
-            f"in a manufacturing context.\n\n"
-            "Rules:\n"
-            "1. Cross-reference the [SOURCE] to verify terminology and meaning in the [DRAFT].\n"
-            "2. Correct unnatural literal renderings to fluent, idiomatic phrasing.\n"
-            "3. Preserve the register and formality of the original document.\n"
-            f"4. Output ONLY the corrected {target_language}. No explanations, no dialogue."
         )
 
     def _smart_retry(self, text: str, tgt: str, src_lang: Optional[str], error_msg: str) -> Tuple[bool, str]:

@@ -34,7 +34,7 @@ def test_cache_model_key_includes_variant_when_set() -> None:
 
 def test_translation_dedicated_payload_uses_system_prompt_when_present() -> None:
     client = OllamaClient(
-        model="demonbyron/HY-MT1.5-7B:Q4_K_M",
+        model="dedicated-translation-model:q4",
         model_type=ModelType.TRANSLATION.value,
         system_prompt="Glossary: 切弯脚 -> trim & form",
     )
@@ -42,7 +42,7 @@ def test_translation_dedicated_payload_uses_system_prompt_when_present() -> None
     assert payload.get("system") == "Glossary: 切弯脚 -> trim & form"
 
     client_no_system = OllamaClient(
-        model="demonbyron/HY-MT1.5-7B:Q4_K_M",
+        model="dedicated-translation-model:q4",
         model_type=ModelType.TRANSLATION.value,
         system_prompt="",
     )

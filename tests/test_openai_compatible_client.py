@@ -40,12 +40,12 @@ def _make_http_error_response(status_code: int) -> MagicMock:
 
 class TestProtocolConformance:
     def test_openai_compatible_client_satisfies_protocol(self):
-        """OpenAICompatibleClient must have all 6 Protocol methods."""
+        """OpenAICompatibleClient must have all 5 Protocol methods."""
         from app.backend.clients.base_llm_client import LLMClient
         from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
 
         for method_name in [
-            "translate_once", "translate_batch", "refine_translation",
+            "translate_once", "translate_batch",
             "health", "list_models", "unload",
         ]:
             assert hasattr(OpenAICompatibleClient, method_name), (
@@ -156,29 +156,6 @@ class TestTranslateBatch:
 
         assert ok is False
         assert len(results) == 2
-
-
-# ── refine_translation ────────────────────────────────────────────────────────
-
-class TestRefineTranslation:
-    def test_refine_returns_ok_true_on_success(self):
-        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
-
-        client = OpenAICompatibleClient(
-            base_url="http://fake-host:8080",
-            api_key="test-key",
-            model="gpt-oss:120b",
-        )
-        with patch("requests.Session.post", return_value=_make_chat_response("Bonjour le monde!")):
-            ok, result = client.refine_translation(
-                source_text="Hello world",
-                draft="Bonjour monde",
-                tgt="French",
-                src_lang="English",
-            )
-
-        assert ok is True
-        assert result == "Bonjour le monde!"
 
 
 # ── health ────────────────────────────────────────────────────────────────────

@@ -49,7 +49,6 @@ def translate_xlsx_xls(
     max_segments: int = MAX_SEGMENTS,
     max_text_length: int = MAX_TEXT_LENGTH,
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
-    refine_client: Optional[OllamaClient] = None,
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
 ) -> bool:
@@ -144,7 +143,6 @@ def translate_xlsx_xls(
         max_batch_chars=max_batch_chars,
         stop_flag=stop_flag,
         log=log,
-        refine_client=refine_client,
     )
 
     if fail_cnt and not stopped:

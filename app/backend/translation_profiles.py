@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-from app.backend.config import DEFAULT_MODEL, HYMT_DEFAULT_MODEL, ModelType
+from app.backend.config import DEFAULT_MODEL, ModelType
 
 
 @dataclass(frozen=True)
@@ -44,7 +44,7 @@ PROFILES: Dict[str, TranslationProfile] = {
         id="technical_process",
         name="技術製程",
         description="準確、可操作",
-        model=HYMT_DEFAULT_MODEL,
+        model=DEFAULT_MODEL,
         system_prompt=_build_system_prompt(
             role="You are a professional translator for technical process and SOP documents.",
             terminology=(
@@ -53,13 +53,13 @@ PROFILES: Dict[str, TranslationProfile] = {
             ),
             register_tone="Use exact and executable wording suitable for on-line operations and work instructions. Avoid calque or word-for-word rendering; use phrasing natural to a native speaker of the target language.",
         ),
-        model_type=ModelType.TRANSLATION.value,
+        model_type=ModelType.GENERAL.value,
     ),
     "business_finance": TranslationProfile(
         id="business_finance",
         name="商務金融",
         description="專業、客觀",
-        model=HYMT_DEFAULT_MODEL,
+        model=DEFAULT_MODEL,
         system_prompt=_build_system_prompt(
             role="You are a professional translator for business and finance materials.",
             terminology=(
@@ -68,7 +68,7 @@ PROFILES: Dict[str, TranslationProfile] = {
             ),
             register_tone="Use objective and professional language suitable for formal business communication. Avoid calque or word-for-word rendering; use phrasing natural to a native speaker of the target language.",
         ),
-        model_type=ModelType.TRANSLATION.value,
+        model_type=ModelType.GENERAL.value,
     ),
     "legal_contract": TranslationProfile(
         id="legal_contract",
@@ -88,7 +88,7 @@ PROFILES: Dict[str, TranslationProfile] = {
         id="marketing_pr",
         name="行銷公關",
         description="吸引人、在地化",
-        model=HYMT_DEFAULT_MODEL,
+        model=DEFAULT_MODEL,
         system_prompt=_build_system_prompt(
             role="You are a professional translator for marketing campaigns, branding, and PR materials.",
             terminology=(
@@ -97,7 +97,7 @@ PROFILES: Dict[str, TranslationProfile] = {
             ),
             register_tone="Use persuasive, natural, and localized wording with clear call-to-action intent. Avoid calque or word-for-word rendering; use phrasing natural to a native speaker of the target language.",
         ),
-        model_type=ModelType.TRANSLATION.value,
+        model_type=ModelType.GENERAL.value,
     ),
     "daily_communication": TranslationProfile(
         id="daily_communication",
@@ -186,11 +186,11 @@ PROFILES: Dict[str, TranslationProfile] = {
     ),
     "hymt": TranslationProfile(
         id="hymt",
-        name="HY-MT 翻譯引擎",
-        description="HY-MT Translation Engine",
-        model=HYMT_DEFAULT_MODEL,
+        name="通用翻譯引擎",
+        description="General Translation Engine (legacy alias)",
+        model=DEFAULT_MODEL,
         system_prompt="",
-        model_type=ModelType.TRANSLATION.value,
+        model_type=ModelType.GENERAL.value,
     ),
 }
 

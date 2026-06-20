@@ -9,16 +9,13 @@ from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple
 from app.backend.clients.base_llm_client import LLMClient
 from app.backend.config import (
     CHUNK_OVERLAP_TOKENS,
-    CROSS_MODEL_REFINEMENT_ENABLED,
     CRITIQUE_LOOP_ENABLED,
     CRITIQUE_MAX_ITERATIONS,
     CRITIQUE_TIMEOUT_SECONDS,
     DEFAULT_MAX_BATCH_CHARS,
-    REFINEMENT_MIN_CHARS,
     SENTENCE_MODE,
 )
 from app.backend.services.context_prompts import (
-    _get_context_detection_prompt,
     apply_glossary_substitution,
     compute_glossary_match_rate,
 )
@@ -84,7 +81,6 @@ def translate_texts(
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
     stop_flag=None,
     log: Callable[[str], None] = lambda s: None,
-    refine_client: Optional[LLMClient] = None,
     terms: "Optional[List[Term]]" = None,
 ) -> Tuple[Dict[Tuple[str, str], str], int, int, bool]:
     """Translate texts for all targets with character-based batching.
@@ -97,7 +93,6 @@ def translate_texts(
         max_batch_chars: Character batching budget.
         stop_flag: Optional threading.Event for cancellation.
         log: Progress log callback.
-        refine_client: Optional cross-model refinement client (Phase 2).
         terms: Optional list of Term objects for glossary enforcement and
                critique loop context (BR-41, BR-44).
 
@@ -106,7 +101,6 @@ def translate_texts(
     """
     tmap: Dict[Tuple[str, str], str] = {}
     cached_keys: set = set()  # (tgt, text) pairs from Phase-1 cache hit
-    refine_cached_keys: set = set()  # (tgt, text) pairs with final refined result in cache — skip both phases
     total = len(texts) * len(targets)
     done = 0
     fail_cnt = 0
@@ -134,19 +128,7 @@ def translate_texts(
         unique_input = list(seen_texts.keys())
 
         if cache is not None:
-            # Check refiner cache first (final output) — skip both Phase 1 and Phase 2
-            if refine_client is not None:
-                refiner_cached = cache.get_batch(unique_input, tgt, src_lang or "auto", refine_client.cache_model_key)
-                for src_text, cached_refined in refiner_cached.items():
-                    trans = _convert_to_traditional(cached_refined) if needs_s2t_conversion else cached_refined
-                    tmap[(tgt, src_text)] = trans
-                    refine_cached_keys.add((tgt, src_text))
-                    count = seen_texts[src_text]
-                    done += count
-                    cache_hits += count
-                unique_input = [t for t in unique_input if (tgt, t) not in refine_cached_keys]
-
-            # Check Phase-1 model cache for remaining texts
+            # Check Phase-1 model cache
             cached = cache.get_batch(unique_input, tgt, src_lang or "auto", client.cache_model_key)
             for src_text, cached_trans in cached.items():
                 trans = _convert_to_traditional(cached_trans) if needs_s2t_conversion else cached_trans
@@ -160,7 +142,7 @@ def translate_texts(
                 log(f"[CACHE] {tgt}: all {len(texts)} from cache")
                 continue
             if not texts_to_translate:
-                log(f"[CACHE] {tgt}: all untranslated segments from Phase-1 cache, Phase 2 pending")
+                log(f"[CACHE] {tgt}: all segments from Phase-1 cache")
                 continue
             uncached_segs = sum(seen_texts[t] for t in texts_to_translate)
             log(f"[CACHE] {tgt}: {cache_hits} hits, {uncached_segs} to translate ({len(texts_to_translate)} unique)")
@@ -358,76 +340,6 @@ def translate_texts(
                 set_glossary_match_rate(1.0)
             except Exception:
                 pass
-
-    # Phase 2: Cross-model refinement (HY-MT → Qwen polish pass)
-    if refine_client is not None and CROSS_MODEL_REFINEMENT_ENABLED and not stopped:
-        # Evict primary model from VRAM before loading refiner
-        client.unload()
-
-        # Deferred context detection: run now that primary VRAM is free.
-        # Orchestrator sets _deferred_context_sample on refine_client when the
-        # primary is a dedicated translation model (e.g. HY-MT).
-        _ctx_sample = getattr(refine_client, "_deferred_context_sample", None)
-        if _ctx_sample:
-            _ctx_profile = getattr(refine_client, "_deferred_context_profile", "general")
-            _ctx_target = getattr(refine_client, "_deferred_context_target", targets[0] if targets else "")
-            _detect_prompt = _get_context_detection_prompt(_ctx_target).format(sample=_ctx_sample)
-            # Temporarily clear system_prompt so the detection call is not
-            # filtered through any refinement persona (best-effort: only
-            # applies when the provider exposes the system_prompt attribute).
-            _saved_system = getattr(refine_client, "system_prompt", "")
-            try:
-                if hasattr(refine_client, "system_prompt"):
-                    refine_client.system_prompt = ""  # type: ignore[attr-defined]
-                _ok, _ctx = refine_client.translate_once(_detect_prompt, _ctx_target, src_lang)
-                if _ok and _ctx.strip():
-                    _ctx = _ctx.strip()[:200]
-                    log(f"[REFINE] Context detected: {_ctx}")
-                    from app.backend.clients.ollama_client import OllamaClient as _OC
-                    _base = _OC._build_refine_system_prompt(_ctx_target, _ctx_profile)
-                    refine_client.system_prompt = f"{_base}\n\nDocument context: {_ctx}"  # type: ignore[attr-defined]
-                else:
-                    if hasattr(refine_client, "system_prompt"):
-                        refine_client.system_prompt = _saved_system  # type: ignore[attr-defined]
-            except Exception:
-                if hasattr(refine_client, "system_prompt"):
-                    refine_client.system_prompt = _saved_system  # type: ignore[attr-defined]
-            refine_client._deferred_context_sample = None  # type: ignore[attr-defined]
-
-        refine_total = sum(
-            1 for tgt in targets
-            for text in texts
-            if (tgt, text) in tmap
-            and (tgt, text) not in refine_cached_keys
-            and len(text) >= REFINEMENT_MIN_CHARS
-        )
-        refine_done = 0
-        refine_cache_entries: List[Tuple[str, str, str, str, str]] = []
-        log(f"[REFINE] Phase 2: refining {refine_total} segments with {refine_client.model}")
-        for tgt in targets:
-            for text in texts:
-                if (tgt, text) not in tmap:
-                    continue
-                if (tgt, text) in refine_cached_keys:
-                    continue
-                if len(text) < REFINEMENT_MIN_CHARS:
-                    continue
-                draft = tmap[(tgt, text)]
-                ok, refined = refine_client.refine_translation(text, draft, tgt, src_lang)
-                if ok:
-                    tmap[(tgt, text)] = refined
-                    # Cache the final refined result for future runs
-                    refine_cache_entries.append(
-                        (text, tgt, src_lang or "auto", refine_client.cache_model_key, refined)
-                    )
-                    if cache is not None and len(refine_cache_entries) >= 10:
-                        cache.put_batch(refine_cache_entries[:])
-                        refine_cache_entries.clear()
-                refine_done += 1
-                if refine_done % 10 == 0 or refine_done == refine_total:
-                    log(f"[REFINE] {refine_done}/{refine_total}")
-        if cache is not None and refine_cache_entries:
-            cache.put_batch(refine_cache_entries)
 
     return tmap, done, fail_cnt, stopped
 

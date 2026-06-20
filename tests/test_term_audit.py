@@ -459,7 +459,6 @@ def test_audit_wired_at_hook_seam(tmp_path):
             targets=["vi"],
             profile_id="general",
             model_type="general",
-            refine_model=None,
             provider=None,
         )
 
@@ -513,7 +512,6 @@ def test_audit_disabled_when_exception(tmp_path):
             targets=["vi"],
             profile_id="general",
             model_type="general",
-            refine_model=None,
             provider=None,
         )
 
