@@ -1,0 +1,16 @@
+{
+  "change_id": "fallback-chain-cloud-providers",
+  "phase": "targeted",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "/home/egg/miniforge3/envs/translate-tool/bin/pytest tests/test_provider_fallback.py tests/test_env_contract.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/fallback-chain-cloud-providers/test-runs/20260620-115134/junit.xml' -ra",
+  "duration_ms": 685,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/fallback-chain-cloud-providers/test-runs/20260620-115134/summary.json",
+    "stdout": "specs/changes/fallback-chain-cloud-providers/test-runs/20260620-115134/stdout.log",
+    "stderr": "specs/changes/fallback-chain-cloud-providers/test-runs/20260620-115134/stderr.log",
+    "junit": "specs/changes/fallback-chain-cloud-providers/test-runs/20260620-115134/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

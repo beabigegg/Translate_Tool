@@ -78,3 +78,12 @@ class TestEnvContractDeclared:
             f"{ENV_CONTRACT_PATH}. "
             "Add it to the env-contract table per AC-6 requirement."
         )
+
+    def test_deepseek_enabled_declared(self):
+        """AC-4: DEEPSEEK_ENABLED must be declared in env-contract.md (fallback-chain-cloud-providers)."""
+        text = _contract_text()
+        assert "DEEPSEEK_ENABLED" in text, (
+            "DEEPSEEK_ENABLED is not declared in "
+            f"{ENV_CONTRACT_PATH}. "
+            "Add it to the env-contract table per AC-4 requirement."
+        )

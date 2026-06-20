@@ -436,8 +436,6 @@ def process_files(
                 _chain = _cfg.get("fallback_chain", [])
                 _providers = {p["id"]: p for p in _cfg.get("providers", [])}
                 for _fb_id in _chain:
-                    if _fb_id == "ollama-local":
-                        break  # Fall through to OllamaClient below
                     _prov = _providers.get(_fb_id)
                     if _prov and _prov.get("enabled") is True:
                         _models = _prov.get("models", {})

@@ -56,4 +56,4 @@ routing:
       provider: panjit
       profile: general
 
-fallback_chain: [panjit, ollama-local]
+fallback_chain: [panjit, deepseek]

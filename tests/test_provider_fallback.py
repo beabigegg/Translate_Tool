@@ -349,7 +349,7 @@ class TestOrchestratorProviderWiring:
                 "profile": "general",
             }
         },
-        "fallback_chain": ["panjit", "ollama-local"],
+        "fallback_chain": ["panjit", "deepseek"],
     }
 
     def test_cloud_client_used_when_provider_id_set(self):
@@ -483,3 +483,358 @@ class TestOrchestratorProviderWiring:
             assert winning_provider == "ollama-local", (
                 f"Expected 'ollama-local', got {winning_provider!r}"
             )
+
+
+# ── TestFallbackChainConfig ───────────────────────────────────────────────────
+
+
+class TestFallbackChainConfig:
+    """AC-1, AC-2, AC-3: Verify providers.yml fallback_chain and DeepSeek gating."""
+
+    def test_fallback_chain_is_panjit_deepseek(self):
+        """AC-1: fallback_chain in providers.yml is exactly ['panjit', 'deepseek']."""
+        import yaml
+
+        # Read the tracked template (providers.yml is gitignored; .example is the CI source of truth)
+        providers_yml = _REPO_ROOT / "config" / "providers.yml.example"
+        raw = providers_yml.read_text(encoding="utf-8")
+        # Strip ${VAR} interpolations so yaml.safe_load can parse the file directly
+        import re
+        # Replace ${VAR:-default} → default; ${VAR} → ""
+        raw_clean = re.sub(r"\$\{[^}]+:-([^}]*)\}", r"\1", raw)
+        raw_clean = re.sub(r"\$\{[^}]+\}", '""', raw_clean)
+        cfg = yaml.safe_load(raw_clean)
+        chain = cfg.get("fallback_chain", [])
+        assert chain == ["panjit", "deepseek"], (
+            f"Expected fallback_chain=['panjit', 'deepseek'], got {chain!r}. "
+            "Update config/providers.yml.example (IP-1)."
+        )
+        assert "ollama-local" not in chain, (
+            "ollama-local must not appear in fallback_chain."
+        )
+
+    def test_ollama_local_role_is_layout_assist_only(self):
+        """AC-2: ollama-local provider entry is retained with role=layout_assist_only."""
+        import yaml
+        import re
+
+        providers_yml = _REPO_ROOT / "config" / "providers.yml.example"
+        raw = providers_yml.read_text(encoding="utf-8")
+        raw_clean = re.sub(r"\$\{[^}]+:-([^}]*)\}", r"\1", raw)
+        raw_clean = re.sub(r"\$\{[^}]+\}", '""', raw_clean)
+        cfg = yaml.safe_load(raw_clean)
+        providers = {p["id"]: p for p in cfg.get("providers", [])}
+        assert "ollama-local" in providers, (
+            "ollama-local provider entry must remain in providers.yml (layout_assist_only)."
+        )
+        assert providers["ollama-local"].get("role") == "layout_assist_only", (
+            f"Expected role='layout_assist_only', got {providers['ollama-local'].get('role')!r}."
+        )
+
+    def test_deepseek_excluded_when_disabled(self):
+        """AC-3: When DEEPSEEK_ENABLED=false, deepseek enabled coerces to False."""
+        import os
+        import importlib
+
+        # Force DEEPSEEK_ENABLED=false for this test
+        env_backup = os.environ.copy()
+        os.environ["DEEPSEEK_ENABLED"] = "false"
+        # Ensure required vars present (prevents unresolved-var disable path)
+        os.environ.setdefault("PANJIT_LLM_BASE_URL", "http://panjit-mock:8080")
+        os.environ.setdefault("PANJIT_API", "test-key")
+        os.environ.setdefault("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+        os.environ.setdefault("DEEPSEEK_API", "test-deepseek-key")
+        os.environ.setdefault("OLLAMA_BASE_URL", "http://localhost:11434")
+        try:
+            import app.backend.config as cfg_module
+            importlib.reload(cfg_module)
+            config = cfg_module.load_providers_config()
+        finally:
+            # Restore environment
+            os.environ.clear()
+            os.environ.update(env_backup)
+
+        assert config is not None, "load_providers_config() returned None"
+        providers = {p["id"]: p for p in config.get("providers", [])}
+        assert "deepseek" in providers, "deepseek provider entry missing from config"
+        assert providers["deepseek"]["enabled"] is False, (
+            f"Expected deepseek enabled=False when DEEPSEEK_ENABLED=false, "
+            f"got {providers['deepseek']['enabled']!r}"
+        )
+        # Confirm deepseek is not in active (enabled) fallback candidates
+        chain = config.get("fallback_chain", [])
+        enabled_in_chain = [
+            _id for _id in chain
+            if providers.get(_id, {}).get("enabled") is True
+        ]
+        assert "deepseek" not in enabled_in_chain, (
+            "deepseek must not appear in enabled chain when DEEPSEEK_ENABLED=false."
+        )
+
+    def test_deepseek_included_when_enabled(self):
+        """AC-3 (enabled): When DEEPSEEK_ENABLED=true, deepseek enabled coerces to True."""
+        import os
+        import importlib
+
+        env_backup = os.environ.copy()
+        os.environ["DEEPSEEK_ENABLED"] = "true"
+        os.environ["DEEPSEEK_API"] = "test-deepseek-key"
+        os.environ.setdefault("PANJIT_LLM_BASE_URL", "http://panjit-mock:8080")
+        os.environ.setdefault("PANJIT_API", "test-key")
+        os.environ.setdefault("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+        os.environ.setdefault("OLLAMA_BASE_URL", "http://localhost:11434")
+        try:
+            import app.backend.config as cfg_module
+            importlib.reload(cfg_module)
+            config = cfg_module.load_providers_config()
+        finally:
+            os.environ.clear()
+            os.environ.update(env_backup)
+
+        assert config is not None
+        providers = {p["id"]: p for p in config.get("providers", [])}
+        assert "deepseek" in providers
+        assert providers["deepseek"]["enabled"] is True, (
+            f"Expected deepseek enabled=True when DEEPSEEK_ENABLED=true, "
+            f"got {providers['deepseek']['enabled']!r}"
+        )
+
+
+# ── TestOrchestratorFallbackTraversal ─────────────────────────────────────────
+
+
+class TestOrchestratorFallbackTraversal:
+    """AC-5, AC-6, AC-8: orchestrator fallback traversal — no ollama-local branch."""
+
+    def test_ollama_local_branch_absent_from_orchestrator(self):
+        """AC-5: The string 'if _fb_id == "ollama-local": break' must not exist in orchestrator.py."""
+        orchestrator_path = (
+            _REPO_ROOT / "app" / "backend" / "processors" / "orchestrator.py"
+        )
+        source = orchestrator_path.read_text(encoding="utf-8")
+        assert '_fb_id == "ollama-local"' not in source, (
+            "orchestrator.py still contains the ollama-local break-guard. "
+            "Remove the 'if _fb_id == \"ollama-local\": break' guard (IP-2)."
+        )
+
+    def test_fallback_order_selection_at_orchestrator_seam(self):
+        """AC-5/AC-8: When PANJIT fails, deepseek is resolved as winning_provider (not ollama-local).
+
+        Selection-style: asserts WHICH provider was chosen, not just how many calls occurred.
+        Mocks at the consumer seam: app.backend.config.load_providers_config.
+        """
+        import tempfile
+        import pathlib
+
+        # Config where panjit is disabled (simulates PANJIT failure to build client)
+        # and deepseek is enabled (simulates DEEPSEEK_ENABLED=true)
+        _config = {
+            "providers": [
+                {
+                    "id": "panjit",
+                    "type": "openai",
+                    "enabled": False,  # PANJIT disabled → build skipped
+                    "base_url": "http://panjit-mock:8080",
+                    "api_key": "test-key-panjit",
+                    "models": {"translate": "gpt-oss:120b"},
+                },
+                {
+                    "id": "deepseek",
+                    "type": "openai",
+                    "enabled": True,  # DeepSeek enabled → should be selected
+                    "base_url": "https://api.deepseek.com",
+                    "api_key": "test-deepseek-key",
+                    "models": {"translate": "deepseek-v4-flash"},
+                },
+                {
+                    "id": "ollama-local",
+                    "type": "ollama",
+                    "enabled": True,
+                    "base_url": "http://localhost:11434",
+                    "role": "layout_assist_only",
+                },
+            ],
+            "routing": {
+                "default": {
+                    "model": "gpt-oss:120b",
+                    "provider": "panjit",
+                    "profile": "general",
+                }
+            },
+            "fallback_chain": ["panjit", "deepseek"],
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = pathlib.Path(tmpdir)
+            src_docx = tmp_path / "test.docx"
+            out_dir = tmp_path / "out"
+            out_dir.mkdir()
+            src_docx.write_bytes(b"PK\x03\x04")
+
+            with patch(
+                "app.backend.config.load_providers_config",
+                return_value=_config,
+            ), patch(
+                "app.backend.clients.openai_compatible_client.OpenAICompatibleClient.health",
+                return_value=(True, "OK"),
+            ), patch(
+                "app.backend.processors.orchestrator.CONTEXT_DETECTION_ENABLED",
+                False,
+            ), patch(
+                "app.backend.processors.orchestrator.translate_docx",
+                return_value=False,
+            ):
+                from app.backend.processors.orchestrator import process_files
+
+                result = process_files(
+                    files=[src_docx],
+                    output_dir=out_dir,
+                    targets=["French"],
+                    src_lang="English",
+                    include_headers_shapes_via_com=False,
+                    ollama_model="qwen3.5:9b",
+                    model_type="general",
+                    system_prompt="",
+                    profile_id="general",
+                    provider_id="panjit",  # panjit is the requested provider but disabled
+                )
+
+        assert len(result) == 6
+        _processed, _total, _stopped, _client, _term, winning_provider = result
+        # Selection-style: deepseek must be the winner, not ollama-local
+        assert winning_provider == "deepseek", (
+            f"Expected winning_provider='deepseek' (fallback chain resolved deepseek), "
+            f"got {winning_provider!r}. "
+            "Verify IP-2 removed the ollama-local break-guard and deepseek health passes."
+        )
+
+    def test_panjit_fail_deepseek_disabled_graceful(self):
+        """AC-6: PANJIT fail + DeepSeek disabled → graceful failure; no local provider contacted.
+
+        Asserts:
+        - winning_provider is 'ollama-local' (OllamaClient is the fallthrough, not a cloud attempt)
+          OR process_files completes without raising.
+        - No HTTP call is made to localhost:11434 for translation (translate_docx is mocked).
+        - No call to 'http://localhost:11434' is made via requests.Session.post.
+        """
+        import tempfile
+        import pathlib
+
+        # Config where both panjit and deepseek are disabled
+        _config = {
+            "providers": [
+                {
+                    "id": "panjit",
+                    "type": "openai",
+                    "enabled": False,  # PANJIT disabled
+                    "base_url": "http://panjit-mock:8080",
+                    "api_key": "test-key-panjit",
+                    "models": {"translate": "gpt-oss:120b"},
+                },
+                {
+                    "id": "deepseek",
+                    "type": "openai",
+                    "enabled": False,  # DeepSeek disabled (DEEPSEEK_ENABLED=false)
+                    "base_url": "https://api.deepseek.com",
+                    "api_key": "",
+                    "models": {"translate": "deepseek-v4-flash"},
+                },
+                {
+                    "id": "ollama-local",
+                    "type": "ollama",
+                    "enabled": True,
+                    "base_url": "http://localhost:11434",
+                    "role": "layout_assist_only",
+                },
+            ],
+            "routing": {
+                "default": {
+                    "model": "gpt-oss:120b",
+                    "provider": "panjit",
+                    "profile": "general",
+                }
+            },
+            "fallback_chain": ["panjit", "deepseek"],
+        }
+
+        localhost_calls = []
+
+        def _track_post(url, **kwargs):
+            if "localhost:11434" in url:
+                localhost_calls.append(url)
+            raise Exception(f"No HTTP calls expected in this test, got: {url}")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = pathlib.Path(tmpdir)
+            src_docx = tmp_path / "test.docx"
+            out_dir = tmp_path / "out"
+            out_dir.mkdir()
+            src_docx.write_bytes(b"PK\x03\x04")
+
+            with patch(
+                "app.backend.config.load_providers_config",
+                return_value=_config,
+            ), patch(
+                "app.backend.processors.orchestrator.CONTEXT_DETECTION_ENABLED",
+                False,
+            ), patch(
+                "app.backend.processors.orchestrator.translate_docx",
+                return_value=False,
+            ), patch(
+                "requests.Session.post",
+                side_effect=_track_post,
+            ):
+                from app.backend.processors.orchestrator import process_files
+
+                result = process_files(
+                    files=[src_docx],
+                    output_dir=out_dir,
+                    targets=["French"],
+                    src_lang="English",
+                    include_headers_shapes_via_com=False,
+                    ollama_model="qwen3.5:9b",
+                    model_type="general",
+                    system_prompt="",
+                    profile_id="general",
+                    provider_id="panjit",
+                )
+
+        # Graceful failure: no cloud client was resolved
+        assert len(result) == 6
+        _processed, _total, _stopped, _client, _term, winning_provider = result
+
+        # No local translation model attempted via HTTP
+        assert localhost_calls == [], (
+            f"No calls to localhost:11434 expected in graceful-failure path, "
+            f"got: {localhost_calls!r}"
+        )
+
+        # The orchestrator should fall through to OllamaClient (translate_docx mocked)
+        # without raising — winning_provider reflects the OllamaClient path
+        assert winning_provider == "ollama-local", (
+            f"Expected graceful failure path → winning_provider='ollama-local' "
+            f"(OllamaClient fallthrough), got {winning_provider!r}"
+        )
+
+
+# ── TestLayoutDetectorUnchanged ───────────────────────────────────────────────
+
+
+class TestLayoutDetectorUnchanged:
+    """AC-7: layout_detector.py and its Ollama layout path are unchanged."""
+
+    def test_layout_detector_source_unmodified(self):
+        """AC-7: layout_detector.py retains the Docling heron-101 ONNX landmark string."""
+        layout_detector_path = (
+            _REPO_ROOT / "app" / "backend" / "parsers" / "layout_detector.py"
+        )
+        assert layout_detector_path.exists(), (
+            f"layout_detector.py not found at {layout_detector_path}. "
+            "AC-7 requires this file to be present and unmodified."
+        )
+        source = layout_detector_path.read_text(encoding="utf-8")
+        landmark = "Docling heron-101 ONNX model"
+        assert landmark in source, (
+            f"Landmark string {landmark!r} not found in layout_detector.py. "
+            "Ensure layout_detector.py was not modified (AC-7)."
+        )

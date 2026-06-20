@@ -1,0 +1,22 @@
+agent: test-strategist
+date: 2026-06-20
+status: done
+
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/fallback-chain-cloud-providers/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_provider_fallback.py → app/backend/processors/orchestrator.py + config/providers.yml" }
+  - { type: tdd-pairs, pointer: "tests/test_env_contract.py → contracts/env/env-contract.md" }
+  - { type: coverage-tiers, pointer: "unit (tier 0), contract (tier 0), resilience (tier 1)" }
+  - { type: mapping-completeness, pointer: "AC-1 through AC-8 all covered; AC-5 and AC-8 share one selection test plus one branch-removal inspection test" }
+
+notes: |
+  Key decisions:
+  - AC-5 branch-removal: code-inspection test reads orchestrator.py source (Path(__file__).parent.parent pattern)
+    and asserts the `if _fb_id == "ollama-local": break` guard is absent.
+  - AC-3/AC-8 mock target: patch at `app.backend.processors.orchestrator.load_providers_config`
+    (consumer binding), not `app.backend.config.load_providers_config`.
+  - Existing TestOrchestratorProviderWiring._PANJIT_PROVIDERS_CONFIG fixture has stale
+    fallback_chain=[panjit, ollama-local]; flagged in Test Update Contract table for the
+    implementation agent to fix alongside the source change.
+  - test_ollama_used_when_no_cloud_provider (provider_id=None path) is NOT removed — it
+    tests a distinct scenario and remains valid post-change.

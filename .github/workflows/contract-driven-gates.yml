@@ -44,10 +44,26 @@ jobs:
         run: cdd-kit validate --contracts
 
       - name: Change gate (Tier 1 — blocks merge)
-        run: echo "No active change gates — all changes archived."
+        # Active: fallback-chain-cloud-providers
+        run: cdd-kit gate fallback-chain-cloud-providers
 
       - name: OpenAPI sync gate
         run: cdd-kit openapi export --check --out contracts/api/openapi.yml
+
+      - name: Env schema sync — DEEPSEEK_ENABLED in .env.example.template and env.schema.json (Tier 1 — blocks merge)
+        # AC-4: DEEPSEEK_ENABLED must be present in both deployment sync artefacts.
+        # Deployment Sync Policy: contracts/env/env-contract.md §Deployment Sync Policy
+        run: |
+          grep -q "DEEPSEEK_ENABLED" contracts/env/.env.example.template || \
+            { echo "DEEPSEEK_ENABLED missing from .env.example.template"; exit 1; }
+          grep -q "DEEPSEEK_ENABLED" contracts/env/env.schema.json || \
+            { echo "DEEPSEEK_ENABLED missing from env.schema.json"; exit 1; }
+
+      - name: Targeted tests — provider_fallback + env_contract (Tier 1 — blocks merge)
+        # AC-1, AC-3, AC-5, AC-6, AC-7, AC-8: fast-fail before full suite.
+        # ollama-local never selected; DeepSeek excluded when DEEPSEEK_ENABLED=false;
+        # graceful failure path; env schema entry present.
+        run: pytest tests/test_provider_fallback.py tests/test_env_contract.py -x -q --tb=short
 
       - name: Secret scan — no literal API keys in source (Tier 1 — blocks merge)
         run: |

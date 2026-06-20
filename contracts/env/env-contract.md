@@ -4,7 +4,7 @@ summary: Environment variable inventory, secret handling, and deployment sync po
 owner: platform-team
 surface: runtime-config
 schema-version: 0.6.0
-last-changed: 2026-06-19
+last-changed: 2026-06-20
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -12,7 +12,7 @@ breaking-change-policy: deprecate-2-minors
 
 | name | scope | environments | required | secret | default | example | owner | validation | restart required | failure behavior |
 |---|---|---|---:|---:|---|---|---|---|---:|---|
-| OLLAMA_BASE_URL | backend | all | no | no | http://localhost:11434 | http://localhost:11434 | platform-team | valid URL | yes | Ollama client falls back to default; local layout inference unavailable if wrong |
+| OLLAMA_BASE_URL | backend | all | no | no | http://localhost:11434 | http://localhost:11434 | platform-team | valid URL | yes | Ollama client falls back to default; local layout inference (layout_detector.py) unavailable if wrong. OLLAMA_BASE_URL is not used by the translation fallback chain. |
 | TRANSLATE_TOOL_HOST | backend | all | no | no | 127.0.0.1 | 0.0.0.0 | platform-team | valid IP | yes | Server binds to wrong interface |
 | TRANSLATE_TOOL_PORT | backend | all | no | no | 8765 | 8765 | platform-team | integer | yes | Server binds to wrong port |
 | TRANSLATION_CACHE_ENABLED | backend | all | no | no | 1 | 1 | application-team | 0 or 1 | no | Cache disabled if falsy; performance degradation |

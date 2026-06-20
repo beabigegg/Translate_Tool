@@ -1,0 +1,12 @@
+- type: tier-floor-override
+  change-id: fallback-chain-cloud-providers
+  timestamp: '2026-06-20T03:56:20.185Z'
+  declared-tier: 2
+  floor-tier: 0
+  label: critical surface (auth / payments / data migration / concurrency / secrets)
+  matched:
+    - api key
+    - session
+  reason: >-
+    Tier 2 confirmed: no migration, no new endpoint, no auth surface. api-key and session vocab are
+    pre-existing provider-routing terminology, not a new secret surface.

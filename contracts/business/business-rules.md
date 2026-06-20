@@ -3,8 +3,8 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.12.1
-last-changed: 2026-06-19
+schema-version: 0.13.0
+last-changed: 2026-06-20
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -26,7 +26,7 @@ breaking-change-policy: deprecate-2-minors
 | BR-11 | wikidata-import-confidence | application-team | Wikidata lookup imports insert with `confidence=0.9`, `status="unverified"`, strategy `merge`. | — |
 | BR-12 | provider-registry | application-team | `config/providers.yml` is the authoritative provider registry. `model_router.py` reads it at startup via `config.py`. A provider entry has: `id`, `type`, `enabled`, `base_url`, `api_key`, `models`, optional `role`. | — |
 | BR-13 | provider-default-routing | application-team | `routing.default` in `providers.yml` defines the primary model + provider for most jobs. When `providers.yml` is absent or unreadable, `model_router` falls back to Ollama-only behavior (backward-compatible). | — |
-| BR-14 | provider-fallback-chain | application-team | `fallback_chain` is an ordered list of provider IDs. If the primary provider fails, the next provider in the chain is attempted. Maximum one attempt per provider per job. First success wins. | — |
+| BR-14 | provider-fallback-chain | application-team | `fallback_chain` is an ordered list of provider IDs. If the primary provider fails, the next provider in the chain is attempted. Maximum one attempt per provider per job. First success wins. The active `fallback_chain` is `[panjit, deepseek]`. `ollama-local` carries `role: layout_assist_only` in `providers.yml` and MUST NOT appear in `fallback_chain`; it is never attempted as a translation fallback. | — |
 | BR-15 | provider-offline-detection | application-team | A provider is considered "offline" when an HTTP request raises a connection or timeout exception at the client boundary. Auth failures (HTTP 401/403) are also treated as offline for fallback purposes. | — |
 | BR-16 | provider-attribution | application-team | The provider ID that successfully processed a job is always recorded in `JobStatus.provider`. If the job fails after all fallback providers are exhausted, `JobStatus.provider` remains null and `status` transitions to `failed`. | — |
 | BR-17 | provider-secret-safety | application-team | API keys (`PANJIT_API`, `DEEPSEEK_API`) must not appear in `config/providers.yml` as literals; they must be referenced via `${VAR}` interpolation resolved at load time. An unresolved reference must disable the provider, not pass the literal string to the endpoint. | — |
@@ -102,6 +102,8 @@ breaking-change-policy: deprecate-2-minors
 | all providers in chain exhausted without success | job transitions to `status: "failed"`; `JobStatus.provider` remains null | — |
 | `providers.yml` absent or all providers have `enabled: false` | falls back to `OllamaClient`-only behavior; `JobStatus.provider` set to `"ollama-local"` | — |
 | `DEEPSEEK_ENABLED=false` | DeepSeek excluded from chain regardless of `DEEPSEEK_API` presence | — |
+| `ollama-local` appears in `fallback_chain` (misconfiguration) | `ollama-local` entry skipped for translation; WARNING logged with provider ID; remaining chain continues | tests/test_provider_fallback.py |
+| PANJIT fails (connection/timeout/401/403) AND `DEEPSEEK_ENABLED=false` | fallback chain exhausted; job transitions to `status: "failed"`; `JobStatus.provider` remains null; no local translation attempt made | tests/test_provider_fallback.py |
 
 ### Table D — config-driven per-language routing (BR-18, BR-19)
 | condition | behavior | test id |
