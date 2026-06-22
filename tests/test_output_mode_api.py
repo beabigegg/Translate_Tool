@@ -16,6 +16,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+# Capture the routes module object at collection time (before any test modifies
+# sys.modules).  patch.object(_routes, ...) always targets M1 regardless of
+# sys.modules contamination by other test modules (e.g. test_model_config_api).
+import app.backend.api.routes as _routes
+
 
 # ---------------------------------------------------------------------------
 # App fixture
@@ -63,7 +68,7 @@ def _fake_create_job(*args, **kwargs):
 
 def test_post_jobs_accepts_output_mode_append(client):
     """POST /api/jobs with output_mode=append must return 200 with a job_id."""
-    with patch("app.backend.api.routes.job_manager") as mock_jm:
+    with patch.object(_routes, "job_manager") as mock_jm:
         mock_jm.create_job.side_effect = _fake_create_job
         resp = client.post(
             "/api/jobs",
@@ -76,7 +81,7 @@ def test_post_jobs_accepts_output_mode_append(client):
 
 def test_post_jobs_accepts_output_mode_replace(client):
     """POST /api/jobs with output_mode=replace must return 200 with a job_id."""
-    with patch("app.backend.api.routes.job_manager") as mock_jm:
+    with patch.object(_routes, "job_manager") as mock_jm:
         mock_jm.create_job.side_effect = _fake_create_job
         resp = client.post(
             "/api/jobs",
@@ -89,7 +94,7 @@ def test_post_jobs_accepts_output_mode_replace(client):
 
 def test_post_jobs_rejects_invalid_output_mode_422(client):
     """POST /api/jobs with an invalid output_mode value must return HTTP 422."""
-    with patch("app.backend.api.routes.job_manager") as mock_jm:
+    with patch.object(_routes, "job_manager") as mock_jm:
         mock_jm.create_job.side_effect = _fake_create_job
         resp = client.post(
             "/api/jobs",
@@ -107,7 +112,7 @@ def test_post_jobs_output_mode_defaults_to_append(client):
         captured.update(kwargs)
         return SimpleNamespace(job_id="test-job-id")
 
-    with patch("app.backend.api.routes.job_manager") as mock_jm:
+    with patch.object(_routes, "job_manager") as mock_jm:
         mock_jm.create_job.side_effect = _capture_create_job
         resp = client.post(
             "/api/jobs",
