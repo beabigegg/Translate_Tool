@@ -126,6 +126,11 @@ CRITIQUE_LOOP_ENABLED: bool = os.environ.get("CRITIQUE_LOOP_ENABLED", "1").lower
 CRITIQUE_MAX_ITERATIONS: int = int(os.environ.get("CRITIQUE_MAX_ITERATIONS", "3"))
 CRITIQUE_TIMEOUT_SECONDS: float = float(os.environ.get("CRITIQUE_TIMEOUT_SECONDS", "60"))
 
+# Few-shot example injection (p2-prompt-fewshot-glossary, BR-42)
+# When enabled, build_strategy() appends scenario-specific source→target example
+# pairs into the system prompt so every translation call carries ≥1 few-shot pair.
+FEWSHOT_INJECTION_ENABLED: bool = os.environ.get("FEWSHOT_INJECTION_ENABLED", "1").lower() in ("1", "true", "yes")
+
 # Dynamic scenario strategy:
 # - Detect translation scenario from filename/sample/context
 # - Apply scenario-specific decoding options

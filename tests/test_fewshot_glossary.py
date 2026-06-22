@@ -90,6 +90,50 @@ class TestFewShotInjection:
             # Zero-shot fallback: documented template, not None/exception
             assert isinstance(block, str)
 
+    def test_fewshot_block_is_wired_into_build_strategy_system_prompt(self):
+        """Wiring test (anti-tautological): few-shot examples must actually reach
+        the system_prompt produced by build_strategy — not merely exist in
+        isolation. Guards against the orphaned-component failure mode."""
+        from app.backend.services.translation_strategy import (
+            build_strategy,
+            TranslationScenario,
+        )
+        from app.backend.services.context_prompts import _FEWSHOT_BANK
+        from app.backend.config import ModelType
+
+        decision = build_strategy(
+            base_system_prompt="ROLE PROMPT",
+            model_type=ModelType.GENERAL.value,
+            scenario=TranslationScenario.TECHNICAL_PROCESS,
+            detected_context=None,
+            enable_context_flow=False,
+        )
+        # A concrete example source from the bank must appear in the assembled
+        # prompt, proving the block flows from build_fewshot_block → system_prompt.
+        sample_source = _FEWSHOT_BANK["technical_process"][0]["source"]
+        assert sample_source in decision.system_prompt
+
+    def test_fewshot_not_injected_when_flag_disabled(self):
+        """The FEWSHOT_INJECTION_ENABLED kill-switch must actually gate injection."""
+        from app.backend.services.translation_strategy import (
+            build_strategy,
+            TranslationScenario,
+        )
+        from app.backend.services.context_prompts import _FEWSHOT_BANK
+        from app.backend.config import ModelType
+        import app.backend.config as config_mod
+
+        with patch.object(config_mod, "FEWSHOT_INJECTION_ENABLED", False):
+            decision = build_strategy(
+                base_system_prompt="ROLE PROMPT",
+                model_type=ModelType.GENERAL.value,
+                scenario=TranslationScenario.TECHNICAL_PROCESS,
+                detected_context=None,
+                enable_context_flow=False,
+            )
+        sample_source = _FEWSHOT_BANK["technical_process"][0]["source"]
+        assert sample_source not in decision.system_prompt
+
 
 # ---------------------------------------------------------------------------
 # TestGlossaryEnforcement (AC-1)

@@ -279,6 +279,21 @@ def build_strategy(
     if appendix:
         parts.append(appendix)
 
+    # Few-shot examples (BR-42): inject curated source→target pairs for the
+    # resolved scenario so every translation call carries ≥1 example pair.
+    # Best-effort — a failure here must never break strategy assembly.
+    try:
+        from app.backend import config as _config
+
+        if getattr(_config, "FEWSHOT_INJECTION_ENABLED", True):
+            from app.backend.services.context_prompts import build_fewshot_block
+
+            fewshot_block = build_fewshot_block(resolved_scenario.value)
+            if fewshot_block:
+                parts.append(fewshot_block)
+    except Exception:
+        pass
+
     apply_context_flow = (
         enable_context_flow
         and bool(detected_context)
