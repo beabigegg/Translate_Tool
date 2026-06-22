@@ -1,13 +1,13 @@
-# generated: 2026-06-22T02:46:12Z by cdd-kit 3.4.0
-# files: 156, src-lines: 39230, map-lines: 3874, compression: 10.1x
-# sources-digest: ff970ab745357d4d0a2ac59536eab845948d5f5eaa6dda2e7580a49860f3d58f
+# generated: 2026-06-22T05:41:14Z by cdd-kit 3.4.0
+# files: 159, src-lines: 40037, map-lines: 3938, compression: 10.2x
+# sources-digest: 47cc3559b77d5270f4488aa75d1b2dd3c711c6a9a7e08839aec4bc6d6b07e7fb
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
 
 app/backend/api/__init__.py:  # 0 lines
 
-app/backend/api/routes.py:  # 1016 lines
+app/backend/api/routes.py:  # 1019 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: asyncio, items: [], line: 5 }
@@ -20,116 +20,119 @@ app/backend/api/routes.py:  # 1016 lines
     - { module: typing, items: [List, Optional], line: 12 }
     - { module: fastapi, items: [APIRouter, File, Form, HTTPException, Request, UploadFile], line: 16 }
     - { module: fastapi.responses, items: [FileResponse, StreamingResponse], line: 17 }
-    - { module: app.backend.api.schemas, items: [BlockQualityScore, JobAuditResponse, JobCreateResponse, JobQualityResponse, JobStatus, LayoutFileVizResponse, LayoutVizResponse, MetricsResponse, ModelConfigItem, ModelsResponse, ProfileItem, ProviderHealthItem, ProviderModelEntry, RouteInfoEntry, RouteInfoResponse, TermApproveRequest, TermEditRequest, TermFlagNeedsReviewRequest, TermImportResult, TermItem, TermRejectRequest, TermStatsResponse, TestTranslationRequest, TestTranslationResult, WikidataCandidate, WikidataImportRequest, WikidataSearchRequest, WikidataSearchResponse], line: 19 }
-    - { module: app.backend.services.metrics, items: [_get_metrics_snapshot], line: 49 }
-    - { module: app.backend.clients.ollama_client, items: [list_ollama_models], line: 50 }
-    - { module: app.backend.clients.openai_compatible_client, items: [OpenAICompatibleClient], line: 51 }
-    - { module: app.backend.config, items: [ModelType, QE_DEVICE, QE_ENABLED, QE_MODEL_NAME, VRAM_METADATA, load_providers_config], line: 52 }
-    - { module: app.backend.services.model_router, items: [RouteGroup, get_route_info, resolve_route_groups], line: 60 }
-    - { module: app.backend.translation_profiles, items: [get_profile, list_profiles], line: 65 }
-    - { module: app.backend.services.job_manager, items: [JobManager, JOBS_DIR], line: 66 }
-    - { module: app.backend.services.translation_cache, items: [get_cache], line: 67 }
-    - { module: app.backend.services.term_db, items: [TermDB, _VALID_STATUSES], line: 68 }
+    - { module: app.backend.api.schemas, items: [BlockQualityScore, JobAuditResponse, JobCreateResponse, JobQualityResponse, JobStatus, LayoutFileVizResponse, LayoutVizResponse, MetricsResponse, ModelConfigItem, ModelsResponse, OutputMode, ProfileItem, ProviderHealthItem, ProviderModelEntry, RouteInfoEntry, RouteInfoResponse, TermApproveRequest, TermEditRequest, TermFlagNeedsReviewRequest, TermImportResult, TermItem, TermRejectRequest, TermStatsResponse, TestTranslationRequest, TestTranslationResult, WikidataCandidate, WikidataImportRequest, WikidataSearchRequest, WikidataSearchResponse], line: 19 }
+    - { module: app.backend.services.metrics, items: [_get_metrics_snapshot], line: 50 }
+    - { module: app.backend.clients.ollama_client, items: [list_ollama_models], line: 51 }
+    - { module: app.backend.clients.openai_compatible_client, items: [OpenAICompatibleClient], line: 52 }
+    - { module: app.backend.config, items: [ModelType, QE_DEVICE, QE_ENABLED, QE_MODEL_NAME, VRAM_METADATA, load_providers_config], line: 53 }
+    - { module: app.backend.services.model_router, items: [RouteGroup, get_route_info, resolve_route_groups], line: 61 }
+    - { module: app.backend.translation_profiles, items: [get_profile, list_profiles], line: 66 }
+    - { module: app.backend.services.job_manager, items: [JobManager, JOBS_DIR], line: 67 }
+    - { module: app.backend.services.translation_cache, items: [get_cache], line: 68 }
+    - { module: app.backend.services.term_db, items: [TermDB, _VALID_STATUSES], line: 69 }
   functions:
-    - { name: _sanitize_filename, lines: 76-77 }
-    - { name: health, lines: 81-82 }  # @router.get('/health')
-    - { name: get_metrics_endpoint, lines: 86-88 }  # @router.get('/metrics', response_model=MetricsResponse)
-    - { name: models, lines: 92-93 }  # @router.get('/models', response_model=ModelsResponse)
-    - { name: profiles, lines: 97-106 }  # @router.get('/profiles', response_model=List[ProfileItem])
-    - { name: model_config, lines: 110-126 }  # @router.get('/model-config', response_model=List[ModelConfigItem])
-    - { name: route_info, lines: 130-137 }  # @router.get('/route-info', response_model=RouteInfoResponse)
-    - { name: async create_job, lines: 141-239 }  # @router.post('/jobs', response_model=JobCreateResponse)
-    - { name: job_status, lines: 243-332 }  # @router.get('/jobs/{job_id}', response_model=JobStatus)
-    - { name: cancel_job, lines: 336-339 }  # @router.post('/jobs/{job_id}/cancel')
-    - { name: job_quality, lines: 343-368 }  # @router.get('/jobs/{job_id}/quality', response_model=JobQualityResponse)
-    - { name: job_audit, lines: 372-387 }  # @router.get('/jobs/{job_id}/audit', response_model=JobAuditResponse)
-    - { name: job_layout, lines: 391-427 }  # @router.get('/jobs/{job_id}/layout', response_model=LayoutVizResponse)
-    - { name: job_layout_page, lines: 431-442 }  # @router.get('/jobs/{job_id}/layout/page/{file_stem}/{page_num}')
-    - { name: download, lines: 446-456 }  # @router.get('/jobs/{job_id}/download')
-    - { name: get_stats, lines: 461-465 }  # @router.get('/stats')
-    - { name: cache_stats, lines: 469-475 }  # @router.get('/cache/stats')
-    - { name: clear_cache, lines: 479-485 }  # @router.delete('/cache')
-    - { name: terms_stats, lines: 493-506 }  # @router.get('/terms/stats', response_model=TermStatsResponse)
-    - { name: terms_export, lines: 510-540 }  # @router.get('/terms/export')
-    - { name: async terms_import, lines: 544-579 }  # @router.post('/terms/import', response_model=TermImportResult)
-    - { name: terms_unverified, lines: 583-602 }  # @router.get('/terms/unverified', response_model=List[TermItem])
-    - { name: terms_approve, lines: 606-611 }  # @router.post('/terms/approve')
-    - { name: terms_reject, lines: 615-620 }  # @router.post('/terms/reject')
-    - { name: terms_flag_needs_review, lines: 624-629 }  # @router.post('/terms/flag-needs-review')
-    - { name: terms_approved, lines: 633-652 }  # @router.get('/terms/approved', response_model=List[TermItem])
-    - { name: terms_edit, lines: 656-667 }  # @router.patch('/terms/edit')
-    - { name: wikidata_search, lines: 675-687 }  # @router.post('/terms/wikidata/search', response_model=WikidataSearchResponse)
-    - { name: wikidata_import, lines: 691-706 }  # @router.post('/terms/wikidata/import')
-    - { name: providers_health, lines: 715-792 }  # @router.get('/providers/health', response_model=List[ProviderHealthItem], respons...
-    - { name: providers_models, lines: 796-827 }  # @router.get('/providers/models', response_model=List[ProviderModelEntry], respons...
-    - { name: async providers_test_translation, lines: 831-1016 }  # @router.post('/providers/test-translation', response_model=List[TestTranslationRe...
+    - { name: _sanitize_filename, lines: 77-78 }
+    - { name: health, lines: 82-83 }  # @router.get('/health')
+    - { name: get_metrics_endpoint, lines: 87-89 }  # @router.get('/metrics', response_model=MetricsResponse)
+    - { name: models, lines: 93-94 }  # @router.get('/models', response_model=ModelsResponse)
+    - { name: profiles, lines: 98-107 }  # @router.get('/profiles', response_model=List[ProfileItem])
+    - { name: model_config, lines: 111-127 }  # @router.get('/model-config', response_model=List[ModelConfigItem])
+    - { name: route_info, lines: 131-138 }  # @router.get('/route-info', response_model=RouteInfoResponse)
+    - { name: async create_job, lines: 142-242 }  # @router.post('/jobs', response_model=JobCreateResponse)
+    - { name: job_status, lines: 246-335 }  # @router.get('/jobs/{job_id}', response_model=JobStatus)
+    - { name: cancel_job, lines: 339-342 }  # @router.post('/jobs/{job_id}/cancel')
+    - { name: job_quality, lines: 346-371 }  # @router.get('/jobs/{job_id}/quality', response_model=JobQualityResponse)
+    - { name: job_audit, lines: 375-390 }  # @router.get('/jobs/{job_id}/audit', response_model=JobAuditResponse)
+    - { name: job_layout, lines: 394-430 }  # @router.get('/jobs/{job_id}/layout', response_model=LayoutVizResponse)
+    - { name: job_layout_page, lines: 434-445 }  # @router.get('/jobs/{job_id}/layout/page/{file_stem}/{page_num}')
+    - { name: download, lines: 449-459 }  # @router.get('/jobs/{job_id}/download')
+    - { name: get_stats, lines: 464-468 }  # @router.get('/stats')
+    - { name: cache_stats, lines: 472-478 }  # @router.get('/cache/stats')
+    - { name: clear_cache, lines: 482-488 }  # @router.delete('/cache')
+    - { name: terms_stats, lines: 496-509 }  # @router.get('/terms/stats', response_model=TermStatsResponse)
+    - { name: terms_export, lines: 513-543 }  # @router.get('/terms/export')
+    - { name: async terms_import, lines: 547-582 }  # @router.post('/terms/import', response_model=TermImportResult)
+    - { name: terms_unverified, lines: 586-605 }  # @router.get('/terms/unverified', response_model=List[TermItem])
+    - { name: terms_approve, lines: 609-614 }  # @router.post('/terms/approve')
+    - { name: terms_reject, lines: 618-623 }  # @router.post('/terms/reject')
+    - { name: terms_flag_needs_review, lines: 627-632 }  # @router.post('/terms/flag-needs-review')
+    - { name: terms_approved, lines: 636-655 }  # @router.get('/terms/approved', response_model=List[TermItem])
+    - { name: terms_edit, lines: 659-670 }  # @router.patch('/terms/edit')
+    - { name: wikidata_search, lines: 678-690 }  # @router.post('/terms/wikidata/search', response_model=WikidataSearchResponse)
+    - { name: wikidata_import, lines: 694-709 }  # @router.post('/terms/wikidata/import')
+    - { name: providers_health, lines: 718-795 }  # @router.get('/providers/health', response_model=List[ProviderHealthItem], respons...
+    - { name: providers_models, lines: 799-830 }  # @router.get('/providers/models', response_model=List[ProviderModelEntry], respons...
+    - { name: async providers_test_translation, lines: 834-1019 }  # @router.post('/providers/test-translation', response_model=List[TestTranslationRe...
 
-app/backend/api/schemas.py:  # 256 lines
+app/backend/api/schemas.py:  # 262 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
-    - { module: typing, items: [Any, Dict, List, Optional], line: 5 }
-    - { module: pydantic, items: [BaseModel, Field], line: 7 }
+    - { module: enum, items: [Enum], line: 5 }
+    - { module: typing, items: [Any, Dict, List, Optional], line: 6 }
+    - { module: pydantic, items: [BaseModel, Field], line: 8 }
   classes:
+    - name: OutputMode
+      lines: 11-13
     - name: JobCreateResponse
-      lines: 10-11
+      lines: 16-17
     - name: JobStatus
-      lines: 14-35
+      lines: 20-41
     - name: TermImportResult
-      lines: 38-41
+      lines: 44-47
     - name: TermStatsResponse
-      lines: 44-52
+      lines: 50-58
     - name: TermItem
-      lines: 55-64
+      lines: 61-70
     - name: TermApproveRequest
-      lines: 67-70
-    - name: TermRejectRequest
       lines: 73-76
-    - name: TermFlagNeedsReviewRequest
+    - name: TermRejectRequest
       lines: 79-82
+    - name: TermFlagNeedsReviewRequest
+      lines: 85-88
     - name: TermEditRequest
-      lines: 85-90
+      lines: 91-96
     - name: WikidataSearchRequest
-      lines: 93-97
+      lines: 99-103
     - name: WikidataCandidate
-      lines: 100-104
+      lines: 106-110
     - name: WikidataSearchResponse
-      lines: 107-109
+      lines: 113-115
     - name: WikidataImportRequest
-      lines: 112-118
+      lines: 118-124
     - name: ModelsResponse
-      lines: 121-122
+      lines: 127-128
     - name: ProfileItem
-      lines: 125-129
+      lines: 131-135
     - name: ModelConfigItem
-      lines: 132-138
+      lines: 138-144
     - name: RouteInfoEntry
-      lines: 141-147
+      lines: 147-153
     - name: RouteInfoResponse
-      lines: 150-151
+      lines: 156-157
     - name: MetricsResponse
-      lines: 154-159
+      lines: 160-165
     - name: BlockQualityScore
-      lines: 162-166
+      lines: 168-172
     - name: JobQualityResponse
-      lines: 169-173
+      lines: 175-179
     - name: JobAuditResponse
-      lines: 176-184
+      lines: 182-190
     - name: ProviderHealthItem
-      lines: 191-195
+      lines: 197-201
     - name: ProviderModelEntry
-      lines: 198-202
+      lines: 204-208
     - name: TestTranslationRequest
-      lines: 205-212
+      lines: 211-218
     - name: TestTranslationResult
-      lines: 215-226
+      lines: 221-232
     - name: LayoutBoxSchema
-      lines: 233-237
+      lines: 239-243
     - name: LayoutPageSchema
-      lines: 240-245
+      lines: 246-251
     - name: LayoutFileVizResponse
-      lines: 248-251
+      lines: 254-257
     - name: LayoutVizResponse
-      lines: 254-256
+      lines: 260-262
 
 app/backend/clients/__init__.py:  # 4 lines
   imports:
@@ -604,7 +607,7 @@ app/backend/processors/com_helpers.py:  # 145 lines
     - { name: excel_convert, lines: 50-66 }
     - { name: postprocess_docx_shapes_with_word, lines: 69-145 }
 
-app/backend/processors/docx_processor.py:  # 628 lines
+app/backend/processors/docx_processor.py:  # 645 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: os, items: [], line: 5 }
@@ -642,9 +645,9 @@ app/backend/processors/docx_processor.py:  # 628 lines
     - { name: _txbx_tail_equals, lines: 172-184 }
     - { name: _get_paragraph_key, lines: 197-205 }
     - { name: _collect_docx_segments, lines: 208-288 }
-    - { name: _insert_docx_translations, lines: 291-468 }
-    - { name: _translate_docx_via_doc2doc, lines: 471-532 }
-    - { name: translate_docx, lines: 535-628 }
+    - { name: _insert_docx_translations, lines: 291-482 }
+    - { name: _translate_docx_via_doc2doc, lines: 485-546 }
+    - { name: translate_docx, lines: 549-645 }
 
 app/backend/processors/libreoffice_helpers.py:  # 185 lines
   imports:
@@ -666,7 +669,7 @@ app/backend/processors/libreoffice_helpers.py:  # 185 lines
     - { name: doc_to_docx, lines: 158-170 }
     - { name: xls_to_xlsx, lines: 173-185 }
 
-app/backend/processors/orchestrator.py:  # 791 lines
+app/backend/processors/orchestrator.py:  # 799 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: logging, items: [], line: 5 }
@@ -693,7 +696,7 @@ app/backend/processors/orchestrator.py:  # 791 lines
     - { name: _extract_all_segments, lines: 210-291 }
     - { name: _detect_document_context, lines: 294-311 }
     - { name: _output_name, lines: 314-336 }
-    - { name: process_files, lines: 339-791 }
+    - { name: process_files, lines: 339-799 }
 
 app/backend/processors/pdf_processor.py:  # 781 lines
   imports:
@@ -722,7 +725,7 @@ app/backend/processors/pdf_processor.py:  # 781 lines
     - { name: _dispatch_render, lines: 705-752 }
     - { name: parse_pdf_to_document, lines: 755-781 }
 
-app/backend/processors/pptx_processor.py:  # 332 lines
+app/backend/processors/pptx_processor.py:  # 360 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: os, items: [], line: 5 }
@@ -753,7 +756,7 @@ app/backend/processors/pptx_processor.py:  # 332 lines
     - { name: _cell_append, lines: 78-85 }
     - { name: _extract_smartart_texts, lines: 88-118 }
     - { name: _update_smartart_texts, lines: 121-179 }
-    - { name: translate_pptx, lines: 182-332 }
+    - { name: translate_pptx, lines: 182-360 }
 
 app/backend/processors/xlsx_processor.py:  # 208 lines
   imports:
@@ -980,7 +983,7 @@ app/backend/services/doc_chunker.py:  # 367 lines
     - { name: split_document, lines: 143-324 }
     - { name: reassemble_document, lines: 331-367 }
 
-app/backend/services/job_manager.py:  # 490 lines
+app/backend/services/job_manager.py:  # 492 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: atexit, items: [], line: 5 }
@@ -1018,7 +1021,7 @@ app/backend/services/job_manager.py:  # 490 lines
         - { name: log, lines: 103-110 }
         - { name: _parse_progress, lines: 112-145 }
     - name: JobManager
-      lines: 148-490
+      lines: 148-492
       methods:
         - { name: __init__, lines: 149-163 }
         - { name: _shutdown, lines: 165-169 }
@@ -1027,13 +1030,13 @@ app/backend/services/job_manager.py:  # 490 lines
         - { name: _cleanup_expired_jobs, lines: 202-216 }
         - { name: _cleanup_by_capacity, lines: 218-233 }
         - { name: _remove_job, lines: 235-245 }
-        - { name: create_job, lines: 247-443 }
-        - { name: _archive_outputs, lines: 445-450 }
-        - { name: get_job, lines: 452-453 }
-        - { name: get_quality, lines: 455-460 }
-        - { name: cancel_job, lines: 462-469 }
-        - { name: list_jobs, lines: 471-472 }
-        - { name: get_stats, lines: 474-490 }
+        - { name: create_job, lines: 247-445 }
+        - { name: _archive_outputs, lines: 447-452 }
+        - { name: get_job, lines: 454-455 }
+        - { name: get_quality, lines: 457-462 }
+        - { name: cancel_job, lines: 464-471 }
+        - { name: list_jobs, lines: 473-474 }
+        - { name: get_stats, lines: 476-492 }
 
 app/backend/services/metrics.py:  # 160 lines
   imports:
@@ -2453,7 +2456,7 @@ tests/test_glossary_enforcement.py:  # 331 lines
     - { name: _make_term, lines: 26-35 }
     - { name: _make_client, lines: 38-43 }
 
-tests/test_golden_regression.py:  # 430 lines
+tests/test_golden_regression.py:  # 440 lines
   imports:
     - { module: __future__, items: [annotations], line: 16 }
     - { module: json, items: [], line: 18 }
@@ -2472,33 +2475,33 @@ tests/test_golden_regression.py:  # 430 lines
       methods:
         - { name: test_golden_fixture_inventory, lines: 77-90 }
     - name: TestGoldenPDFParseIRStable
-      lines: 129-159
+      lines: 129-166
       methods:
-        - { name: test_golden_pdf_parse_ir_stable, lines: 133-159 }
+        - { name: test_golden_pdf_parse_ir_stable, lines: 133-166 }
     - name: TestGoldenDocxParseIRStable
-      lines: 162-180
+      lines: 169-187
       methods:
-        - { name: test_golden_docx_parse_ir_stable, lines: 170-180 }
+        - { name: test_golden_docx_parse_ir_stable, lines: 177-187 }
     - name: TestGoldenPptxParseIRStable
-      lines: 183-201
+      lines: 190-208
       methods:
-        - { name: test_golden_pptx_parse_ir_stable, lines: 191-201 }
+        - { name: test_golden_pptx_parse_ir_stable, lines: 198-208 }
     - name: TestDualRunDiffNoRegressions
-      lines: 204-239
+      lines: 211-246
       methods:
-        - { name: test_dual_run_diff_no_regressions, lines: 208-239 }
+        - { name: test_dual_run_diff_no_regressions, lines: 215-246 }
     - name: TestDualRunLayoutDetectorVsHeuristic
-      lines: 246-319
+      lines: 253-326
       methods:
-        - { name: test_dual_run_layout_detector_vs_heuristic, lines: 249-319 }
+        - { name: test_dual_run_layout_detector_vs_heuristic, lines: 256-326 }
     - name: TestMultiColumnReadingOrderAccuracy
-      lines: 322-397
+      lines: 329-407
       methods:
-        - { name: test_multi_column_reading_order_accuracy, lines: 325-397 }
+        - { name: test_multi_column_reading_order_accuracy, lines: 332-407 }
     - name: TestGoldenOfflineNoNetwork
-      lines: 400-430
+      lines: 410-440
       methods:
-        - { name: test_golden_offline_no_network, lines: 403-430 }
+        - { name: test_golden_offline_no_network, lines: 413-440 }
   functions:
     - { name: _get_fixtures, lines: 31-35 }
     - { name: _compute_ir_snapshot, lines: 38-51 }
@@ -2804,7 +2807,7 @@ tests/test_metrics_endpoint.py:  # 156 lines
     - { name: test_existing_translation_behavior_unchanged, lines: 143-148 }
     - { name: test_existing_font_load_behavior_unchanged, lines: 151-156 }
 
-tests/test_model_config_api.py:  # 169 lines
+tests/test_model_config_api.py:  # 180 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: importlib, items: [], line: 5 }
@@ -2820,16 +2823,17 @@ tests/test_model_config_api.py:  # 169 lines
     - { module: starlette.datastructures, items: [UploadFile], line: 16 }
     - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 18 }
     - { module: app.backend.config, items: [GENERAL_NUM_CTX, MODEL_TYPE_OPTIONS, TRANSLATION_NUM_CTX, ModelType], line: 19 }
+    - { module: app.backend.api.schemas, items: [OutputMode], line: 20 }
   functions:
-    - { name: routes_module, lines: 23-45 }  # @pytest.fixture
-    - { name: client, lines: 49-52 }  # @pytest.fixture
-    - { name: _upload_file_obj, lines: 55-56 }
-    - { name: test_model_config_endpoint_returns_all_model_types, lines: 59-72 }
-    - { name: test_create_job_rejects_out_of_range_num_ctx, lines: 75-99 }
-    - { name: test_create_job_passes_valid_num_ctx_override, lines: 102-124 }
-    - { name: test_ollama_num_ctx_override_priority, lines: 127-135 }
-    - { name: test_route_info_response_includes_provider_field, lines: 142-154 }
-    - { name: test_route_info_provider_matches_routing_decision, lines: 157-169 }
+    - { name: routes_module, lines: 24-54 }  # @pytest.fixture
+    - { name: client, lines: 58-61 }  # @pytest.fixture
+    - { name: _upload_file_obj, lines: 64-65 }
+    - { name: test_model_config_endpoint_returns_all_model_types, lines: 68-81 }
+    - { name: test_create_job_rejects_out_of_range_num_ctx, lines: 84-109 }
+    - { name: test_create_job_passes_valid_num_ctx_override, lines: 112-135 }
+    - { name: test_ollama_num_ctx_override_priority, lines: 138-146 }
+    - { name: test_route_info_response_includes_provider_field, lines: 153-165 }
+    - { name: test_route_info_provider_matches_routing_decision, lines: 168-180 }
 
 tests/test_model_router.py:  # 521 lines
   imports:
@@ -2973,7 +2977,7 @@ tests/test_openai_compatible_client.py:  # 380 lines
     - { name: _make_chat_response, lines: 22-29 }
     - { name: _make_http_error_response, lines: 32-36 }
 
-tests/test_orchestrator_phase0.py:  # 342 lines
+tests/test_orchestrator_phase0.py:  # 343 lines
   imports:
     - { module: __future__, items: [annotations], line: 27 }
     - { module: threading, items: [], line: 29 }
@@ -2988,10 +2992,69 @@ tests/test_orchestrator_phase0.py:  # 342 lines
     - { name: _fresh_db, lines: 84-86 }
     - { name: _run_process_files_with_hooks, lines: 93-158 }
     - { name: _make_mock_ollama_client, lines: 161-168 }
-    - { name: _fake_translate_docx, lines: 174-192 }
-    - { name: test_phase0_hook_injects_term_table, lines: 199-247 }
-    - { name: test_phase0_hook_uses_panjit_config, lines: 254-294 }
-    - { name: test_phase0_hook_skips_panjit_when_disabled, lines: 301-342 }
+    - { name: _fake_translate_docx, lines: 174-193 }
+    - { name: test_phase0_hook_injects_term_table, lines: 200-248 }
+    - { name: test_phase0_hook_uses_panjit_config, lines: 255-295 }
+    - { name: test_phase0_hook_skips_panjit_when_disabled, lines: 302-343 }
+
+tests/test_output_mode_api.py:  # 124 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 10 }
+    - { module: io, items: [], line: 12 }
+    - { module: types, items: [SimpleNamespace], line: 13 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 14 }
+    - { module: pytest, items: [], line: 16 }
+    - { module: fastapi.testclient, items: [TestClient], line: 17 }
+    - { module: app.backend.api.routes, items: [], line: 22 }
+  functions:
+    - { name: client, lines: 30-35 }  # @pytest.fixture(scope='module')
+    - { name: _upload_files, lines: 38-40 }
+    - { name: _base_data, lines: 43-54 }
+    - { name: _fake_create_job, lines: 61-62 }
+    - { name: test_post_jobs_accepts_output_mode_append, lines: 69-79 }
+    - { name: test_post_jobs_accepts_output_mode_replace, lines: 82-92 }
+    - { name: test_post_jobs_rejects_invalid_output_mode_422, lines: 95-104 }
+    - { name: test_post_jobs_output_mode_defaults_to_append, lines: 107-124 }
+
+tests/test_output_mode_orchestrator.py:  # 212 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 17 }
+    - { module: pathlib, items: [Path], line: 19 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 20 }
+    - { module: pytest, items: [], line: 22 }
+  functions:
+    - { name: _make_mock_client, lines: 27-34 }
+    - { name: _make_mock_pptx, lines: 37-49 }
+    - { name: _fake_translate_docx, lines: 52-71 }
+    - { name: _fake_translate_pptx, lines: 74-92 }
+    - { name: test_orchestrator_threads_output_mode_to_translate_docx, lines: 99-131 }
+    - { name: test_orchestrator_threads_output_mode_to_translate_pptx, lines: 138-171 }
+    - { name: test_orchestrator_clamps_replace_to_append_for_multi_target, lines: 178-212 }
+
+tests/test_output_mode_processors.py:  # 381 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 13 }
+    - { module: io, items: [], line: 15 }
+    - { module: threading, items: [], line: 16 }
+    - { module: pathlib, items: [Path], line: 17 }
+    - { module: typing, items: [Dict, List, Optional, Tuple], line: 18 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 19 }
+    - { module: pytest, items: [], line: 21 }
+  functions:
+    - { name: _make_docx, lines: 28-36 }
+    - { name: _make_pptx, lines: 39-51 }
+    - { name: _mock_client, lines: 54-62 }
+    - { name: _make_tmap, lines: 65-67 }
+    - { name: test_translate_docx_accepts_output_mode_param, lines: 74-80 }
+    - { name: test_translate_pptx_accepts_output_mode_param, lines: 83-89 }
+    - { name: test_output_mode_default_is_append, lines: 92-101 }
+    - { name: test_append_mode_behavior_unchanged_docx, lines: 108-142 }
+    - { name: test_append_mode_behavior_unchanged_pptx, lines: 149-183 }
+    - { name: test_replace_mode_docx_no_source_paragraphs_remain, lines: 190-221 }
+    - { name: test_replace_mode_docx_translation_is_in_place, lines: 224-255 }
+    - { name: test_replace_mode_pptx_no_source_text_frames_remain, lines: 262-298 }
+    - { name: test_replace_mode_pptx_translation_is_in_place, lines: 301-337 }
+    - { name: test_multi_target_output_mode_clamped_to_append, lines: 344-381 }
 
 tests/test_pdf_generator.py:  # 818 lines
   imports:
@@ -3198,7 +3261,7 @@ tests/test_provider_fallback.py:  # 842 lines
     - { name: _make_chat_response, lines: 20-24 }
     - { name: _make_http_error_response, lines: 27-31 }
 
-tests/test_providers_api.py:  # 693 lines
+tests/test_providers_api.py:  # 697 lines
   imports:
     - { module: __future__, items: [annotations], line: 14 }
     - { module: logging, items: [], line: 16 }
@@ -3208,55 +3271,56 @@ tests/test_providers_api.py:  # 693 lines
     - { module: pytest, items: [], line: 21 }
     - { module: fastapi, items: [FastAPI], line: 22 }
     - { module: fastapi.testclient, items: [TestClient], line: 23 }
+    - { module: app.backend.api.routes, items: [], line: 27 }
   classes:
     - name: TestProvidersHealth
-      lines: 94-197
+      lines: 98-201
       methods:
-        - { name: test_health_panjit_online, lines: 96-111 }
-        - { name: test_health_panjit_offline, lines: 113-126 }
-        - { name: test_health_deepseek_not_configured_when_no_key, lines: 128-149 }
-        - { name: test_health_deepseek_online_when_key_supplied, lines: 151-171 }
-        - { name: test_health_returns_list, lines: 173-187 }
-        - { name: test_health_graceful_when_config_none, lines: 189-197 }
+        - { name: test_health_panjit_online, lines: 100-115 }
+        - { name: test_health_panjit_offline, lines: 117-130 }
+        - { name: test_health_deepseek_not_configured_when_no_key, lines: 132-153 }
+        - { name: test_health_deepseek_online_when_key_supplied, lines: 155-175 }
+        - { name: test_health_returns_list, lines: 177-191 }
+        - { name: test_health_graceful_when_config_none, lines: 193-201 }
     - name: TestProvidersModels
-      lines: 204-256
+      lines: 208-260
       methods:
-        - { name: test_models_returns_provider_list, lines: 206-218 }
-        - { name: test_models_includes_translate_model_from_config, lines: 220-232 }
-        - { name: test_models_graceful_when_config_none, lines: 234-242 }
-        - { name: test_models_omits_long_doc_when_absent, lines: 244-256 }
+        - { name: test_models_returns_provider_list, lines: 210-222 }
+        - { name: test_models_includes_translate_model_from_config, lines: 224-236 }
+        - { name: test_models_graceful_when_config_none, lines: 238-246 }
+        - { name: test_models_omits_long_doc_when_absent, lines: 248-260 }
     - name: TestProvidersTestTranslation
-      lines: 263-534
+      lines: 267-538
       methods:
-        - { name: _post, lines: 265-270 }
-        - { name: test_test_translation_panjit_success, lines: 272-294 }
-        - { name: test_test_translation_deepseek_no_key_returns_error_slot, lines: 296-322 }
-        - { name: test_test_translation_deepseek_key_is_not_logged, lines: 324-361 }
-        - { name: test_test_translation_partial_failure_isolated, lines: 363-400 }
-        - { name: test_test_translation_comet_score_present_when_qe_enabled, lines: 402-427 }
-        - { name: test_test_translation_comet_score_absent_when_qe_disabled, lines: 429-451 }
-        - { name: test_test_translation_empty_text_returns_422, lines: 453-471 }
-        - { name: test_test_translation_missing_text_field_returns_422, lines: 473-484 }
-        - { name: test_test_translation_missing_targets_returns_422, lines: 486-497 }
-        - { name: test_test_translation_all_slots_fail_still_200, lines: 499-520 }
-        - { name: test_test_translation_graceful_when_config_none, lines: 522-534 }
+        - { name: _post, lines: 269-274 }
+        - { name: test_test_translation_panjit_success, lines: 276-298 }
+        - { name: test_test_translation_deepseek_no_key_returns_error_slot, lines: 300-326 }
+        - { name: test_test_translation_deepseek_key_is_not_logged, lines: 328-365 }
+        - { name: test_test_translation_partial_failure_isolated, lines: 367-404 }
+        - { name: test_test_translation_comet_score_present_when_qe_enabled, lines: 406-431 }
+        - { name: test_test_translation_comet_score_absent_when_qe_disabled, lines: 433-455 }
+        - { name: test_test_translation_empty_text_returns_422, lines: 457-475 }
+        - { name: test_test_translation_missing_text_field_returns_422, lines: 477-488 }
+        - { name: test_test_translation_missing_targets_returns_422, lines: 490-501 }
+        - { name: test_test_translation_all_slots_fail_still_200, lines: 503-524 }
+        - { name: test_test_translation_graceful_when_config_none, lines: 526-538 }
     - name: TestContractShapes
-      lines: 541-628
+      lines: 545-632
       methods:
-        - { name: test_health_response_shape_matches_contract, lines: 543-568 }
-        - { name: test_models_response_shape_matches_contract, lines: 570-587 }
-        - { name: test_test_translation_result_shape_matches_contract, lines: 589-628 }
+        - { name: test_health_response_shape_matches_contract, lines: 547-572 }
+        - { name: test_models_response_shape_matches_contract, lines: 574-591 }
+        - { name: test_test_translation_result_shape_matches_contract, lines: 593-632 }
     - name: TestProvidersBugFixes
-      lines: 631-693
+      lines: 635-697
       methods:
-        - { name: _make_providers_config_deepseek_disabled, lines: 634-640 }
-        - { name: test_health_disabled_deepseek_probed_when_key_supplied, lines: 642-665 }
-        - { name: test_test_translation_accepts_provider_id_as_model, lines: 667-693 }
+        - { name: _make_providers_config_deepseek_disabled, lines: 638-644 }
+        - { name: test_health_disabled_deepseek_probed_when_key_supplied, lines: 646-669 }
+        - { name: test_test_translation_accepts_provider_id_as_model, lines: 671-697 }
   functions:
-    - { name: _make_providers_config, lines: 30-65 }
-    - { name: _make_client, lines: 68-73 }
-    - { name: _mock_health_ok, lines: 76-80 }
-    - { name: _mock_health_fail, lines: 83-87 }
+    - { name: _make_providers_config, lines: 34-69 }
+    - { name: _make_client, lines: 72-77 }
+    - { name: _mock_health_ok, lines: 80-84 }
+    - { name: _mock_health_fail, lines: 87-91 }
 
 tests/test_quality_evaluation.py:  # 423 lines
   imports:

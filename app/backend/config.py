@@ -154,6 +154,14 @@ LAYOUT_DETECTOR_MODEL_PATH: Optional[str] = os.environ.get("LAYOUT_DETECTOR_MODE
 # LAYOUT_DETECTOR_ENABLED: default on; set to "0"/"false"/"no" to revert to heuristic.
 LAYOUT_DETECTOR_ENABLED: bool = os.environ.get("LAYOUT_DETECTOR_ENABLED", "true").lower() in ("1", "true", "yes")
 
+# Table recognition configuration (p3-table-structure)
+# TABLE_RECOGNITION_MODEL_PATH: optional explicit path to TATR/TableFormer ONNX weights directory.
+# When unset, falls back to HuggingFace cache / auto-download (D-5, tier 2/3).
+TABLE_RECOGNITION_MODEL_PATH: Optional[str] = os.environ.get("TABLE_RECOGNITION_MODEL_PATH") or None
+# TABLE_RECOGNITION_ENABLED: default off until weights are validated (BR-71).
+# Set to "1"/"true"/"yes" to enable. PDF-only scope (p3-table-structure).
+TABLE_RECOGNITION_ENABLED: bool = os.environ.get("TABLE_RECOGNITION_ENABLED", "false").lower() in ("1", "true", "yes")
+
 # Layout preservation configuration
 LAYOUT_PRESERVATION_MODE = "inline"  # inline | overlay | side_by_side
 DEFAULT_FONT_FAMILY = "NotoSansSC"  # Default font for PDF rendering

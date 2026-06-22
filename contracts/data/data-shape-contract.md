@@ -3,8 +3,8 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.10.0
-last-changed: 2026-06-20
+schema-version: 0.11.0
+last-changed: 2026-06-22
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -60,6 +60,8 @@ See `contracts/api/api-contract.md > ## Schemas > JobStatus` for the authoritati
 | unexpected `JobStatus.status` | n/a — status is server-set only, never client input | — | — |
 | `provider` field set by client | ignored — field is server-set only; not in POST /api/jobs input schema | — | — |
 | `element_type` value in serialized IR not in current enum | `from_dict` raises `ValueError` | not caught; propagated to caller | tests/test_translatable_document.py |
+| `metadata["table_structure"]` absent on a `table`-typed element (old-format IR or model unavailable) | treated as plain region marker; no cell-batch path invoked; no error | — | tests/test_table_recognizer.py |
+| `TableCell.content` empty string in a recognized table | excluded from LLM batch; `translated_content` set to `""`; `translation_status = "skipped"` | — | tests/test_table_recognizer.py |
 | `reading_order` absent in serialized IR (old-format document) | `from_dict` defaults to `None`; element is valid | — | tests/test_translatable_document.py |
 | `render_truncated` absent in serialized IR (old-format document) | `from_dict` defaults to `False`; element is valid | — | tests/test_translatable_document.py |
 | `CHUNK_OVERLAP_TOKENS` ≥ `num_ctx` at chunker init | `ValueError` raised; job transitions to `status: "failed"` | — | tests/test_doc_chunker.py |
@@ -116,7 +118,7 @@ The IR is the single authoritative in-memory and serialized form that decouples 
 | `list_item` | text-level | Single item in a list | existing |
 | `caption` | text-level | Figure or table caption | existing |
 | `footnote` | text-level | Footnote text | existing |
-| `table` | region-level | Entire table region (container; may enclose `table_cell` elements) | added p2-ir-document-model |
+| `table` | region-level | Entire table region (container; enclosing `table_cell` elements). When table structure is recognized (p3-table-structure), the region is backed by a `TableStructure` sub-element record; otherwise it remains a plain region marker. | updated p3-table-structure |
 | `figure` | region-level | Figure or image region | added p2-ir-document-model |
 | `formula` | region-level | Mathematical formula region | added p2-ir-document-model |
 | `list` | region-level | Entire list region (container; may enclose `list_item` elements) | added p2-ir-document-model |
@@ -131,8 +133,9 @@ All `ElementType` members MUST use lowercase Python string values as their wire 
 
 | producer | file path | added in | notes |
 |---|---|---|---|
-| PDF parser | `app/backend/parsers/pdf_parser.py` | p2-ir-document-model | extracts structural element types from PyMuPDF text/table detection; delegates reading-order to layout detector on native-PDF path |
+| PDF parser | `app/backend/parsers/pdf_parser.py` | p2-ir-document-model | extracts structural element types from PyMuPDF text/table detection; delegates reading-order to layout detector on native-PDF path; on p3-table-structure, passes detected table regions to `table_recognizer.py` for cell decomposition |
 | Layout detector | `app/backend/parsers/layout_detector.py` | p2-layout-detection | maps Docling heron-101 DocLayNet labels to `ElementType` wire values; sets `reading_order`; rasterised page image never leaves the process |
+| Table recognizer | `app/backend/parsers/table_recognizer.py` | p3-table-structure | optional ML step (TableFormer/TATR); produces `TableStructure` records attached to `table`-typed `TranslatableElement`; lazy-loads model weights per ADR 0003 pattern; when unavailable, parser falls back to treating table regions as plain `table` elements without cell decomposition |
 | DOCX parser | `app/backend/parsers/docx_parser.py` | p2-ir-document-model | populates `reading_order` from element extraction order |
 | PPTX parser | `app/backend/parsers/pptx_parser.py` | p2-ir-document-model | populates `reading_order` from element extraction order |
 
@@ -203,7 +206,7 @@ Coordinate system: top-left origin; x increases right; y increases down. Unit: p
 
 ### Round-trip guarantee
 
-A document serialized by `TranslatableDocument.to_dict()` then deserialized by `TranslatableDocument.from_dict()` must produce an equivalent IR preserving all of the following fields without loss or mutation: `bbox` (all four float coordinates), `style` / font metadata (all six fields), `element_type`, `reading_order`, `render_truncated`, `element_id`, `content`, `page_num`, `should_translate`, `translated_content`, `metadata`. Floating-point bbox coordinates must round-trip without rounding or truncation.
+A document serialized by `TranslatableDocument.to_dict()` then deserialized by `TranslatableDocument.from_dict()` must produce an equivalent IR preserving all of the following fields without loss or mutation: `bbox` (all four float coordinates), `style` / font metadata (all six fields), `element_type`, `reading_order`, `render_truncated`, `element_id`, `content`, `page_num`, `should_translate`, `translated_content`, `metadata`. Floating-point bbox coordinates must round-trip without rounding or truncation. When a `table`-typed element carries `metadata["table_structure"]`, all `TableCell` fields within that structure must survive round-trip without loss (see Table/Cell IR section).
 
 ### Backward-compatibility rule
 
@@ -219,8 +222,9 @@ All pre-existing keys (`element_id`, `content`, `element_type`, `page_num`, `bbo
 
 | consumer | surface | impact |
 |---|---|---|
-| `app/backend/parsers/pdf_parser.py` | producer | extracts text elements; delegates reading-order assignment to `layout_detector.py` on native-PDF text-layer path; retains `round(y0,10pt)` heuristic as per-page fallback (BR-33) |
+| `app/backend/parsers/pdf_parser.py` | producer | extracts text elements; delegates reading-order assignment to `layout_detector.py` on native-PDF text-layer path; retains `round(y0,10pt)` heuristic as per-page fallback (BR-33); passes detected table regions to `table_recognizer.py` (p3-table-structure) |
 | `app/backend/parsers/layout_detector.py` | producer (p2-layout-detection) | consumes rasterised page images from PyMuPDF in-process; writes `element_type` (from D-4 label mapping) and `reading_order` onto `TranslatableElement`; never changes wire schema |
+| `app/backend/parsers/table_recognizer.py` | producer (p3-table-structure) | optional ML step; attaches `TableStructure` to `table`-typed elements produced by `pdf_parser.py`; falls back gracefully when model is absent (BR-71); never changes wire schema on the `TranslatableElement` level |
 | `app/backend/parsers/docx_parser.py` | producer | must populate `reading_order` from element extraction order |
 | `app/backend/parsers/pptx_parser.py` | producer | must populate `reading_order` from element extraction order |
 | `app/backend/renderers/base.py` | consumer | may consume `reading_order`; must not raise when `None` |
@@ -230,8 +234,9 @@ All pre-existing keys (`element_id`, `content`, `element_type`, `page_num`, `bbo
 | `app/backend/renderers/inline_renderer.py` | consumer | same as base |
 | `app/backend/renderers/fitz_renderer.py` | consumer — fitz primary renderer (p2-renderer-convergence) | fitz primary PDF renderer; consumes IR via shared bbox-reflow component; see BR-34. Writes `render_truncated=True` on elements where cascade step (e) fires (BR-38). |
 | `app/backend/processors/orchestrator.py` | processor | no IR schema change required; reads elements after parsing |
-| `app/backend/services/doc_chunker.py` | consumer + transformer (p2-long-doc-chunking) | reads elements to build ChunkRecords; does not mutate element fields other than triggering per-chunk translation |
+| `app/backend/services/doc_chunker.py` | consumer + transformer (p2-long-doc-chunking) | reads elements to build ChunkRecords; does not mutate element fields other than triggering per-chunk translation; a `table`-typed element with a recognized `TableStructure` must be treated as an atomic unit and must not be split across chunk boundaries |
 | `app/backend/services/translation_service.py` (Doc2Doc path) | consumer + transformer (p2-long-doc-chunking) | receives full TranslatableDocument; invokes chunker; merges translated_content back into elements; returns the same document instance |
+| `app/backend/services/translation_service.py` (cell-batch path) | consumer + transformer (p3-table-structure) | for `table`-typed elements carrying a `TableStructure`, coalesces all translatable cells into a single LLM batch call per table; numeric cells (`is_numeric=True`) excluded from the batch; `translated_content` populated per cell after batch returns (BR-68, BR-69) |
 | `app/backend/services/quality_evaluator.py` | consumer (p2-comet-qe) | reads `element_id`, `content`, `translated_content` from IR elements; never mutates IR fields; score stored separately in `JobQualityRecord` |
 
 ### Renderer IR-consumption contract
@@ -316,6 +321,89 @@ Rationale for dropping from the start of N+1 rather than the end of N: the head 
 | Single element whose token count alone exceeds `num_ctx` | Element is placed in its own chunk; LLM call proceeds; not silently dropped (BR-48) |
 | `CHUNK_OVERLAP_TOKENS` ≥ chunk token ceiling | `ValueError` raised at chunker initialization; job transitions to `failed` |
 | Empty string element content | Treated as a zero-token element; `translated_content` set to empty string |
+
+---
+
+## Table/Cell IR (p3-table-structure)
+
+**Added in p3-table-structure. Source of truth: `app/backend/parsers/table_recognizer.py` and `app/backend/models/translatable_document.py`.**
+
+The table/cell IR extends the unified `TranslatableDocument` IR to represent structured table content recognized by an optional ML model (TableFormer or TATR). It is a pure in-memory structure. `TableStructure` is carried in the `metadata` dict of the parent `TranslatableElement` under the key `"table_structure"` so that old-format IR consumers that do not read `metadata` are unaffected.
+
+### Scope
+
+Table structure recognition applies to **PDF documents only** in p3-table-structure. DOCX/PPTX native table elements are out of scope (CER-001 deferred). For non-PDF formats, this section does not apply.
+
+### TableCell — in-memory data shape
+
+| field | type | nullable | default | notes |
+|---|---|---:|---|---|
+| cell_id | string | no | — | Unique within the parent `TranslatableElement`; format: `"{element_id}:r{row}:c{col}"` (0-based row/col indices) |
+| row | integer | no | — | 0-based row index within the table |
+| col | integer | no | — | 0-based column index within the table |
+| row_span | integer | no | 1 | Row span for merged cells; 1 = no merge |
+| col_span | integer | no | 1 | Column span for merged cells; 1 = no merge |
+| content | string | no | — | Original cell text content; may be empty string for blank cells |
+| is_numeric | boolean | no | false | `True` when `content` consists solely of digits, whitespace, and common numeric separators (`. , / - %`); determined by `text_utils.is_numeric_cell()`. When `True`, cell is excluded from LLM batching and `translated_content` is set to `content` unchanged (BR-68). |
+| translated_content | string\|null | yes | null | Cell-level translated text; null until translation applied; populated by the cell-batch seam (BR-69); for numeric cells, set equal to `content` without an LLM call |
+| translation_status | enum | no | `pending` | One of: `pending`, `translated`, `passthrough` (numeric per BR-68), `skipped` (empty cell), `failed` (LLM batch error) |
+
+### TableStructure — in-memory data shape
+
+| field | type | nullable | default | notes |
+|---|---|---:|---|---|
+| num_rows | integer | no | — | Total row count as recognized by the ML model |
+| num_cols | integer | no | — | Total column count as recognized by the ML model |
+| cells | list[TableCell] | no | [] | Flat ordered list of all cells in reading order (row-major); empty for tables with zero recognized cells |
+| recognizer | string | no | — | Name of the model/path that produced this structure (e.g. `"TATR"`, `"TableFormer"`) |
+| recognition_confident | boolean | no | true | `False` when the recognizer's confidence score falls below the configured threshold |
+
+### Attachment to the IR
+
+`TableStructure` is stored in the `metadata` dict of the parent `table`-typed `TranslatableElement` under the key `"table_structure"`. The `TranslatableElement.metadata` field already exists and is `object` typed. No new top-level field is added to `TranslatableElement`. Old-format consumers that do not read `metadata["table_structure"]` are unaffected.
+
+When serialized (`to_dict()`), `metadata["table_structure"]` is a plain dict containing `num_rows`, `num_cols`, `cells` (list of cell dicts), `recognizer`, and `recognition_confident`. Each cell dict exposes all `TableCell` fields: `cell_id`, `row`, `col`, `row_span`, `col_span`, `content`, `is_numeric`, `translated_content`, `translation_status`. Round-trip guarantee: all `TableCell` fields must survive `to_dict()` → `from_dict()` without loss.
+
+When `TableStructure` is absent from `metadata` (model unavailable, or non-PDF input), the `table` element behaves exactly as a plain region marker per existing p2-ir-document-model behavior.
+
+### Cell-batch IR-consumption contract
+
+| obligation | contract |
+|---|---|
+| Consumer | `app/backend/services/translation_service.py` (cell-batch path) |
+| Input | A `TranslatableElement` with `element_type = "table"` and `metadata["table_structure"]` present |
+| Batch coalescing | All `TableCell` entries from the same `TableStructure` whose `is_numeric=False` and `content` is non-empty MUST be sent to the LLM in **a single batch call** per table (BR-69) |
+| Numeric exclusion | Cells with `is_numeric=True` MUST be excluded from the LLM batch; `translated_content = content`; `translation_status = "passthrough"` (BR-68) |
+| Empty cell handling | Cells with `content == ""` are excluded from the batch; `translated_content = ""`; `translation_status = "skipped"` |
+| Translation result assignment | After the batch call returns, each cell's `translated_content` and `translation_status` are updated in place; the parent `TranslatableElement.translated_content` is set to a reconstructed table representation (format: tab-separated cells, newline-separated rows); see design.md §Reconstruction Format |
+| Batch failure | If the LLM batch call fails, the BR-25 failure placeholder is applied to all non-numeric cells' `translated_content`; `translation_status = "failed"` for those cells; job's `fail_cnt` incremented |
+| No flattened translation | A `table`-typed element with a recognized `TableStructure` MUST NOT be translated as a flattened paragraph (BR-70) |
+| Chunker atomicity | A `table`-typed element with a recognized `TableStructure` MUST be treated as an atomic unit by the chunker; its cell batch MUST NOT be split across chunk boundaries |
+| QE scoring scope | The parent `table` element's reconstructed `translated_content` is the QE scoring surface; individual `TableCell` objects are not top-level `TranslatableElement` objects and are not scored independently |
+
+### Degenerate table handling
+
+| condition | expected behavior |
+|---|---|
+| All cells are numeric | No LLM call; all cells get `translation_status = "passthrough"` |
+| All cells are empty | No LLM call; all cells get `translation_status = "skipped"` |
+| `cells` list is empty | No LLM call; parent element `translated_content = ""`; job continues |
+| Merged/spanning cells | Each merged cell is one `TableCell`; `row_span`/`col_span` recorded but do not affect translation logic |
+| `recognition_confident = False` | Cells processed per normal flow; downstream rendering may add a visual indicator (out of scope) |
+| Model unavailable at runtime | `TableStructure` not attached; `table` element treated as plain region marker; no crash (BR-71) |
+
+### Backward-compatibility rule
+
+A serialized IR lacking `metadata["table_structure"]` on a `table`-typed element is valid. `from_dict()` MUST NOT raise when the key is absent. All pre-p3-table-structure IR instances remain valid.
+
+### Known consumers of TableStructure
+
+| consumer | surface | impact |
+|---|---|---|
+| `app/backend/parsers/table_recognizer.py` | producer | creates `TableStructure`; attaches to parent `TranslatableElement.metadata`; lazy-loads ML model; falls back gracefully when unavailable |
+| `app/backend/parsers/pdf_parser.py` | mediator | passes `table`-typed elements to `table_recognizer.py`; attaches result to element metadata |
+| `app/backend/services/translation_service.py` (cell-batch path) | consumer | reads `TableStructure`; coalesces non-numeric cells into one LLM batch per table; writes `translated_content` and `translation_status` per cell |
+| `tests/test_table_recognizer.py` | test consumer | asserts `TableStructure` shape, `is_numeric` classification, batch coalescing, numeric passthrough, degenerate-table handling |
 
 ---
 

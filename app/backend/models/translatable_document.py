@@ -31,6 +31,102 @@ class ElementType(Enum):
     LIST = "list"
 
 
+# ---------------------------------------------------------------------------
+# Table/Cell IR (p3-table-structure)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class TableCell:
+    """In-memory representation of a single recognized table cell.
+
+    Stored as part of TableStructure.cells; attached to a table-typed
+    TranslatableElement via metadata["table_structure"].
+
+    See contracts/data/data-shape-contract.md §TableCell.
+    """
+
+    cell_id: str
+    row: int
+    col: int
+    content: str
+    row_span: int = 1
+    col_span: int = 1
+    is_numeric: bool = False
+    translated_content: Optional[str] = None
+    translation_status: str = "pending"  # pending | translated | passthrough | skipped | failed
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "cell_id": self.cell_id,
+            "row": self.row,
+            "col": self.col,
+            "row_span": self.row_span,
+            "col_span": self.col_span,
+            "content": self.content,
+            "is_numeric": self.is_numeric,
+            "translated_content": self.translated_content,
+            "translation_status": self.translation_status,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "TableCell":
+        return cls(
+            cell_id=data["cell_id"],
+            row=data["row"],
+            col=data["col"],
+            content=data["content"],
+            row_span=data.get("row_span", 1),
+            col_span=data.get("col_span", 1),
+            is_numeric=data.get("is_numeric", False),
+            translated_content=data.get("translated_content"),
+            translation_status=data.get("translation_status", "pending"),
+        )
+
+
+@dataclass
+class TableStructure:
+    """In-memory representation of a recognized table structure.
+
+    Attached to a table-typed TranslatableElement under
+    metadata["table_structure"] (D2).
+
+    See contracts/data/data-shape-contract.md §TableStructure.
+    """
+
+    num_rows: int
+    num_cols: int
+    recognizer: str
+    cells: List[TableCell] = field(default_factory=list)
+    recognition_confident: bool = True
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "num_rows": self.num_rows,
+            "num_cols": self.num_cols,
+            "recognizer": self.recognizer,
+            "recognition_confident": self.recognition_confident,
+            "cells": [c.to_dict() for c in self.cells],
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "TableStructure":
+        """Deserialize from dict.
+
+        When data is empty or missing keys, returns a degenerate empty structure
+        rather than raising (backward-compatibility — from_dict must not raise when
+        metadata['table_structure'] is absent or malformed).
+        """
+        if not data:
+            return cls(num_rows=0, num_cols=0, recognizer="unknown", cells=[])
+        return cls(
+            num_rows=data.get("num_rows", 0),
+            num_cols=data.get("num_cols", 0),
+            recognizer=data.get("recognizer", "unknown"),
+            recognition_confident=data.get("recognition_confident", True),
+            cells=[TableCell.from_dict(c) for c in data.get("cells", [])],
+        )
+
+
 @dataclass
 class BoundingBox:
     """Bounding box coordinates.

@@ -277,15 +277,61 @@ def _translate_pdf_with_pymupdf(
             document_type="PDF document",
         )
 
-        # Collect unique texts for batch translation
-        unique_texts = list(set(e.content.strip() for e in translatable if e.content.strip()))
-        log(f"[PDF] Translating {len(unique_texts)} unique texts")
+        # IP-7 (p3-table-structure, BR-70): Partition structured-table elements from
+        # the flatten batch.  Table elements carrying a recognized TableStructure are
+        # translated via the cell-batch seam; all other elements go through the
+        # existing flatten translate_blocks_batch path.
+        _table_rec_enabled = os.environ.get(
+            "TABLE_RECOGNITION_ENABLED", "false"
+        ).lower() in ("1", "true", "yes")
+
+        structured_table_elems = []
+        flatten_translatable = []
+        for e in translatable:
+            if (
+                _table_rec_enabled
+                and e.element_type.value == "table"
+                and e.metadata.get("table_structure") is not None
+            ):
+                structured_table_elems.append(e)
+            else:
+                flatten_translatable.append(e)
+
+        # Collect unique texts for batch translation (flatten path only — BR-70)
+        unique_texts = list(set(e.content.strip() for e in flatten_translatable if e.content.strip()))
+        log(f"[PDF] Translating {len(unique_texts)} unique texts ({len(structured_table_elems)} structured tables via cell-batch)")
         if pre_translate_hook:
             pre_translate_hook(unique_texts)
 
         # Batch translate for each target language
         stopped = False
         translations_by_target = {}
+
+        # Cell-batch seam for structured tables (runs before flatten batch)
+        if structured_table_elems:
+            try:
+                from app.backend.services.translation_service import translate_table_cells
+                for elem in structured_table_elems:
+                    if stop_flag and stop_flag.is_set():
+                        break
+                    translate_table_cells(
+                        element=elem,
+                        targets=targets,
+                        src_lang=src_lang,
+                        client=client,
+                        stop_flag=stop_flag,
+                        log=log,
+                    )
+            except Exception as exc:
+                logger.warning(
+                    "[PDF] cell-batch seam raised %s; structured tables will fall back to flatten path.",
+                    exc,
+                )
+                # Fall back: add them to the flatten path
+                for e in structured_table_elems:
+                    if e.content.strip() and e.content.strip() not in set(unique_texts):
+                        unique_texts.append(e.content.strip())
+                structured_table_elems = []
 
         for tgt in targets:
             if stop_flag and stop_flag.is_set():
@@ -309,9 +355,9 @@ def _translate_pdf_with_pymupdf(
         output_doc = docx.Document()
         current_page = 0
 
-        for i, element in enumerate(translatable):
+        for i, element in enumerate(flatten_translatable):
             if stop_flag and stop_flag.is_set():
-                log(f"[STOP] PDF stopped at element {i}/{len(translatable)}")
+                log(f"[STOP] PDF stopped at element {i}/{len(flatten_translatable)}")
                 stopped = True
                 break
 

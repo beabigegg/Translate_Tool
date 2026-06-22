@@ -20,6 +20,29 @@ except ImportError:
     HAS_PYSBD = False
 
 
+def is_numeric_cell(content: str) -> bool:
+    """Return True when a table cell's content is numeric (BR-68).
+
+    A cell is numeric when its content (stripped of leading/trailing whitespace)
+    consists solely of digits and the common numeric separators: . , / - %
+
+    Empty string (or whitespace-only) is NOT numeric — those cells use
+    translation_status="skipped", not "passthrough" (see data-shape §TableCell).
+
+    Args:
+        content: The raw cell text.
+
+    Returns:
+        True when the cell should be passed through without LLM translation.
+    """
+    stripped = content.strip()
+    if not stripped:
+        return False  # Empty/whitespace → not numeric
+    # Allowed character set: digits and separators
+    _NUMERIC_CHARS = frozenset("0123456789., /-% \t")
+    return all(ch in _NUMERIC_CHARS for ch in stripped) and any(ch.isdigit() for ch in stripped)
+
+
 def normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", (text or "").strip()).lower()
 

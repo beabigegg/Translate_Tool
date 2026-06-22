@@ -135,6 +135,15 @@ class PyMuPDFParser(BaseParser):
                     elem.reading_order = idx
                 layout_viz = []
 
+            # Table structure recognition (p3-table-structure, IP-5)
+            # Run after layout detection so element_type is finalised.
+            # Read env var at runtime so tests can monkeypatch os.environ.
+            _table_rec_enabled = os.environ.get(
+                "TABLE_RECOGNITION_ENABLED", "false"
+            ).lower() in ("1", "true", "yes")
+            if _table_rec_enabled:
+                self._run_table_recognizer(doc, elements, file_path)
+
             # Build metadata
             metadata = self._extract_metadata(doc, len(pages), total_chars)
 
@@ -484,6 +493,99 @@ class PyMuPDFParser(BaseParser):
             elem.reading_order = idx
 
         return viz_pages
+
+    def _run_table_recognizer(
+        self,
+        doc: Any,  # fitz.Document
+        elements: List[TranslatableElement],
+        doc_id: str = "",
+    ) -> None:
+        """For each table-typed element, run the table recognizer and attach TableStructure.
+
+        Fail-soft per BR-71: on any per-element error, log WARNING and leave the
+        element as a plain table region (no metadata["table_structure"] attached).
+
+        The page pixmap is rasterised per-page identically to _run_layout_detector;
+        the table bbox crop is created inside table_recognizer.recognize() and
+        discarded there (privacy boundary D1, BR-32).
+
+        Args:
+            doc: PyMuPDF document.
+            elements: All elements (all pages); mutated in-place.
+            doc_id: File path used in WARNING messages.
+        """
+        import numpy as np
+
+        try:
+            from app.backend.parsers.table_recognizer import TableRecognizer
+            from app.backend.config import TABLE_RECOGNITION_MODEL_PATH
+            recognizer = TableRecognizer(model_path=TABLE_RECOGNITION_MODEL_PATH)
+        except Exception as exc:
+            logger.warning(
+                "PyMuPDFParser: could not import TableRecognizer (%s); "
+                "table regions will be plain elements (BR-71).",
+                exc,
+            )
+            return
+
+        # Collect table-typed elements
+        table_elements = [
+            e for e in elements
+            if e.element_type.value == "table" and e.bbox is not None
+        ]
+        if not table_elements:
+            return
+
+        # Build page → table-elements lookup
+        page_table_elements: Dict[int, List[TranslatableElement]] = {}
+        for elem in table_elements:
+            page_table_elements.setdefault(elem.page_num, []).append(elem)
+
+        for page_num_0 in range(len(doc)):
+            page_num_1 = page_num_0 + 1
+            page_elems = page_table_elements.get(page_num_1, [])
+            if not page_elems:
+                continue
+
+            page = doc[page_num_0]
+
+            # Rasterise page (same pattern as _run_layout_detector)
+            try:
+                pixmap = page.get_pixmap(matrix=fitz.Matrix(1, 1))
+                page_array = np.frombuffer(pixmap.samples, dtype=np.uint8).reshape(
+                    pixmap.height, pixmap.width, pixmap.n
+                )
+                if page_array.shape[2] == 4:
+                    page_array = page_array[:, :, :3]
+                elif page_array.shape[2] == 1:
+                    page_array = np.repeat(page_array, 3, axis=2)
+            except Exception as exc:
+                logger.warning(
+                    "PyMuPDFParser: failed to rasterise page %d for table recognition (%s); "
+                    "table elements on this page remain plain (BR-71).",
+                    page_num_1,
+                    exc,
+                )
+                continue
+
+            for elem in page_elems:
+                try:
+                    ts = recognizer.recognize(
+                        element=elem,
+                        page_pixmap_array=page_array,
+                        doc_id=doc_id,
+                    )
+                    if ts is not None:
+                        elem.metadata["table_structure"] = ts.to_dict()
+                except Exception as exc:
+                    logger.warning(
+                        "PyMuPDFParser: table recognition failed for element '%s' in '%s': %s. "
+                        "Element remains a plain table region (BR-71).",
+                        elem.element_id,
+                        doc_id,
+                        exc,
+                    )
+            # page_array goes out of scope here; GC reclaims it
 
     def _sort_by_reading_order(
         self,

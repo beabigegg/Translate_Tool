@@ -1,0 +1,1 @@
+pytest tests/test_table_recognizer.py tests/test_translatable_document.py tests/test_pdf_parser.py tests/test_doc_chunker.py tests/test_translation_strategy.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p3-table-structure/test-runs/20260622-142158/junit.xml' -ra

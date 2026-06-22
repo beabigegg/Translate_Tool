@@ -83,6 +83,20 @@ _PARA_BREAK_TYPES = frozenset({ElementType.TEXT})
 _HEADING_TYPES = frozenset({ElementType.TITLE})
 
 
+def _is_structured_table(element: TranslatableElement) -> bool:
+    """Return True when element is a table-typed element with a recognized TableStructure (D5).
+
+    Such elements are atomic chunk units — they must never be a mid-element split
+    target and must be treated as oversized (BR-48 own-chunk path) when they alone
+    exceed num_ctx.  The chunker MUST NOT cut between them and adjacent elements using
+    the normal boundary search.
+    """
+    return (
+        element.element_type == ElementType.TABLE
+        and element.metadata.get("table_structure") is not None
+    )
+
+
 def _boundary_priority_at(elements: List[TranslatableElement], split_idx: int) -> int:
     """Return boundary priority at position split_idx (split between [split_idx-1] and [split_idx]).
 
@@ -287,6 +301,12 @@ def split_document(
             # (overlap_count + i - 1) and (overlap_count + i) in chunk_elems
             global_i = overlap_count + i  # boundary after the i-th new element
             prio = _boundary_priority_at(chunk_elems, global_i)
+            # D5 atomicity guard: never cut immediately after a structured table element.
+            # Cutting there would place it on the overlap tail and semantically split
+            # the cell-batch unit across chunk boundaries.
+            elem_before_cut = new_in_chunk[i - 1]
+            if _is_structured_table(elem_before_cut):
+                prio = 0  # suppress as a valid split point
             if prio > best_priority:
                 best_priority = prio
                 best_cut = i  # cut after i new elements

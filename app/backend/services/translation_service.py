@@ -30,7 +30,7 @@ from app.backend.utils.translation_helpers import translate_blocks_batch
 
 if TYPE_CHECKING:
     from app.backend.models.term import Term
-    from app.backend.models.translatable_document import TranslatableDocument
+    from app.backend.models.translatable_document import TranslatableDocument, TranslatableElement
 
 logger = logging.getLogger(__name__)
 
@@ -498,3 +498,130 @@ def translate_document(
         ) from first_exc
 
     return doc
+
+
+# ---------------------------------------------------------------------------
+# Cell-batch seam (p3-table-structure, D6, BR-68..BR-70)
+# ---------------------------------------------------------------------------
+
+def translate_table_cells(
+    element: "TranslatableElement",
+    targets: List[str],
+    src_lang: Optional[str],
+    client: LLMClient,
+    max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
+    stop_flag=None,
+    log: Callable[[str], None] = lambda s: None,
+) -> None:
+    """Translate the cells of a structured table element in-place (D6, BR-69, BR-70).
+
+    This is the cell-batch seam for table-typed TranslatableElements that carry
+    a recognized TableStructure in metadata["table_structure"].
+
+    Each table's translatable cells (is_numeric=False, content != "") are sent to
+    the LLM in exactly ONE batch call per table (BR-69).  Numeric cells get
+    translation_status="passthrough" and translated_content=content (BR-68).
+    Empty cells get translation_status="skipped" and translated_content="".
+    Batch failure applies the BR-25 placeholder to all failed cells.
+
+    After all cells are resolved, sets element.translated_content to the D3
+    reconstruction: tab-separated within a row, newline-separated between rows,
+    row-major over num_rows × num_cols.  Merged-cell text is emitted at the
+    origin (row, col); spanned positions emit empty string.
+
+    Args:
+        element: A table-typed TranslatableElement with metadata["table_structure"].
+        targets: Target language codes (translation applied for each target in order;
+                 last target's cell translations win for cell-level state).
+        src_lang: Source language code or None.
+        client: LLM client for batch translation.
+        max_batch_chars: Character batching budget.
+        stop_flag: Optional threading.Event for job cancellation.
+        log: Progress log callback.
+
+    Raises:
+        KeyError: When metadata["table_structure"] is absent (caller must check).
+    """
+    from app.backend.models.translatable_document import TableStructure
+
+    ts_dict = element.metadata.get("table_structure")
+    if ts_dict is None:
+        log(f"[CELL-BATCH] element {element.element_id}: no table_structure in metadata; skipping")
+        return
+
+    ts = TableStructure.from_dict(ts_dict)
+    if not ts.cells:
+        element.translated_content = ""
+        return
+
+    for tgt in targets:
+        if stop_flag and stop_flag.is_set():
+            log(f"[CELL-BATCH] stop flag set; halting at target {tgt}")
+            break
+
+        # Partition cells into translatable / numeric / empty
+        translatable_cells = []
+        translatable_indices = []
+        for idx, cell in enumerate(ts.cells):
+            if not cell.content:  # empty
+                cell.translated_content = ""
+                cell.translation_status = "skipped"
+            elif cell.is_numeric:  # numeric passthrough (BR-68)
+                cell.translated_content = cell.content
+                cell.translation_status = "passthrough"
+            else:
+                translatable_cells.append(cell)
+                translatable_indices.append(idx)
+
+        if not translatable_cells:
+            # All-numeric or all-empty — no LLM call needed
+            log(f"[CELL-BATCH] element {element.element_id}: no translatable cells for {tgt}")
+        else:
+            # Coalesce into exactly one batch call (BR-69)
+            batch_texts = [c.content for c in translatable_cells]
+            try:
+                results = translate_blocks_batch(
+                    batch_texts,
+                    tgt,
+                    src_lang,
+                    client,
+                    max_batch_chars=max_batch_chars,
+                    stop_flag=stop_flag,
+                    log=log,
+                )
+                for batch_pos, (ok, translated) in enumerate(results):
+                    cell = translatable_cells[batch_pos]
+                    if ok:
+                        cell.translated_content = translated
+                        cell.translation_status = "translated"
+                    else:
+                        # BR-25 placeholder + failed status
+                        cell.translated_content = f"[Translation failed|{tgt}] {cell.content}"
+                        cell.translation_status = "failed"
+            except Exception as exc:
+                logger.warning(
+                    "[CELL-BATCH] element %s batch failed (target=%s): %s; applying BR-25 placeholders",
+                    element.element_id,
+                    tgt,
+                    exc,
+                )
+                for cell in translatable_cells:
+                    cell.translated_content = f"[Translation failed|{tgt}] {cell.content}"
+                    cell.translation_status = "failed"
+
+    # Write updated cells back into metadata (in-place mutation of the dict)
+    element.metadata["table_structure"] = ts.to_dict()
+
+    # D3 reconstruction: tab-separated within row, newline-separated between rows (NORMATIVE)
+    # Build num_rows × num_cols grid; fill from cells at their (row, col) origin.
+    grid: List[List[str]] = [
+        ["" for _ in range(ts.num_cols)] for _ in range(ts.num_rows)
+    ]
+    for cell in ts.cells:
+        r, c = cell.row, cell.col
+        if 0 <= r < ts.num_rows and 0 <= c < ts.num_cols:
+            text = cell.translated_content if cell.translated_content is not None else cell.content
+            grid[r][c] = text
+
+    rows_str = ["\t".join(row) for row in grid]
+    element.translated_content = "\n".join(rows_str)

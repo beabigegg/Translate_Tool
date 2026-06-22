@@ -1,0 +1,6 @@
+agent: implementation-planner
+change-id: p3-table-structure
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/p3-table-structure/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer (sole implementation owner; IP-1..IP-9)" }
+  - { type: scope-summary, pointer: "In scope: 9 files (1 new module table_recognizer.py, 1 new test file, 7 edits). Out of scope: DOCX/PPTX (CER-001), new endpoints, UI/render, per-cell QE, requirements.txt additions." }

@@ -1,0 +1,20 @@
+{
+  "change_id": "p3-table-structure",
+  "phase": "collect",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "pytest tests/ --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p3-table-structure/test-runs/20260622-140612/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 981,
+  "first_failure": {
+    "kind": "collection-error",
+    "nodeid": "tests.test_jobstatus_download_url",
+    "message": "collection failure"
+  },
+  "artifacts": {
+    "summary": "specs/changes/p3-table-structure/test-runs/20260622-140612/summary.json",
+    "stdout": "specs/changes/p3-table-structure/test-runs/20260622-140612/stdout.log",
+    "stderr": "specs/changes/p3-table-structure/test-runs/20260622-140612/stderr.log",
+    "junit": "specs/changes/p3-table-structure/test-runs/20260622-140612/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

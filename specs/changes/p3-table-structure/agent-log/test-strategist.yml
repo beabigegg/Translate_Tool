@@ -1,0 +1,16 @@
+agent: test-strategist
+run-date: 2026-06-22
+status: complete
+
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/p3-table-structure/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_table_recognizer.py → app/backend/parsers/table_recognizer.py" }
+  - { type: tdd-pairs, pointer: "tests/test_table_recognizer.py → app/backend/services/translation_service.py (cell-batch path)" }
+  - { type: coverage-tiers, pointer: "unit (tier 0), contract (tier 0), integration (tier 1), data-boundary (tier 1)" }
+  - { type: mapping-completeness, pointer: "all 6 acceptance criteria (AC-1..AC-6) covered; BR-68, BR-69, BR-70, BR-71 and Table T decision table mapped to concrete test names" }
+
+notes: >
+  Anti-tautology rules for AC-3 and AC-4 written explicitly in test-plan.md.
+  AC-4 batch-payload assertion must inspect call arguments (WHICH cells), not just call count.
+  Model-unavailable tests mirror layout_detector pattern (patch at ONNX boundary, assert WARNING + no TableStructure attached).
+  No e2e or stress families required per change-classification.md.

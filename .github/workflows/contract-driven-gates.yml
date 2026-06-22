@@ -1,6 +1,6 @@
 # Contract-driven gates
 # Tier semantics: ci/gate-policy.md
-# Active change gates: none (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection, p2-prompt-fewshot-glossary, p2-long-doc-chunking, p2-comet-qe, p2-term-audit, download-url-in-jobstatus, remove-cross-model-refinement, fallback-chain-cloud-providers, term-extraction-db-first, settings-page-cloud-redesign, p3-docx-replace-mode)
+# Active change gates: p3-table-structure (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection, p2-prompt-fewshot-glossary, p2-long-doc-chunking, p2-comet-qe, p2-term-audit, download-url-in-jobstatus, remove-cross-model-refinement, fallback-chain-cloud-providers, term-extraction-db-first, settings-page-cloud-redesign, p3-docx-replace-mode)
 
 name: contract-driven-gates
 
@@ -44,7 +44,7 @@ jobs:
         run: cdd-kit validate --contracts
 
       - name: Change gate (Tier 1 — blocks merge)
-        run: echo "No active change gates — all changes archived."
+        run: cdd-kit gate p3-table-structure
 
       - name: OpenAPI sync gate
         run: cdd-kit openapi export --check --out contracts/api/openapi.yml
@@ -84,6 +84,14 @@ jobs:
             --include="*.py" --include="*.yml" --include="*.yaml" \
             -E "(PANJIT_API|DEEPSEEK_API)\s*[:=]\s*[A-Za-z0-9+/]{20,}" \
             . --exclude-dir=.git
+
+      - name: Targeted tests — table_recognizer (Tier 1 — blocks merge)
+        # AC-1..AC-6: fast-fail on table structure recognition tests before full suite.
+        # Covers unit (IR shape, numeric predicate), contract (round-trip), integration
+        # (cell-batch wiring, no-flatten invariant, numeric passthrough wiring),
+        # and data-boundary (model unavailable, degenerate tables) test families.
+        # See test-plan.md (p3-table-structure) for the full AC → test mapping.
+        run: pytest tests/test_table_recognizer.py -x -q --tb=short
 
       - name: Unit, contract, integration, resilience, data-boundary tests (Tier 1 — blocks merge)
         run: pytest tests/ -x -q --tb=short --junitxml=test-results/junit.xml

@@ -1,0 +1,17 @@
+agent: ci-cd-gatekeeper
+change-id: p3-table-structure
+timestamp: 2026-06-22
+status: complete
+
+summary: >
+  Wrote ci-gates.md gate plan and applied three changes to
+  contract-driven-gates.yml: activated change gate for p3-table-structure,
+  added targeted test step for tests/test_table_recognizer.py, updated
+  active-change-gates comment. No new workflow jobs or dependency gates
+  required — all needed packages already in requirements.txt.
+
+artifacts:
+  - { type: tiers-modified, pointer: "1, 2" }
+  - { type: gate-promotions, pointer: "n/a (no gate moved between tiers; targeted-table-recognizer is a new Tier 1 fast-fail step)" }
+  - { type: workflow-files-changed, pointer: ".github/workflows/contract-driven-gates.yml" }
+  - { type: required-status-checks, pointer: "contract-and-fast-tests" }

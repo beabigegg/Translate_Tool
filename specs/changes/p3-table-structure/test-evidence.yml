@@ -1,0 +1,42 @@
+change-id: p3-table-structure
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      pytest tests/ --collect-only -q
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p3-table-structure/test-runs/20260622-142139/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/p3-table-structure/test-runs/20260622-142139/summary.json
+    junit: specs/changes/p3-table-structure/test-runs/20260622-142139/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      pytest tests/test_table_recognizer.py -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p3-table-structure/test-runs/20260622-142148/junit.xml'
+      -ra
+    summary: specs/changes/p3-table-structure/test-runs/20260622-142148/summary.json
+    junit: specs/changes/p3-table-structure/test-runs/20260622-142148/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      pytest tests/test_table_recognizer.py tests/test_translatable_document.py tests/test_pdf_parser.py
+      tests/test_doc_chunker.py tests/test_translation_strategy.py -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p3-table-structure/test-runs/20260622-142158/junit.xml'
+      -ra
+    summary: specs/changes/p3-table-structure/test-runs/20260622-142158/summary.json
+    junit: specs/changes/p3-table-structure/test-runs/20260622-142158/junit.xml
+  - phase: full
+    status: passed
+    command: >-
+      pytest tests/ -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p3-table-structure/test-runs/20260622-142212/junit.xml'
+      -ra
+    summary: specs/changes/p3-table-structure/test-runs/20260622-142212/summary.json
+    junit: specs/changes/p3-table-structure/test-runs/20260622-142212/junit.xml
+final-status: passed

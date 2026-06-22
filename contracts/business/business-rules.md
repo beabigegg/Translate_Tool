@@ -3,7 +3,7 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.16.0
+schema-version: 0.17.0
 last-changed: 2026-06-22
 breaking-change-policy: deprecate-2-minors
 ---
@@ -77,6 +77,10 @@ breaking-change-policy: deprecate-2-minors
 | BR-62 | term-extraction-db-first | application-team | Phase 0 term extraction uses a DB-first flow. Source segments are embedded via PANJIT `Qwen3-Embedding-8B` (`POST {PANJIT_LLM_BASE_URL}/v1/embeddings`). Cosine similarity is computed in-process (no vector-DB package). If any term meets `TERM_EMBEDDING_THRESHOLD` (default 0.75), matched terms are injected via `build_terminology_block()` into the system prompt and NO extraction LLM call is made. On DB miss, PANJIT `gemma4:latest` (`POST {PANJIT_LLM_BASE_URL}/v1/chat/completions`) is called; new terms saved to term_db and then injected. The translation term-extraction path MUST NOT call `localhost:11434` (Ollama). `extraction_only` mode is unchanged. Embedding API failure is non-fatal: injection skipped, translation continues, WARNING logged. | tests/test_term_extractor.py |
 | BR-66 | docx-pptx-output-mode | application-team | `output_mode` controls whether translated DOCX/PPTX output is bilingual or monolingual. `"append"` (default): translated text is appended after the source paragraph/text-frame — identical to current behavior. `"replace"`: source-language paragraphs (DOCX) and source text frames (PPTX) are overwritten in-place by their translation; no source text remains in the output file. PDF and XLSX processors MUST accept the parameter but MUST NOT change their output behavior (field is a no-op for those formats). | tests/test_docx_processor.py, tests/test_pptx_processor.py |
 | BR-67 | multi-target-output-mode-clamp | application-team | When a job targets more than one language (`len(targets) > 1`), `output_mode` is silently clamped to `"append"` by the orchestrator before it is passed to the processor. The clamp is silent (no error, no warning); the API accepts `output_mode="replace"` on multi-target requests without validation error. This rule is enforced in the orchestrator, not the API layer. | tests/test_orchestrator_output_mode.py |
+| BR-68 | numeric-cell-passthrough | application-team | A table cell whose `content` consists solely of digits, whitespace, and common numeric separators (`. , / - %`) as determined by `text_utils.is_numeric_cell()` SHALL NOT be sent to the LLM. Its `translated_content` is set equal to its `content` unchanged; its `translation_status` is set to `"passthrough"`. The predicate is applied at the `TableCell` level, not at the parent `TranslatableElement` level. | tests/test_table_recognizer.py |
+| BR-69 | same-table-cell-batching | application-team | All translatable cells (those with `is_numeric=False` and non-empty `content`) from the same recognized table MUST be sent to the LLM in a single batch request. Cells from different tables MAY be in separate batches. A table whose translatable cell count is zero requires no LLM call. | tests/test_table_recognizer.py |
+| BR-70 | cell-granularity-translation | application-team | Table cells are translated independently at cell granularity. Once table structure has been recognized and a `TableStructure` record is attached to a `table`-typed `TranslatableElement`, flattened/concatenated table-as-paragraph translation of that element is forbidden. The cell-batch seam in `translation_service.py` is the sole translation entry point for structured-table content. | tests/test_table_recognizer.py |
+| BR-71 | table-recognition-graceful-degradation | application-team | When the table-recognition ML model is unavailable (weights not downloaded, ONNX runtime absent, load error), the parse path MUST fall back to treating table regions as plain `table`-typed `TranslatableElement` entries without cell decomposition. No `TableStructure` is attached to the element; the element is processed by the existing translation path. The failure MUST be logged at WARNING level (reason + document identifier). No crash, no job failure. Mirrors the ADR 0003 / BR-33 pattern for `layout_detector.py`. | tests/test_table_recognizer.py |
 
 ## Decision Tables
 
@@ -303,6 +307,22 @@ breaking-change-policy: deprecate-2-minors
 | `output_mode` value not in `{"append", "replace"}` | HTTP 422 request-validation error (Pydantic enum rejection); no job created | tests/test_api_jobs.py |
 | `output_mode = "replace"`, PDF or XLSX | `output_mode` accepted; processor output unchanged (no-op for these formats) | tests/test_docx_processor.py (scope boundary) |
 | `output_mode = "append"`, single target | byte/behavior-equivalent to current behavior (AC-2 backward-compat guarantee) | tests/test_docx_processor.py, tests/test_pptx_processor.py |
+
+### Table T — table structure recognition and cell-level translation (BR-68 through BR-71)
+
+| condition | behavior | test id |
+|---|---|---|
+| `table`-typed element has no `TableStructure` in metadata (model unavailable or non-PDF input) | element processed as plain region; existing translation path applies; no cell decomposition | tests/test_table_recognizer.py |
+| `table`-typed element has `TableStructure`; cell `is_numeric=True` | cell excluded from LLM batch; `translated_content = content`; `translation_status = "passthrough"` (BR-68) | tests/test_table_recognizer.py |
+| `table`-typed element has `TableStructure`; cell `content == ""` | cell excluded from LLM batch; `translated_content = ""`; `translation_status = "skipped"` | tests/test_table_recognizer.py |
+| `table`-typed element has `TableStructure`; all cells numeric or empty | no LLM call made; all cells get passthrough/skipped status; job continues normally | tests/test_table_recognizer.py |
+| `table`-typed element has `TableStructure`; ≥1 translatable cell | all translatable cells coalesced into exactly one LLM batch call (BR-69); batch result assigned per-cell | tests/test_table_recognizer.py |
+| cells from two different tables in same document | each table's cells form their own batch; cells from table A and table B are NOT coalesced (BR-69) | tests/test_table_recognizer.py |
+| LLM batch call for a table's cells fails | BR-25 placeholder applied to each non-numeric cell `translated_content`; `translation_status = "failed"`; `fail_cnt` incremented; BR-51 failure-isolation semantics apply | tests/test_table_recognizer.py |
+| Table-recognition ML model absent at process start | WARNING logged once (reason); no ONNX session; all table regions fall back to plain `table` element; job continues (BR-71) | tests/test_table_recognizer.py |
+| Table-recognition model load error at parse time | WARNING logged (reason + document id); that document's table regions fall back to plain `table` element; job continues (BR-71) | tests/test_table_recognizer.py |
+| Merged/spanning cell (`row_span > 1` or `col_span > 1`) | treated as single `TableCell`; spans recorded but do not affect translation logic | tests/test_table_recognizer.py |
+| `recognition_confident = False` | cells still processed per normal translation flow; no override of logic | tests/test_table_recognizer.py |
 
 ## Change Policy
 

@@ -1,0 +1,20 @@
+{
+  "change_id": "p3-table-structure",
+  "phase": "changed-area",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "pytest tests/test_table_recognizer.py tests/test_translatable_document.py tests/test_pdf_parser.py tests/test_doc_chunker.py tests/test_translation_strategy.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p3-table-structure/test-runs/20260622-141350/junit.xml' -ra",
+  "duration_ms": 607,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests.test_pdf_parser.TestLayoutDetectorIntegration::test_parse_invokes_layout_detector_on_native_pdf",
+    "message": "ModuleNotFoundError: No module named 'onnxruntime'"
+  },
+  "artifacts": {
+    "summary": "specs/changes/p3-table-structure/test-runs/20260622-141350/summary.json",
+    "stdout": "specs/changes/p3-table-structure/test-runs/20260622-141350/stdout.log",
+    "stderr": "specs/changes/p3-table-structure/test-runs/20260622-141350/stderr.log",
+    "junit": "specs/changes/p3-table-structure/test-runs/20260622-141350/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

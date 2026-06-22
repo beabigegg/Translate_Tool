@@ -1,0 +1,1 @@
+pytest tests/ --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p3-table-structure/test-runs/20260622-140612/junit.xml' --maxfail=1 --tb=short -ra

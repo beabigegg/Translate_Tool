@@ -1,0 +1,16 @@
+{
+  "change_id": "p3-table-structure",
+  "phase": "collect",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest tests/ --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p3-table-structure/test-runs/20260622-142139/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 1514,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p3-table-structure/test-runs/20260622-142139/summary.json",
+    "stdout": "specs/changes/p3-table-structure/test-runs/20260622-142139/stdout.log",
+    "stderr": "specs/changes/p3-table-structure/test-runs/20260622-142139/stderr.log",
+    "junit": "specs/changes/p3-table-structure/test-runs/20260622-142139/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}
