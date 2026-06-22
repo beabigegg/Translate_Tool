@@ -1,12 +1,45 @@
 {
   "_README": "Code-vs-contract API conformance. Run via `cdd-kit validate --contracts` (and `cdd-kit gate`). Set enabled:true to mechanically catch frontend/backend drift against contracts/api/api-contract.md. See docs/api-conformance.md.",
-  "enabled": false,
-  "apiPrefixes": ["/api"],
+  "enabled": true,
+  "apiPrefixes": [
+    "/api"
+  ],
   "sourceRoots": [],
-  "backendGlobsExt": [".py", ".js", ".ts", ".mjs", ".cjs", ".go", ".java", ".php"],
-  "frontendGlobsExt": [".js", ".jsx", ".ts", ".tsx", ".mjs", ".vue", ".svelte"],
-  "excludeDirs": ["node_modules", "dist", "build", ".git", ".cdd", "coverage", "vendor", "__pycache__", ".next", ".nuxt"],
-  "ignorePaths": ["/health", "/metrics"],
+  "backendGlobsExt": [
+    ".py",
+    ".js",
+    ".ts",
+    ".mjs",
+    ".cjs",
+    ".go",
+    ".java",
+    ".php"
+  ],
+  "frontendGlobsExt": [
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".mjs",
+    ".vue",
+    ".svelte"
+  ],
+  "excludeDirs": [
+    "node_modules",
+    "dist",
+    "build",
+    ".git",
+    ".cdd",
+    "coverage",
+    "vendor",
+    "__pycache__",
+    ".next",
+    ".nuxt"
+  ],
+  "ignorePaths": [
+    "/health",
+    "/metrics"
+  ],
   "checks": {
     "backendRouteNotInContract": "warning",
     "contractEndpointNotImplemented": "warning",

@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "contract-driven-delivery": "^3.4.0"
+  },
+  "allowScripts": {
+    "contract-driven-delivery@3.4.0": true
+  }
+}

@@ -44,10 +44,9 @@ Translate_Tool/
 |   \-- workflows/
 |       \-- contract-driven-gates.yml
 |-- .run/
-|   |-- logs/
-|   |   |-- backend.log
-|   |   \-- frontend.log
-|   \-- backend.pid
+|   \-- logs/
+|       |-- backend.log
+|       \-- frontend.log
 |-- app/
 |   |-- backend/
 |   |   |-- api/
@@ -188,8 +187,7 @@ Translate_Tool/
 |   |   |-- 0002-ir-elementtype-serialized-values.md
 |   |   |-- 0003-layout-detector-runtime-and-failure-mode.md
 |   |   \-- 0004-truncation-marker-on-ir.md
-|   |-- improvement-plan.md
-|   \-- p2-change-requests.md
+|   \-- improvement-plan.md
 |-- scripts/
 |   |-- benchmark_full_factorial.py
 |   |-- benchmark_realfile_pipeline.py
@@ -308,5 +306,7 @@ Translate_Tool/
 |-- .gitignore
 |-- AGENTS.md
 |-- CLAUDE.md
+|-- package-lock.json
+|-- package.json
 \-- translate_tool.sh
 ```
