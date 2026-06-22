@@ -40,10 +40,16 @@ def routes_module(monkeypatch):  # type: ignore[no-untyped-def]
             return {}
 
     from pathlib import Path
+    import app.backend.api as _api_pkg
     fake_job_manager_module.JobManager = FakeJobManager
     fake_job_manager_module.JOBS_DIR = Path("/tmp/fake_jobs")
     monkeypatch.setitem(sys.modules, "app.backend.services.job_manager", fake_job_manager_module)
     monkeypatch.setitem(sys.modules, "python_multipart", fake_python_multipart)
+    # Restore BOTH sys.modules entry AND the parent-package attribute at teardown.
+    # importlib.import_module writes app.backend.api.routes = M2 as a package attribute;
+    # without restoring it, string-based patch() calls in later tests navigate to M2
+    # via getattr(app.backend.api, "routes") even after sys.modules is restored to M1.
+    monkeypatch.setattr(_api_pkg, "routes", getattr(_api_pkg, "routes", None))
     monkeypatch.delitem(sys.modules, "app.backend.api.routes", raising=False)
     return importlib.import_module("app.backend.api.routes")
 

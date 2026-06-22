@@ -22,6 +22,10 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+# Capture the routes module at collection time so patch.object always targets M1
+# regardless of sys.modules / parent-package-attribute contamination by other tests.
+import app.backend.api.routes as _routes
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -98,8 +102,8 @@ class TestProvidersHealth:
         client = _make_client()
         mock_instance = _mock_health_ok("panjit")
 
-        with patch("app.backend.api.routes._providers_config", _make_providers_config()), \
-             patch("app.backend.api.routes.OpenAICompatibleClient", return_value=mock_instance):
+        with patch.object(_routes, "_providers_config", _make_providers_config()), \
+             patch.object(_routes, "OpenAICompatibleClient", return_value=mock_instance):
             resp = client.get("/api/providers/health")
 
         assert resp.status_code == 200
@@ -115,8 +119,8 @@ class TestProvidersHealth:
         client = _make_client()
         mock_instance = _mock_health_fail(ConnectionError("refused"))
 
-        with patch("app.backend.api.routes._providers_config", _make_providers_config()), \
-             patch("app.backend.api.routes.OpenAICompatibleClient", return_value=mock_instance):
+        with patch.object(_routes, "_providers_config", _make_providers_config()), \
+             patch.object(_routes, "OpenAICompatibleClient", return_value=mock_instance):
             resp = client.get("/api/providers/health")
 
         assert resp.status_code == 200
@@ -130,8 +134,8 @@ class TestProvidersHealth:
         client = _make_client()
         mock_instance = _mock_health_ok("deepseek")
 
-        with patch("app.backend.api.routes._providers_config", _make_providers_config()), \
-             patch("app.backend.api.routes.OpenAICompatibleClient", return_value=mock_instance) as mock_cls:
+        with patch.object(_routes, "_providers_config", _make_providers_config()), \
+             patch.object(_routes, "OpenAICompatibleClient", return_value=mock_instance) as mock_cls:
             resp = client.get("/api/providers/health")  # no deepseek_api_key param
 
         assert resp.status_code == 200
@@ -159,8 +163,8 @@ class TestProvidersHealth:
 
         call_sequence = [panjit_mock, deepseek_mock]
 
-        with patch("app.backend.api.routes._providers_config", _make_providers_config()), \
-             patch("app.backend.api.routes.OpenAICompatibleClient", side_effect=call_sequence):
+        with patch.object(_routes, "_providers_config", _make_providers_config()), \
+             patch.object(_routes, "OpenAICompatibleClient", side_effect=call_sequence):
             resp = client.get("/api/providers/health", headers={"X-DeepSeek-Api-Key": "sk-test"})
 
         assert resp.status_code == 200
@@ -175,8 +179,8 @@ class TestProvidersHealth:
         client = _make_client()
         mock_instance = _mock_health_ok()
 
-        with patch("app.backend.api.routes._providers_config", _make_providers_config()), \
-             patch("app.backend.api.routes.OpenAICompatibleClient", return_value=mock_instance):
+        with patch.object(_routes, "_providers_config", _make_providers_config()), \
+             patch.object(_routes, "OpenAICompatibleClient", return_value=mock_instance):
             resp = client.get("/api/providers/health")
 
         assert resp.status_code == 200
@@ -190,7 +194,7 @@ class TestProvidersHealth:
         """_providers_config=None → returns [] (no 500)."""
         client = _make_client()
 
-        with patch("app.backend.api.routes._providers_config", None):
+        with patch.object(_routes, "_providers_config", None):
             resp = client.get("/api/providers/health")
 
         assert resp.status_code == 200
@@ -207,7 +211,7 @@ class TestProvidersModels:
         """Response contains one entry per enabled provider."""
         client = _make_client()
 
-        with patch("app.backend.api.routes._providers_config", _make_providers_config()):
+        with patch.object(_routes, "_providers_config", _make_providers_config()):
             resp = client.get("/api/providers/models")
 
         assert resp.status_code == 200
@@ -222,7 +226,7 @@ class TestProvidersModels:
         client = _make_client()
         cfg = _make_providers_config(panjit_translate="gemma4:latest")
 
-        with patch("app.backend.api.routes._providers_config", cfg):
+        with patch.object(_routes, "_providers_config", cfg):
             resp = client.get("/api/providers/models")
 
         assert resp.status_code == 200
@@ -235,7 +239,7 @@ class TestProvidersModels:
         """_providers_config=None → returns [] (not a 500 error)."""
         client = _make_client()
 
-        with patch("app.backend.api.routes._providers_config", None):
+        with patch.object(_routes, "_providers_config", None):
             resp = client.get("/api/providers/models")
 
         assert resp.status_code == 200
@@ -246,7 +250,7 @@ class TestProvidersModels:
         client = _make_client()
         cfg = _make_providers_config(panjit_long_doc=None)
 
-        with patch("app.backend.api.routes._providers_config", cfg):
+        with patch.object(_routes, "_providers_config", cfg):
             resp = client.get("/api/providers/models")
 
         body = resp.json()
@@ -275,9 +279,9 @@ class TestProvidersTestTranslation:
         mock_instance = MagicMock()
         mock_instance.translate_once.return_value = (True, "你好")
 
-        with patch("app.backend.api.routes._providers_config", _make_providers_config()), \
-             patch("app.backend.api.routes.OpenAICompatibleClient", return_value=mock_instance), \
-             patch("app.backend.api.routes.QE_ENABLED", False):
+        with patch.object(_routes, "_providers_config", _make_providers_config()), \
+             patch.object(_routes, "OpenAICompatibleClient", return_value=mock_instance), \
+             patch.object(_routes, "QE_ENABLED", False):
             result = self._post(client, {
                 "text": "Hello",
                 "src_lang": "en",
@@ -298,9 +302,9 @@ class TestProvidersTestTranslation:
         client = _make_client()
         mock_instance = MagicMock()
 
-        with patch("app.backend.api.routes._providers_config", _make_providers_config()), \
-             patch("app.backend.api.routes.OpenAICompatibleClient", return_value=mock_instance), \
-             patch("app.backend.api.routes.QE_ENABLED", False):
+        with patch.object(_routes, "_providers_config", _make_providers_config()), \
+             patch.object(_routes, "OpenAICompatibleClient", return_value=mock_instance), \
+             patch.object(_routes, "QE_ENABLED", False):
             result = self._post(client, {
                 "text": "Hello",
                 "src_lang": "en",
@@ -339,9 +343,9 @@ class TestProvidersTestTranslation:
         root_logger.setLevel(logging.DEBUG)
 
         try:
-            with patch("app.backend.api.routes._providers_config", _make_providers_config()), \
-                 patch("app.backend.api.routes.OpenAICompatibleClient", return_value=mock_instance), \
-                 patch("app.backend.api.routes.QE_ENABLED", False):
+            with patch.object(_routes, "_providers_config", _make_providers_config()), \
+                 patch.object(_routes, "OpenAICompatibleClient", return_value=mock_instance), \
+                 patch.object(_routes, "QE_ENABLED", False):
                 self._post(client, {
                     "text": "Hello",
                     "src_lang": "en",
@@ -372,9 +376,9 @@ class TestProvidersTestTranslation:
 
         call_sequence = [panjit_mock, deepseek_mock]
 
-        with patch("app.backend.api.routes._providers_config", _make_providers_config()), \
-             patch("app.backend.api.routes.OpenAICompatibleClient", side_effect=call_sequence), \
-             patch("app.backend.api.routes.QE_ENABLED", False):
+        with patch.object(_routes, "_providers_config", _make_providers_config()), \
+             patch.object(_routes, "OpenAICompatibleClient", side_effect=call_sequence), \
+             patch.object(_routes, "QE_ENABLED", False):
             resp = client.post("/api/providers/test-translation", json={
                 "text": "Hello",
                 "src_lang": "en",
@@ -409,9 +413,9 @@ class TestProvidersTestTranslation:
         mock_load = MagicMock(return_value=mock_model_obj)
         mock_score = MagicMock(return_value=[0.85])
 
-        with patch("app.backend.api.routes._providers_config", _make_providers_config()), \
-             patch("app.backend.api.routes.OpenAICompatibleClient", return_value=mock_instance), \
-             patch("app.backend.api.routes.QE_ENABLED", True), \
+        with patch.object(_routes, "_providers_config", _make_providers_config()), \
+             patch.object(_routes, "OpenAICompatibleClient", return_value=mock_instance), \
+             patch.object(_routes, "QE_ENABLED", True), \
              patch("app.backend.services.quality_evaluator.load_model", mock_load), \
              patch("app.backend.services.quality_evaluator.score_blocks", mock_score):
             result = self._post(client, {
@@ -432,9 +436,9 @@ class TestProvidersTestTranslation:
         mock_instance = MagicMock()
         mock_instance.translate_once.return_value = (True, "Hola")
 
-        with patch("app.backend.api.routes._providers_config", _make_providers_config()), \
-             patch("app.backend.api.routes.OpenAICompatibleClient", return_value=mock_instance), \
-             patch("app.backend.api.routes.QE_ENABLED", False):
+        with patch.object(_routes, "_providers_config", _make_providers_config()), \
+             patch.object(_routes, "OpenAICompatibleClient", return_value=mock_instance), \
+             patch.object(_routes, "QE_ENABLED", False):
             result = self._post(client, {
                 "text": "Hello",
                 "src_lang": "en",
@@ -454,7 +458,7 @@ class TestProvidersTestTranslation:
         """Empty text field → HTTP 422 Pydantic validation (AC-8 data-boundary)."""
         client = _make_client()
 
-        with patch("app.backend.api.routes._providers_config", _make_providers_config()):
+        with patch.object(_routes, "_providers_config", _make_providers_config()):
             resp = client.post("/api/providers/test-translation", json={
                 "text": "",
                 "src_lang": "en",
@@ -474,7 +478,7 @@ class TestProvidersTestTranslation:
         """Missing required 'text' field → HTTP 422."""
         client = _make_client()
 
-        with patch("app.backend.api.routes._providers_config", _make_providers_config()):
+        with patch.object(_routes, "_providers_config", _make_providers_config()):
             resp = client.post("/api/providers/test-translation", json={
                 # 'text' omitted
                 "src_lang": "en",
@@ -487,7 +491,7 @@ class TestProvidersTestTranslation:
         """Missing required 'targets' field → HTTP 422."""
         client = _make_client()
 
-        with patch("app.backend.api.routes._providers_config", _make_providers_config()):
+        with patch.object(_routes, "_providers_config", _make_providers_config()):
             resp = client.post("/api/providers/test-translation", json={
                 "text": "Hello",
                 "src_lang": "en",
@@ -502,9 +506,9 @@ class TestProvidersTestTranslation:
         mock_instance = MagicMock()
         mock_instance.translate_once.side_effect = ConnectionError("all down")
 
-        with patch("app.backend.api.routes._providers_config", _make_providers_config()), \
-             patch("app.backend.api.routes.OpenAICompatibleClient", return_value=mock_instance), \
-             patch("app.backend.api.routes.QE_ENABLED", False):
+        with patch.object(_routes, "_providers_config", _make_providers_config()), \
+             patch.object(_routes, "OpenAICompatibleClient", return_value=mock_instance), \
+             patch.object(_routes, "QE_ENABLED", False):
             resp = client.post("/api/providers/test-translation", json={
                 "text": "Hello",
                 "src_lang": "en",
@@ -523,7 +527,7 @@ class TestProvidersTestTranslation:
         """_providers_config=None → returns [] (no 500)."""
         client = _make_client()
 
-        with patch("app.backend.api.routes._providers_config", None):
+        with patch.object(_routes, "_providers_config", None):
             resp = client.post("/api/providers/test-translation", json={
                 "text": "Hello",
                 "src_lang": "en",
@@ -551,8 +555,8 @@ class TestContractShapes:
         mock_instance = MagicMock()
         mock_instance.health.return_value = (True, "OK; provider=panjit")
 
-        with patch("app.backend.api.routes._providers_config", _make_providers_config()), \
-             patch("app.backend.api.routes.OpenAICompatibleClient", return_value=mock_instance):
+        with patch.object(_routes, "_providers_config", _make_providers_config()), \
+             patch.object(_routes, "OpenAICompatibleClient", return_value=mock_instance):
             resp = client.get("/api/providers/health")
 
         assert resp.status_code == 200
@@ -574,7 +578,7 @@ class TestContractShapes:
         app.include_router(router, prefix="/api")
         client = TestClient(app)
 
-        with patch("app.backend.api.routes._providers_config", _make_providers_config()):
+        with patch.object(_routes, "_providers_config", _make_providers_config()):
             resp = client.get("/api/providers/models")
 
         assert resp.status_code == 200
@@ -596,9 +600,9 @@ class TestContractShapes:
         mock_instance = MagicMock()
         mock_instance.translate_once.return_value = (True, "Bonjour")
 
-        with patch("app.backend.api.routes._providers_config", _make_providers_config()), \
-             patch("app.backend.api.routes.OpenAICompatibleClient", return_value=mock_instance), \
-             patch("app.backend.api.routes.QE_ENABLED", False):
+        with patch.object(_routes, "_providers_config", _make_providers_config()), \
+             patch.object(_routes, "OpenAICompatibleClient", return_value=mock_instance), \
+             patch.object(_routes, "QE_ENABLED", False):
             resp = client.post("/api/providers/test-translation", json={
                 "text": "Hello",
                 "src_lang": "en",
@@ -654,8 +658,8 @@ class TestProvidersBugFixes:
         deepseek_mock.health.return_value = (True, "OK; provider=deepseek")
         call_sequence = [panjit_mock, deepseek_mock]
 
-        with patch("app.backend.api.routes._providers_config", self._make_providers_config_deepseek_disabled()), \
-             patch("app.backend.api.routes.OpenAICompatibleClient", side_effect=call_sequence):
+        with patch.object(_routes, "_providers_config", self._make_providers_config_deepseek_disabled()), \
+             patch.object(_routes, "OpenAICompatibleClient", side_effect=call_sequence):
             resp = client.get("/api/providers/health", headers={"X-DeepSeek-Api-Key": "sk-test"})
 
         assert resp.status_code == 200
@@ -675,9 +679,9 @@ class TestProvidersBugFixes:
         mock_instance = MagicMock()
         mock_instance.translate_once.return_value = (True, "Hello")
 
-        with patch("app.backend.api.routes._providers_config", _make_providers_config()), \
-             patch("app.backend.api.routes.OpenAICompatibleClient", return_value=mock_instance), \
-             patch("app.backend.api.routes.QE_ENABLED", False):
+        with patch.object(_routes, "_providers_config", _make_providers_config()), \
+             patch.object(_routes, "OpenAICompatibleClient", return_value=mock_instance), \
+             patch.object(_routes, "QE_ENABLED", False):
             resp = client.post("/api/providers/test-translation", json={
                 "text": "你好",
                 "src_lang": "zh-TW",
