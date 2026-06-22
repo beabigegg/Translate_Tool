@@ -1,7 +1,8 @@
 {
   "element_count": 4,
   "element_types": {
-    "text": 4
+    "figure": 1,
+    "text": 3
   },
   "reading_order_present": true
 }

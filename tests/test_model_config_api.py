@@ -17,6 +17,7 @@ from starlette.datastructures import UploadFile
 
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import GENERAL_NUM_CTX, MODEL_TYPE_OPTIONS, TRANSLATION_NUM_CTX, ModelType
+from app.backend.api.schemas import OutputMode
 
 
 @pytest.fixture
@@ -38,10 +39,12 @@ def routes_module(monkeypatch):  # type: ignore[no-untyped-def]
         def get_stats(self):  # type: ignore[no-untyped-def]
             return {}
 
+    from pathlib import Path
     fake_job_manager_module.JobManager = FakeJobManager
+    fake_job_manager_module.JOBS_DIR = Path("/tmp/fake_jobs")
     monkeypatch.setitem(sys.modules, "app.backend.services.job_manager", fake_job_manager_module)
     monkeypatch.setitem(sys.modules, "python_multipart", fake_python_multipart)
-    sys.modules.pop("app.backend.api.routes", None)
+    monkeypatch.delitem(sys.modules, "app.backend.api.routes", raising=False)
     return importlib.import_module("app.backend.api.routes")
 
 
@@ -91,6 +94,7 @@ def test_create_job_rejects_out_of_range_num_ctx(routes_module, monkeypatch) -> 
                 num_ctx=99999,
                 pdf_output_format="pdf",
                 pdf_layout_mode="overlay",
+                output_mode=OutputMode.APPEND,
             )
         )
 
@@ -117,6 +121,7 @@ def test_create_job_passes_valid_num_ctx_override(routes_module, monkeypatch) ->
             num_ctx=2048,
             pdf_output_format="pdf",
             pdf_layout_mode="overlay",
+            output_mode=OutputMode.APPEND,
         )
     )
 

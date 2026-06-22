@@ -1,7 +1,9 @@
 {
   "element_count": 5,
   "element_types": {
-    "text": 5
+    "figure": 1,
+    "formula": 3,
+    "list_item": 1
   },
   "reading_order_present": true
 }

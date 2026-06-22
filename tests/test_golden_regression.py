@@ -353,24 +353,27 @@ class TestMultiColumnReadingOrderAccuracy:
             TranslatableElement("rc_bot",  "Right bottom",ElementType.TEXT, 1, BoundingBox(330, 150, 590, 180),metadata={}),
         ]
 
-        # Mock detector: 2 region boxes — left col (0..0.46 wide) and right col (0.53..1.0)
-        # Normalised to page 600×800
+        # Mock detector: 2 region boxes — left col and right col
+        # Pixel coordinates for page 600×800 (model returns pixel coords; detector normalises)
         boxes  = [
-            [0.0,  0.0, 0.46, 1.0],   # left column region
-            [0.53, 0.0, 1.0,  1.0],   # right column region
+            [  0.0,   0.0, 276.0, 800.0],   # left column region (0..46% of width)
+            [318.0,   0.0, 600.0, 800.0],   # right column region (53%..100% of width)
         ]
         scores = [0.9, 0.9]
         labels = [0, 0]  # both TEXT
 
         mock_session = MagicMock()
+        # Output order matches layout_detector.py: labels, boxes, scores
         mock_session.run.return_value = [
+            np.array([labels], dtype=np.int64),
             np.array([boxes],  dtype=np.float32),
             np.array([scores], dtype=np.float32),
-            np.array([labels], dtype=np.int64),
         ]
-        mock_input = MagicMock()
-        mock_input.name = "pixel_values"
-        mock_session.get_inputs.return_value = [mock_input]
+        mock_input0 = MagicMock()
+        mock_input0.name = "pixel_values"
+        mock_input1 = MagicMock()
+        mock_input1.name = "orig_sizes"
+        mock_session.get_inputs.return_value = [mock_input0, mock_input1]
 
         page_pixmap = np.zeros((800, 600, 3), dtype=np.uint8)
 
