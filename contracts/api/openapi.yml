@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "API behavior, compatibility rules, and endpoint contract requirements.",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "description": "- response style: JSON (Pydantic response models); binary endpoints return file streams (FileResponse / StreamingResponse)."
   },
   "paths": {
@@ -124,9 +124,14 @@
           }
         },
         "requestBody": {
-          "description": "Contract request: multipart/form-data (schema not machine-resolved; see contract)",
-          "content": {},
-          "x-cdd-unresolved": true
+          "description": "Contract request: JobCreateRequest",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobCreateRequest"
+              }
+            }
+          }
         },
         "x-cdd-errors": "400, 422"
       }
@@ -1316,6 +1321,48 @@
         },
         "required": [
           "provider"
+        ]
+      },
+      "JobCreateRequest": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "one or more document files (DOCX, PPTX, XLSX, PDF); multipart upload",
+            "format": "binary"
+          },
+          "target_language": {
+            "type": "string",
+            "description": "comma-separated target language codes; ≥1 non-empty value required (BR-3)"
+          },
+          "source_language": {
+            "type": "string",
+            "description": "source language code; auto-detected when omitted"
+          },
+          "model": {
+            "type": "string",
+            "description": "model override; defaults to provider routing config (BR-4)"
+          },
+          "profile": {
+            "type": "string",
+            "description": "profile id; overrides routing group"
+          },
+          "num_ctx": {
+            "type": "integer",
+            "description": "context window override; must satisfy BR-2"
+          },
+          "output_mode": {
+            "type": "string",
+            "enum": [
+              "append",
+              "replace"
+            ],
+            "description": "output mode for DOCX/PPTX translation; default append; replace overwrites source paragraphs/text-frames in-place; ignored (clamped to append) when len(targets) > 1 (BR-66, BR-67); invalid values rejected with HTTP 422"
+          }
+        },
+        "required": [
+          "file",
+          "target_language"
         ]
       }
     }

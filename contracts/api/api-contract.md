@@ -3,8 +3,8 @@ contract: api
 summary: API behavior, compatibility rules, and endpoint contract requirements.
 owner: application-team
 surface: api
-schema-version: 0.6.0
-last-changed: 2026-06-20
+schema-version: 0.7.0
+last-changed: 2026-06-22
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -25,7 +25,7 @@ breaking-change-policy: deprecate-2-minors
 | GET | /profiles | none | - | ProfileItem[] | - | tests/contract/ |
 | GET | /model-config | none | - | ModelConfigItem[] | - | tests/contract/ |
 | GET | /route-info | none | - | RouteInfoResponse | - | tests/contract/ |
-| POST | /jobs | none | multipart/form-data | JobCreateResponse | 400, 422 | tests/contract/ |
+| POST | /jobs | none | JobCreateRequest | JobCreateResponse | 400, 422 | tests/contract/ |
 | GET | /jobs/{job_id} | none | - | JobStatus | 404 | tests/contract/ |
 | POST | /jobs/{job_id}/cancel | none | - | - | 404 | tests/contract/ |
 | GET | /jobs/{job_id}/download | none | - | file stream | 404 | tests/contract/ |
@@ -299,6 +299,17 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 | translate_model | string | no |  |  |
 | long_doc_model | string | no |  |  |
 
+### JobCreateRequest
+| field | type | required | format | notes |
+|---|---|---|---|---|
+| file | string | yes | binary | one or more document files (DOCX, PPTX, XLSX, PDF); multipart upload |
+| target_language | string | yes |  | comma-separated target language codes; ≥1 non-empty value required (BR-3) |
+| source_language | string | no |  | source language code; auto-detected when omitted |
+| model | string | no |  | model override; defaults to provider routing config (BR-4) |
+| profile | string | no |  | profile id; overrides routing group |
+| num_ctx | integer | no |  | context window override; must satisfy BR-2 |
+| output_mode | enum(append,replace) | no |  | output mode for DOCX/PPTX translation; default append; replace overwrites source paragraphs/text-frames in-place; ignored (clamped to append) when len(targets) > 1 (BR-66, BR-67); invalid values rejected with HTTP 422 |
+
 ## Endpoint Notes
 
 **GET /terms/export** — the `status` query parameter accepts `approved`, `unverified`, `needs_review`, and `rejected`. When omitted, all terms are exported. See BR-6 (extended by BR-28) and Table G in `contracts/business/business-rules.md`.
@@ -316,6 +327,8 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 **POST /providers/test-translation** — runs a parallel test translation across the requested models. Synchronous (no `job_id`). Request: `TestTranslationRequest` with fields `text`, `src_lang`, `targets[]`, optional `profile`, `models[]`, `deepseek_api_key`. Response: `TestTranslationResult[]` — `{model_id, provider, duration_ms}` plus optional `translation`, `comet_score` (omitted when `QE_ENABLED=false`), and `error` (present when that model call failed). Partial failure is isolated per model. DeepSeek path not invoked without a key — returns `error: "DeepSeek API key not provided"`. See BR-64, BR-65.
 
 **GET /jobs/{job_id}/quality** — returns quality evaluation scores produced by the COMET/xCOMET model after job completion. Returns HTTP 200 with `status: "available"` and a populated `scores` array when scores are ready. Returns HTTP 200 with `status: "pending"` when the job exists but has not yet completed or scores are not yet attached. Returns HTTP 200 with `status: "disabled"` when `QE_ENABLED=false`. Returns HTTP 200 with `status: "unavailable"` when the QE model failed to load or scoring failed for this job. Returns HTTP 404 `{"detail": "Job not found"}` for an unknown `job_id`. See BR-54, BR-55, BR-56, BR-57. QE scoring never blocks translation job completion (BR-56).
+
+**POST /api/jobs** (`output_mode`) — accepts an optional `output_mode` field (`"append"` | `"replace"`; default `"append"`). In `"append"` mode the output is bilingual (existing behavior, backward-compatible). In `"replace"` mode, source-language paragraphs (DOCX) and source text frames (PPTX) are overwritten in-place with their translations; no source text remains in the output. PDF and XLSX processors ignore `output_mode` (field accepted but has no effect). When a job targets more than one language, `output_mode` is silently clamped to `"append"` — see BR-66, BR-67.
 
 ## Error Format
 

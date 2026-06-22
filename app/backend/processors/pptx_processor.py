@@ -193,6 +193,7 @@ def translate_pptx(
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
     terms_getter: Optional[Callable[[], list]] = None,
+    output_mode: str = "append",
 ) -> bool:
     prs = pptx.Presentation(in_path)
     # segs: List of (segment_type, object_ref, text)
@@ -284,19 +285,46 @@ def translate_pptx(
         trs = [tmap[(tgt, s)] for tgt in targets]
 
         if seg_type == SEGMENT_TEXT_FRAME:
-            if _ppt_tail_equals(obj_ref, trs):
-                skip_cnt += 1
-                continue
-            for block in trs:
-                _ppt_append(obj_ref, block)
-            ok_cnt += 1
+            if output_mode == "replace":
+                # Overwrite runs in-place with first translation (multi-target clamped to
+                # append by orchestrator before reaching here, BR-67).
+                replacement = trs[0]
+                tf = obj_ref
+                # TODO (R2): SmartArt path stays append-only; this covers text frames only.
+                all_runs = [r for p in tf.paragraphs for r in p.runs]
+                if all_runs:
+                    all_runs[0].text = replacement
+                    for r in all_runs[1:]:
+                        r.text = ""
+                elif tf.paragraphs:
+                    tf.paragraphs[0].text = replacement
+                ok_cnt += 1
+            else:
+                if _ppt_tail_equals(obj_ref, trs):
+                    skip_cnt += 1
+                    continue
+                for block in trs:
+                    _ppt_append(obj_ref, block)
+                ok_cnt += 1
         elif seg_type == SEGMENT_TABLE_CELL:
-            if _cell_tail_equals(obj_ref, trs):
-                skip_cnt += 1
-                continue
-            for block in trs:
-                _cell_append(obj_ref, block)
-            ok_cnt += 1
+            if output_mode == "replace":
+                replacement = trs[0]
+                tf = obj_ref.text_frame
+                all_runs = [r for p in tf.paragraphs for r in p.runs]
+                if all_runs:
+                    all_runs[0].text = replacement
+                    for r in all_runs[1:]:
+                        r.text = ""
+                elif tf.paragraphs:
+                    tf.paragraphs[0].text = replacement
+                ok_cnt += 1
+            else:
+                if _cell_tail_equals(obj_ref, trs):
+                    skip_cnt += 1
+                    continue
+                for block in trs:
+                    _cell_append(obj_ref, block)
+                ok_cnt += 1
 
     prs.save(out_path)
 

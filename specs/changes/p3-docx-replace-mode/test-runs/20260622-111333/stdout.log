@@ -1,0 +1,26 @@
+tests/test_output_mode_processors.py::test_translate_docx_accepts_output_mode_param
+tests/test_output_mode_processors.py::test_translate_pptx_accepts_output_mode_param
+tests/test_output_mode_processors.py::test_output_mode_default_is_append
+tests/test_output_mode_processors.py::test_append_mode_behavior_unchanged_docx
+tests/test_output_mode_processors.py::test_append_mode_behavior_unchanged_pptx
+tests/test_output_mode_processors.py::test_replace_mode_docx_no_source_paragraphs_remain
+tests/test_output_mode_processors.py::test_replace_mode_docx_translation_is_in_place
+tests/test_output_mode_processors.py::test_replace_mode_pptx_no_source_text_frames_remain
+tests/test_output_mode_processors.py::test_replace_mode_pptx_translation_is_in_place
+tests/test_output_mode_processors.py::test_multi_target_output_mode_clamped_to_append
+
+==================================== ERRORS ====================================
+________________ ERROR collecting tests/test_output_mode_api.py ________________
+ImportError while importing test module '/home/egg/Projects/Translate_Tool/tests/test_output_mode_api.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../miniforge3/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_output_mode_api.py:17: in <module>
+    from fastapi.testclient import TestClient
+E   ModuleNotFoundError: No module named 'fastapi'
+=========================== short test summary info ============================
+ERROR tests/test_output_mode_api.py
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+10 tests collected, 1 error in 0.03s

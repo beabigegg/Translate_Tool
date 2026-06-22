@@ -3,8 +3,8 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.15.0
-last-changed: 2026-06-20
+schema-version: 0.16.0
+last-changed: 2026-06-22
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -75,6 +75,8 @@ breaking-change-policy: deprecate-2-minors
 | BR-60 | terminology-audit-match-algorithm | application-team | Default matching algorithm: case-insensitive exact substring search of each approved term's `target_text` against the concatenated `mt` text of each translated block. Match is deterministic, requires no NLP runtime dependency, and must be consistent across Python interpreter versions (str.lower() only). Optional lemmatized match mode: disabled by default; enabled via a boolean parameter to `audit_terms()`; when enabled, uses the already-present `blingfire` tokenizer plus simple suffix-stripping for lightweight normalization. The lemmatized path MUST be imported lazily inside `term_audit.py` so the default exact path loads nothing extra. No spaCy or NLTK dependency is permitted. | tests/test_term_audit.py |
 | BR-61 | terminology-audit-safe-degradation | application-team | If `audit_terms()` raises any exception, the exception MUST be caught in `_run_job`, logged at WARNING level (exception type + job_id), and `JobRecord.audit` MUST be set to `None`. The job MUST NOT transition to `status: "failed"` and the translated output MUST be delivered normally. Mirrors BR-56 (QE safe degradation). The audit is read-only and inert by construction; no mutation of translated content occurs at any point in the audit path. | tests/test_term_audit.py |
 | BR-62 | term-extraction-db-first | application-team | Phase 0 term extraction uses a DB-first flow. Source segments are embedded via PANJIT `Qwen3-Embedding-8B` (`POST {PANJIT_LLM_BASE_URL}/v1/embeddings`). Cosine similarity is computed in-process (no vector-DB package). If any term meets `TERM_EMBEDDING_THRESHOLD` (default 0.75), matched terms are injected via `build_terminology_block()` into the system prompt and NO extraction LLM call is made. On DB miss, PANJIT `gemma4:latest` (`POST {PANJIT_LLM_BASE_URL}/v1/chat/completions`) is called; new terms saved to term_db and then injected. The translation term-extraction path MUST NOT call `localhost:11434` (Ollama). `extraction_only` mode is unchanged. Embedding API failure is non-fatal: injection skipped, translation continues, WARNING logged. | tests/test_term_extractor.py |
+| BR-66 | docx-pptx-output-mode | application-team | `output_mode` controls whether translated DOCX/PPTX output is bilingual or monolingual. `"append"` (default): translated text is appended after the source paragraph/text-frame — identical to current behavior. `"replace"`: source-language paragraphs (DOCX) and source text frames (PPTX) are overwritten in-place by their translation; no source text remains in the output file. PDF and XLSX processors MUST accept the parameter but MUST NOT change their output behavior (field is a no-op for those formats). | tests/test_docx_processor.py, tests/test_pptx_processor.py |
+| BR-67 | multi-target-output-mode-clamp | application-team | When a job targets more than one language (`len(targets) > 1`), `output_mode` is silently clamped to `"append"` by the orchestrator before it is passed to the processor. The clamp is silent (no error, no warning); the API accepts `output_mode="replace"` on multi-target requests without validation error. This rule is enforced in the orchestrator, not the API layer. | tests/test_orchestrator_output_mode.py |
 
 ## Decision Tables
 
@@ -288,6 +290,19 @@ breaking-change-policy: deprecate-2-minors
 | `term_db` is empty for given `target_lang`/`domain` | Similarity skipped; falls through to DB miss path (extraction called if mode != extraction_only) | tests/test_term_extractor.py |
 | `ollama-local` appears in `fallback_chain` (misconfiguration) | `ollama-local` entry skipped for translation; WARNING logged; remaining chain continues | tests/test_provider_fallback.py |
 | PANJIT fails AND `DEEPSEEK_ENABLED=false` | fallback chain exhausted; job transitions to `status: "failed"`; `JobStatus.provider` remains null; no local translation attempt made | tests/test_provider_fallback.py |
+
+### Table S — output_mode behavior (BR-66, BR-67)
+
+| condition | behavior | test id |
+|---|---|---|
+| `output_mode` omitted | defaults to `"append"`; bilingual output; behavior identical to pre-change | tests/test_docx_processor.py, tests/test_pptx_processor.py |
+| `output_mode = "append"`, DOCX/PPTX, single target | translated paragraph/frame appended after source; source text retained | tests/test_docx_processor.py, tests/test_pptx_processor.py |
+| `output_mode = "replace"`, DOCX, single target | source paragraph overwritten in-place with translation; no source-language paragraph remains in the output file | tests/test_docx_processor.py |
+| `output_mode = "replace"`, PPTX, single target | source text frame overwritten in-place with translation; no source text frame remains in the output file | tests/test_pptx_processor.py |
+| `output_mode = "replace"`, DOCX/PPTX, multi-target (`len(targets) > 1`) | orchestrator clamps to `"append"` before dispatch; bilingual output produced; no error raised | tests/test_orchestrator_output_mode.py |
+| `output_mode` value not in `{"append", "replace"}` | HTTP 422 request-validation error (Pydantic enum rejection); no job created | tests/test_api_jobs.py |
+| `output_mode = "replace"`, PDF or XLSX | `output_mode` accepted; processor output unchanged (no-op for these formats) | tests/test_docx_processor.py (scope boundary) |
+| `output_mode = "append"`, single target | byte/behavior-equivalent to current behavior (AC-2 backward-compat guarantee) | tests/test_docx_processor.py, tests/test_pptx_processor.py |
 
 ## Change Policy
 

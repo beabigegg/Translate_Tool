@@ -1,0 +1,16 @@
+agent: ci-gatekeeper
+run-date: 2026-06-22
+change-id: p3-docx-replace-mode
+status: complete
+artifacts:
+  - { type: tiers-modified, pointer: "1, 2" }
+  - { type: gate-promotions, pointer: "n/a (no gates moved between tiers; change-gate step re-activated from echo placeholder to real cdd-kit gate invocation)" }
+  - { type: workflow-files-changed, pointer: ".github/workflows/contract-driven-gates.yml:3,47" }
+  - { type: required-status-checks, pointer: "contract-and-fast-tests (contract-validate, openapi-sync, change-gate, unit-tests, contract-tests, integration-tests, full-test-suite)" }
+notes: >
+  All new test files (test_output_mode_processors.py, test_output_mode_api.py,
+  test_output_mode_orchestrator.py) are picked up automatically by the existing
+  `pytest tests/` invocation; no new workflow jobs required.
+  Tier-floor-override not needed: no env/secret/migration vocabulary in this change.
+  At cdd-close: revert the change-gate step to echo placeholder and move
+  p3-docx-replace-mode from active to archived list in the workflow comment (line 3).

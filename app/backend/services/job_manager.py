@@ -255,6 +255,7 @@ class JobManager:
         pdf_layout_mode: str = "overlay",
         mode: str = "translation",
         enable_term_extraction: bool = True,
+        output_mode: str = "append",
     ) -> JobRecord:
         # Cleanup by capacity before creating new job
         self._cleanup_by_capacity()
@@ -343,6 +344,7 @@ class JobManager:
                         term_db=term_db,
                         provider_id=group.provider,
                         post_translate_hook=qe_blocks.extend,
+                        output_mode=output_mode,
                     )
                     # process_files returns (processed, total, stopped, last_client,
                     # term_summary[, winning_provider]) — unpack flexibly for forward compat

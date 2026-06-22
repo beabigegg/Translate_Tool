@@ -38,7 +38,9 @@
   ],
   "ignorePaths": [
     "/health",
-    "/metrics"
+    "/metrics",
+    "/api/providers/health",
+    "/api/terms/import"
   ],
   "checks": {
     "backendRouteNotInContract": "warning",

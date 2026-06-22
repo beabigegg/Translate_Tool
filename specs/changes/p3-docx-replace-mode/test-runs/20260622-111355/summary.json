@@ -1,0 +1,15 @@
+{
+  "change_id": "p3-docx-replace-mode",
+  "phase": "collect",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "conda run -n translate-tool pytest tests/test_output_mode_processors.py tests/test_output_mode_api.py tests/test_output_mode_orchestrator.py --collect-only -q",
+  "duration_ms": 1741,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p3-docx-replace-mode/test-runs/20260622-111355/summary.json",
+    "stdout": "specs/changes/p3-docx-replace-mode/test-runs/20260622-111355/stdout.log",
+    "stderr": "specs/changes/p3-docx-replace-mode/test-runs/20260622-111355/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

@@ -27,6 +27,7 @@ from app.backend.api.schemas import (
     MetricsResponse,
     ModelConfigItem,
     ModelsResponse,
+    OutputMode,
     ProfileItem,
     ProviderHealthItem,
     ProviderModelEntry,
@@ -149,6 +150,7 @@ async def create_job(
     pdf_layout_mode: str = Form("overlay"),  # "overlay" or "side_by_side"
     mode: str = Form("translation"),  # "translation" or "extraction_only"
     enable_term_extraction: bool = Form(True),
+    output_mode: OutputMode = Form(OutputMode.APPEND),
 ) -> JobCreateResponse:
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded")
@@ -233,6 +235,7 @@ async def create_job(
             pdf_layout_mode=pdf_layout_mode,
             mode=mode,
             enable_term_extraction=enable_term_extraction,
+            output_mode=output_mode.value,
         )
         return JobCreateResponse(job_id=job.job_id)
     finally:

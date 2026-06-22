@@ -358,6 +358,7 @@ def process_files(
     term_db=None,
     provider_id: Optional[str] = None,
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
+    output_mode: str = "append",
 ) -> Tuple[int, int, bool, Optional[OllamaClient], Dict, Optional[str]]:
     """Process files for translation.
 
@@ -390,6 +391,10 @@ def process_files(
     if layout_mode is None:
         layout_mode = LAYOUT_PRESERVATION_MODE
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # BR-67: multi-target jobs cannot replace in-place (ambiguous which translation owns
+    # the paragraph); clamp silently to append so existing callers never break.
+    effective_output_mode = "append" if len(targets) > 1 else output_mode
 
     extraction_only = mode == "extraction_only"
     aggregate_term_summary: Dict = {"extracted": 0, "skipped": 0, "added": 0}
@@ -687,6 +692,7 @@ def process_files(
                     pre_translate_hook=_phase0_hook,
                     post_translate_hook=post_translate_hook,
                     terms_getter=lambda: list(_glossary_terms_holder),
+                    output_mode=effective_output_mode,
                 )
             elif ext == ".doc":
                 tmp_docx = str(output_dir / f"{src.stem}__tmp.docx")
@@ -718,6 +724,7 @@ def process_files(
                         pre_translate_hook=_phase0_hook,
                         post_translate_hook=post_translate_hook,
                         terms_getter=lambda: list(_glossary_terms_holder),
+                        output_mode=effective_output_mode,
                     )
                 finally:
                     try:
@@ -737,6 +744,7 @@ def process_files(
                     pre_translate_hook=_phase0_hook,
                     post_translate_hook=post_translate_hook,
                     terms_getter=lambda: list(_glossary_terms_holder),
+                    output_mode=effective_output_mode,
                 )
             elif ext in (".xlsx", ".xls"):
                 stopped = translate_xlsx_xls(

@@ -294,6 +294,7 @@ def _insert_docx_translations(
     tmap: Dict[Tuple[str, str], str],
     targets: List[str],
     log: Callable[[str], None] = lambda s: None,
+    output_mode: str = "append",
 ) -> Tuple[int, int]:
     ok_cnt = skip_cnt = 0
 
@@ -409,35 +410,48 @@ def _insert_docx_translations(
                     continue
             else:
                 try:
-                    existing_texts = _scan_our_tail_texts(p, limit=max(len(translations), 4))
-                    if existing_texts and len(existing_texts) >= len(translations):
-                        if all(normalize_text(e) == normalize_text(t) for e, t in zip(existing_texts[:len(translations)], translations)):
-                            skip_cnt += 1
-                            log(f"[SKIP] Paragraph already has translations: {seg.text[:30]}...")
-                            continue
-                    to_add = []
-                    for t in translations:
-                        if not any(normalize_text(t) == normalize_text(e) for e in existing_texts):
-                            to_add.append(t)
-                    if not to_add:
-                        skip_cnt += 1
-                        log(f"[SKIP] Paragraph translations already present: {seg.text[:30]}...")
-                        continue
-                    last = _find_last_inserted_after(p, limit=max(len(translations), 4))
-                    anchor = last if last else p
-                    for block in to_add:
-                        try:
-                            anchor = _append_after(anchor, block, italic=True, font_size_pt=INSERT_FONT_SIZE_PT)
-                        except Exception as exc:
-                            log(f"[ERROR] Paragraph insertion failed: {exc}")
-                            try:
-                                new_p = p._parent.add_paragraph(block)
-                                if new_p.runs:
-                                    new_p.runs[0].italic = True
-                            except Exception as exc2:
-                                log(f"[ERROR] Fallback insertion failed: {exc2}")
+                    if output_mode == "replace":
+                        # Overwrite run text in-place; only the first translation is used
+                        # (multi-target is clamped to append by the orchestrator, BR-67).
+                        replacement = translations[0]
+                        runs = p.runs
+                        if runs:
+                            runs[0].text = replacement
+                            for r in runs[1:]:
+                                r.text = ""
+                        else:
+                            p.add_run(replacement)
+                        ok_cnt += 1
+                    else:
+                        existing_texts = _scan_our_tail_texts(p, limit=max(len(translations), 4))
+                        if existing_texts and len(existing_texts) >= len(translations):
+                            if all(normalize_text(e) == normalize_text(t) for e, t in zip(existing_texts[:len(translations)], translations)):
+                                skip_cnt += 1
+                                log(f"[SKIP] Paragraph already has translations: {seg.text[:30]}...")
                                 continue
-                    ok_cnt += 1
+                        to_add = []
+                        for t in translations:
+                            if not any(normalize_text(t) == normalize_text(e) for e in existing_texts):
+                                to_add.append(t)
+                        if not to_add:
+                            skip_cnt += 1
+                            log(f"[SKIP] Paragraph translations already present: {seg.text[:30]}...")
+                            continue
+                        last = _find_last_inserted_after(p, limit=max(len(translations), 4))
+                        anchor = last if last else p
+                        for block in to_add:
+                            try:
+                                anchor = _append_after(anchor, block, italic=True, font_size_pt=INSERT_FONT_SIZE_PT)
+                            except Exception as exc:
+                                log(f"[ERROR] Paragraph insertion failed: {exc}")
+                                try:
+                                    new_p = p._parent.add_paragraph(block)
+                                    if new_p.runs:
+                                        new_p.runs[0].italic = True
+                                except Exception as exc2:
+                                    log(f"[ERROR] Fallback insertion failed: {exc2}")
+                                    continue
+                        ok_cnt += 1
                 except Exception as exc:
                     log(f"[ERROR] Paragraph processing failed: {exc}")
                     continue
@@ -545,6 +559,7 @@ def translate_docx(
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
     terms_getter: Optional[Callable[[], list]] = None,
+    output_mode: str = "append",
 ) -> bool:
     from shutil import copyfile
 
@@ -603,7 +618,9 @@ def translate_docx(
         verify_and_fill_tmap(tmap, client, src_lang, stop_flag=stop_flag, log=log)
 
     if tmap:
-        _insert_docx_translations(doc, segs, tmap, targets, log=log)
+        # R1: doc2doc long-doc path always uses append; output_mode="replace" is a follow-up.
+        effective_mode = "append" if (len(targets) == 1 and sum(len(t) for t in uniq_texts) > 40_000) else output_mode
+        _insert_docx_translations(doc, segs, tmap, targets, log=log, output_mode=effective_mode)
 
     if post_translate_hook is not None:
         import os as _os
