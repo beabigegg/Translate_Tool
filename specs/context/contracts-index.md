@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 contract-count: 9
 missing-summary-count: 0
-inputs-digest: 6bb24a6dab3846e394c94aeba08438ad202c2b58d06870742f492f84d6ac4e82
+inputs-digest: aac846b42b21da3a06038663da30430920780bee4ebcca4c6dd49b15122e5eed
 ---
 
 # Contracts Index
@@ -34,8 +34,8 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: API Contract
 - owner: application-team
 - surface: api
-- schema-version: 0.6.0
-- last-changed: 2026-06-20
+- schema-version: 0.7.0
+- last-changed: 2026-06-22
 - breaking-change-policy: deprecate-2-minors
 - summary: API behavior, compatibility rules, and endpoint contract requirements.
 
@@ -69,8 +69,8 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: Business Rules
 - owner: application-team
 - surface: domain-behavior
-- schema-version: 0.15.0
-- last-changed: 2026-06-20
+- schema-version: 0.16.0
+- last-changed: 2026-06-22
 - breaking-change-policy: deprecate-2-minors
 - summary: Business decision tables, rule inventory, and change policy for behavior updates.
 

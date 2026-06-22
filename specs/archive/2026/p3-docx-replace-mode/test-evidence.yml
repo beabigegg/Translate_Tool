@@ -1,0 +1,27 @@
+change-id: p3-docx-replace-mode
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      conda run -n translate-tool pytest tests/test_output_mode_processors.py tests/test_output_mode_api.py
+      tests/test_output_mode_orchestrator.py --collect-only -q
+    summary: specs/changes/p3-docx-replace-mode/test-runs/20260622-111355/summary.json
+  - phase: targeted
+    status: passed
+    command: >-
+      conda run -n translate-tool pytest tests/test_output_mode_processors.py tests/test_output_mode_api.py
+      tests/test_output_mode_orchestrator.py -x -q --tb=short
+    summary: specs/changes/p3-docx-replace-mode/test-runs/20260622-111912/summary.json
+  - phase: changed-area
+    status: passed
+    command: >-
+      conda run -n translate-tool pytest tests/test_output_mode_processors.py tests/test_output_mode_api.py
+      tests/test_output_mode_orchestrator.py tests/test_orchestrator_phase0.py -x -q --tb=short
+    summary: specs/changes/p3-docx-replace-mode/test-runs/20260622-111923/summary.json
+final-status: passed

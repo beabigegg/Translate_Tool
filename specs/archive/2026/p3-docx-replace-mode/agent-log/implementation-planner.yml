@@ -1,0 +1,10 @@
+agent: implementation-planner
+change-id: p3-docx-replace-mode
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/p3-docx-replace-mode/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer, test-strategist" }
+  - { type: scope-summary, pointer: "in: docx/pptx output_mode + orchestrator clamp + API Form field + enum; out: PDF/XLSX behavior, frontend UI, SmartArt replace, doc2doc replace" }
+notes:
+  - "POST /api/jobs uses multipart Form(...) params, NOT a JSON JobCreate Pydantic body — corrected the brief; output_mode added as Form field typed OutputMode enum (FastAPI 422 on invalid)."
+  - "Threading path: routes.create_job -> job_manager.create_job -> process_files -> translate_docx/translate_pptx."
+  - "Clamp (BR-67) enforced in orchestrator process_files; doc2odc >40K replace deferred (R1)."

@@ -4,9 +4,9 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
 visible-dirs: 57
-visible-files: 208
+visible-files: 210
 omitted-dirs: 12
-truncated-dirs: 0
+truncated-dirs: 1
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
 ---
 
@@ -282,6 +282,9 @@ Translate_Tool/
 |   |-- test_ollama_client_dynamic_strategy.py
 |   |-- test_openai_compatible_client.py
 |   |-- test_orchestrator_phase0.py
+|   |-- test_output_mode_api.py
+|   |-- test_output_mode_orchestrator.py
+|   |-- test_output_mode_processors.py
 |   |-- test_pdf_generator.py
 |   |-- test_pdf_parser.py
 |   |-- test_pptx_parser.py
@@ -301,7 +304,7 @@ Translate_Tool/
 |   |-- test_text_region_renderer.py
 |   |-- test_translatable_document.py
 |   |-- test_translation_profiles_scenarios.py
-|   \-- test_translation_strategy.py
+|   \-- ... (1 more entries truncated; cap=50)
 |-- .env
 |-- .gitignore
 |-- AGENTS.md
