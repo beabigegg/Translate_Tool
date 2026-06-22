@@ -468,6 +468,70 @@ def _insert_docx_translations(
     return ok_cnt, skip_cnt
 
 
+def _translate_docx_via_doc2doc(
+    texts: List[str],
+    target: str,
+    src_lang: Optional[str],
+    client,
+    stop_flag=None,
+    log: Callable[[str], None] = lambda s: None,
+    max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
+    terms=None,
+    in_path: str = "",
+) -> Tuple[Dict[Tuple[str, str], str], int, int, bool]:
+    """Use semantic chunking (translate_document) for long single-target DOCX docs."""
+    from app.backend.models.translatable_document import (
+        TranslatableDocument,
+        TranslatableElement,
+        ElementType,
+        PageInfo,
+        DocumentMetadata,
+    )
+    from app.backend.services.translation_service import translate_document
+
+    elements = [
+        TranslatableElement(
+            element_id=f"seg-{i}",
+            content=t,
+            element_type=ElementType.TEXT,
+            page_num=1,
+        )
+        for i, t in enumerate(texts)
+    ]
+    doc_ir = TranslatableDocument(
+        source_path=in_path,
+        source_type="docx",
+        elements=elements,
+        pages=[PageInfo(page_num=1, width=595.0, height=842.0)],
+        metadata=DocumentMetadata(),
+    )
+
+    try:
+        translate_document(
+            doc_ir, [target], src_lang, client,
+            stop_flag=stop_flag, log=log,
+            terms=terms, max_batch_chars=max_batch_chars,
+        )
+    except RuntimeError as exc:
+        log(f"[DOCX] Doc2Doc chunking failed, falling back to batch: {exc}")
+        return translate_texts(
+            texts, [target], src_lang, client,
+            max_batch_chars=max_batch_chars, stop_flag=stop_flag, log=log, terms=terms,
+        )
+
+    tmap: Dict[Tuple[str, str], str] = {}
+    fail_cnt = 0
+    for elem in doc_ir.elements:
+        key = (target, elem.content)
+        val = elem.translated_content
+        if val and not val.startswith("[Translation failed"):
+            tmap[key] = val
+        else:
+            tmap[key] = val or f"[Translation failed|{elem.content[:20]}]"
+            fail_cnt += 1
+    return tmap, len(texts) - fail_cnt, fail_cnt, False
+
+
 def translate_docx(
     in_path: str,
     out_path: str,
@@ -480,6 +544,7 @@ def translate_docx(
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
+    terms_getter: Optional[Callable[[], list]] = None,
 ) -> bool:
     from shutil import copyfile
 
@@ -505,15 +570,30 @@ def translate_docx(
             uniq_texts.append(s.text)
     if pre_translate_hook:
         pre_translate_hook(uniq_texts)
-    tmap, _, fail_cnt, stopped = translate_texts(
-        uniq_texts,
-        targets,
-        src_lang,
-        client,
-        max_batch_chars=max_batch_chars,
-        stop_flag=stop_flag,
-        log=log,
-    )
+    _terms = terms_getter() if terms_getter else None
+
+    # Long-document semantic chunking path (P2-6): use translate_document for
+    # single-target docs over the char threshold so doc_chunker actually runs.
+    _LONG_DOC_CHARS = 40_000
+    _total_chars = sum(len(t) for t in uniq_texts)
+    if len(targets) == 1 and _total_chars > _LONG_DOC_CHARS:
+        tmap, _, fail_cnt, stopped = _translate_docx_via_doc2doc(
+            uniq_texts, targets[0], src_lang, client,
+            stop_flag=stop_flag, log=log,
+            max_batch_chars=max_batch_chars, terms=_terms,
+            in_path=in_path,
+        )
+    else:
+        tmap, _, fail_cnt, stopped = translate_texts(
+            uniq_texts,
+            targets,
+            src_lang,
+            client,
+            max_batch_chars=max_batch_chars,
+            stop_flag=stop_flag,
+            log=log,
+            terms=_terms,
+        )
 
     if fail_cnt:
         log(f"[DOCX] failed translations: {fail_cnt}")

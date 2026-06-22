@@ -51,6 +51,7 @@ def translate_xlsx_xls(
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
+    terms_getter: Optional[Callable[[], list]] = None,
 ) -> bool:
     ext = Path(in_path).suffix.lower()
     out_xlsx = Path(out_path).with_suffix(".xlsx")
@@ -135,6 +136,7 @@ def translate_xlsx_xls(
             uniq.append(s[3])
     if pre_translate_hook:
         pre_translate_hook(uniq)
+    _terms = terms_getter() if terms_getter else None
     tmap, _, fail_cnt, stopped = translate_texts(
         uniq,
         targets,
@@ -143,6 +145,7 @@ def translate_xlsx_xls(
         max_batch_chars=max_batch_chars,
         stop_flag=stop_flag,
         log=log,
+        terms=_terms,
     )
 
     if fail_cnt and not stopped:

@@ -492,13 +492,21 @@ def render_text_region(
         canvas.rotate(region.rotation)
         canvas.translate(-center_x, -center_y)
 
-    # Set font
+    # Set font; on miss use metric-compatible registered fallback (BR-39)
     try:
         canvas.setFont(font_name, font_size)
     except KeyError:
-        logger.warning(f"Font {font_name} not available, using Helvetica")
-        canvas.setFont("Helvetica", font_size)
-        font_name = "Helvetica"
+        from app.backend.utils.font_utils import get_metric_compatible_fallback
+        from reportlab.pdfbase import pdfmetrics as _pdfmetrics
+        _registered = list(_pdfmetrics.getRegisteredFontNames())
+        fallback_name = get_metric_compatible_fallback(
+            font_name,
+            region.text[0] if region.text else " ",
+            _registered,
+        )
+        logger.warning(f"Font {font_name} not available, using metric-compatible fallback: {fallback_name}")
+        canvas.setFont(fallback_name, font_size)
+        font_name = fallback_name
 
     # Handle text direction
     text_dir = detect_text_direction(region.text)

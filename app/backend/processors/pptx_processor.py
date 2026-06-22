@@ -192,6 +192,7 @@ def translate_pptx(
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
+    terms_getter: Optional[Callable[[], list]] = None,
 ) -> bool:
     prs = pptx.Presentation(in_path)
     # segs: List of (segment_type, object_ref, text)
@@ -259,6 +260,7 @@ def translate_pptx(
 
     if pre_translate_hook:
         pre_translate_hook(uniq)
+    _terms = terms_getter() if terms_getter else None
     tmap, _, fail_cnt, stopped = translate_texts(
         uniq,
         targets,
@@ -267,6 +269,7 @@ def translate_pptx(
         max_batch_chars=max_batch_chars,
         stop_flag=stop_flag,
         log=log,
+        terms=_terms,
     )
 
     if fail_cnt and not stopped:

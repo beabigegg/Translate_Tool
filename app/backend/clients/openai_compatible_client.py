@@ -79,6 +79,14 @@ class OpenAICompatibleClient:
         # mocks that intercept requests.Session.post can inspect it in kwargs.
         # The header dict is reused on every call (no allocation per request).
         self._auth_headers = {"Authorization": f"Bearer {self.api_key}"}
+        self._cache_variant: Optional[str] = None
+
+    @property
+    def cache_model_key(self) -> str:
+        base = f"{self.provider_id}/{self.model}"
+        if self._cache_variant:
+            return f"{base}::scenario={self._cache_variant}"
+        return base
 
     @property
     def _timeout(self) -> Tuple[float, float]:
@@ -270,4 +278,5 @@ class OpenAICompatibleClient:
         """No-op — cloud providers do not support Ollama runtime options."""
 
     def set_cache_variant(self, variant: Optional[str]) -> None:
-        """No-op — Ollama KV-cache variant concept does not apply to cloud."""
+        """Store scenario variant for cache key differentiation."""
+        self._cache_variant = variant

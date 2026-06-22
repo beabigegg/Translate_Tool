@@ -184,6 +184,7 @@ def _fake_translate_docx(
     pre_translate_hook=None,
     post_translate_hook=None,
     include_headers_shapes_via_com=False,
+    terms_getter=None,
 ):
     """Minimal translate_docx stub that triggers the pre_translate_hook."""
     if pre_translate_hook is not None:

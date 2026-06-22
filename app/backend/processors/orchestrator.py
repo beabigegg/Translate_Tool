@@ -549,6 +549,7 @@ def process_files(
         # Phase 0: Term Extraction
         # ------------------------------------------------------------------
         _phase0_hook = None
+        _glossary_terms_holder: list = []  # shared across per-file scope; populated by _phase0_hook
         if term_db is not None:
             from app.backend.services.term_extractor import run_phase0_multi, SCENARIO_TO_DOMAIN
             from app.backend.config import (
@@ -645,6 +646,8 @@ def process_files(
                             if _k not in _seen_keys:
                                 _seen_keys.add(_k)
                                 _top_terms.append(_t)
+                    # Share approved terms with translate_texts for glossary substitution (P2-5)
+                    _glossary_terms_holder[:] = _top_terms
                     if not _top_terms:
                         return
 
@@ -683,6 +686,7 @@ def process_files(
                     max_batch_chars=max_batch_chars,
                     pre_translate_hook=_phase0_hook,
                     post_translate_hook=post_translate_hook,
+                    terms_getter=lambda: list(_glossary_terms_holder),
                 )
             elif ext == ".doc":
                 tmp_docx = str(output_dir / f"{src.stem}__tmp.docx")
@@ -713,6 +717,7 @@ def process_files(
                         max_batch_chars=max_batch_chars,
                         pre_translate_hook=_phase0_hook,
                         post_translate_hook=post_translate_hook,
+                        terms_getter=lambda: list(_glossary_terms_holder),
                     )
                 finally:
                     try:
@@ -731,6 +736,7 @@ def process_files(
                     max_batch_chars=max_batch_chars,
                     pre_translate_hook=_phase0_hook,
                     post_translate_hook=post_translate_hook,
+                    terms_getter=lambda: list(_glossary_terms_holder),
                 )
             elif ext in (".xlsx", ".xls"):
                 stopped = translate_xlsx_xls(
@@ -744,6 +750,7 @@ def process_files(
                     max_batch_chars=max_batch_chars,
                     pre_translate_hook=_phase0_hook,
                     post_translate_hook=post_translate_hook,
+                    terms_getter=lambda: list(_glossary_terms_holder),
                 )
             elif ext == ".pdf":
                 log(f"[PDF] Using output_format={output_format}, layout_mode={layout_mode}")
