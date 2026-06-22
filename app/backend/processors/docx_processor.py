@@ -560,6 +560,7 @@ def translate_docx(
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
     terms_getter: Optional[Callable[[], list]] = None,
     output_mode: str = "append",
+    block_overrides: Optional[Dict[str, str]] = None,
 ) -> bool:
     from shutil import copyfile
 
@@ -587,35 +588,55 @@ def translate_docx(
         pre_translate_hook(uniq_texts)
     _terms = terms_getter() if terms_getter else None
 
-    # Long-document semantic chunking path (P2-6): use translate_document for
-    # single-target docs over the char threshold so doc_chunker actually runs.
-    _LONG_DOC_CHARS = 40_000
-    _total_chars = sum(len(t) for t in uniq_texts)
-    if len(targets) == 1 and _total_chars > _LONG_DOC_CHARS:
-        tmap, _, fail_cnt, stopped = _translate_docx_via_doc2doc(
-            uniq_texts, targets[0], src_lang, client,
-            stop_flag=stop_flag, log=log,
-            max_batch_chars=max_batch_chars, terms=_terms,
-            in_path=in_path,
-        )
+    # p3-llm-judge: block_overrides seam — when provided, use stored re-translated text
+    # instead of calling the LLM (D7). Block ids use the same key as post_translate_hook.
+    import os as _os
+    file_stem = _os.path.splitext(_os.path.basename(in_path))[0]
+    stopped = False
+    if block_overrides is not None:
+        # Build tmap from overrides map; fall through to LLM for any unmatched block.
+        tmap: Dict = {}
+        fail_cnt = 0
+        for idx, src_text in enumerate(uniq_texts):
+            block_id = f"docx:{file_stem}:{idx}"
+            if block_id in block_overrides:
+                for tgt in targets:
+                    tmap[(tgt, src_text)] = block_overrides[block_id]
+            else:
+                # Block not in override map — this is a mismatch; keep source text
+                for tgt in targets:
+                    tmap[(tgt, src_text)] = src_text
+        log(f"[DOCX] block_overrides applied: {len(block_overrides)} overrides, {len(uniq_texts)} blocks")
     else:
-        tmap, _, fail_cnt, stopped = translate_texts(
-            uniq_texts,
-            targets,
-            src_lang,
-            client,
-            max_batch_chars=max_batch_chars,
-            stop_flag=stop_flag,
-            log=log,
-            terms=_terms,
-        )
+        # Long-document semantic chunking path (P2-6): use translate_document for
+        # single-target docs over the char threshold so doc_chunker actually runs.
+        _LONG_DOC_CHARS = 40_000
+        _total_chars = sum(len(t) for t in uniq_texts)
+        if len(targets) == 1 and _total_chars > _LONG_DOC_CHARS:
+            tmap, _, fail_cnt, stopped = _translate_docx_via_doc2doc(
+                uniq_texts, targets[0], src_lang, client,
+                stop_flag=stop_flag, log=log,
+                max_batch_chars=max_batch_chars, terms=_terms,
+                in_path=in_path,
+            )
+        else:
+            tmap, _, fail_cnt, stopped = translate_texts(
+                uniq_texts,
+                targets,
+                src_lang,
+                client,
+                max_batch_chars=max_batch_chars,
+                stop_flag=stop_flag,
+                log=log,
+                terms=_terms,
+            )
 
-    if fail_cnt:
-        log(f"[DOCX] failed translations: {fail_cnt}")
+        if fail_cnt:
+            log(f"[DOCX] failed translations: {fail_cnt}")
 
-    if fail_cnt and not stopped:
-        from app.backend.utils.translation_verification import verify_and_fill_tmap
-        verify_and_fill_tmap(tmap, client, src_lang, stop_flag=stop_flag, log=log)
+        if fail_cnt and not stopped:
+            from app.backend.utils.translation_verification import verify_and_fill_tmap
+            verify_and_fill_tmap(tmap, client, src_lang, stop_flag=stop_flag, log=log)
 
     if tmap:
         # R1: doc2doc long-doc path always uses append; output_mode="replace" is a follow-up.
@@ -623,8 +644,6 @@ def translate_docx(
         _insert_docx_translations(doc, segs, tmap, targets, log=log, output_mode=effective_mode)
 
     if post_translate_hook is not None:
-        import os as _os
-        file_stem = _os.path.splitext(_os.path.basename(in_path))[0]
         tuples: List[Tuple[str, str, str]] = []
         for idx, src_text in enumerate(uniq_texts):
             for tgt in targets:

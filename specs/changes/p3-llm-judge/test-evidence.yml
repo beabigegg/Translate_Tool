@@ -1,0 +1,33 @@
+change-id: p3-llm-judge
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      pytest --collect-only -q tests/test_quality_judge.py tests/test_judge_api.py tests/test_orchestrator_judge.py
+      tests/test_judge_apply.py tests/test_job_record_judge.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p3-llm-judge/test-runs/20260622-162652/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/p3-llm-judge/test-runs/20260622-162652/summary.json
+    junit: specs/changes/p3-llm-judge/test-runs/20260622-162652/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      pytest tests/test_quality_judge.py tests/test_judge_api.py tests/test_orchestrator_judge.py
+      tests/test_judge_apply.py tests/test_job_record_judge.py -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p3-llm-judge/test-runs/20260622-162701/junit.xml' -ra
+    summary: specs/changes/p3-llm-judge/test-runs/20260622-162701/summary.json
+    junit: specs/changes/p3-llm-judge/test-runs/20260622-162701/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      pytest tests/ -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p3-llm-judge/test-runs/20260622-162711/junit.xml' -ra
+    summary: specs/changes/p3-llm-judge/test-runs/20260622-162711/summary.json
+    junit: specs/changes/p3-llm-judge/test-runs/20260622-162711/junit.xml
+final-status: passed

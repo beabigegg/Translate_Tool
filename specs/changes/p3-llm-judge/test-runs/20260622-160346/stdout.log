@@ -1,0 +1,85 @@
+...............................F.FFFF
+=================================== FAILURES ===================================
+_____________________ test_judge_does_not_alter_qe_scoring _____________________
+tests/test_orchestrator_judge.py:211: in test_judge_does_not_alter_qe_scoring
+    assert job.quality.qe_status == "available"
+E   AssertionError: assert 'disabled' == 'available'
+E     
+E     - available
+E     + disabled
+----------------------------- Captured stderr call -----------------------------
+2026-06-22 16:03:48 [INFO] TranslateTool: Cleaned 1 orphaned job directories on startup
+2026-06-22 16:03:48 [INFO] TranslateTool: Started job cleanup thread (interval: 30 minutes)
+2026-06-22 16:03:48 [INFO] TranslateTool: [e4de99a9bc6940baa7b1cd805b412632] [CONFIG] groups=1: test-model→[en], PDF output_format=docx, layout_mode=overlay
+2026-06-22 16:03:48 [INFO] TranslateTool: [e4de99a9bc6940baa7b1cd805b412632] Job started with 1 files × 1 route group(s)
+2026-06-22 16:03:48 [INFO] TranslateTool: [e4de99a9bc6940baa7b1cd805b412632] [GROUP] model=test-model, profile=general, targets=['en']
+2026-06-22 16:03:48 [INFO] TranslateTool: [e4de99a9bc6940baa7b1cd805b412632] [CLEANUP] Releasing resources...
+2026-06-22 16:03:48 [INFO] TranslateTool: Starting resource release
+2026-06-22 16:03:48 [INFO] TranslateTool: [e4de99a9bc6940baa7b1cd805b412632] [CLEANUP] Python memory collected
+2026-06-22 16:03:48 [INFO] TranslateTool: Python gc collected 393 objects
+2026-06-22 16:03:48 [INFO] TranslateTool: [e4de99a9bc6940baa7b1cd805b412632] [CLEANUP] Resource release complete
+2026-06-22 16:03:48 [INFO] TranslateTool: Resource release completed
+------------------------------ Captured log call -------------------------------
+INFO     TranslateTool:job_manager.py:222 Cleaned 1 orphaned job directories on startup
+INFO     TranslateTool:job_manager.py:205 Started job cleanup thread (interval: 30 minutes)
+INFO     TranslateTool:job_manager.py:132 [e4de99a9bc6940baa7b1cd805b412632] [CONFIG] groups=1: test-model→[en], PDF output_format=docx, layout_mode=overlay
+INFO     TranslateTool:job_manager.py:132 [e4de99a9bc6940baa7b1cd805b412632] Job started with 1 files × 1 route group(s)
+INFO     TranslateTool:job_manager.py:132 [e4de99a9bc6940baa7b1cd805b412632] [GROUP] model=test-model, profile=general, targets=['en']
+INFO     TranslateTool:job_manager.py:132 [e4de99a9bc6940baa7b1cd805b412632] [CLEANUP] Releasing resources...
+INFO     TranslateTool:resource_utils.py:23 Starting resource release
+INFO     TranslateTool:job_manager.py:132 [e4de99a9bc6940baa7b1cd805b412632] [CLEANUP] Python memory collected
+INFO     TranslateTool:resource_utils.py:42 Python gc collected 393 objects
+INFO     TranslateTool:job_manager.py:132 [e4de99a9bc6940baa7b1cd805b412632] [CLEANUP] Resource release complete
+INFO     TranslateTool:resource_utils.py:47 Resource release completed
+____________________ test_apply_judge_sets_applying_status _____________________
+tests/test_judge_apply.py:86: in test_apply_judge_sets_applying_status
+    jm._jobs["apply-test-01"] = job
+    ^^^^^^^^
+E   AttributeError: 'JobManager' object has no attribute '_jobs'
+----------------------------- Captured stderr call -----------------------------
+2026-06-22 16:03:48 [INFO] TranslateTool: Cleaned 1 orphaned job directories on startup
+2026-06-22 16:03:48 [INFO] TranslateTool: Started job cleanup thread (interval: 30 minutes)
+------------------------------ Captured log call -------------------------------
+INFO     TranslateTool:job_manager.py:222 Cleaned 1 orphaned job directories on startup
+INFO     TranslateTool:job_manager.py:205 Started job cleanup thread (interval: 30 minutes)
+___________________ test_apply_judge_transitions_to_applied ____________________
+tests/test_judge_apply.py:127: in test_apply_judge_transitions_to_applied
+    jm._jobs["apply-test-02"] = job
+    ^^^^^^^^
+E   AttributeError: 'JobManager' object has no attribute '_jobs'
+----------------------------- Captured stderr call -----------------------------
+2026-06-22 16:03:48 [INFO] TranslateTool: Started job cleanup thread (interval: 30 minutes)
+------------------------------ Captured log call -------------------------------
+INFO     TranslateTool:job_manager.py:205 Started job cleanup thread (interval: 30 minutes)
+_________________ test_apply_judge_fails_soft_on_process_error _________________
+tests/test_judge_apply.py:158: in test_apply_judge_fails_soft_on_process_error
+    jm._jobs["apply-test-03"] = job
+    ^^^^^^^^
+E   AttributeError: 'JobManager' object has no attribute '_jobs'
+----------------------------- Captured stderr call -----------------------------
+2026-06-22 16:03:48 [INFO] TranslateTool: Started job cleanup thread (interval: 30 minutes)
+------------------------------ Captured log call -------------------------------
+INFO     TranslateTool:job_manager.py:205 Started job cleanup thread (interval: 30 minutes)
+__________________ test_apply_judge_idempotent_while_applying __________________
+tests/test_judge_apply.py:191: in test_apply_judge_idempotent_while_applying
+    jm._jobs["apply-test-04"] = job
+    ^^^^^^^^
+E   AttributeError: 'JobManager' object has no attribute '_jobs'
+----------------------------- Captured stderr call -----------------------------
+2026-06-22 16:03:48 [INFO] TranslateTool: Started job cleanup thread (interval: 30 minutes)
+------------------------------ Captured log call -------------------------------
+INFO     TranslateTool:job_manager.py:205 Started job cleanup thread (interval: 30 minutes)
+=============================== warnings summary ===============================
+tests/test_quality_judge.py::test_judge_records_result_on_job_record
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21: DeprecationWarning: PyPDF2 is deprecated. Please move to the pypdf library instead.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_orchestrator_judge.py::test_judge_does_not_alter_qe_scoring
+FAILED tests/test_judge_apply.py::test_apply_judge_sets_applying_status - Att...
+FAILED tests/test_judge_apply.py::test_apply_judge_transitions_to_applied - A...
+FAILED tests/test_judge_apply.py::test_apply_judge_fails_soft_on_process_error
+FAILED tests/test_judge_apply.py::test_apply_judge_idempotent_while_applying
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 5 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+5 failed, 32 passed, 1 warning in 0.92s

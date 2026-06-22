@@ -1,6 +1,6 @@
-# generated: 2026-06-22T05:41:14Z by cdd-kit 3.4.0
-# files: 159, src-lines: 40037, map-lines: 3938, compression: 10.2x
-# sources-digest: 47cc3559b77d5270f4488aa75d1b2dd3c711c6a9a7e08839aec4bc6d6b07e7fb
+# generated: 2026-06-22T07:03:21Z by cdd-kit 3.4.0
+# files: 161, src-lines: 41481, map-lines: 4042, compression: 10.3x
+# sources-digest: 826bda268490c2f7ff455d38e098f8129ebb0f39fd39a67bb5015b1712e98785
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
@@ -247,7 +247,7 @@ app/backend/clients/openai_compatible_client.py:  # 282 lines
         - { name: set_runtime_options_override, lines: 277-278 }
         - { name: set_cache_variant, lines: 280-282 }
 
-app/backend/config.py:  # 495 lines
+app/backend/config.py:  # 503 lines
   imports:
     - { module: __future__, items: [annotations], line: 5 }
     - { module: logging, items: [], line: 7 }
@@ -306,58 +306,60 @@ app/backend/config.py:  # 495 lines
     - { name: PDF_HEADER_FOOTER_MARGIN_PT, line: 148 }
     - { name: LAYOUT_DETECTOR_MODEL_PATH, line: 153 }
     - { name: LAYOUT_DETECTOR_ENABLED, line: 155 }
-    - { name: LAYOUT_PRESERVATION_MODE, line: 158 }
-    - { name: DEFAULT_FONT_FAMILY, line: 159 }
-    - { name: MIN_FONT_SIZE_PT, line: 160 }
-    - { name: MAX_FONT_SIZE_PT, line: 161 }
-    - { name: FONT_SIZE_SHRINK_FACTOR, line: 162 }
-    - { name: PDF_DRAW_MASK, line: 163 }
-    - { name: PDF_MASK_MARGIN_PT, line: 164 }
-    - { name: PDF_SHOW_MISSING_PLACEHOLDER, line: 165 }
-    - { name: FONT_SIZE_CONFIG, line: 169 }
-    - { name: MAX_SEGMENTS, line: 182 }
-    - { name: MAX_TEXT_LENGTH, line: 183 }
-    - { name: MAX_JOBS_IN_MEMORY, line: 186 }
-    - { name: JOB_TTL_HOURS, line: 187 }
-    - { name: CLEANUP_INTERVAL_MINUTES, line: 188 }
-    - { name: HTTP_POOL_CONNECTIONS, line: 191 }
-    - { name: HTTP_POOL_MAXSIZE, line: 192 }
-    - { name: ENV_CONNECT_TIMEOUT, line: 194 }
-    - { name: ENV_READ_TIMEOUT, line: 195 }
-    - { name: LIBREOFFICE_PATH, line: 198 }
-    - { name: LIBREOFFICE_TIMEOUT, line: 199 }
-    - { name: VERIFY_MAX_RETRIES, line: 201 }
-    - { name: TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED, line: 204 }
-    - { name: TERM_INJECT_CONF_THRESHOLD, line: 205 }
-    - { name: TERM_EMBEDDING_MODEL, line: 208 }
-    - { name: TERM_EMBEDDING_THRESHOLD, line: 209 }
-    - { name: TERM_EXTRACTION_MODEL, line: 210 }
-    - { name: SUPPORTED_EXTENSIONS, line: 212 }
-    - { name: LANG_CODE_MAP, line: 214 }
-    - { name: DATA_DIR, line: 286 }
-    - { name: JOBS_DIR, line: 287 }
-    - { name: LOG_DIR, line: 288 }
-    - { name: TRANSLATION_CACHE_ENABLED, line: 289 }
-    - { name: CACHE_DIR, line: 290 }
-    - { name: DEFAULT_HOST, line: 292 }
-    - { name: DEFAULT_PORT, line: 293 }
-    - { name: ALLOWED_ORIGINS, line: 295 }
+    - { name: TABLE_RECOGNITION_MODEL_PATH, line: 160 }
+    - { name: TABLE_RECOGNITION_ENABLED, line: 163 }
+    - { name: LAYOUT_PRESERVATION_MODE, line: 166 }
+    - { name: DEFAULT_FONT_FAMILY, line: 167 }
+    - { name: MIN_FONT_SIZE_PT, line: 168 }
+    - { name: MAX_FONT_SIZE_PT, line: 169 }
+    - { name: FONT_SIZE_SHRINK_FACTOR, line: 170 }
+    - { name: PDF_DRAW_MASK, line: 171 }
+    - { name: PDF_MASK_MARGIN_PT, line: 172 }
+    - { name: PDF_SHOW_MISSING_PLACEHOLDER, line: 173 }
+    - { name: FONT_SIZE_CONFIG, line: 177 }
+    - { name: MAX_SEGMENTS, line: 190 }
+    - { name: MAX_TEXT_LENGTH, line: 191 }
+    - { name: MAX_JOBS_IN_MEMORY, line: 194 }
+    - { name: JOB_TTL_HOURS, line: 195 }
+    - { name: CLEANUP_INTERVAL_MINUTES, line: 196 }
+    - { name: HTTP_POOL_CONNECTIONS, line: 199 }
+    - { name: HTTP_POOL_MAXSIZE, line: 200 }
+    - { name: ENV_CONNECT_TIMEOUT, line: 202 }
+    - { name: ENV_READ_TIMEOUT, line: 203 }
+    - { name: LIBREOFFICE_PATH, line: 206 }
+    - { name: LIBREOFFICE_TIMEOUT, line: 207 }
+    - { name: VERIFY_MAX_RETRIES, line: 209 }
+    - { name: TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED, line: 212 }
+    - { name: TERM_INJECT_CONF_THRESHOLD, line: 213 }
+    - { name: TERM_EMBEDDING_MODEL, line: 216 }
+    - { name: TERM_EMBEDDING_THRESHOLD, line: 217 }
+    - { name: TERM_EXTRACTION_MODEL, line: 218 }
+    - { name: SUPPORTED_EXTENSIONS, line: 220 }
+    - { name: LANG_CODE_MAP, line: 222 }
+    - { name: DATA_DIR, line: 294 }
+    - { name: JOBS_DIR, line: 295 }
+    - { name: LOG_DIR, line: 296 }
+    - { name: TRANSLATION_CACHE_ENABLED, line: 297 }
+    - { name: CACHE_DIR, line: 298 }
+    - { name: DEFAULT_HOST, line: 300 }
+    - { name: DEFAULT_PORT, line: 301 }
+    - { name: ALLOWED_ORIGINS, line: 303 }
   classes:
     - name: ModelType
       lines: 18-22
     - name: TimeoutConfig
-      lines: 302-355
+      lines: 310-363
       methods:
-        - { name: set_from_config, lines: 310-312 }
-        - { name: set_timeouts, lines: 314-316 }
-        - { name: clear_runtime_overrides, lines: 318-320 }
-        - { name: connect_timeout, lines: 323-336 }
-        - { name: read_timeout, lines: 339-352 }
-        - { name: get_timeout_tuple, lines: 354-355 }
+        - { name: set_from_config, lines: 318-320 }
+        - { name: set_timeouts, lines: 322-324 }
+        - { name: clear_runtime_overrides, lines: 326-328 }
+        - { name: connect_timeout, lines: 331-344 }
+        - { name: read_timeout, lines: 347-360 }
+        - { name: get_timeout_tuple, lines: 362-363 }
   functions:
-    - { name: _expand_env_vars, lines: 369-396 }
-    - { name: _expand_node, lines: 399-426 }
-    - { name: load_providers_config, lines: 429-495 }
+    - { name: _expand_env_vars, lines: 377-404 }
+    - { name: _expand_node, lines: 407-434 }
+    - { name: load_providers_config, lines: 437-503 }
 
 app/backend/main.py:  # 64 lines
   imports:
@@ -392,7 +394,7 @@ app/backend/models/term.py:  # 25 lines
       methods:
         - { name: __post_init__, lines: 23-25 }
 
-app/backend/models/translatable_document.py:  # 345 lines
+app/backend/models/translatable_document.py:  # 441 lines
   imports:
     - { module: __future__, items: [annotations], line: 7 }
     - { module: dataclasses, items: [dataclass, field], line: 9 }
@@ -401,47 +403,57 @@ app/backend/models/translatable_document.py:  # 345 lines
   classes:
     - name: ElementType
       lines: 14-31
+    - name: TableCell
+      lines: 39-83
+      methods:
+        - { name: to_dict, lines: 58-69 }
+        - { name: from_dict, lines: 72-83 }
+    - name: TableStructure
+      lines: 87-127
+      methods:
+        - { name: to_dict, lines: 102-109 }
+        - { name: from_dict, lines: 112-127 }
     - name: BoundingBox
-      lines: 35-89
+      lines: 131-185
       methods:
-        - { name: width, lines: 48-50 }
-        - { name: height, lines: 53-55 }
-        - { name: center_x, lines: 58-60 }
-        - { name: center_y, lines: 63-65 }
-        - { name: to_dict, lines: 67-74 }
-        - { name: from_dict, lines: 77-84 }
-        - { name: from_tuple, lines: 87-89 }
+        - { name: width, lines: 144-146 }
+        - { name: height, lines: 149-151 }
+        - { name: center_x, lines: 154-156 }
+        - { name: center_y, lines: 159-161 }
+        - { name: to_dict, lines: 163-170 }
+        - { name: from_dict, lines: 173-180 }
+        - { name: from_tuple, lines: 183-185 }
     - name: StyleInfo
-      lines: 93-124
+      lines: 189-220
       methods:
-        - { name: to_dict, lines: 103-112 }
-        - { name: from_dict, lines: 115-124 }
+        - { name: to_dict, lines: 199-208 }
+        - { name: from_dict, lines: 211-220 }
     - name: TranslatableElement
-      lines: 128-174
+      lines: 224-270
       methods:
-        - { name: to_dict, lines: 143-157 }
-        - { name: from_dict, lines: 160-174 }
+        - { name: to_dict, lines: 239-253 }
+        - { name: from_dict, lines: 256-270 }
     - name: PageInfo
-      lines: 178-203
+      lines: 274-299
       methods:
-        - { name: to_dict, lines: 186-193 }
-        - { name: from_dict, lines: 196-203 }
+        - { name: to_dict, lines: 282-289 }
+        - { name: from_dict, lines: 292-299 }
     - name: DocumentMetadata
-      lines: 207-247
+      lines: 303-343
       methods:
-        - { name: to_dict, lines: 220-232 }
-        - { name: from_dict, lines: 235-247 }
+        - { name: to_dict, lines: 316-328 }
+        - { name: from_dict, lines: 331-343 }
     - name: TranslatableDocument
-      lines: 251-345
+      lines: 347-441
       methods:
-        - { name: get_translatable_elements, lines: 261-263 }
-        - { name: get_elements_by_page, lines: 265-267 }
-        - { name: get_all_elements_by_page, lines: 269-280 }
-        - { name: get_elements_in_reading_order, lines: 282-301 }
-        - { name: get_unique_texts, lines: 303-312 }
-        - { name: apply_translations, lines: 314-324 }
-        - { name: to_dict, lines: 326-334 }
-        - { name: from_dict, lines: 337-345 }
+        - { name: get_translatable_elements, lines: 357-359 }
+        - { name: get_elements_by_page, lines: 361-363 }
+        - { name: get_all_elements_by_page, lines: 365-376 }
+        - { name: get_elements_in_reading_order, lines: 378-397 }
+        - { name: get_unique_texts, lines: 399-408 }
+        - { name: apply_translations, lines: 410-420 }
+        - { name: to_dict, lines: 422-430 }
+        - { name: from_dict, lines: 433-441 }
 
 app/backend/parsers/__init__.py:  # 15 lines
   imports:
@@ -530,7 +542,7 @@ app/backend/parsers/layout_detector.py:  # 563 lines
     - { name: _heuristic_reading_order, lines: 97-112 }
     - { name: hf_hub_download, lines: 560-563 }
 
-app/backend/parsers/pdf_parser.py:  # 555 lines
+app/backend/parsers/pdf_parser.py:  # 657 lines
   imports:
     - { module: __future__, items: [annotations], line: 7 }
     - { module: logging, items: [], line: 9 }
@@ -544,21 +556,22 @@ app/backend/parsers/pdf_parser.py:  # 555 lines
     - { module: app.backend.utils.bbox_utils, items: [is_header_footer_region, normalize_bbox], line: 32 }
   classes:
     - name: PyMuPDFParser
-      lines: 37-542
+      lines: 37-644
       methods:
         - { name: __init__, lines: 48-68 }
         - { name: supported_extensions, lines: 71-73 }
-        - { name: parse, lines: 75-150 }
-        - { name: _extract_page_elements, lines: 152-249 }
-        - { name: _extract_style_info, lines: 251-294 }
-        - { name: _color_to_hex, lines: 296-308 }
-        - { name: _detect_and_mark_tables, lines: 310-353 }
-        - { name: _is_inside, lines: 355-363 }
-        - { name: _run_layout_detector, lines: 365-486 }
-        - { name: _sort_by_reading_order, lines: 488-508 }
-        - { name: _extract_metadata, lines: 510-542 }
+        - { name: parse, lines: 75-159 }
+        - { name: _extract_page_elements, lines: 161-258 }
+        - { name: _extract_style_info, lines: 260-303 }
+        - { name: _color_to_hex, lines: 305-317 }
+        - { name: _detect_and_mark_tables, lines: 319-362 }
+        - { name: _is_inside, lines: 364-372 }
+        - { name: _run_layout_detector, lines: 374-495 }
+        - { name: _run_table_recognizer, lines: 497-587 }
+        - { name: _sort_by_reading_order, lines: 590-610 }
+        - { name: _extract_metadata, lines: 612-644 }
   functions:
-    - { name: extract_text_with_bbox, lines: 545-555 }
+    - { name: extract_text_with_bbox, lines: 647-657 }
 
 app/backend/parsers/pptx_parser.py:  # 379 lines
   imports:
@@ -588,6 +601,29 @@ app/backend/parsers/pptx_parser.py:  # 379 lines
         - { name: _get_text_frame_text, lines: 303-312 }
         - { name: _get_shape_bbox, lines: 314-339 }
         - { name: _classify_shape_type, lines: 341-379 }
+
+app/backend/parsers/table_recognizer.py:  # 317 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 17 }
+    - { module: logging, items: [], line: 19 }
+    - { module: os, items: [], line: 20 }
+    - { module: pathlib, items: [Path], line: 21 }
+    - { module: typing, items: [List, Optional], line: 22 }
+    - { module: numpy, items: [], line: 24 }
+    - { module: app.backend.models.translatable_document, items: [TableCell, TableStructure, TranslatableElement], line: 26 }
+  classes:
+    - name: TableRecognizer
+      lines: 46-307
+      methods:
+        - { name: __init__, lines: 56-66 }
+        - { name: _resolve_model_path, lines: 72-92 }
+        - { name: _resolve_hf_path, lines: 94-107 }
+        - { name: _load_session, lines: 113-150 }
+        - { name: recognize, lines: 156-218 }
+        - { name: _run_recognition, lines: 220-277 }
+        - { name: _parse_outputs, lines: 279-307 }
+  functions:
+    - { name: _hf_hub_download, lines: 314-317 }
 
 app/backend/processors/__init__.py:  # 0 lines
 
@@ -698,7 +734,7 @@ app/backend/processors/orchestrator.py:  # 799 lines
     - { name: _output_name, lines: 314-336 }
     - { name: process_files, lines: 339-799 }
 
-app/backend/processors/pdf_processor.py:  # 781 lines
+app/backend/processors/pdf_processor.py:  # 827 lines
   imports:
     - { module: __future__, items: [annotations], line: 8 }
     - { module: logging, items: [], line: 10 }
@@ -717,13 +753,13 @@ app/backend/processors/pdf_processor.py:  # 781 lines
   functions:
     - { name: _get_pymupdf_parser, lines: 44-58 }
     - { name: translate_pdf, lines: 61-178 }
-    - { name: _translate_pdf_with_pymupdf, lines: 181-372 }
-    - { name: _translate_pdf_with_pypdf2, lines: 375-481 }
-    - { name: _translate_pdf_to_pdf, lines: 484-654 }
-    - { name: _run_fitz_render, lines: 661-678 }
-    - { name: _run_reportlab_render, lines: 681-702 }
-    - { name: _dispatch_render, lines: 705-752 }
-    - { name: parse_pdf_to_document, lines: 755-781 }
+    - { name: _translate_pdf_with_pymupdf, lines: 181-418 }
+    - { name: _translate_pdf_with_pypdf2, lines: 421-527 }
+    - { name: _translate_pdf_to_pdf, lines: 530-700 }
+    - { name: _run_fitz_render, lines: 707-724 }
+    - { name: _run_reportlab_render, lines: 727-748 }
+    - { name: _dispatch_render, lines: 751-798 }
+    - { name: parse_pdf_to_document, lines: 801-827 }
 
 app/backend/processors/pptx_processor.py:  # 360 lines
   imports:
@@ -965,7 +1001,7 @@ app/backend/services/context_prompts.py:  # 255 lines
     - { name: compute_glossary_match_rate, lines: 201-229 }
     - { name: _get_context_detection_prompt, lines: 248-255 }
 
-app/backend/services/doc_chunker.py:  # 367 lines
+app/backend/services/doc_chunker.py:  # 387 lines
   imports:
     - { module: __future__, items: [annotations], line: 8 }
     - { module: re, items: [], line: 10 }
@@ -978,10 +1014,11 @@ app/backend/services/doc_chunker.py:  # 367 lines
   functions:
     - { name: estimate_tokens, lines: 29-37 }
     - { name: _has_sentence_boundary, lines: 73-75 }
-    - { name: _boundary_priority_at, lines: 86-109 }
-    - { name: _build_overlap_tail, lines: 116-136 }
-    - { name: split_document, lines: 143-324 }
-    - { name: reassemble_document, lines: 331-367 }
+    - { name: _is_structured_table, lines: 86-97 }
+    - { name: _boundary_priority_at, lines: 100-123 }
+    - { name: _build_overlap_tail, lines: 130-150 }
+    - { name: split_document, lines: 157-344 }
+    - { name: reassemble_document, lines: 351-387 }
 
 app/backend/services/job_manager.py:  # 492 lines
   imports:
@@ -1207,7 +1244,7 @@ app/backend/services/translation_cache.py:  # 230 lines
     - { name: _make_key, lines: 26-34 }
     - { name: get_cache, lines: 216-230 }
 
-app/backend/services/translation_service.py:  # 500 lines
+app/backend/services/translation_service.py:  # 627 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: logging, items: [], line: 5 }
@@ -1225,6 +1262,7 @@ app/backend/services/translation_service.py:  # 500 lines
     - { name: _is_traditional_chinese_target, lines: 70-73 }
     - { name: translate_texts, lines: 76-344 }
     - { name: translate_document, lines: 351-500 }
+    - { name: translate_table_cells, lines: 507-627 }
 
 app/backend/services/translation_strategy.py:  # 349 lines
   imports:
@@ -1381,22 +1419,23 @@ app/backend/utils/resource_utils.py:  # 76 lines
     - { name: release_resources, lines: 13-47 }
     - { name: full_shutdown_cleanup, lines: 50-72 }
 
-app/backend/utils/text_utils.py:  # 223 lines
+app/backend/utils/text_utils.py:  # 246 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: re, items: [], line: 5 }
     - { module: typing, items: [Any, List, Optional], line: 6 }
     - { module: app.backend.utils.logging_utils, items: [logger], line: 8 }
   functions:
-    - { name: normalize_text, lines: 23-24 }
-    - { name: has_cjk, lines: 27-29 }
-    - { name: is_cjk_language, lines: 32-49 }
-    - { name: should_translate, lines: 52-110 }
-    - { name: _is_cjk_lang, lines: 113-119 }
-    - { name: _get_pysbd_lang, lines: 122-146 }
-    - { name: split_sentences, lines: 149-190 }
-    - { name: _split_cjk_sentences, lines: 193-209 }
-    - { name: _split_by_punctuation, lines: 212-223 }
+    - { name: is_numeric_cell, lines: 23-43 }
+    - { name: normalize_text, lines: 46-47 }
+    - { name: has_cjk, lines: 50-52 }
+    - { name: is_cjk_language, lines: 55-72 }
+    - { name: should_translate, lines: 75-133 }
+    - { name: _is_cjk_lang, lines: 136-142 }
+    - { name: _get_pysbd_lang, lines: 145-169 }
+    - { name: split_sentences, lines: 172-213 }
+    - { name: _split_cjk_sentences, lines: 216-232 }
+    - { name: _split_by_punctuation, lines: 235-246 }
 
 app/backend/utils/translation_helpers.py:  # 480 lines
   imports:
@@ -3491,6 +3530,71 @@ tests/test_table_border_protection.py:  # 790 lines
         - { name: test_sbs_right_panel_translated_text_present, lines: 769-790 }
   functions:
     - { name: _make_fitz_rect, lines: 45-54 }
+
+tests/test_table_recognizer.py:  # 705 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 17 }
+    - { module: logging, items: [], line: 19 }
+    - { module: dataclasses, items: [dataclass, field], line: 20 }
+    - { module: typing, items: [Any, Dict, List, Optional], line: 21 }
+    - { module: unittest.mock, items: [MagicMock, call, patch], line: 22 }
+    - { module: pytest, items: [], line: 24 }
+    - { module: app.backend.models.translatable_document, items: [], line: 32 }
+    - { module: app.backend.utils.text_utils, items: [], line: 33 }
+    - { module: app.backend.models.translatable_document, items: [BoundingBox, DocumentMetadata, ElementType, PageInfo, TranslatableDocument, TranslatableElement], line: 51 }
+  classes:
+    - name: TestTableStructureIRShape
+      lines: 133-188
+      methods:
+        - { name: test_table_cell_id_format, lines: 136-148 }
+        - { name: test_table_structure_fields_present, lines: 150-166 }
+        - { name: test_table_structure_attached_in_metadata, lines: 168-182 }
+        - { name: test_table_element_without_structure_is_plain_region, lines: 184-188 }
+    - name: TestNumericPassthrough
+      lines: 195-241
+      methods:
+        - { name: test_numeric_predicate_boundaries, lines: 198-208 }
+        - { name: test_digit_only_cell_is_numeric, lines: 210-216 }
+        - { name: test_text_cell_is_not_numeric, lines: 218-225 }
+        - { name: test_mixed_digit_separator_cell_is_numeric, lines: 227-234 }
+        - { name: test_empty_cell_is_not_numeric, lines: 236-241 }
+    - name: TestTableStructureRoundTrip
+      lines: 248-308
+      methods:
+        - { name: test_table_structure_round_trip, lines: 251-284 }
+        - { name: test_old_format_ir_no_table_structure, lines: 286-308 }
+    - name: TestSameTableCellBatching
+      lines: 318-419
+      methods:
+        - { name: test_single_batch_per_table, lines: 321-349 }
+        - { name: test_separate_batches_for_separate_tables, lines: 351-386 }
+        - { name: test_batch_payload_contains_text_cells_not_numeric, lines: 388-419 }
+    - name: TestCellGranularityTranslation
+      lines: 426-502
+      methods:
+        - { name: test_no_flattened_translation_when_structure_available, lines: 429-469 }
+        - { name: test_cell_batch_failure_applies_placeholder, lines: 471-502 }
+    - name: TestNumericPassthroughWiring
+      lines: 509-572
+      methods:
+        - { name: test_numeric_cell_not_sent_to_llm, lines: 512-539 }
+        - { name: test_numeric_cell_content_identical_pre_post_translation, lines: 541-572 }
+    - name: TestModelUnavailableFallback
+      lines: 579-615
+      methods:
+        - { name: test_table_recognizer_unavailable_falls_back, lines: 582-598 }
+        - { name: test_table_recognizer_load_error_falls_back, lines: 600-615 }
+    - name: TestDegenerateTableHandling
+      lines: 622-705
+      methods:
+        - { name: test_all_numeric_table_no_llm_call, lines: 625-655 }
+        - { name: test_all_empty_cells_no_llm_call, lines: 657-683 }
+        - { name: test_merged_cells_treated_as_single_cell, lines: 685-705 }
+  functions:
+    - { name: _make_table_element, lines: 61-74 }
+    - { name: _make_doc, lines: 77-84 }
+    - { name: _make_table_structure, lines: 87-102 }
+    - { name: _make_cell, lines: 105-126 }
 
 tests/test_term_api.py:  # 198 lines
   imports:

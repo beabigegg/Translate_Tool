@@ -121,6 +121,11 @@
   --transition-slow: 350ms ease;
   --transition-bounce: 500ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
+  /* Judge Quality Colors */
+  --color-quality-high: #16a34a;
+  --color-quality-mid: #ca8a04;
+  --color-quality-low: #dc2626;
+
   /* Z-Index Scale */
   --z-dropdown: 1000;
   --z-sticky: 1020;

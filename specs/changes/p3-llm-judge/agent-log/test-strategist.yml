@@ -1,0 +1,13 @@
+agent: test-strategist
+timestamp: 2026-06-22
+status: done
+
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/p3-llm-judge/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_quality_judge.py → app/backend/services/quality_judge.py" }
+  - { type: tdd-pairs, pointer: "tests/test_judge_api.py → app/backend/api/routes.py + schemas.py" }
+  - { type: tdd-pairs, pointer: "tests/test_orchestrator_judge.py → app/backend/services/job_manager.py" }
+  - { type: tdd-pairs, pointer: "tests/test_judge_apply.py → app/backend/services/job_manager.py (apply_judge)" }
+  - { type: tdd-pairs, pointer: "tests/test_job_record_judge.py → app/backend/services/job_manager.py (JudgeResult)" }
+  - { type: coverage-tiers, pointer: "unit, contract, integration, data-boundary" }
+  - { type: mapping-completeness, pointer: "AC-1..AC-10 covered; AC-6 and AC-9 explicitly out of scope (frontend-only)" }

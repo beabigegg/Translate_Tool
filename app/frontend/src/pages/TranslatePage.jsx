@@ -1,4 +1,4 @@
-import React, { useReducer, useState } from 'react';
+import React, { useReducer, useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { StepWizard } from '../components/domain/StepWizard.jsx';
 import { FileDropZone } from '../components/domain/FileDropZone.jsx';
@@ -11,10 +11,11 @@ import { Select } from '../components/ui/Select.jsx';
 import { useJobPolling } from '../hooks/useJobPolling.js';
 import { useLocalStorage } from '../hooks/useLocalStorage.js';
 import { useSettings } from '../contexts/SettingsContext.jsx';
-import { createJob, cancelJob } from '../api/jobs.js';
+import { createJob, cancelJob, getJudge } from '../api/jobs.js';
 import { ALL_LANGUAGES } from '../constants/languages.js';
 import { DEFAULT_SRC_LANG, DEFAULT_PROFILE, HISTORY_MAX_ENTRIES } from '../constants/defaults.js';
 import { LayoutViewer } from '../components/domain/LayoutViewer.jsx';
+import { JudgePanel } from '../components/domain/JudgePanel.jsx';
 
 const STEPS = [
   { id: 'upload', label: '上傳檔案' },
@@ -80,11 +81,19 @@ function reducer(state, action) {
 export default function TranslatePage() {
   const [state, dispatch] = useReducer(reducer, null, makeInitialState);
   const [showLayout, setShowLayout] = useState(false);
+  const [judgeData, setJudgeData] = useState(null);
   const { state: settings } = useSettings();
   const [history, setHistory] = useLocalStorage('translationHistory', []);
 
   const { step, files, selectedTargets, srcLang, selectedProfile, jobMode, enableTermExtraction, pdfOutputFormat, pdfLayoutMode, jobId, jobStatus, loading } = state;
   const isTranslating = jobStatus && !['completed', 'failed', 'cancelled'].includes(jobStatus.status);
+
+  // Fetch judge data once when job reaches completed status
+  useEffect(() => {
+    if (jobStatus?.status === 'completed' && jobId) {
+      getJudge(jobId).then(setJudgeData).catch(() => {});
+    }
+  }, [jobId, jobStatus?.status]);
 
   function handleJobUpdate(data) {
     dispatch({ type: 'SET_JOB_STATUS', payload: data });
@@ -143,6 +152,14 @@ export default function TranslatePage() {
     }
     dispatch({ type: 'SET_STEP', payload: s });
   }
+
+  const handleJudgeApplyRequested = useCallback(() => {
+    // Re-fetch judge data after apply so panel reflects new state;
+    // useJobPolling already updates jobStatus (download_url, judge_apply_status) on its interval.
+    if (jobId) {
+      getJudge(jobId).then(setJudgeData).catch(() => {});
+    }
+  }, [jobId]);
 
   const profileOptions = settings.profiles.map(p => ({ value: p.id, label: `${p.name} — ${p.description}` }));
   const srcLangOptions = [{ value: 'auto', label: '自動偵測' }, ...ALL_LANGUAGES.slice(1).map(l => ({ value: l, label: l }))];
@@ -251,12 +268,19 @@ export default function TranslatePage() {
               )}
             </div>
           )}
+          <JudgePanel
+            judgeData={judgeData}
+            jobId={jobId}
+            judgeApplyStatus={jobStatus?.judge_apply_status}
+            onApplyRequested={handleJudgeApplyRequested}
+          />
+
           <div className="step-actions">
             {isTranslating && <Button variant="danger" onClick={handleCancel}>取消翻譯</Button>}
             {jobStatus?.status === 'completed' && (
               <>
                 {jobStatus.download_url && <a className="btn btn-primary" href={jobStatus.download_url} download>下載譯文</a>}
-                <Button variant="secondary" onClick={() => { dispatch({ type: 'RESET' }); setShowLayout(false); }}>開始新翻譯</Button>
+                <Button variant="secondary" onClick={() => { dispatch({ type: 'RESET' }); setShowLayout(false); setJudgeData(null); }}>開始新翻譯</Button>
               </>
             )}
             {jobStatus?.status === 'failed' && <Button variant="secondary" onClick={() => dispatch({ type: 'RESET' })}>重新開始</Button>}

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "API behavior, compatibility rules, and endpoint contract requirements.",
-    "version": "0.7.0",
+    "version": "0.8.0",
     "description": "- response style: JSON (Pydantic response models); binary endpoints return file streams (FileResponse / StreamingResponse)."
   },
   "paths": {
@@ -637,6 +637,74 @@
         },
         "x-cdd-errors": "400, 422"
       }
+    },
+    "/jobs/{job_id}/judge": {
+      "get": {
+        "summary": "GET /jobs/{job_id}/judge",
+        "responses": {
+          "200": {
+            "description": "Contract response: JobJudgeResponse",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobJudgeResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error response (see contract error format)"
+          }
+        },
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-cdd-errors": "200 (judge_status: available/disabled/unavailable); 404 job not found"
+      }
+    },
+    "/jobs/{job_id}/judge/apply": {
+      "post": {
+        "summary": "POST /jobs/{job_id}/judge/apply",
+        "responses": {
+          "201": {
+            "description": "Contract response: JobJudgeApplyResponse",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobJudgeApplyResponse"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Error response (see contract error format)"
+          },
+          "404": {
+            "description": "Error response (see contract error format)"
+          },
+          "409": {
+            "description": "Error response (see contract error format)"
+          }
+        },
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-cdd-errors": "202 applying; 404 job not found; 409 preconditions not met"
+      }
     }
   },
   "x-cdd-generated-from": "contracts/api/api-contract.md",
@@ -848,6 +916,19 @@
           "audit_hit_rate": {
             "type": "number",
             "description": "terminology audit hit rate 0.0-1.0; null when audit did not run or mode==extraction_only; see BR-59"
+          },
+          "judge_score": {
+            "type": "string",
+            "enum": [
+              "低",
+              "中",
+              "高"
+            ],
+            "description": "latest judge score tier; null when judge has not run, is disabled, or is unavailable; for list/summary views; see BR-72"
+          },
+          "judge_apply_status": {
+            "type": "string",
+            "description": "apply operation lifecycle: applying, applied, failed, or null when apply not yet triggered; see BR-76, BR-77"
           },
           "download_url": {
             "type": "string",
@@ -1363,6 +1444,69 @@
         "required": [
           "file",
           "target_language"
+        ]
+      },
+      "JobJudgeResponse": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "description": ":job identifier"
+          },
+          "judge_status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "disabled",
+              "unavailable"
+            ],
+            "description": ":available — judge ran and results ready; disabled — JUDGE_ENABLED=false; unavailable — Gemma unreachable or exception"
+          },
+          "score": {
+            "type": "string",
+            "enum": [
+              "低",
+              "中",
+              "高"
+            ],
+            "description": ":quality score tier; null unless judge_status=available"
+          },
+          "source_text": {
+            "type": "string",
+            "description": ":representative joined source text scored by judge; null unless judge_status=available"
+          },
+          "translated_text": {
+            "type": "string",
+            "description": ":final translated text after all judge iterations; display-only joined view (see BR-75); null unless judge_status=available"
+          },
+          "feedback": {
+            "type": "string",
+            "description": ":judge natural-language quality feedback; null unless judge_status=available"
+          },
+          "attempts": {
+            "type": "integer",
+            "description": ":number of judge-loop iterations (1–JUDGE_MAX_ITERATIONS); null unless judge_status=available"
+          },
+          "model": {
+            "type": "string",
+            "description": ":Ollama model name used for judging (JUDGE_MODEL value); null unless judge_status=available"
+          }
+        },
+        "required": [
+          "job_id",
+          "judge_status"
+        ]
+      },
+      "JobJudgeApplyResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": ":always 'applying' on HTTP 202"
+          }
+        },
+        "required": [
+          "status"
         ]
       }
     }

@@ -1,0 +1,24 @@
+agent: visual-reviewer
+change-id: p3-llm-judge
+timestamp: 2026-06-22
+status: done
+decision: approved-with-fix
+summary: >
+  CSS contract compliance review for JudgePanel, JudgeApplyDialog, tokens.css.
+  1 minor issue (bare integer maxWidth: 560) fixed by frontend-engineer.
+  All other dimensions pass.
+artifacts:
+  - type: passed
+    pointer: "No hardcoded hex in components — all colors via var(--color-quality-*)"
+  - type: passed
+    pointer: "tokens.css: --color-quality-high/mid/low defined with correct color families"
+  - type: passed
+    pointer: "z-index: var(--z-modal) used in JudgeApplyDialog (not hardcoded)"
+  - type: passed
+    pointer: "No global CSS leakage"
+  - type: passed
+    pointer: "Clean absence: JudgePanel returns null when judge_status != available"
+  - type: passed
+    pointer: "Color token alignment: green/amber/red families match contract spec"
+  - type: fixed
+    pointer: "JudgeApplyDialog.jsx maxWidth: 560 → min(560px, calc(100vw - var(--space-8, 2rem)))"

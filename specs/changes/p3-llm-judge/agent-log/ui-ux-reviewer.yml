@@ -1,0 +1,30 @@
+agent: ui-ux-reviewer
+change-id: p3-llm-judge
+timestamp: 2026-06-22
+status: changes-required
+decision: approved-after-fixes
+summary: >
+  Reviewed JudgePanel, JudgeApplyDialog, TranslatePage integration. 2 blocking
+  issues found and fixed; 5 minor/low suggestions (not blocking for Tier 2).
+  Decision: approved after fixes applied by frontend-engineer.
+artifacts:
+  - type: blocking-issues-fixed
+    pointer: "JudgeApplyDialog.jsx: added Escape key handler + focus trap (WCAG 2.1 SC 2.1.2/2.4.3)"
+  - type: blocking-issues-fixed
+    pointer: "TranslatePage.jsx: replaced no-op onApplyRequested with handleJudgeApplyRequested (refreshes judgeData after apply)"
+  - type: passed
+    pointer: "Visibility rule: JudgePanel returns null for non-available states"
+  - type: passed
+    pointer: "Destructive warning: role=alert + explicit no-backup copy"
+  - type: passed
+    pointer: "Token compliance: all colors via var(--color-quality-*)"
+  - type: passed
+    pointer: "Retry affordance: failed state re-enables button with retry label"
+  - type: passed
+    pointer: "Defensive rendering: source_text/translated_text conditionally rendered"
+  - type: observation
+    pointer: "Score badge 高/中/低 has no legend — medium suggestion; not blocking Tier 2"
+  - type: observation
+    pointer: "Confirm button inside dialog has no in-dialog loading state (double-click risk) — medium; not blocking"
+  - type: observation
+    pointer: "applyError not cleared on dialog re-open — medium; not blocking"

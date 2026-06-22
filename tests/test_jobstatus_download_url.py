@@ -45,6 +45,8 @@ def _make_job(
     job.provider = provider
     job.quality = None
     job.audit = None
+    job.judge = None
+    job.judge_apply_status = None
     job.lock = threading.Lock()
     return job
 

@@ -3,8 +3,8 @@ contract: env
 summary: Environment variable inventory, secret handling, and deployment sync policy.
 owner: platform-team
 surface: runtime-config
-schema-version: 0.9.0
-last-changed: 2026-06-20
+schema-version: 0.10.0
+last-changed: 2026-06-22
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -40,6 +40,9 @@ breaking-change-policy: deprecate-2-minors
 | TERM_EMBEDDING_MODEL | backend | all | no | no | Qwen3-Embedding-8B | Qwen3-Embedding-8B | application-team | non-empty string | yes | Embedding model name on the PANJIT endpoint used to vectorise source segments for term DB lookup. See BR-62. |
 | TERM_EMBEDDING_THRESHOLD | backend | all | no | no | 0.75 | 0.75 | application-team | float in (0.0, 1.0] | yes | Cosine similarity cutoff for a DB hit; values ≥ threshold inject without extraction call. Default: 0.75. See BR-62. |
 | TERM_EXTRACTION_MODEL | backend | all | no | no | gemma4:latest | gemma4:latest | application-team | non-empty string | yes | LLM model name on the PANJIT endpoint used for term extraction on DB miss. See BR-62. |
+| JUDGE_ENABLED | backend | all | no | no | false | false | application-team | boolean (true/false or 1/0) | yes | When false (or 0), judge step is skipped entirely; GET /jobs/{id}/judge returns status: "disabled". Opt-in by default — set to true to enable Gemma judge pass. See BR-74. |
+| JUDGE_MODEL | backend | all | no | no | gemma3 | gemma3 | application-team | non-empty string | no | Ollama model name for the LLM judge. Used only when JUDGE_ENABLED=true. Must be a model pulled locally via Ollama (never routed through cloud providers). See BR-72, D4 in design.md. |
+| JUDGE_MAX_ITERATIONS | backend | all | no | no | 3 | 3 | application-team | positive integer | no | Maximum re-translation iterations in the judge loop per job. Loop terminates at this count even if score never reaches 高. See BR-73. |
 
 ## Public Frontend Env Policy
 

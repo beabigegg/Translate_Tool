@@ -1,0 +1,1 @@
+pytest tests/ -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p3-llm-judge/test-runs/20260622-162711/junit.xml' -ra

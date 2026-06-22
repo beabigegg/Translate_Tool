@@ -1,0 +1,21 @@
+agent: qa-reviewer
+change-id: p3-llm-judge
+timestamp: 2026-06-22
+status: done
+decision: approved
+summary: >
+  All substantive QA checks passed. 1 process blocker found (test-evidence.yml
+  final-status: failed due to conda env not activated for collect phase) and
+  resolved by re-running test ladder under conda env. Final test-evidence.yml:
+  collect/targeted/changed-area all passed.
+artifacts:
+  - type: gate-results
+    pointer: "validate-contracts: pass, openapi-sync: pass, judge-tests(40): pass, full-suite(872 passed 4 skipped): pass"
+  - type: wiring-verified
+    pointer: "block_overrides in all 4 processors (grep confirmed); orchestrator threads to all 4 call sites"
+  - type: degradation-verified
+    pointer: "quality_judge.run_judge_loop wraps _run_judge_loop_impl in try/except → unavailable; evaluate() guarded"
+  - type: preconditions-verified
+    pointer: "POST /judge/apply: 5 distinct 409 conditions + 202 idempotent-while-applying"
+  - type: test-evidence-final
+    pointer: "specs/changes/p3-llm-judge/test-evidence.yml — final-status: passed"

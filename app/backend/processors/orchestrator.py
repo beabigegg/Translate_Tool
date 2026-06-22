@@ -359,6 +359,7 @@ def process_files(
     provider_id: Optional[str] = None,
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
     output_mode: str = "append",
+    block_overrides: Optional[Dict[str, str]] = None,
 ) -> Tuple[int, int, bool, Optional[OllamaClient], Dict, Optional[str]]:
     """Process files for translation.
 
@@ -693,6 +694,7 @@ def process_files(
                     post_translate_hook=post_translate_hook,
                     terms_getter=lambda: list(_glossary_terms_holder),
                     output_mode=effective_output_mode,
+                    block_overrides=block_overrides,
                 )
             elif ext == ".doc":
                 tmp_docx = str(output_dir / f"{src.stem}__tmp.docx")
@@ -725,6 +727,7 @@ def process_files(
                         post_translate_hook=post_translate_hook,
                         terms_getter=lambda: list(_glossary_terms_holder),
                         output_mode=effective_output_mode,
+                        block_overrides=block_overrides,
                     )
                 finally:
                     try:
@@ -745,6 +748,7 @@ def process_files(
                     post_translate_hook=post_translate_hook,
                     terms_getter=lambda: list(_glossary_terms_holder),
                     output_mode=effective_output_mode,
+                    block_overrides=block_overrides,
                 )
             elif ext in (".xlsx", ".xls"):
                 stopped = translate_xlsx_xls(
@@ -759,6 +763,7 @@ def process_files(
                     pre_translate_hook=_phase0_hook,
                     post_translate_hook=post_translate_hook,
                     terms_getter=lambda: list(_glossary_terms_holder),
+                    block_overrides=block_overrides,
                 )
             elif ext == ".pdf":
                 log(f"[PDF] Using output_format={output_format}, layout_mode={layout_mode}")
@@ -775,6 +780,7 @@ def process_files(
                     layout_mode=layout_mode,
                     pre_translate_hook=_phase0_hook,
                     post_translate_hook=post_translate_hook,
+                    block_overrides=block_overrides,
                 )
             else:
                 log(f"[SKIP] Unsupported file: {src.name}")

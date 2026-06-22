@@ -1,0 +1,35 @@
+agent: backend-engineer
+status: done
+artifacts:
+  - { type: files-changed, pointer: "app/backend/config.py: +3 constants (JUDGE_ENABLED, JUDGE_MODEL, JUDGE_MAX_ITERATIONS)" }
+  - { type: files-changed, pointer: "app/backend/services/quality_judge.py: new file — QualityJudge class with _parse_score, evaluate, run_judge_loop, _run_judge_loop_impl" }
+  - { type: files-changed, pointer: "app/backend/services/job_manager.py: JudgeResult dataclass, JobRecord.judge/judge_apply_status fields, judge hook in _run_job, apply_judge worker" }
+  - { type: files-changed, pointer: "app/backend/processors/orchestrator.py: block_overrides param threaded to all 4 processor call sites" }
+  - { type: files-changed, pointer: "app/backend/processors/docx_processor.py: block_overrides seam with docx:{stem}:{idx} key format" }
+  - { type: files-changed, pointer: "app/backend/processors/pptx_processor.py: block_overrides seam with pptx:{stem}:{idx} key format" }
+  - { type: files-changed, pointer: "app/backend/processors/xlsx_processor.py: block_overrides seam with {ext}:{stem}:{idx} key format" }
+  - { type: files-changed, pointer: "app/backend/processors/pdf_processor.py: block_overrides threaded through all 3 sub-functions and COM path" }
+  - { type: files-changed, pointer: "app/backend/api/schemas.py: JobJudgeResponse, JobJudgeApplyResponse, judge_score/judge_apply_status added to JobStatus" }
+  - { type: files-changed, pointer: "app/backend/api/routes.py: GET /jobs/{id}/judge, POST /jobs/{id}/judge/apply endpoints; job_status includes judge fields" }
+  - { type: files-changed, pointer: "contracts/api/openapi.yml: regenerated via cdd-kit openapi export" }
+  - { type: tests-added, pointer: "tests/test_quality_judge.py: 17 unit tests (score parse, loop cap, iteration count, D4 Ollama-only, AC-1..AC-4)" }
+  - { type: tests-added, pointer: "tests/test_judge_api.py: 10 contract tests (GET /judge shapes, POST /apply preconditions BR-76, idempotency BR-77)" }
+  - { type: tests-added, pointer: "tests/test_orchestrator_judge.py: 6 integration tests (hook fires for docx/pptx/xlsx/pdf, QE coexistence AC-8)" }
+  - { type: tests-added, pointer: "tests/test_judge_apply.py: 4 integration tests (daemon dispatch, 'applied' transition, fail-soft, idempotency)" }
+  - { type: tests-added, pointer: "tests/test_job_record_judge.py: 3 data-boundary tests (JudgeResult fields match contract, defaults, JobRecord fields)" }
+  - { type: test-output, pointer: "40 passed, 1 warning in 1.00s" }
+  - { type: contracts-touched, pointer: "contracts/api/openapi.yml regenerated; contracts/api/api-contract.md was updated by contract-reviewer agent" }
+notes: |
+  Key wiring decisions:
+  - QE_ENABLED bound at module level in job_manager → patch as job_manager.QE_ENABLED (not config.QE_ENABLED)
+  - JUDGE_ENABLED accessed via config.JUDGE_ENABLED in _run_job → patch as job_manager.config.JUDGE_ENABLED
+  - JobManager.jobs (not _jobs) is the public OrderedDict store
+  - quality_judge imports JudgeResult lazily from job_manager to avoid circular import
+  - OllamaClient used via _build_no_system_payload + _call_ollama (no generate() method)
+  - apply_judge requires at least one file in input_dir before calling process_files
+  Post-agent regression fixes (main Claude):
+  - tests/test_jobstatus_download_url.py _make_job: added job.judge=None + job.judge_apply_status=None
+    (MagicMock auto-attribute would produce MagicMock instead of None → Pydantic Optional[str] rejected it)
+  - tests/test_orchestrator_phase0.py _fake_translate_docx: added block_overrides=None kwarg
+    (orchestrator now passes block_overrides= to translate_docx; stub TypeError caused _phase0_hook to never fire)
+  Full suite after fixes: 872 passed, 4 skipped.

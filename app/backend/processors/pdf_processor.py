@@ -11,7 +11,7 @@ import logging
 import os
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, List, Optional
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional
 
 import docx
 from PyPDF2 import PdfReader
@@ -73,6 +73,7 @@ def translate_pdf(
     draw_mask: Optional[bool] = None,
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
+    block_overrides: Optional[Dict[str, str]] = None,
 ) -> bool:
     """Translate a PDF file.
 
@@ -120,6 +121,7 @@ def translate_pdf(
             draw_mask,
             pre_translate_hook=pre_translate_hook,
             post_translate_hook=post_translate_hook,
+            block_overrides=block_overrides,
         )
 
     # Try Windows COM conversion first (highest quality)
@@ -127,7 +129,8 @@ def translate_pdf(
     if is_win32com_available():
         try:
             word_convert(in_path, temp_docx, 16)
-            stopped = translate_docx(
+            from app.backend.processors.docx_processor import translate_docx as _translate_docx
+            stopped = _translate_docx(
                 temp_docx,
                 out_path,
                 targets,
@@ -138,6 +141,7 @@ def translate_pdf(
                 log=log,
                 pre_translate_hook=pre_translate_hook,
                 post_translate_hook=post_translate_hook,
+                block_overrides=block_overrides,
             )
             try:
                 os.remove(temp_docx)
@@ -163,6 +167,7 @@ def translate_pdf(
             skip_header_footer,
             pre_translate_hook=pre_translate_hook,
             post_translate_hook=post_translate_hook,
+            block_overrides=block_overrides,
         )
     else:
         return _translate_pdf_with_pypdf2(
@@ -175,6 +180,7 @@ def translate_pdf(
             log,
             pre_translate_hook=pre_translate_hook,
             post_translate_hook=post_translate_hook,
+            block_overrides=block_overrides,
         )
 
 
@@ -189,6 +195,7 @@ def _translate_pdf_with_pymupdf(
     skip_header_footer: Optional[bool],
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
+    block_overrides: Optional[Dict[str, str]] = None,
 ) -> bool:
     """Translate PDF using PyMuPDF parser with bbox support.
 
@@ -307,49 +314,63 @@ def _translate_pdf_with_pymupdf(
         stopped = False
         translations_by_target = {}
 
-        # Cell-batch seam for structured tables (runs before flatten batch)
-        if structured_table_elems:
-            try:
-                from app.backend.services.translation_service import translate_table_cells
-                for elem in structured_table_elems:
-                    if stop_flag and stop_flag.is_set():
-                        break
-                    translate_table_cells(
-                        element=elem,
-                        targets=targets,
-                        src_lang=src_lang,
-                        client=client,
-                        stop_flag=stop_flag,
-                        log=log,
+        # p3-llm-judge: block_overrides seam — when provided, build translations_by_target
+        # from the stored per-block map instead of calling the LLM (D7).
+        _file_stem = os.path.splitext(os.path.basename(in_path))[0]
+        if block_overrides is not None:
+            for tgt in targets:
+                translations_by_target[tgt] = {}
+                for idx, src_text in enumerate(unique_texts):
+                    block_id = f"pdf:{_file_stem}:{idx}"
+                    if block_id in block_overrides:
+                        translations_by_target[tgt][src_text] = block_overrides[block_id]
+                    else:
+                        translations_by_target[tgt][src_text] = src_text
+            log(f"[PDF] block_overrides applied: {len(block_overrides)} overrides, {len(unique_texts)} unique texts")
+        else:
+            # Cell-batch seam for structured tables (runs before flatten batch)
+            if structured_table_elems:
+                try:
+                    from app.backend.services.translation_service import translate_table_cells
+                    for elem in structured_table_elems:
+                        if stop_flag and stop_flag.is_set():
+                            break
+                        translate_table_cells(
+                            element=elem,
+                            targets=targets,
+                            src_lang=src_lang,
+                            client=client,
+                            stop_flag=stop_flag,
+                            log=log,
+                        )
+                except Exception as exc:
+                    logger.warning(
+                        "[PDF] cell-batch seam raised %s; structured tables will fall back to flatten path.",
+                        exc,
                     )
-            except Exception as exc:
-                logger.warning(
-                    "[PDF] cell-batch seam raised %s; structured tables will fall back to flatten path.",
-                    exc,
+                    # Fall back: add them to the flatten path
+                    for e in structured_table_elems:
+                        if e.content.strip() and e.content.strip() not in set(unique_texts):
+                            unique_texts.append(e.content.strip())
+                    structured_table_elems = []
+
+            for tgt in targets:
+                if stop_flag and stop_flag.is_set():
+                    log(f"[STOP] PDF stopped before translating to {tgt}")
+                    stopped = True
+                    break
+
+                log(f"[PDF] Batch translating to {tgt}...")
+                results = translate_blocks_batch(
+                    unique_texts, tgt, src_lang, client, log=log
                 )
-                # Fall back: add them to the flatten path
-                for e in structured_table_elems:
-                    if e.content.strip() and e.content.strip() not in set(unique_texts):
-                        unique_texts.append(e.content.strip())
-                structured_table_elems = []
-
-        for tgt in targets:
-            if stop_flag and stop_flag.is_set():
-                log(f"[STOP] PDF stopped before translating to {tgt}")
-                stopped = True
-                break
-
-            log(f"[PDF] Batch translating to {tgt}...")
-            results = translate_blocks_batch(
-                unique_texts, tgt, src_lang, client, log=log
-            )
-            translations_by_target[tgt] = {
-                text: (translated if ok else f"[Translation failed|{tgt}] {text}")
-                for text, (ok, translated) in zip(unique_texts, results)
-            }
-            if not (stop_flag and stop_flag.is_set()):
-                from app.backend.utils.translation_verification import verify_and_fill_dict
-                verify_and_fill_dict(translations_by_target[tgt], tgt, client, src_lang, stop_flag=stop_flag, log=log)
+                translations_by_target[tgt] = {
+                    text: (translated if ok else f"[Translation failed|{tgt}] {text}")
+                    for text, (ok, translated) in zip(unique_texts, results)
+                }
+                if not (stop_flag and stop_flag.is_set()):
+                    from app.backend.utils.translation_verification import verify_and_fill_dict
+                    verify_and_fill_dict(translations_by_target[tgt], tgt, client, src_lang, stop_flag=stop_flag, log=log)
 
         # Create output document
         output_doc = docx.Document()
@@ -415,6 +436,7 @@ def _translate_pdf_with_pymupdf(
         return _translate_pdf_with_pypdf2(
             in_path, out_path, targets, src_lang, client, stop_flag, log,
             post_translate_hook=post_translate_hook,
+            block_overrides=block_overrides,
         )
 
 
@@ -428,6 +450,7 @@ def _translate_pdf_with_pypdf2(
     log: Callable[[str], None],
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
+    block_overrides: Optional[Dict[str, str]] = None,
 ) -> bool:
     """Translate PDF using PyPDF2 (fallback method).
 
@@ -467,25 +490,38 @@ def _translate_pdf_with_pypdf2(
         if pre_translate_hook:
             pre_translate_hook(unique_texts)
 
-        # Batch translate for each target language
+        # p3-llm-judge: block_overrides seam
+        _pypdf2_stem = os.path.splitext(os.path.basename(in_path))[0]
         translations_by_target = {}
-        for tgt in targets:
-            if stop_flag and stop_flag.is_set():
-                log(f"[STOP] PDF stopped before translating to {tgt}")
-                stopped = True
-                break
+        if block_overrides is not None:
+            for tgt in targets:
+                translations_by_target[tgt] = {}
+                for idx, src_text in enumerate(unique_texts):
+                    block_id = f"pdf:{_pypdf2_stem}:{idx}"
+                    if block_id in block_overrides:
+                        translations_by_target[tgt][src_text] = block_overrides[block_id]
+                    else:
+                        translations_by_target[tgt][src_text] = src_text
+            log(f"[PDF/PyPDF2] block_overrides applied: {len(block_overrides)} overrides")
+        else:
+            # Batch translate for each target language
+            for tgt in targets:
+                if stop_flag and stop_flag.is_set():
+                    log(f"[STOP] PDF stopped before translating to {tgt}")
+                    stopped = True
+                    break
 
-            log(f"[PDF] Batch translating to {tgt}...")
-            results = translate_blocks_batch(
-                unique_texts, tgt, src_lang, client, log=log
-            )
-            translations_by_target[tgt] = {
-                text: (translated if ok else f"[Translation failed|{tgt}] {text}")
-                for text, (ok, translated) in zip(unique_texts, results)
-            }
-            if not (stop_flag and stop_flag.is_set()):
-                from app.backend.utils.translation_verification import verify_and_fill_dict
-                verify_and_fill_dict(translations_by_target[tgt], tgt, client, src_lang, stop_flag=stop_flag, log=log)
+                log(f"[PDF] Batch translating to {tgt}...")
+                results = translate_blocks_batch(
+                    unique_texts, tgt, src_lang, client, log=log
+                )
+                translations_by_target[tgt] = {
+                    text: (translated if ok else f"[Translation failed|{tgt}] {text}")
+                    for text, (ok, translated) in zip(unique_texts, results)
+                }
+                if not (stop_flag and stop_flag.is_set()):
+                    from app.backend.utils.translation_verification import verify_and_fill_dict
+                    verify_and_fill_dict(translations_by_target[tgt], tgt, client, src_lang, stop_flag=stop_flag, log=log)
 
         # Build output document
         for page_num, text in page_texts:
@@ -540,6 +576,7 @@ def _translate_pdf_to_pdf(
     draw_mask: Optional[bool] = None,
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
+    block_overrides: Optional[Dict[str, str]] = None,
 ) -> bool:
     """Translate PDF to PDF with layout preservation.
 
@@ -615,6 +652,9 @@ def _translate_pdf_to_pdf(
         stopped = False
         output_files = []
 
+        # p3-llm-judge: block_overrides seam
+        _pdf2pdf_stem = os.path.splitext(os.path.basename(in_path))[0]
+
         # Generate PDF for each target language
         if len(targets) > 1:
             log(f"[PDF] Generating {len(targets)} PDF files for languages: {', '.join(targets)}")
@@ -634,27 +674,39 @@ def _translate_pdf_to_pdf(
             else:
                 lang_out_path = out_path
 
-            # Translate texts for this language
-            log(f"[PDF] [{tgt_idx + 1}/{len(targets)}] Translating to {tgt}...")
-            results = translate_blocks_batch(
-                unique_texts, tgt, src_lang, client, log=log
-            )
+            # p3-llm-judge: use override map if provided
+            if block_overrides is not None:
+                translations = {}
+                for idx, src_text in enumerate(unique_texts):
+                    block_id = f"pdf:{_pdf2pdf_stem}:{idx}"
+                    if block_id in block_overrides:
+                        translations[src_text] = block_overrides[block_id]
+                    else:
+                        translations[src_text] = src_text
+                log(f"[PDF/pdf2pdf] block_overrides applied: {len(block_overrides)} overrides")
+                missing_count = 0
+            else:
+                # Translate texts for this language
+                log(f"[PDF] [{tgt_idx + 1}/{len(targets)}] Translating to {tgt}...")
+                results = translate_blocks_batch(
+                    unique_texts, tgt, src_lang, client, log=log
+                )
 
-            # Build text -> translation mapping
-            translations = {}
-            missing_count = 0
-            for text, (ok, translated) in zip(unique_texts, results):
-                if ok:
-                    translations[text] = translated
-                else:
-                    translations[text] = f"[翻譯失敗] {text[:30]}..."
-                    missing_count += 1
+                # Build text -> translation mapping
+                translations = {}
+                missing_count = 0
+                for text, (ok, translated) in zip(unique_texts, results):
+                    if ok:
+                        translations[text] = translated
+                    else:
+                        translations[text] = f"[翻譯失敗] {text[:30]}..."
+                        missing_count += 1
 
-            if missing_count > 0:
-                log(f"[PDF] Warning: {missing_count} texts failed to translate to {tgt}")
-                if not (stop_flag and stop_flag.is_set()):
-                    from app.backend.utils.translation_verification import verify_and_fill_dict
-                    verify_and_fill_dict(translations, tgt, client, src_lang, stop_flag=stop_flag, log=log)
+                if missing_count > 0:
+                    log(f"[PDF] Warning: {missing_count} texts failed to translate to {tgt}")
+                    if not (stop_flag and stop_flag.is_set()):
+                        from app.backend.utils.translation_verification import verify_and_fill_dict
+                        verify_and_fill_dict(translations, tgt, client, src_lang, stop_flag=stop_flag, log=log)
 
             if post_translate_hook is not None:
                 tuples: List[Tuple[str, str, str]] = []

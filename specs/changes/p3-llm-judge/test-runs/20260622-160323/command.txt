@@ -1,0 +1,1 @@
+conda run -n translate-tool python -m pytest --collect-only -q tests/test_quality_judge.py tests/test_judge_api.py tests/test_orchestrator_judge.py tests/test_judge_apply.py tests/test_job_record_judge.py

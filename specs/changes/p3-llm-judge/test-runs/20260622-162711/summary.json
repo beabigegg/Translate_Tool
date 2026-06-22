@@ -1,0 +1,16 @@
+{
+  "change_id": "p3-llm-judge",
+  "phase": "changed-area",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest tests/ -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p3-llm-judge/test-runs/20260622-162711/junit.xml' -ra",
+  "duration_ms": 22892,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p3-llm-judge/test-runs/20260622-162711/summary.json",
+    "stdout": "specs/changes/p3-llm-judge/test-runs/20260622-162711/stdout.log",
+    "stderr": "specs/changes/p3-llm-judge/test-runs/20260622-162711/stderr.log",
+    "junit": "specs/changes/p3-llm-judge/test-runs/20260622-162711/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

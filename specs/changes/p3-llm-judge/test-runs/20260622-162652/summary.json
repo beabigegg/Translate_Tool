@@ -1,0 +1,16 @@
+{
+  "change_id": "p3-llm-judge",
+  "phase": "collect",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest --collect-only -q tests/test_quality_judge.py tests/test_judge_api.py tests/test_orchestrator_judge.py tests/test_judge_apply.py tests/test_job_record_judge.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p3-llm-judge/test-runs/20260622-162652/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 401,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p3-llm-judge/test-runs/20260622-162652/summary.json",
+    "stdout": "specs/changes/p3-llm-judge/test-runs/20260622-162652/stdout.log",
+    "stderr": "specs/changes/p3-llm-judge/test-runs/20260622-162652/stderr.log",
+    "junit": "specs/changes/p3-llm-judge/test-runs/20260622-162652/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

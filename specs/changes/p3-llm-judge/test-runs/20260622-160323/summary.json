@@ -1,0 +1,15 @@
+{
+  "change_id": "p3-llm-judge",
+  "phase": "collect",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "conda run -n translate-tool python -m pytest --collect-only -q tests/test_quality_judge.py tests/test_judge_api.py tests/test_orchestrator_judge.py tests/test_judge_apply.py tests/test_job_record_judge.py",
+  "duration_ms": 1658,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/p3-llm-judge/test-runs/20260622-160323/summary.json",
+    "stdout": "specs/changes/p3-llm-judge/test-runs/20260622-160323/stdout.log",
+    "stderr": "specs/changes/p3-llm-judge/test-runs/20260622-160323/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

@@ -1,6 +1,6 @@
 # Contract-driven gates
 # Tier semantics: ci/gate-policy.md
-# Active change gates: none (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection, p2-prompt-fewshot-glossary, p2-long-doc-chunking, p2-comet-qe, p2-term-audit, download-url-in-jobstatus, remove-cross-model-refinement, fallback-chain-cloud-providers, term-extraction-db-first, settings-page-cloud-redesign, p3-docx-replace-mode, p3-table-structure)
+# Active change gates: p3-llm-judge (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection, p2-prompt-fewshot-glossary, p2-long-doc-chunking, p2-comet-qe, p2-term-audit, download-url-in-jobstatus, remove-cross-model-refinement, fallback-chain-cloud-providers, term-extraction-db-first, settings-page-cloud-redesign, p3-docx-replace-mode, p3-table-structure)
 
 name: contract-driven-gates
 
@@ -44,7 +44,7 @@ jobs:
         run: cdd-kit validate --contracts
 
       - name: Change gate (Tier 1 — blocks merge)
-        run: echo "No active change gates — all changes archived."
+        run: cdd-kit gate p3-llm-judge
 
       - name: OpenAPI sync gate
         run: cdd-kit openapi export --check --out contracts/api/openapi.yml
@@ -62,6 +62,23 @@ jobs:
             { echo "TERM_EMBEDDING_* missing from .env.example.template"; exit 1; }
           grep -q "TERM_EMBEDDING_MODEL\|TERM_EMBEDDING_THRESHOLD\|TERM_EXTRACTION_MODEL" contracts/env/env.schema.json || \
             { echo "TERM_EMBEDDING_* missing from env.schema.json"; exit 1; }
+
+      - name: Env schema sync — JUDGE vars in .env.example.template and env.schema.json (Tier 1 — blocks merge)
+        # AC-4 (p3-llm-judge): JUDGE_ENABLED, JUDGE_MODEL, JUDGE_MAX_ITERATIONS must be present in both deployment sync artefacts.
+        # Deployment Sync Policy: contracts/env/env-contract.md §Deployment Sync Policy
+        run: |
+          grep -q "JUDGE_ENABLED" contracts/env/.env.example.template || \
+            { echo "JUDGE_ENABLED missing from .env.example.template"; exit 1; }
+          grep -q "JUDGE_ENABLED" contracts/env/env.schema.json || \
+            { echo "JUDGE_ENABLED missing from env.schema.json"; exit 1; }
+          grep -q "JUDGE_MODEL" contracts/env/.env.example.template || \
+            { echo "JUDGE_MODEL missing from .env.example.template"; exit 1; }
+          grep -q "JUDGE_MODEL" contracts/env/env.schema.json || \
+            { echo "JUDGE_MODEL missing from env.schema.json"; exit 1; }
+          grep -q "JUDGE_MAX_ITERATIONS" contracts/env/.env.example.template || \
+            { echo "JUDGE_MAX_ITERATIONS missing from .env.example.template"; exit 1; }
+          grep -q "JUDGE_MAX_ITERATIONS" contracts/env/env.schema.json || \
+            { echo "JUDGE_MAX_ITERATIONS missing from env.schema.json"; exit 1; }
 
       - name: Dead-import assertion — no vector-DB packages in term_extractor.py (Tier 1 — blocks merge)
         # AC-6: only in-process NumPy cosine is permitted; no pgvector/chromadb/faiss/hnswlib.
@@ -92,6 +109,21 @@ jobs:
         # and data-boundary (model unavailable, degenerate tables) test families.
         # See test-plan.md (p3-table-structure) for the full AC → test mapping.
         run: pytest tests/test_table_recognizer.py -x -q --tb=short
+
+      - name: Targeted tests — quality_judge + judge_api + orchestrator_judge + judge_apply + job_record_judge (Tier 1 — blocks merge)
+        # AC-1..AC-5, AC-7, AC-8, AC-10: fast-fail before full suite.
+        # Covers unit (score parsing, iteration cap, graceful degradation), contract (GET /judge + POST /apply
+        # shapes/codes), integration (hook wires to all 4 formats, QE/CRITIQUE_LOOP coexistence, temp-swap),
+        # and data-boundary (JobRecord serialization, apply status transitions) test families.
+        # See test-plan.md (p3-llm-judge) for the full AC → test mapping.
+        run: >
+          pytest
+          tests/test_quality_judge.py
+          tests/test_judge_api.py
+          tests/test_orchestrator_judge.py
+          tests/test_judge_apply.py
+          tests/test_job_record_judge.py
+          -x -q --tb=short
 
       - name: Unit, contract, integration, resilience, data-boundary tests (Tier 1 — blocks merge)
         run: pytest tests/ -x -q --tb=short --junitxml=test-results/junit.xml

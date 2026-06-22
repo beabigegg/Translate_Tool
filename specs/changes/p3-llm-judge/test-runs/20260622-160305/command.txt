@@ -1,0 +1,1 @@
+python -m pytest --collect-only -q tests/test_quality_judge.py tests/test_judge_api.py tests/test_orchestrator_judge.py tests/test_judge_apply.py tests/test_job_record_judge.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p3-llm-judge/test-runs/20260622-160305/junit.xml' --maxfail=1 --tb=short -ra

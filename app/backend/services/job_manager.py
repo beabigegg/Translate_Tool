@@ -20,12 +20,15 @@ from app.backend.config import (
     DEFAULT_MODEL,
     JOB_TTL_HOURS,
     JOBS_DIR,
+    JUDGE_ENABLED,
+    JUDGE_MODEL,
     MAX_JOBS_IN_MEMORY,
     QE_DEVICE,
     QE_ENABLED,
     QE_MODEL_NAME,
     TimeoutConfig,
 )
+import app.backend.config as config
 from app.backend.processors.orchestrator import process_files
 from app.backend.services.model_router import RouteGroup
 from app.backend.services.quality_evaluator import load_model, score_blocks
@@ -57,6 +60,23 @@ class JobQualityRecord:
 
 
 @dataclass
+class JudgeResult:
+    """In-memory judge result attached to a completed job (p3-llm-judge).
+
+    judge_status mirrors the HTTP status enum: available | disabled | unavailable.
+    """
+    job_id: str
+    judge_status: str  # available | disabled | unavailable
+    score: Optional[str] = None           # 高 | 中 | 低; null unless judge_status = available
+    source_text: Optional[str] = None     # representative joined source text
+    translated_text: Optional[str] = None # display-only joined final translation
+    feedback: Optional[str] = None        # judge natural-language feedback
+    attempts: int = 0                     # total judge-loop iterations performed
+    model: Optional[str] = None          # JUDGE_MODEL used for this pass
+    retranslated_blocks: Optional[Dict[str, str]] = None  # {block_id: retranslated_text}
+
+
+@dataclass
 class JobRecord:
     job_id: str
     input_dir: Path
@@ -84,6 +104,8 @@ class JobRecord:
     provider: Optional[str] = None  # p1-cloud-providers: winning provider ID
     quality: Optional[JobQualityRecord] = None  # p2-comet-qe: QE result
     audit: Optional[TerminologyAuditResult] = None  # p2-term-audit: terminology audit result
+    judge: Optional[JudgeResult] = None  # p3-llm-judge: judge result
+    judge_apply_status: Optional[str] = None  # applying | applied | failed | None
 
 
 class JobLogger:
@@ -421,6 +443,37 @@ class JobManager:
                         )
                         job.audit = None
 
+                # p3-llm-judge: run judge loop after QE+audit, before status→completed (D1)
+                if config.JUDGE_ENABLED and mode != "extraction_only" and qe_blocks:
+                    try:
+                        from app.backend.services.quality_judge import QualityJudge
+                        _judge = QualityJudge()
+
+                        def _translate_fn(src_text: str, feedback: str) -> str:
+                            """Re-translate a single block with judge feedback in prompt."""
+                            # Use the same client that handled the last group; fall back
+                            # to a new OllamaClient if last_client is unavailable.
+                            _cli = last_client
+                            if _cli is None:
+                                _cli = OllamaClient(model=DEFAULT_MODEL)
+                            feedback_prefix = (
+                                f"[Quality feedback]: {feedback}\n\n" if feedback else ""
+                            )
+                            targets_list = list({t for g in route_groups for t in g.targets})
+                            tgt = targets_list[0] if targets_list else "English"
+                            ok, result = _cli.translate_once(
+                                f"{feedback_prefix}{src_text}", tgt, src_lang
+                            )
+                            return result if ok else src_text
+
+                        job.judge = _judge.run_judge_loop(job_id, qe_blocks, _translate_fn)
+                    except Exception as judge_exc:
+                        logger.warning(
+                            "[Judge] hook failed job_id=%s: %s: %s",
+                            job_id, type(judge_exc).__name__, judge_exc,
+                        )
+                        job.judge = None
+
                 with job.lock:
                     job.processed_files = total_processed
                     job.output_zip = archive_path
@@ -472,6 +525,110 @@ class JobManager:
 
     def list_jobs(self) -> List[JobRecord]:
         return list(self.jobs.values())
+
+    def apply_judge(self, job_id: str) -> None:
+        """Dispatch a daemon thread to re-render the job output using judge's per-block map.
+
+        Preconditions must be validated before calling (BR-76). This method:
+        1. Sets judge_apply_status="applying" under lock.
+        2. Dispatches a daemon thread that calls process_files with block_overrides.
+        3. On success: rebuilds zip, swaps job.output_zip → sets "applied".
+        4. On failure: leaves original output_zip untouched → sets "failed".
+        """
+        job = self.jobs.get(job_id)
+        if job is None:
+            raise ValueError(f"Job {job_id} not found")
+
+        with job.lock:
+            job.judge_apply_status = "applying"
+
+        def _apply_worker() -> None:
+            import tempfile as _tempfile
+
+            try:
+                assert job.judge is not None
+                assert job.judge.retranslated_blocks
+
+                # Re-run process_files against the original source files with the
+                # per-block override map so no LLM call is made (D7).
+                input_files = sorted(job.input_dir.iterdir())
+                if not input_files:
+                    raise RuntimeError(f"No source files in {job.input_dir}")
+
+                # Write to a temp output dir so original is untouched on failure.
+                tmp_out = Path(_tempfile.mkdtemp(prefix="judge_apply_"))
+                try:
+                    from app.backend.services.model_router import RouteGroup
+
+                    # Build a minimal route group for re-render (no translation calls).
+                    _targets_str = (
+                        job.output_zip.stem.replace(f"{job_id}_output", "").strip("_")
+                        if job.output_zip
+                        else "en"
+                    )
+                    # Use first file's name to infer output details — crude but workable
+                    # since block_overrides bypasses all LLM calls.
+                    dummy_route = RouteGroup(
+                        targets=["en"],
+                        model=DEFAULT_MODEL,
+                        profile_id="general",
+                        model_type="general",
+                    )
+
+                    process_files(
+                        input_files,
+                        tmp_out,
+                        targets=["en"],
+                        src_lang=None,
+                        include_headers_shapes_via_com=False,
+                        ollama_model=DEFAULT_MODEL,
+                        block_overrides=job.judge.retranslated_blocks,
+                    )
+
+                    # Rebuild zip into temp path, then swap on success.
+                    tmp_zip_path = tmp_out.parent / f"{job_id}_output_new"
+                    new_zip = Path(shutil.make_archive(str(tmp_zip_path), "zip", tmp_out))
+
+                    with job.lock:
+                        # Atomically swap the output zip.
+                        old_zip = job.output_zip
+                        job.output_zip = new_zip
+                        job.judge_apply_status = "applied"
+                        job.updated_at = time.time()
+
+                    # Clean up old zip if it differs from new.
+                    if old_zip and old_zip != new_zip and old_zip.exists():
+                        try:
+                            old_zip.unlink()
+                        except OSError:
+                            pass
+
+                except Exception as inner_exc:
+                    logger.warning(
+                        "[JudgeApply] re-render failed job_id=%s: %s: %s",
+                        job_id,
+                        type(inner_exc).__name__,
+                        inner_exc,
+                    )
+                    with job.lock:
+                        job.judge_apply_status = "failed"
+                        job.updated_at = time.time()
+                finally:
+                    shutil.rmtree(str(tmp_out), ignore_errors=True)
+
+            except Exception as exc:
+                logger.warning(
+                    "[JudgeApply] worker failed job_id=%s: %s: %s",
+                    job_id,
+                    type(exc).__name__,
+                    exc,
+                )
+                with job.lock:
+                    job.judge_apply_status = "failed"
+                    job.updated_at = time.time()
+
+        t = threading.Thread(target=_apply_worker, daemon=True, name=f"judge-apply-{job_id}")
+        t.start()
 
     def get_stats(self) -> Dict[str, int]:
         """Get job manager statistics for monitoring."""

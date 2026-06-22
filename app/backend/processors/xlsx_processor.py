@@ -52,6 +52,7 @@ def translate_xlsx_xls(
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
     terms_getter: Optional[Callable[[], list]] = None,
+    block_overrides: Optional[Dict[str, str]] = None,
 ) -> bool:
     ext = Path(in_path).suffix.lower()
     out_xlsx = Path(out_path).with_suffix(".xlsx")
@@ -85,6 +86,7 @@ def translate_xlsx_xls(
                 max_batch_chars=max_batch_chars,
                 pre_translate_hook=pre_translate_hook,
                 post_translate_hook=post_translate_hook,
+                block_overrides=block_overrides,
             )
         finally:
             try:
@@ -137,20 +139,37 @@ def translate_xlsx_xls(
     if pre_translate_hook:
         pre_translate_hook(uniq)
     _terms = terms_getter() if terms_getter else None
-    tmap, _, fail_cnt, stopped = translate_texts(
-        uniq,
-        targets,
-        src_lang,
-        client,
-        max_batch_chars=max_batch_chars,
-        stop_flag=stop_flag,
-        log=log,
-        terms=_terms,
-    )
 
-    if fail_cnt and not stopped:
-        from app.backend.utils.translation_verification import verify_and_fill_tmap
-        verify_and_fill_tmap(tmap, client, src_lang, stop_flag=stop_flag, log=log)
+    # p3-llm-judge: block_overrides seam — when provided, use stored re-translated text
+    # instead of calling the LLM (D7). Block ids use the same key as post_translate_hook.
+    _ext_name = os.path.splitext(in_path)[1].lstrip(".")
+    _file_stem = os.path.splitext(os.path.basename(in_path))[0]
+    stopped = False
+    if block_overrides is not None:
+        tmap: Dict = {}
+        for idx, src_text in enumerate(uniq):
+            block_id = f"{_ext_name}:{_file_stem}:{idx}"
+            for tgt in targets:
+                if block_id in block_overrides:
+                    tmap[(tgt, src_text)] = block_overrides[block_id]
+                else:
+                    tmap[(tgt, src_text)] = src_text
+        log(f"[Excel] block_overrides applied: {len(block_overrides)} overrides, {len(uniq)} blocks")
+    else:
+        tmap, _, fail_cnt, stopped = translate_texts(
+            uniq,
+            targets,
+            src_lang,
+            client,
+            max_batch_chars=max_batch_chars,
+            stop_flag=stop_flag,
+            log=log,
+            terms=_terms,
+        )
+
+        if fail_cnt and not stopped:
+            from app.backend.utils.translation_verification import verify_and_fill_tmap
+            verify_and_fill_tmap(tmap, client, src_lang, stop_flag=stop_flag, log=log)
 
     for sheet_name, r, c, src_text, is_formula in segs:
         if not all((tgt, src_text) in tmap for tgt in targets):
@@ -189,14 +208,11 @@ def translate_xlsx_xls(
     wb.save(out_xlsx)
 
     if post_translate_hook is not None:
-        import os as _os
-        _ext = _os.path.splitext(in_path)[1].lstrip(".")
-        file_stem = _os.path.splitext(_os.path.basename(in_path))[0]
         tuples: List[Tuple[str, str, str]] = []
         for idx, src_text in enumerate(uniq):
             for tgt in targets:
                 if (tgt, src_text) in tmap:
-                    tuples.append((f"{_ext}:{file_stem}:{idx}", src_text, tmap[(tgt, src_text)]))
+                    tuples.append((f"{_ext_name}:{_file_stem}:{idx}", src_text, tmap[(tgt, src_text)]))
         if tuples:
             post_translate_hook(tuples)
 

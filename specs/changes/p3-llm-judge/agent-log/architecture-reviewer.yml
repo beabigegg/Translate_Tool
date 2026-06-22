@@ -1,0 +1,5 @@
+artifacts:
+  - { type: adr-written, pointer: "docs/adr/0005-judge-rerender-apply.md" }
+  - { type: affected-areas, pointer: "judge re-render path (orchestrator block-replacement seam), apply endpoint (routes/schemas), job_manager apply dispatch" }
+  - { type: decision-summary, pointer: "D7 deterministic per-block replay re-render (no model re-call); D8 async POST /jobs/{id}/judge/apply with poll" }
+  - { type: risks-noted, pointer: "4 added (block-mismatch, re-render fail-soft, apply idempotency/eviction, reflection divergence); 0 high blocking" }

@@ -162,6 +162,15 @@ TABLE_RECOGNITION_MODEL_PATH: Optional[str] = os.environ.get("TABLE_RECOGNITION_
 # Set to "1"/"true"/"yes" to enable. PDF-only scope (p3-table-structure).
 TABLE_RECOGNITION_ENABLED: bool = os.environ.get("TABLE_RECOGNITION_ENABLED", "false").lower() in ("1", "true", "yes")
 
+# LLM-as-judge configuration (p3-llm-judge, BR-72..BR-77)
+# JUDGE_ENABLED: set to "true"/"1"/"yes" to activate Gemma judge scoring after each job.
+# Default is disabled (false) so no extra Gemma call is made at startup.
+JUDGE_ENABLED: bool = os.environ.get("JUDGE_ENABLED", "false").lower() in ("1", "true", "yes")
+# JUDGE_MODEL: Ollama model name for the judge pass (D4 — always local Ollama, never model_router).
+JUDGE_MODEL: str = os.environ.get("JUDGE_MODEL", "gemma3")
+# JUDGE_MAX_ITERATIONS: maximum re-translation iterations when score is 中 or 低 (BR-73).
+JUDGE_MAX_ITERATIONS: int = int(os.environ.get("JUDGE_MAX_ITERATIONS", "3"))
+
 # Layout preservation configuration
 LAYOUT_PRESERVATION_MODE = "inline"  # inline | overlay | side_by_side
 DEFAULT_FONT_FAMILY = "NotoSansSC"  # Default font for PDF rendering

@@ -20,6 +20,8 @@ from app.backend.api.schemas import (
     BlockQualityScore,
     JobAuditResponse,
     JobCreateResponse,
+    JobJudgeApplyResponse,
+    JobJudgeResponse,
     JobQualityResponse,
     JobStatus,
     LayoutFileVizResponse,
@@ -51,6 +53,7 @@ from app.backend.services.metrics import get_metrics as _get_metrics_snapshot
 from app.backend.clients.ollama_client import list_ollama_models
 from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
 from app.backend.config import (
+    JUDGE_ENABLED,
     ModelType,
     QE_DEVICE,
     QE_ENABLED,
@@ -265,6 +268,8 @@ def job_status(job_id: str) -> JobStatus:
         job_provider = getattr(job, "provider", None)  # p1-cloud-providers (AC-6)
         job_quality = getattr(job, "quality", None)
         job_audit = getattr(job, "audit", None)
+        job_judge = getattr(job, "judge", None)
+        job_judge_apply_status = getattr(job, "judge_apply_status", None)
 
     output_ready = output_zip is not None and output_zip.exists()
 
@@ -330,6 +335,8 @@ def job_status(job_id: str) -> JobStatus:
         provider=job_provider,  # p1-cloud-providers (AC-6)
         quality_score_avg=quality_score_avg,
         audit_hit_rate=audit_hit_rate,
+        judge_score=job_judge.score if job_judge else None,
+        judge_apply_status=job_judge_apply_status,
         download_url=download_url,
         layout_viz_available=layout_viz_available,
     )
@@ -388,6 +395,81 @@ def job_audit(job_id: str) -> JobAuditResponse:
         total_approved=job.audit.total_approved,
         matched_approved=job.audit.matched_approved,
     )
+
+
+@router.get("/jobs/{job_id}/judge", response_model=JobJudgeResponse)
+def get_job_judge(job_id: str) -> JobJudgeResponse:
+    """Return LLM judge evaluation results for a completed job (p3-llm-judge).
+
+    Status semantics (HTTP 200 in all non-404 cases):
+    - disabled: JUDGE_ENABLED=false (default).
+    - unavailable: Gemma was unreachable or any exception occurred.
+    - available: score/feedback/attempts are populated.
+    Unknown job → HTTP 404.
+    """
+    job = job_manager.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if not JUDGE_ENABLED:
+        return JobJudgeResponse(job_id=job_id, judge_status="disabled")
+    judge = getattr(job, "judge", None)
+    if judge is None:
+        return JobJudgeResponse(job_id=job_id, judge_status="unavailable")
+    return JobJudgeResponse(
+        job_id=job_id,
+        judge_status=judge.judge_status,
+        score=judge.score,
+        source_text=judge.source_text,
+        translated_text=judge.translated_text,
+        feedback=judge.feedback,
+        attempts=judge.attempts if judge.judge_status == "available" else None,
+        model=judge.model,
+    )
+
+
+@router.post("/jobs/{job_id}/judge/apply", status_code=202)
+def post_job_judge_apply(job_id: str) -> JobJudgeApplyResponse:
+    """Trigger async re-render of the job's output using the judge's per-block map.
+
+    Preconditions (else HTTP 409, per BR-76):
+    1. job.status == "completed"
+    2. JUDGE_ENABLED is True
+    3. judge_status == "available"
+    4. retranslated_blocks is non-empty
+    5. input_dir exists on disk
+
+    Returns HTTP 202 {"status": "applying"} when dispatched.
+    If already applying (BR-77), returns 202 without spawning a second worker.
+    """
+    job = job_manager.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    with job.lock:
+        status = job.status
+        judge = getattr(job, "judge", None)
+        apply_status = getattr(job, "judge_apply_status", None)
+        input_dir = job.input_dir
+
+    # BR-77: idempotent while applying
+    if apply_status == "applying":
+        return JobJudgeApplyResponse(status="applying")
+
+    # BR-76: precondition checks → HTTP 409
+    if status != "completed":
+        raise HTTPException(status_code=409, detail="Job is not completed")
+    if not JUDGE_ENABLED:
+        raise HTTPException(status_code=409, detail="JUDGE_ENABLED is false")
+    if judge is None or judge.judge_status != "available":
+        raise HTTPException(status_code=409, detail="Judge result not available")
+    if not judge.retranslated_blocks:
+        raise HTTPException(status_code=409, detail="No retranslated blocks to apply")
+    if not input_dir.exists():
+        raise HTTPException(status_code=409, detail="Source input directory no longer on disk (evicted)")
+
+    # Dispatch the apply worker (sets judge_apply_status="applying" under lock)
+    job_manager.apply_judge(job_id)
+    return JobJudgeApplyResponse(status="applying")
 
 
 @router.get("/jobs/{job_id}/layout", response_model=LayoutVizResponse)

@@ -1,0 +1,33 @@
+tests/test_quality_judge.py::test_score_json_parse_valid
+tests/test_quality_judge.py::test_score_raw_scan_fallback
+tests/test_quality_judge.py::test_score_no_token_unavailable
+tests/test_quality_judge.py::test_score_synonym_not_accepted
+tests/test_quality_judge.py::test_score_json_preferred_over_raw
+tests/test_quality_judge.py::test_score_中_token
+tests/test_quality_judge.py::test_judge_records_result_on_job_record
+tests/test_quality_judge.py::test_judge_score_high_terminates_loop
+tests/test_quality_judge.py::test_judge_score_mid_triggers_retranslation
+tests/test_quality_judge.py::test_judge_score_high_no_retranslation
+tests/test_quality_judge.py::test_feedback_fed_back_to_translation_model
+tests/test_quality_judge.py::test_judge_iteration_cap_enforced
+tests/test_quality_judge.py::test_attempts_field_equals_iteration_count
+tests/test_quality_judge.py::test_judge_disabled_flag_skips_judge
+tests/test_quality_judge.py::test_judge_exception_degrades_gracefully
+tests/test_quality_judge.py::test_judge_parse_failure_degrades_gracefully
+tests/test_quality_judge.py::test_judge_client_is_ollama_not_model_router
+
+==================================== ERRORS ====================================
+___________________ ERROR collecting tests/test_judge_api.py ___________________
+ImportError while importing test module '/home/egg/Projects/Translate_Tool/tests/test_judge_api.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../miniforge3/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_judge_api.py:15: in <module>
+    from fastapi.testclient import TestClient
+E   ModuleNotFoundError: No module named 'fastapi'
+=========================== short test summary info ============================
+ERROR tests/test_judge_api.py
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+17 tests collected, 1 error in 0.05s

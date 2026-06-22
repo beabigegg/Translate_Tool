@@ -3,7 +3,7 @@ contract: api
 summary: API behavior, compatibility rules, and endpoint contract requirements.
 owner: application-team
 surface: api
-schema-version: 0.7.0
+schema-version: 0.8.0
 last-changed: 2026-06-22
 breaking-change-policy: deprecate-2-minors
 ---
@@ -48,6 +48,8 @@ breaking-change-policy: deprecate-2-minors
 | GET | /providers/health | none | - | ProviderHealthItem[] | - | tests/test_providers_api.py |
 | GET | /providers/models | none | - | ProviderModelEntry[] | - | tests/test_providers_api.py |
 | POST | /providers/test-translation | none | TestTranslationRequest | TestTranslationResult[] | 400, 422 | tests/test_providers_api.py |
+| GET | /jobs/{job_id}/judge | none | - | JobJudgeResponse | 200 (judge_status: available/disabled/unavailable); 404 job not found | tests/contract/ |
+| POST | /jobs/{job_id}/judge/apply | none | - | JobJudgeApplyResponse | 202 applying; 404 job not found; 409 preconditions not met | tests/contract/ |
 
 ## Schemas
 
@@ -150,6 +152,8 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 | provider | string | no |  | provider ID that successfully processed this job (e.g. panjit, deepseek); null if not yet determined |
 | quality_score_avg | number | no |  | average COMET/xCOMET quality score across all blocks; null when QE disabled or job not complete; see BR-54 |
 | audit_hit_rate | number | no |  | terminology audit hit rate 0.0-1.0; null when audit did not run or mode==extraction_only; see BR-59 |
+| judge_score | enum(低, 中, 高) | no |  | latest judge score tier; null when judge has not run, is disabled, or is unavailable; for list/summary views; see BR-72 |
+| judge_apply_status | string | no |  | apply operation lifecycle: applying, applied, failed, or null when apply not yet triggered; see BR-76, BR-77 |
 | download_url | string | no |  | URL to download translated zip; set to /api/jobs/{job_id}/download only when status==completed AND output_zip exists on disk; null otherwise |
 
 ### TermStatsResponse
@@ -310,6 +314,23 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 | num_ctx | integer | no |  | context window override; must satisfy BR-2 |
 | output_mode | enum(append,replace) | no |  | output mode for DOCX/PPTX translation; default append; replace overwrites source paragraphs/text-frames in-place; ignored (clamped to append) when len(targets) > 1 (BR-66, BR-67); invalid values rejected with HTTP 422 |
 
+### JobJudgeResponse
+| field | type | required | format | notes |
+|---|---|---|---|---|
+| job_id | string | yes |  | :job identifier |
+| judge_status | enum(available,disabled,unavailable) | yes |  | :available — judge ran and results ready; disabled — JUDGE_ENABLED=false; unavailable — Gemma unreachable or exception |
+| score | enum(低,中,高) | no |  | :quality score tier; null unless judge_status=available |
+| source_text | string | no |  | :representative joined source text scored by judge; null unless judge_status=available |
+| translated_text | string | no |  | :final translated text after all judge iterations; display-only joined view (see BR-75); null unless judge_status=available |
+| feedback | string | no |  | :judge natural-language quality feedback; null unless judge_status=available |
+| attempts | integer | no |  | :number of judge-loop iterations (1–JUDGE_MAX_ITERATIONS); null unless judge_status=available |
+| model | string | no |  | :Ollama model name used for judging (JUDGE_MODEL value); null unless judge_status=available |
+
+### JobJudgeApplyResponse
+| field | type | required | format | notes |
+|---|---|---|---|---|
+| status | string | yes |  | :always 'applying' on HTTP 202 |
+
 ## Endpoint Notes
 
 **GET /terms/export** — the `status` query parameter accepts `approved`, `unverified`, `needs_review`, and `rejected`. When omitted, all terms are exported. See BR-6 (extended by BR-28) and Table G in `contracts/business/business-rules.md`.
@@ -327,6 +348,10 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 **POST /providers/test-translation** — runs a parallel test translation across the requested models. Synchronous (no `job_id`). Request: `TestTranslationRequest` with fields `text`, `src_lang`, `targets[]`, optional `profile`, `models[]`, `deepseek_api_key`. Response: `TestTranslationResult[]` — `{model_id, provider, duration_ms}` plus optional `translation`, `comet_score` (omitted when `QE_ENABLED=false`), and `error` (present when that model call failed). Partial failure is isolated per model. DeepSeek path not invoked without a key — returns `error: "DeepSeek API key not provided"`. See BR-64, BR-65.
 
 **GET /jobs/{job_id}/quality** — returns quality evaluation scores produced by the COMET/xCOMET model after job completion. Returns HTTP 200 with `status: "available"` and a populated `scores` array when scores are ready. Returns HTTP 200 with `status: "pending"` when the job exists but has not yet completed or scores are not yet attached. Returns HTTP 200 with `status: "disabled"` when `QE_ENABLED=false`. Returns HTTP 200 with `status: "unavailable"` when the QE model failed to load or scoring failed for this job. Returns HTTP 404 `{"detail": "Job not found"}` for an unknown `job_id`. See BR-54, BR-55, BR-56, BR-57. QE scoring never blocks translation job completion (BR-56).
+
+**GET /jobs/{job_id}/judge** — returns judge evaluation results produced by the Gemma judge after job completion. HTTP 200 with `judge_status: "available"` and populated score/feedback fields when judge results are ready. HTTP 200 with `judge_status: "disabled"` when `JUDGE_ENABLED=false`. HTTP 200 with `judge_status: "unavailable"` when Gemma was unreachable or any judge exception occurred. HTTP 404 for an unknown `job_id`. The `translated_text` field is a display-only joined view of the judge's accepted final text — it is NOT the document output until the user confirms apply (see BR-75). See BR-72, BR-73, BR-74, BR-75.
+
+**POST /jobs/{job_id}/judge/apply** — triggers async re-render of the job's output document using the judge's per-block re-translated text. Preconditions (else HTTP 409): `job.status == "completed"` AND `JUDGE_ENABLED` AND `judge_status == "available"` AND `retranslated_blocks` map is non-empty AND original source files remain on disk. Unknown `job_id` → HTTP 404. On success returns HTTP 202 `{"status": "applying"}`; re-render runs in a background daemon thread. Frontend polls `GET /api/jobs/{id}` until `judge_apply_status` transitions to `applied` or `failed`. When `judge_apply_status == "applied"`, the stable `download_url` serves the updated document. A second apply call while `judge_apply_status == "applying"` returns HTTP 202 without spawning a duplicate worker (idempotent under lock). See BR-76, BR-77.
 
 **POST /api/jobs** (`output_mode`) — accepts an optional `output_mode` field (`"append"` | `"replace"`; default `"append"`). In `"append"` mode the output is bilingual (existing behavior, backward-compatible). In `"replace"` mode, source-language paragraphs (DOCX) and source text frames (PPTX) are overwritten in-place with their translations; no source text remains in the output. PDF and XLSX processors ignore `output_mode` (field accepted but has no effect). When a job targets more than one language, `output_mode` is silently clamped to `"append"` — see BR-66, BR-67.
 

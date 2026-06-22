@@ -1,0 +1,24 @@
+agent: contract-reviewer
+change-id: p3-llm-judge
+timestamp: 2026-06-22
+status: approved
+summary: >
+  Reviewed and applied all five contract surfaces for p3-llm-judge. All changes
+  are strictly additive (non-breaking). BR-72 through BR-77 assigned (last
+  existing BR was BR-71). Schema-version bumps applied: api 0.7.0→0.8.0,
+  data 0.11.0→0.12.0, business 0.17.0→0.18.0, env 0.9.0→0.10.0,
+  css 0.2.0→0.3.0. Two pre-existing gaps identified (missing /audit endpoint
+  row, layout_viz_available field in api-contract) — follow-up only, not blocking.
+  Judge color tokens added to contracts/css/design-tokens.md. OpenAPI exports
+  refreshed. cdd-kit validate --contracts passes.
+artifacts:
+  - { type: contracts-updated, pointer: "contracts/api/api-contract.md" }
+  - { type: contracts-updated, pointer: "contracts/data/data-shape-contract.md" }
+  - { type: contracts-updated, pointer: "contracts/business/business-rules.md" }
+  - { type: contracts-updated, pointer: "contracts/env/env-contract.md" }
+  - { type: contracts-updated, pointer: "contracts/css/css-contract.md" }
+  - { type: contracts-updated, pointer: "contracts/css/design-tokens.md" }
+  - { type: openapi-refreshed, pointer: "contracts/api/openapi.yml" }
+  - { type: version-bumps, notes: "api 0.8.0, data 0.12.0, business 0.18.0, env 0.10.0, css 0.3.0" }
+  - { type: new-rules, notes: "BR-72..BR-77, Table U; JudgeResult data shape; JUDGE_ENABLED/JUDGE_MODEL/JUDGE_MAX_ITERATIONS env vars" }
+  - { type: follow-up, notes: "Pre-existing gaps: GET /audit missing from endpoint table; layout_viz_available absent from JobStatus schema — not blocking p3-llm-judge" }

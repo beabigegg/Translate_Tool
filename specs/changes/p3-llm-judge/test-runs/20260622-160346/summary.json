@@ -1,0 +1,19 @@
+{
+  "change_id": "p3-llm-judge",
+  "phase": "changed-area",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "conda run -n translate-tool python -m pytest tests/test_quality_judge.py tests/test_judge_api.py tests/test_orchestrator_judge.py tests/test_judge_apply.py tests/test_job_record_judge.py -q --maxfail=5 --tb=short -ra",
+  "duration_ms": 2525,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests/test_orchestrator_judge.py::test_judge_does_not_alter_qe_scoring",
+    "message": "ERROR conda.cli.main_run:execute(148): `conda run python -m pytest tests/test_quality_judge.py tests/test_judge_api.py tests/test_orchestrator_judge.py tests/test_judge_apply.py tests/test_job_record_judge.py -q --maxfail=5 --tb=short -ra` failed. (See above for error)"
+  },
+  "artifacts": {
+    "summary": "specs/changes/p3-llm-judge/test-runs/20260622-160346/summary.json",
+    "stdout": "specs/changes/p3-llm-judge/test-runs/20260622-160346/stdout.log",
+    "stderr": "specs/changes/p3-llm-judge/test-runs/20260622-160346/stderr.log"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

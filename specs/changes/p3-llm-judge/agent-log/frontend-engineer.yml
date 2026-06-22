@@ -1,0 +1,13 @@
+agent: frontend-engineer
+change-id: p3-llm-judge
+date: 2026-06-22
+
+artifacts:
+  - { type: files-changed, pointer: "app/frontend/src/api/jobs.js:6-7" }
+  - { type: files-changed, pointer: "app/frontend/src/styles/tokens.css:131-133" }
+  - { type: files-changed, pointer: "app/frontend/src/components/domain/JudgePanel.jsx:1-202" }
+  - { type: files-changed, pointer: "app/frontend/src/components/domain/JudgeApplyDialog.jsx:1-140" }
+  - { type: files-changed, pointer: "app/frontend/src/pages/TranslatePage.jsx:1-18 (imports+effect+render)" }
+  - { type: components-affected, pointer: "JudgePanel, JudgeBadge, JudgeApplyDialog" }
+  - { type: screenshot-paths, pointer: "n/a (visual review is ui-ux-reviewer scope per AC-6/AC-9)" }
+  - { type: accessibility-audit, pointer: "manual: dialog has role=dialog, aria-modal, aria-labelledby; buttons have aria-label; warning uses role=alert" }

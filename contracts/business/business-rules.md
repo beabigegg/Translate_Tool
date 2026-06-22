@@ -3,7 +3,7 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.17.0
+schema-version: 0.18.0
 last-changed: 2026-06-22
 breaking-change-policy: deprecate-2-minors
 ---
@@ -81,6 +81,12 @@ breaking-change-policy: deprecate-2-minors
 | BR-69 | same-table-cell-batching | application-team | All translatable cells (those with `is_numeric=False` and non-empty `content`) from the same recognized table MUST be sent to the LLM in a single batch request. Cells from different tables MAY be in separate batches. A table whose translatable cell count is zero requires no LLM call. | tests/test_table_recognizer.py |
 | BR-70 | cell-granularity-translation | application-team | Table cells are translated independently at cell granularity. Once table structure has been recognized and a `TableStructure` record is attached to a `table`-typed `TranslatableElement`, flattened/concatenated table-as-paragraph translation of that element is forbidden. The cell-batch seam in `translation_service.py` is the sole translation entry point for structured-table content. | tests/test_table_recognizer.py |
 | BR-71 | table-recognition-graceful-degradation | application-team | When the table-recognition ML model is unavailable (weights not downloaded, ONNX runtime absent, load error), the parse path MUST fall back to treating table regions as plain `table`-typed `TranslatableElement` entries without cell decomposition. No `TableStructure` is attached to the element; the element is processed by the existing translation path. The failure MUST be logged at WARNING level (reason + document identifier). No crash, no job failure. Mirrors the ADR 0003 / BR-33 pattern for `layout_detector.py`. | tests/test_table_recognizer.py |
+| BR-72 | judge-score-tiers | application-team | Quality score tiers: 高 (high) = good quality, no re-translation; 中 (acceptable) = improvable, triggers re-translation with feedback; 低 (poor) = poor quality, triggers re-translation with feedback. Scores are the literal CJK tokens 高/中/低 as elicited by the judge prompt. Score 高 terminates the judge loop immediately. Scores 中 or 低 trigger a re-translation pass using the judge feedback. Score extraction: JSON parse first; on parse failure scan for the first of 高/中/低 (exact token, synonyms not inferred); default to unavailable if none found. | tests/test_quality_judge.py |
+| BR-73 | judge-iteration-cap | application-team | The judge re-translation loop terminates after at most JUDGE_MAX_ITERATIONS (default 3) attempts, regardless of whether the score ever reaches 高. The final score, translated text, feedback, and attempt count are recorded and stored on JobRecord.judge even if score is still 低 after JUDGE_MAX_ITERATIONS attempts. The cap is enforced unconditionally. | tests/test_quality_judge.py |
+| BR-74 | judge-graceful-degradation | application-team | If JUDGE_ENABLED=false, the judge step is entirely skipped; no JudgeResult is attached to JobRecord.judge; GET /jobs/{id}/judge returns HTTP 200 with judge_status: "disabled". If JUDGE_ENABLED=true but Gemma is unreachable, not pulled, or any exception occurs during the judge pass, the exception MUST be caught, logged at WARNING level (exception type + job_id), and a JudgeResult with judge_status="unavailable" recorded. The translation job MUST complete normally with the originally rendered output and MUST NOT transition to status: "failed". Mirrors BR-56 and BR-61 patterns exactly. | tests/test_quality_judge.py |
+| BR-75 | judge-reflection-boundary | application-team | The downloadable output file (output_zip / download_url) reflects the INITIAL translation until the user explicitly confirms apply via POST /api/jobs/{id}/judge/apply. The judge's re-translated text is stored in JudgeResult.retranslated_blocks (per-block map) and surfaced display-only in JudgeResult.translated_text and GET /jobs/{id}/judge. The frontend MUST clearly distinguish between the judge-proposed text (display-only) and the currently downloadable file. No automatic overwrite occurs without user confirmation. | tests/test_quality_judge.py |
+| BR-76 | judge-apply-preconditions | application-team | POST /api/jobs/{id}/judge/apply returns HTTP 409 if any of the following conditions hold: (1) job.status ≠ "completed"; (2) JUDGE_ENABLED=false; (3) JobRecord.judge is None or judge_status ≠ "available"; (4) retranslated_blocks is None or empty; (5) job.input_dir no longer exists on disk (source files evicted). Unknown job_id → HTTP 404. Only when all five conditions pass does the endpoint dispatch the re-render worker and return HTTP 202. | tests/test_quality_judge.py |
+| BR-77 | judge-apply-idempotency | application-team | The apply operation is idempotent and safe to call twice. Re-render uses the stored per-block map exclusively — no LLM call is made. If an apply is already in progress (judge_apply_status = "applying"), a second POST /judge/apply returns HTTP 202 immediately without spawning a second worker thread (guarded under job.lock). The re-render writes into a temporary directory; the original output_zip is swapped only on full success. On any re-render exception, original output_zip is preserved, judge_apply_status = "failed", and WARNING is logged. | tests/test_quality_judge.py |
 
 ## Decision Tables
 
@@ -323,6 +329,31 @@ breaking-change-policy: deprecate-2-minors
 | Table-recognition model load error at parse time | WARNING logged (reason + document id); that document's table regions fall back to plain `table` element; job continues (BR-71) | tests/test_table_recognizer.py |
 | Merged/spanning cell (`row_span > 1` or `col_span > 1`) | treated as single `TableCell`; spans recorded but do not affect translation logic | tests/test_table_recognizer.py |
 | `recognition_confident = False` | cells still processed per normal translation flow; no override of logic | tests/test_table_recognizer.py |
+
+### Table U — LLM judge loop behavior (BR-72 through BR-77)
+
+| condition | behavior | test id |
+|---|---|---|
+| JUDGE_ENABLED=false | Judge step skipped entirely; JobRecord.judge = None; GET /judge returns judge_status: "disabled"; job completes normally | tests/test_quality_judge.py |
+| JUDGE_ENABLED=true, Gemma unreachable | Exception caught; WARNING logged; judge_status="unavailable"; job completes with original output; no status: "failed" (BR-74) | tests/test_quality_judge.py |
+| JUDGE_ENABLED=true, Gemma returns score 高 on attempt 1 | Loop terminates; attempts=1; no re-translation; retranslated_blocks=null; judge_status="available" (BR-72) | tests/test_quality_judge.py |
+| JUDGE_ENABLED=true, Gemma returns score 中 or 低 | Re-translation called with judge feedback; attempts incremented; loop continues (BR-72) | tests/test_quality_judge.py |
+| Score reaches 高 before JUDGE_MAX_ITERATIONS | Loop terminates at that iteration; final score recorded; re-translated text stored (BR-72) | tests/test_quality_judge.py |
+| Score remains 中 or 低 after JUDGE_MAX_ITERATIONS attempts | Loop terminates at cap; final score + text + attempts recorded regardless (BR-73) | tests/test_quality_judge.py |
+| Judge JSON parse fails (no 高/中/低 token) | judge_status="unavailable"; WARNING logged; job completes normally (BR-74) | tests/test_quality_judge.py |
+| GET /judge endpoint, JUDGE_ENABLED=false | HTTP 200, judge_status: "disabled" (BR-74) | tests/test_quality_judge.py |
+| GET /judge endpoint, judge_status="available" | HTTP 200, score, source_text, translated_text, feedback, attempts, model all populated (BR-72) | tests/test_quality_judge.py |
+| GET /judge endpoint, unknown job_id | HTTP 404 | tests/test_quality_judge.py |
+| POST /judge/apply, job.status ≠ "completed" | HTTP 409 (BR-76) | tests/test_quality_judge.py |
+| POST /judge/apply, judge_status ≠ "available" | HTTP 409 (BR-76) | tests/test_quality_judge.py |
+| POST /judge/apply, retranslated_blocks empty or null | HTTP 409 (BR-76) | tests/test_quality_judge.py |
+| POST /judge/apply, input_dir evicted from disk | HTTP 409 (BR-76) | tests/test_quality_judge.py |
+| POST /judge/apply, all preconditions pass | HTTP 202, {"status": "applying"}; daemon thread dispatched; judge_apply_status="applying" (BR-76, BR-77) | tests/test_quality_judge.py |
+| POST /judge/apply called while judge_apply_status="applying" | HTTP 202, no second thread spawned (BR-77) | tests/test_quality_judge.py |
+| Apply re-render completes successfully | judge_apply_status="applied"; output_zip updated; download_url serves new file (BR-77) | tests/test_quality_judge.py |
+| Apply re-render raises exception | judge_apply_status="failed"; original output_zip preserved; WARNING logged (BR-77) | tests/test_quality_judge.py |
+| Block-id mismatch during apply re-render | Fail-soft to original output; judge_apply_status="failed"; WARNING logged (BR-77) | tests/test_quality_judge.py |
+| Download file before apply confirmed | Serves original translated output, not judge-proposed text (BR-75) | tests/test_quality_judge.py |
 
 ## Change Policy
 

@@ -1,0 +1,18 @@
+change-id: p3-llm-judge
+agent: ci-cd-gatekeeper
+timestamp: "2026-06-22T00:00:00Z"
+status: complete
+artifacts:
+  - { type: tiers-modified, pointer: "1, 2" }
+  - { type: gate-promotions, pointer: "n/a (all new gates land at Tier 1; no promotion from higher tier)" }
+  - { type: workflow-files-changed, pointer: ".github/workflows/contract-driven-gates.yml" }
+  - { type: required-status-checks, pointer: "contract-and-fast-tests (contains: contract-validate, change-gate, openapi-sync, env-schema-sync-judge, all-formats-wiring, secret-scan, targeted-judge-tests, full-test-suite)" }
+next-action: none
+notes: >
+  Four edits to contract-driven-gates.yml: (1) active-gates comment updated to
+  include p3-llm-judge; (2) change-gate step now runs `cdd-kit gate p3-llm-judge`;
+  (3) JUDGE_ENABLED/JUDGE_MODEL/JUDGE_MAX_ITERATIONS env-sync step added after
+  DEEPSEEK/TERM sync; (4) targeted judge test step inserted before full suite step.
+  All modifications are within the existing `contract-and-fast-tests` job — no new
+  CI jobs introduced. ci-gates.md column header contains literal token `workflow`
+  (validate_ci_gates.py requirement confirmed from CLAUDE.md learnings).

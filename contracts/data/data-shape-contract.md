@@ -3,7 +3,7 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.11.0
+schema-version: 0.12.0
 last-changed: 2026-06-22
 breaking-change-policy: deprecate-2-minors
 ---
@@ -490,6 +490,83 @@ This field is additive and optional. It is parallel to `JobRecord.quality` (the 
 | `app/backend/services/job_manager.py` | producer | sets `JobRecord.audit` after `_run_job` post-translate step |
 | `app/backend/services/term_audit.py` | producer (new, p2-term-audit) | computes `TerminologyAuditResult`; calls `term_db.get_approved()` and the new `term_db.get_rejected()` read query |
 | `tests/test_term_audit.py` | test consumer (new, p2-term-audit) | asserts result shape conforms to this section |
+
+---
+
+## LLM Judge Result Representation
+
+**Added in p3-llm-judge.**
+
+The LLM judge result is produced post-translation by `quality_judge.py` and attached to the job record in the in-memory job store as `JobRecord.judge`. It is read-only and in-memory only — not serialized as part of `TranslatableDocument.to_dict()`, not persisted to disk. The lifecycle is identical to `JobQualityRecord` and `TerminologyAuditResult` (attached at the end of `_run_job`, after QE and audit; discarded when the job is evicted from the in-memory store). The judge pass runs AFTER QE scoring and AFTER terminology audit, and BEFORE `status → completed`.
+
+### JudgeResult — in-memory data shape
+
+| field | type | nullable | default | notes |
+|---|---|---:|---|---|
+| job_id | string | no | — | matches the parent job |
+| judge_status | enum(available, disabled, unavailable) | no | — | available: judge ran and scores are ready; disabled: JUDGE_ENABLED=false; unavailable: Gemma unreachable or any judge exception caught |
+| score | enum(低, 中, 高) | yes | null | quality score tier; null unless judge_status = available |
+| source_text | string | yes | null | representative joined source text submitted to the judge; null unless judge_status = available |
+| translated_text | string | yes | null | display-only joined view of the final accepted translation after all judge iterations (see D7 in design.md); NOT the per-block map used by the apply path; null unless judge_status = available |
+| feedback | string | yes | null | judge's natural-language feedback text; null unless judge_status = available |
+| attempts | int | yes | null | total judge-loop iterations performed (1 to JUDGE_MAX_ITERATIONS); null unless judge_status = available |
+| model | string | yes | null | Ollama model name used for the judge pass (value of JUDGE_MODEL at job time); null unless judge_status = available |
+| retranslated_blocks | dict[str, str] | yes | null | per-block re-translated map {block_id: str} for the apply path; null when score = 高 (no re-translation needed) or judge_status ≠ available. The apply path requires this field to be non-empty (see BR-76). Serialized as JSON map on the wire. |
+
+### JobRecord.judge — optional field
+
+`JobRecord.judge: Optional[JudgeResult]`
+
+| condition | value |
+|---|---|
+| Judge has not yet run (job in progress) | None |
+| JUDGE_ENABLED=false | None (judge_status surfaced as "disabled" on the endpoint by checking the flag) |
+| Judge ran successfully | JudgeResult instance with judge_status="available" |
+| Judge raised any exception | JudgeResult instance with judge_status="unavailable", all other optional fields null |
+| Job was submitted before p3-llm-judge | None (backward-compatible default) |
+
+This field is additive and optional. It is strictly parallel to `JobRecord.quality` (the `JobQualityRecord` field) and `JobRecord.audit` (the `TerminologyAuditResult` field). No existing field on `JobRecord` is modified or removed. Consumers that do not yet read `judge` are unaffected.
+
+### JobRecord.judge_apply_status — optional field
+
+`JobRecord.judge_apply_status: Optional[str]`
+
+Enum values: `applying` | `applied` | `failed` | `null` (not yet triggered).
+
+| condition | value |
+|---|---|
+| POST /judge/apply not yet called | null |
+| Re-render dispatched, in progress | "applying" |
+| Re-render completed successfully; output_zip updated | "applied" |
+| Re-render raised an exception; original output_zip preserved | "failed" |
+
+### Invalid-data rules — judge path
+
+| condition | expected behavior |
+|---|---|
+| JUDGE_ENABLED=false | Judge step skipped entirely; JobRecord.judge = None; GET /judge endpoint returns HTTP 200 with judge_status: "disabled" |
+| Gemma unreachable / model not pulled | Exception caught; WARNING logged (exception type + job_id); JudgeResult with judge_status="unavailable"; job completes normally with original output (BR-74) |
+| Judge JSON parse failure (no valid score token) | judge_status="unavailable"; WARNING logged; job completes normally |
+| Score = 高 on first attempt | Loop terminates immediately; attempts=1; retranslated_blocks=null (no re-translation needed) |
+| Score = 中 or 低 after JUDGE_MAX_ITERATIONS attempts | Loop terminates at cap; final score and re-translated text recorded regardless (BR-73) |
+| POST /judge/apply: job.status ≠ "completed" | HTTP 409 |
+| POST /judge/apply: judge_status ≠ "available" | HTTP 409 |
+| POST /judge/apply: retranslated_blocks is empty or null | HTTP 409 |
+| POST /judge/apply: source input_dir no longer on disk (evicted) | HTTP 409 |
+| POST /judge/apply: already applying (judge_apply_status = "applying") | HTTP 202, no second worker spawned (BR-77) |
+| Re-render raises during apply | Original output_zip preserved (temp-then-swap); judge_apply_status = "failed"; WARNING logged |
+| Block-id mismatch between stored retranslated_blocks map and live processor output | Fail-soft: apply aborted; original output preserved; judge_apply_status = "failed"; WARNING logged |
+
+### Known consumers of JudgeResult
+
+| consumer | surface | impact |
+|---|---|---|
+| `app/backend/services/job_manager.py` | producer | sets JobRecord.judge after _run_job post-translate step (after QE + audit) |
+| `app/backend/services/quality_judge.py` | producer (new, p3-llm-judge) | runs judge loop; returns JudgeResult |
+| `app/backend/api/routes.py` | consumer | GET /jobs/{job_id}/judge endpoint reads JobRecord.judge |
+| `app/backend/api/routes.py` | consumer | POST /jobs/{job_id}/judge/apply reads retranslated_blocks; dispatches worker |
+| `app/frontend/src/pages/TranslatePage.jsx` | consumer | renders JudgePanel when judge_status = available |
+| `tests/test_quality_judge.py` | test consumer (new, p3-llm-judge) | asserts JudgeResult shape, score parsing, iteration cap, graceful degradation |
 
 ---
 

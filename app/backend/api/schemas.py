@@ -37,6 +37,8 @@ class JobStatus(BaseModel):
     provider: Optional[str] = None  # p1-cloud-providers: winning provider ID (AC-6)
     quality_score_avg: Optional[float] = None   # average COMET score when QE is enabled
     audit_hit_rate: Optional[float] = None       # terminology hit rate when audit ran
+    judge_score: Optional[str] = None           # p3-llm-judge: latest judge score tier (高/中/低)
+    judge_apply_status: Optional[str] = None    # p3-llm-judge: applying|applied|failed|null
     download_url: Optional[str] = None           # populated when job is completed and output zip exists
     layout_viz_available: bool = False           # True once layout_viz.json exists (PDF jobs only)
 
@@ -188,6 +190,23 @@ class JobAuditResponse(BaseModel):
     rejected_injections: List[str] = []
     total_approved: int = 0
     matched_approved: int = 0
+
+
+class JobJudgeResponse(BaseModel):
+    """Response body for GET /jobs/{job_id}/judge (p3-llm-judge)."""
+    job_id: str
+    judge_status: str  # available | disabled | unavailable
+    score: Optional[str] = None          # 高 | 中 | 低; null unless judge_status=available
+    source_text: Optional[str] = None    # representative joined source text
+    translated_text: Optional[str] = None  # display-only joined final translation
+    feedback: Optional[str] = None       # judge natural-language feedback
+    attempts: Optional[int] = None       # iterations performed; null unless judge_status=available
+    model: Optional[str] = None          # JUDGE_MODEL name; null unless judge_status=available
+
+
+class JobJudgeApplyResponse(BaseModel):
+    """Response body for POST /jobs/{job_id}/judge/apply (p3-llm-judge, 202)."""
+    status: str  # always 'applying' on HTTP 202
 
 
 # ---------------------------------------------------------------------------
