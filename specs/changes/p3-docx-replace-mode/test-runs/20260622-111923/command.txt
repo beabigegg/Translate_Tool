@@ -1,1 +1,0 @@
-conda run -n translate-tool pytest tests/test_output_mode_processors.py tests/test_output_mode_api.py tests/test_output_mode_orchestrator.py tests/test_orchestrator_phase0.py -x -q --tb=short

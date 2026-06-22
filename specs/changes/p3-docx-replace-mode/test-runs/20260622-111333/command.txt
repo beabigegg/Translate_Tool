@@ -1,1 +1,0 @@
-pytest tests/test_output_mode_processors.py tests/test_output_mode_api.py tests/test_output_mode_orchestrator.py --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/p3-docx-replace-mode/test-runs/20260622-111333/junit.xml' --maxfail=1 --tb=short -ra

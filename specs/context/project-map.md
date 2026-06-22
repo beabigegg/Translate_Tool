@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
 visible-dirs: 57
-visible-files: 210
+visible-files: 211
 omitted-dirs: 12
 truncated-dirs: 1
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -79,7 +79,8 @@ Translate_Tool/
 |   |   |   |-- docx_parser.py
 |   |   |   |-- layout_detector.py
 |   |   |   |-- pdf_parser.py
-|   |   |   \-- pptx_parser.py
+|   |   |   |-- pptx_parser.py
+|   |   |   \-- table_recognizer.py
 |   |   |-- processors/
 |   |   |   |-- __init__.py
 |   |   |   |-- com_helpers.py
@@ -294,6 +295,7 @@ Translate_Tool/
 |   |-- test_renderer_convergence.py
 |   |-- test_sentence_mode_consistency.py
 |   |-- test_table_border_protection.py
+|   |-- test_table_recognizer.py
 |   |-- test_term_api.py
 |   |-- test_term_audit.py
 |   |-- test_term_db.py
@@ -303,8 +305,7 @@ Translate_Tool/
 |   |-- test_text_expansion_benchmark.py
 |   |-- test_text_region_renderer.py
 |   |-- test_translatable_document.py
-|   |-- test_translation_profiles_scenarios.py
-|   \-- ... (1 more entries truncated; cap=50)
+|   \-- ... (2 more entries truncated; cap=50)
 |-- .env
 |-- .gitignore
 |-- AGENTS.md

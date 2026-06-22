@@ -25,3 +25,5 @@
 | fallback-chain-cloud-providers | 2026 | 2026-06-20 | specs/archive/2026/fallback-chain-cloud-providers/ |
 | term-extraction-db-first | 2026 | 2026-06-20 | specs/archive/2026/term-extraction-db-first/ |
 | settings-page-cloud-redesign | 2026 | 2026-06-20 | specs/archive/2026/settings-page-cloud-redesign/ |
+| p3-docx-replace-mode | 2026 | 2026-06-22 | specs/archive/2026/p3-docx-replace-mode/ |
+| p3-table-structure | 2026 | 2026-06-22 | specs/archive/2026/p3-table-structure/ |
