@@ -27,3 +27,4 @@
 | settings-page-cloud-redesign | 2026 | 2026-06-20 | specs/archive/2026/settings-page-cloud-redesign/ |
 | p3-docx-replace-mode | 2026 | 2026-06-22 | specs/archive/2026/p3-docx-replace-mode/ |
 | p3-table-structure | 2026 | 2026-06-22 | specs/archive/2026/p3-table-structure/ |
+| p3-llm-judge | 2026 | 2026-06-24 | specs/archive/2026/p3-llm-judge/ |

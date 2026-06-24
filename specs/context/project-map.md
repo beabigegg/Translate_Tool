@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
 visible-dirs: 57
-visible-files: 211
+visible-files: 214
 omitted-dirs: 12
 truncated-dirs: 1
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -44,9 +44,10 @@ Translate_Tool/
 |   \-- workflows/
 |       \-- contract-driven-gates.yml
 |-- .run/
-|   \-- logs/
-|       |-- backend.log
-|       \-- frontend.log
+|   |-- logs/
+|   |   |-- backend.log
+|   |   \-- frontend.log
+|   \-- backend.pid
 |-- app/
 |   |-- backend/
 |   |   |-- api/
@@ -107,6 +108,7 @@ Translate_Tool/
 |   |   |   |-- metrics.py
 |   |   |   |-- model_router.py
 |   |   |   |-- quality_evaluator.py
+|   |   |   |-- quality_judge.py
 |   |   |   |-- term_audit.py
 |   |   |   |-- term_db.py
 |   |   |   |-- term_extractor.py
@@ -187,7 +189,8 @@ Translate_Tool/
 |   |   |-- 0001-config-driven-provider-registry.md
 |   |   |-- 0002-ir-elementtype-serialized-values.md
 |   |   |-- 0003-layout-detector-runtime-and-failure-mode.md
-|   |   \-- 0004-truncation-marker-on-ir.md
+|   |   |-- 0004-truncation-marker-on-ir.md
+|   |   \-- 0005-judge-rerender-apply.md
 |   \-- improvement-plan.md
 |-- scripts/
 |   |-- benchmark_full_factorial.py
@@ -273,7 +276,10 @@ Translate_Tool/
 |   |-- test_golden_regression.py
 |   |-- test_inline_renderer.py
 |   |-- test_ir_pipeline_decoupling.py
+|   |-- test_job_record_judge.py
 |   |-- test_jobstatus_download_url.py
+|   |-- test_judge_api.py
+|   |-- test_judge_apply.py
 |   |-- test_layout_detector.py
 |   |-- test_llm_client_protocol.py
 |   |-- test_metrics_counters.py
@@ -282,6 +288,7 @@ Translate_Tool/
 |   |-- test_model_router.py
 |   |-- test_ollama_client_dynamic_strategy.py
 |   |-- test_openai_compatible_client.py
+|   |-- test_orchestrator_judge.py
 |   |-- test_orchestrator_phase0.py
 |   |-- test_output_mode_api.py
 |   |-- test_output_mode_orchestrator.py
@@ -292,6 +299,7 @@ Translate_Tool/
 |   |-- test_provider_fallback.py
 |   |-- test_providers_api.py
 |   |-- test_quality_evaluation.py
+|   |-- test_quality_judge.py
 |   |-- test_renderer_convergence.py
 |   |-- test_sentence_mode_consistency.py
 |   |-- test_table_border_protection.py
@@ -300,12 +308,7 @@ Translate_Tool/
 |   |-- test_term_audit.py
 |   |-- test_term_db.py
 |   |-- test_term_extractor_resilience.py
-|   |-- test_term_extractor.py
-|   |-- test_term_state_machine.py
-|   |-- test_text_expansion_benchmark.py
-|   |-- test_text_region_renderer.py
-|   |-- test_translatable_document.py
-|   \-- ... (2 more entries truncated; cap=50)
+|   \-- ... (7 more entries truncated; cap=50)
 |-- .env
 |-- .gitignore
 |-- AGENTS.md

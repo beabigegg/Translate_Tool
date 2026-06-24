@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 contract-count: 9
 missing-summary-count: 0
-inputs-digest: 868fcea198d8679a40db24939c6ebc278baf1df55748543db216991e57805cd8
+inputs-digest: 92a9da2a71c4c40219e4f35d8bd42e58f1ae81c21baafea1649afcb058898003
 ---
 
 # Contracts Index
@@ -34,7 +34,7 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: API Contract
 - owner: application-team
 - surface: api
-- schema-version: 0.7.0
+- schema-version: 0.8.0
 - last-changed: 2026-06-22
 - breaking-change-policy: deprecate-2-minors
 - summary: API behavior, compatibility rules, and endpoint contract requirements.
@@ -69,7 +69,7 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: Business Rules
 - owner: application-team
 - surface: domain-behavior
-- schema-version: 0.17.0
+- schema-version: 0.18.0
 - last-changed: 2026-06-22
 - breaking-change-policy: deprecate-2-minors
 - summary: Business decision tables, rule inventory, and change policy for behavior updates.
@@ -95,8 +95,8 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: CSS / UI Contract
 - owner: application-team
 - surface: ui
-- schema-version: 0.2.0
-- last-changed: 2026-06-20
+- schema-version: 0.3.0
+- last-changed: 2026-06-22
 - breaking-change-policy: deprecate-2-minors
 - summary: UI token policy, component styling rules, and visual review constraints.
 
@@ -118,7 +118,7 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: Data Shape Contract
 - owner: application-team
 - surface: data
-- schema-version: 0.11.0
+- schema-version: 0.12.0
 - last-changed: 2026-06-22
 - breaking-change-policy: deprecate-2-minors
 - summary: Data schema, invalid-data handling, and row-level compatibility rules.
@@ -131,8 +131,8 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: Env Contract
 - owner: platform-team
 - surface: runtime-config
-- schema-version: 0.9.0
-- last-changed: 2026-06-20
+- schema-version: 0.10.0
+- last-changed: 2026-06-22
 - breaking-change-policy: deprecate-2-minors
 - summary: Environment variable inventory, secret handling, and deployment sync policy.
 
