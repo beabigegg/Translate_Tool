@@ -41,6 +41,7 @@ class JobStatus(BaseModel):
     judge_apply_status: Optional[str] = None    # p3-llm-judge: applying|applied|failed|null
     download_url: Optional[str] = None           # populated when job is completed and output zip exists
     layout_viz_available: bool = False           # True once layout_viz.json exists (PDF jobs only)
+    status_detail: Optional[str] = None         # human-readable current stage during "running"
 
 
 class TermImportResult(BaseModel):

@@ -82,6 +82,7 @@ def translate_texts(
     stop_flag=None,
     log: Callable[[str], None] = lambda s: None,
     terms: "Optional[List[Term]]" = None,
+    status_callback: Optional[Callable[[Optional[str]], None]] = None,
 ) -> Tuple[Dict[Tuple[str, str], str], int, int, bool]:
     """Translate texts for all targets with character-based batching.
 
@@ -260,12 +261,34 @@ def translate_texts(
         except Exception:
             pass  # metrics must never break translation
 
+        # Critique cache uses a ":c" suffix on the model key to track which segments
+        # have already been reviewed.  On cache hit: load the approved version and skip
+        # re-critique.  After critique: persist so future runs skip it too.
+        _critique_model_key = client.cache_model_key + ":c"
+        _critiqued_keys: set = set()
+        if cache is not None:
+            _tgt_to_texts: dict = {}
+            for (_t, _s) in tmap.keys():
+                _tgt_to_texts.setdefault(_t, []).append(_s)
+            for _t, _texts in _tgt_to_texts.items():
+                _c_hits = cache.get_batch(_texts, _t, src_lang or "auto", _critique_model_key)
+                for _s_text, _c_trans in _c_hits.items():
+                    tmap[(_t, _s_text)] = _c_trans
+                    _critiqued_keys.add((_t, _s_text))
+            if _critiqued_keys:
+                logger.debug("[CRITIQUE] %d segments already critiqued (cache hit), skipping", len(_critiqued_keys))
+
+        _segments_to_critique = len(tmap) - len(_critiqued_keys)
+        if _segments_to_critique > 0 and status_callback is not None:
+            status_callback("品質審校中…")
         _critique_iter_count = 0
         for _key in list(tmap.keys()):
             _tgt, _src_text = _key
             _current_draft = tmap[_key]
-            # Skip failure placeholders
+            # Skip failure placeholders and already-critiqued segments
             if _current_draft.startswith("[Translation failed|"):
+                continue
+            if _key in _critiqued_keys:
                 continue
             # Run the bounded critique iterations for this segment
             _segment_iters = 0
@@ -306,7 +329,15 @@ def translate_texts(
                     break
             tmap[_key] = _current_draft
             _critique_iter_count += _segment_iters
+            # Persist the critique-approved result for future runs.
+            if cache is not None:
+                try:
+                    cache.put(_src_text, _tgt, src_lang or "auto", _critique_model_key, _current_draft)
+                except Exception:
+                    pass  # cache write must never break translation
 
+        if status_callback is not None:
+            status_callback(None)
         try:
             record_critique_iteration(_critique_iter_count)
         except Exception:

@@ -53,6 +53,7 @@ def translate_xlsx_xls(
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
     terms_getter: Optional[Callable[[], list]] = None,
     block_overrides: Optional[Dict[str, str]] = None,
+    status_callback: Optional[Callable[[Optional[str]], None]] = None,
 ) -> bool:
     ext = Path(in_path).suffix.lower()
     out_xlsx = Path(out_path).with_suffix(".xlsx")
@@ -165,6 +166,7 @@ def translate_xlsx_xls(
             stop_flag=stop_flag,
             log=log,
             terms=_terms,
+            status_callback=status_callback,
         )
 
         if fail_cnt and not stopped:

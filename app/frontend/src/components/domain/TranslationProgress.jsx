@@ -19,6 +19,7 @@ export function TranslationProgress({ status }) {
     provider,
     quality_score_avg,
     audit_hit_rate,
+    status_detail,
   } = status;
 
   const isComplete = status.status === 'completed';
@@ -35,6 +36,9 @@ export function TranslationProgress({ status }) {
       {/* In-flight details */}
       {!isComplete && !isFailed && (
         <div className="progress-details">
+          {status_detail && (
+            <p className="progress-stage" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{status_detail}</p>
+          )}
           {current_file && <p className="progress-file">正在處理：{current_file}</p>}
           {segments_total > 0 && (
             <p className="progress-segs">{segments_done} / {segments_total} 段</p>

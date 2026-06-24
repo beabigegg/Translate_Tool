@@ -492,6 +492,7 @@ def _translate_docx_via_doc2doc(
     max_batch_chars: int = DEFAULT_MAX_BATCH_CHARS,
     terms=None,
     in_path: str = "",
+    status_callback: Optional[Callable[[Optional[str]], None]] = None,
 ) -> Tuple[Dict[Tuple[str, str], str], int, int, bool]:
     """Use semantic chunking (translate_document) for long single-target DOCX docs."""
     from app.backend.models.translatable_document import (
@@ -531,6 +532,7 @@ def _translate_docx_via_doc2doc(
         return translate_texts(
             texts, [target], src_lang, client,
             max_batch_chars=max_batch_chars, stop_flag=stop_flag, log=log, terms=terms,
+            status_callback=status_callback,
         )
 
     tmap: Dict[Tuple[str, str], str] = {}
@@ -561,6 +563,7 @@ def translate_docx(
     terms_getter: Optional[Callable[[], list]] = None,
     output_mode: str = "append",
     block_overrides: Optional[Dict[str, str]] = None,
+    status_callback: Optional[Callable[[Optional[str]], None]] = None,
 ) -> bool:
     from shutil import copyfile
 
@@ -617,7 +620,7 @@ def translate_docx(
                 uniq_texts, targets[0], src_lang, client,
                 stop_flag=stop_flag, log=log,
                 max_batch_chars=max_batch_chars, terms=_terms,
-                in_path=in_path,
+                in_path=in_path, status_callback=status_callback,
             )
         else:
             tmap, _, fail_cnt, stopped = translate_texts(
@@ -629,6 +632,7 @@ def translate_docx(
                 stop_flag=stop_flag,
                 log=log,
                 terms=_terms,
+                status_callback=status_callback,
             )
 
         if fail_cnt:

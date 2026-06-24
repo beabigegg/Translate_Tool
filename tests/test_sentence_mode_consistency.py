@@ -271,7 +271,7 @@ def test_translate_texts_signature_unchanged():
     params = list(sig.parameters.keys())
 
     expected = ["texts", "targets", "src_lang", "client",
-                "max_batch_chars", "stop_flag", "log", "terms"]
+                "max_batch_chars", "stop_flag", "log", "terms", "status_callback"]
     assert params == expected, (
         f"Signature mismatch.\nExpected: {expected}\nActual:   {params}"
     )

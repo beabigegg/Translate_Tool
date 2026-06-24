@@ -106,6 +106,7 @@ class JobRecord:
     audit: Optional[TerminologyAuditResult] = None  # p2-term-audit: terminology audit result
     judge: Optional[JudgeResult] = None  # p3-llm-judge: judge result
     judge_apply_status: Optional[str] = None  # applying | applied | failed | None
+    status_detail: Optional[str] = None  # current stage label shown in UI during "running"
 
 
 class JobLogger:
@@ -367,6 +368,7 @@ class JobManager:
                         provider_id=group.provider,
                         post_translate_hook=qe_blocks.extend,
                         output_mode=output_mode,
+                        status_callback=lambda detail: setattr(job, "status_detail", detail),
                     )
                     # process_files returns (processed, total, stopped, last_client,
                     # term_summary[, winning_provider]) — unpack flexibly for forward compat
@@ -392,10 +394,12 @@ class JobManager:
                 # Archive outputs (skip for extraction_only — no translated files produced)
                 archive_path: Optional[Path] = None
                 if mode != "extraction_only":
+                    job.status_detail = "整理輸出中…"
                     archive_path = self._archive_outputs(job)
 
                 # p2-comet-qe: score blocks before status → completed (BR-55, BR-56)
                 if QE_ENABLED and mode != "extraction_only":
+                    job.status_detail = "品質評估中…"
                     try:
                         qe_model = load_model(QE_MODEL_NAME, QE_DEVICE)
                         scores_raw = score_blocks(qe_model, [(src, mt) for _, src, mt in qe_blocks], device=QE_DEVICE)
@@ -427,6 +431,7 @@ class JobManager:
                 # p2-term-audit: audit terminology hits/rejections over qe_blocks (BR-59..BR-61)
                 # Mirrors the QE extraction_only guard so audit only runs on translation jobs.
                 if mode != "extraction_only":
+                    job.status_detail = "術語審核中…"
                     try:
                         # Collect targets and domain from the route groups used in this job
                         all_targets = list({t for g in route_groups for t in g.targets})
@@ -445,12 +450,17 @@ class JobManager:
 
                 # p3-llm-judge: run judge loop after QE+audit, before status→completed (D1)
                 if config.JUDGE_ENABLED and mode != "extraction_only" and qe_blocks:
+                    job.status_detail = "品質評審中…"
                     try:
                         from app.backend.services.quality_judge import QualityJudge
                         _judge = QualityJudge()
+                        _judge_total = len(qe_blocks)
+                        _judge_retranslate_count = [0]
 
                         def _translate_fn(src_text: str, feedback: str) -> str:
                             """Re-translate a single block with judge feedback in prompt."""
+                            _judge_retranslate_count[0] += 1
+                            job.status_detail = f"品質評審中… (重譯 {_judge_retranslate_count[0]}/{_judge_total})"
                             # Use the same client that handled the last group; fall back
                             # to a new OllamaClient if last_client is unavailable.
                             _cli = last_client
@@ -479,6 +489,7 @@ class JobManager:
                     job.output_zip = archive_path
                     job.layout_viz_path = JOBS_DIR / job_id / "layout_viz.json"
                     job.status = "stopped" if overall_stopped else "completed"
+                    job.status_detail = None
                     job.term_summary = agg_term_summary
                     job.provider = winning_provider  # p1-cloud-providers: BR-16
                     job.updated_at = time.time()

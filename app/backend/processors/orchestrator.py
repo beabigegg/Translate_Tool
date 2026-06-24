@@ -360,6 +360,7 @@ def process_files(
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
     output_mode: str = "append",
     block_overrides: Optional[Dict[str, str]] = None,
+    status_callback: Optional[Callable[[Optional[str]], None]] = None,
 ) -> Tuple[int, int, bool, Optional[OllamaClient], Dict, Optional[str]]:
     """Process files for translation.
 
@@ -523,6 +524,7 @@ def process_files(
             and QWEN_CONTEXT_FLOW_ENABLED
             and not client._is_translation_dedicated()
             and sample
+            and _cloud_client is None  # skip when cloud provider is active — local Ollama won't have the cloud model
         ):
             doc_context = _detect_document_context(ollama_client, sample, log, target_lang=targets[0] if targets else "")
 
@@ -695,6 +697,7 @@ def process_files(
                     terms_getter=lambda: list(_glossary_terms_holder),
                     output_mode=effective_output_mode,
                     block_overrides=block_overrides,
+                    status_callback=status_callback,
                 )
             elif ext == ".doc":
                 tmp_docx = str(output_dir / f"{src.stem}__tmp.docx")
@@ -728,6 +731,7 @@ def process_files(
                         terms_getter=lambda: list(_glossary_terms_holder),
                         output_mode=effective_output_mode,
                         block_overrides=block_overrides,
+                        status_callback=status_callback,
                     )
                 finally:
                     try:
@@ -749,6 +753,7 @@ def process_files(
                     terms_getter=lambda: list(_glossary_terms_holder),
                     output_mode=effective_output_mode,
                     block_overrides=block_overrides,
+                    status_callback=status_callback,
                 )
             elif ext in (".xlsx", ".xls"):
                 stopped = translate_xlsx_xls(
@@ -764,6 +769,7 @@ def process_files(
                     post_translate_hook=post_translate_hook,
                     terms_getter=lambda: list(_glossary_terms_holder),
                     block_overrides=block_overrides,
+                    status_callback=status_callback,
                 )
             elif ext == ".pdf":
                 log(f"[PDF] Using output_format={output_format}, layout_mode={layout_mode}")

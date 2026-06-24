@@ -339,6 +339,7 @@ def job_status(job_id: str) -> JobStatus:
         judge_apply_status=job_judge_apply_status,
         download_url=download_url,
         layout_viz_available=layout_viz_available,
+        status_detail=getattr(job, "status_detail", None),
     )
 
 

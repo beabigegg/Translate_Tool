@@ -195,6 +195,7 @@ def translate_pptx(
     terms_getter: Optional[Callable[[], list]] = None,
     output_mode: str = "append",
     block_overrides: Optional[Dict[str, str]] = None,
+    status_callback: Optional[Callable[[Optional[str]], None]] = None,
 ) -> bool:
     prs = pptx.Presentation(in_path)
     # segs: List of (segment_type, object_ref, text)
@@ -288,6 +289,7 @@ def translate_pptx(
             stop_flag=stop_flag,
             log=log,
             terms=_terms,
+            status_callback=status_callback,
         )
 
         if fail_cnt and not stopped:
