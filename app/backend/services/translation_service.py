@@ -279,8 +279,7 @@ def translate_texts(
                 logger.debug("[CRITIQUE] %d segments already critiqued (cache hit), skipping", len(_critiqued_keys))
 
         _segments_to_critique = len(tmap) - len(_critiqued_keys)
-        if _segments_to_critique > 0 and status_callback is not None:
-            status_callback("品質審校中…")
+        _critique_done = 0
         _critique_iter_count = 0
         for _key in list(tmap.keys()):
             _tgt, _src_text = _key
@@ -290,6 +289,9 @@ def translate_texts(
                 continue
             if _key in _critiqued_keys:
                 continue
+            _critique_done += 1
+            if status_callback is not None and _segments_to_critique > 0:
+                status_callback(f"品質審校中… ({_critique_done}/{_segments_to_critique})")
             # Run the bounded critique iterations for this segment
             _segment_iters = 0
             for _iter in range(max(1, CRITIQUE_MAX_ITERATIONS)):
