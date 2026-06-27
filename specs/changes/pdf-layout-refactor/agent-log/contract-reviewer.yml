@@ -1,0 +1,8 @@
+agent: contract-reviewer
+change-id: pdf-layout-refactor
+status: approved
+summary: "4 contracts updated and verified: data-shape 0.14→0.15 (is_underline, FORMULA pass-through, paragraph IR, ocr_backend consumer); business 0.20→0.21 (BR-84..88, BR-36 amended to binary-search/8pt floor); env 0.10→0.11 (PDF_RENDER_DPI, OCR_ENABLED); ci-gate 0.4.3→0.5.0 (5 new gates: residual-text required, biou/truncation/reading-order informational, ocr-absent required). All contract updates applied in worktree; 990 tests pass."
+artifacts:
+  - { type: version-bumps, pointer: "data-shape-contract: 0.14.0→0.15.0; business-rules: 0.20.0→0.21.0; env-contract: 0.10.0→0.11.0; ci-gate-contract: 0.4.3→0.5.0" }
+  - { type: breaking-changes, pointer: "cascade floor 4pt→8pt (test_text_region_renderer.py baselines updated); paragraph aggregation changes block_id indices (BR-77 fail-soft handles)" }
+  - { type: dpi-fix, pointer: "detect() now accepts page_width_pt/page_height_pt; normalized region boxes correctly map to element bboxes at any DPI (not just 72 DPI)" }

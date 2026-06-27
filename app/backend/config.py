@@ -154,6 +154,16 @@ LAYOUT_DETECTOR_MODEL_PATH: Optional[str] = os.environ.get("LAYOUT_DETECTOR_MODE
 # LAYOUT_DETECTOR_ENABLED: default on; set to "0"/"false"/"no" to revert to heuristic.
 LAYOUT_DETECTOR_ENABLED: bool = os.environ.get("LAYOUT_DETECTOR_ENABLED", "true").lower() in ("1", "true", "yes")
 
+# PDF rasterisation DPI for layout detector (pdf-layout-refactor, AC-6, D-6)
+# Higher DPI improves detector classification quality; 150 is the balanced default.
+# Set PDF_RENDER_DPI=72 to reproduce the previous 72-DPI behaviour.
+PDF_RENDER_DPI: int = int(os.getenv("PDF_RENDER_DPI", "150"))
+
+# OCR backend for scanned PDFs (pdf-layout-refactor, AC-7, D-7)
+# Default disabled (False): lazy-import seam; no hard dependency on surya/paddleocr.
+# Set OCR_ENABLED=true to route near-empty pages through ocr_backend.run_ocr().
+OCR_ENABLED: bool = os.getenv("OCR_ENABLED", "false").lower() in ("1", "true", "yes")
+
 # Table recognition configuration (p3-table-structure)
 # TABLE_RECOGNITION_MODEL_PATH: optional explicit path to TATR/TableFormer ONNX weights directory.
 # When unset, falls back to HuggingFace cache / auto-download (D-5, tier 2/3).
@@ -174,7 +184,8 @@ JUDGE_MAX_ITERATIONS: int = int(os.environ.get("JUDGE_MAX_ITERATIONS", "3"))
 # Layout preservation configuration
 LAYOUT_PRESERVATION_MODE = "inline"  # inline | overlay | side_by_side
 DEFAULT_FONT_FAMILY = "NotoSansSC"  # Default font for PDF rendering
-MIN_FONT_SIZE_PT = 6  # Minimum font size for scaling
+MIN_READABLE_FONT_PT: int = 8  # Readable floor for fit cascade (AC-3, BR-85, BR-88)
+MIN_FONT_SIZE_PT = MIN_READABLE_FONT_PT  # alias; was 6 — reconciled to 8 (D-3)
 MAX_FONT_SIZE_PT = 72  # Maximum font size
 FONT_SIZE_SHRINK_FACTOR = 0.9  # Shrink factor for font scaling
 PDF_DRAW_MASK = True  # Draw white mask over original text in overlay mode (set False for transparent background)

@@ -1,0 +1,18 @@
+agent: test-strategist
+change-id: pdf-layout-refactor
+date: 2026-06-27
+status: done
+
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/pdf-layout-refactor/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_pdf_layout_refactor.py → app/backend/renderers/fitz_renderer.py, app/backend/renderers/bbox_reflow.py, app/backend/parsers/pdf_parser.py, app/backend/parsers/layout_detector.py, app/backend/models/translatable_document.py" }
+  - { type: coverage-tiers, pointer: "unit, integration, resilience, data-boundary, e2e" }
+  - { type: mapping-completeness, pointer: "all 8 acceptance criteria (AC-1..AC-8) covered; 16 named test functions across 1 new file + 4 extended existing files" }
+
+notes: |
+  OCR-absent resilience tests (AC-7) verified to not require the OCR library;
+  OCR_ENABLED=False default ensures CI passes without Surya/PaddleOCR.
+  AC-8 fitz→ReportLab convergence delegates to tests/test_renderer_convergence.py (extend, not duplicate).
+  MIN_READABLE_FONT_PT (8pt) vs MIN_FONT_SIZE_PT (6pt) reconciliation flagged in design.md open risks —
+  test_scale_fit_stays_above_readable_floor must use the resolved constant once implementation-planner
+  picks one source of truth.

@@ -263,10 +263,11 @@ class PDFGenerator:
             if not elements:
                 continue
 
-            # Collect redaction areas and translations for this page
-            redaction_items = []  # List of (redact_rect, text_rect, translated_text, element)
+            # Bbox-exact whitening (D-1, BR-84): separate whitening rects from text items.
+            # search_for is NOT used — the element's IR bbox is the single source of truth.
+            whitening_rects = []   # fitz.Rect objects to whiten (may be >1 per paragraph elem)
+            text_items = []        # (text_rect, translated_text, element) for insertion
 
-            # Process each element — use Placement for text_rect; fitz quad for redact_rect.
             for element in elements:
                 placement = placement_by_id.get(element.element_id)
                 if placement is None:
@@ -287,49 +288,26 @@ class PDFGenerator:
                     else:
                         continue
 
-                # Search for exact text position to get precise quads for the redaction rect.
-                # This is fitz-specific quad-precise redaction; it does NOT affect text_rect.
-                text_quads = page.search_for(original_text, quads=True)
-
-                # Element bbox for quad search validation (±2 pt tolerance, Decision C).
-                elem_rect = fitz.Rect(
-                    placement.x0 - 2,
-                    placement.y0 - 2,
-                    placement.x1 + 2,
-                    placement.y1 + 2,
-                )
-
-                # Find the quad that matches our element's position
-                matched_quad = None
-                for quad in text_quads:
-                    if quad.rect.intersects(elem_rect):
-                        matched_quad = quad
-                        break
-
-                if matched_quad:
-                    # Use the precise quad rect for redaction
-                    # Shrink by configurable margin to preserve adjacent table lines
-                    rect = matched_quad.rect
-                    margin = PDF_MASK_MARGIN_PT
-                    redact_rect = fitz.Rect(
-                        rect.x0 + margin,
-                        rect.y0 + margin,
-                        rect.x1 - margin,
-                        rect.y1 - margin,
-                    )
+                # Bbox-exact whitening: use IR bbox directly; no search_for (D-1).
+                # For paragraph-aggregated elements, whiten each original line bbox
+                # (stored by the parser as metadata["lines"]) so table borders are spared.
+                margin = PDF_MASK_MARGIN_PT
+                line_bboxes = element.metadata.get("lines", [])
+                if line_bboxes:
+                    for lb in line_bboxes:
+                        r = fitz.Rect(
+                            lb[0] + margin, lb[1] + margin,
+                            lb[2] - margin, lb[3] - margin,
+                        )
+                        if r.width >= 1 and r.height >= 1:
+                            whitening_rects.append(r)
                 else:
-                    # Fallback: use placement bbox with larger margin
-                    margin = PDF_MASK_MARGIN_PT * 2
-                    redact_rect = fitz.Rect(
-                        placement.x0 + margin,
-                        placement.y0 + margin,
-                        placement.x1 - margin,
-                        placement.y1 - margin,
+                    r = fitz.Rect(
+                        placement.x0 + margin, placement.y0 + margin,
+                        placement.x1 - margin, placement.y1 - margin,
                     )
-
-                # Skip invalid rectangles
-                if redact_rect.width < 1 or redact_rect.height < 1:
-                    continue
+                    if r.width >= 1 and r.height >= 1:
+                        whitening_rects.append(r)
 
                 # Text insertion rect comes from the Placement (shared reflow output).
                 # This is the single source of placement truth for both backends (BR-35).
@@ -339,13 +317,12 @@ class PDFGenerator:
                     placement.x1,
                     placement.y1,
                 )
-
-                redaction_items.append((redact_rect, text_rect, translated_text, element))
+                text_items.append((text_rect, translated_text, element))
 
             # Apply redactions if mask is enabled
-            if self.draw_mask and redaction_items:
+            if self.draw_mask and whitening_rects:
                 # Add all redaction annotations first
-                for redact_rect, _, _, _ in redaction_items:
+                for redact_rect in whitening_rects:
                     # Add redaction annotation with white fill
                     page.add_redact_annot(redact_rect, fill=(1, 1, 1))
 
@@ -356,7 +333,7 @@ class PDFGenerator:
                 page.apply_redactions(graphics=0)
 
             # Now insert all translated text; pass element so truncation marker (BR-38) can be set
-            for _, text_rect, translated_text, elem_ref in redaction_items:
+            for text_rect, translated_text, elem_ref in text_items:
                 self._insert_text_in_rect(page, text_rect, translated_text, element=elem_ref)
 
         # Subset fonts to embed only used glyphs (important for CJK fonts)

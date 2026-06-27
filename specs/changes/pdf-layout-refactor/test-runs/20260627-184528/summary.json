@@ -1,0 +1,20 @@
+{
+  "change_id": "pdf-layout-refactor",
+  "phase": "targeted",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "pytest tests/test_pdf_layout_refactor.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/pdf-layout-refactor/specs/changes/pdf-layout-refactor/test-runs/20260627-184528/junit.xml' -ra",
+  "duration_ms": 370,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests.test_pdf_layout_refactor.TestBboxWhitening::test_bbox_whitening_uses_rect_not_search_for",
+    "message": "AssertionError: Expected 'search_for' to not have been called. Called 1 times.\nCalls: [call('Hello', quads=True)]."
+  },
+  "artifacts": {
+    "summary": "specs/changes/pdf-layout-refactor/test-runs/20260627-184528/summary.json",
+    "stdout": "specs/changes/pdf-layout-refactor/test-runs/20260627-184528/stdout.log",
+    "stderr": "specs/changes/pdf-layout-refactor/test-runs/20260627-184528/stderr.log",
+    "junit": "specs/changes/pdf-layout-refactor/test-runs/20260627-184528/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

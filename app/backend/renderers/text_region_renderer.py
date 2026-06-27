@@ -187,8 +187,8 @@ def fit_text_cascade(
 
     Cascade steps, applied in order (each only when prior steps are exhausted):
 
-    (a) Font-size shrink from style.font_size (or MAX_FONT_SIZE_PT) down to
-        MIN_FONT_SIZE_PT (4 pt floor) using FONT_SIZE_SHRINK_FACTOR.
+    (a) Binary-search font-size from style.font_size down to MIN_READABLE_FONT_PT
+        (8 pt floor) — finds the largest fitting size in O(log N) steps.
     (b) Line-spacing compression from 1.15 down to 1.0 floor.
     (c) Letter-spacing reduction to -0.005 em floor (negative tracking capped
         to avoid glyph collision; currently advisory).
@@ -215,39 +215,64 @@ def fit_text_cascade(
     CascadeDecision
         Structured fit decision; consume fields to drive rendering.
     """
-    from app.backend.config import FONT_SIZE_SHRINK_FACTOR as _SHRINK
-
     bbox_w = bbox.x1 - bbox.x0
     bbox_h = bbox.y1 - bbox.y0
 
     font_name = (style.font_name or "Helvetica") if style else "Helvetica"
     initial_size = (style.font_size or MIN_FONT_SIZE_PT) if style else MIN_FONT_SIZE_PT
-    # Clamp initial size to a positive value
-    initial_size = max(initial_size, MIN_FONT_SIZE_PT)
+    # Clamp initial size to at least the readable floor
+    initial_size = max(initial_size, float(MIN_FONT_SIZE_PT))
 
     # We track the effective max height; may expand in step (d)
     effective_max_height = bbox_h
 
-    # --- step (a): font-size shrink ---
-    font_size = initial_size
+    # --- step (a): binary-search font-size in [MIN_FONT_SIZE_PT, initial_size] (AC-3) ---
     line_spacing = 1.15
 
-    while font_size > MIN_FONT_SIZE_PT:
-        lines = _wrap_lines_simple(text, font_name, font_size, bbox_w)
-        _, h = _measure_text_block(lines, font_name, font_size, line_spacing)
-        if h <= bbox_h:
-            return CascadeDecision(
-                font_size=font_size,
-                line_spacing=line_spacing,
-                letter_spacing=0.0,
-                overflow=False,
-                truncated=False,
-                fitted_text=text,
-            )
-        font_size = max(font_size * _SHRINK, MIN_FONT_SIZE_PT)
+    # Quick check: does initial size fit?
+    lines = _wrap_lines_simple(text, font_name, initial_size, bbox_w)
+    _, h = _measure_text_block(lines, font_name, initial_size, line_spacing)
+    if h <= bbox_h:
+        return CascadeDecision(
+            font_size=initial_size,
+            line_spacing=line_spacing,
+            letter_spacing=0.0,
+            overflow=False,
+            truncated=False,
+            fitted_text=text,
+        )
 
-    # At minimum font size — check once more
-    font_size = MIN_FONT_SIZE_PT
+    # Binary search: find the largest font size in [floor, initial_size] that fits.
+    # At most 20 iterations → precision within 0.5 pt.
+    lo = float(MIN_FONT_SIZE_PT)
+    hi = float(initial_size)
+    for _ in range(20):
+        if hi - lo < 0.5:
+            break
+        mid = (lo + hi) / 2.0
+        lines = _wrap_lines_simple(text, font_name, mid, bbox_w)
+        _, h = _measure_text_block(lines, font_name, mid, line_spacing)
+        if h <= bbox_h:
+            lo = mid
+        else:
+            hi = mid
+
+    # lo is the best-fitting lower bound found; verify it fits
+    font_size = lo
+    lines = _wrap_lines_simple(text, font_name, font_size, bbox_w)
+    _, h = _measure_text_block(lines, font_name, font_size, line_spacing)
+    if h <= bbox_h and font_size >= MIN_FONT_SIZE_PT:
+        return CascadeDecision(
+            font_size=font_size,
+            line_spacing=line_spacing,
+            letter_spacing=0.0,
+            overflow=False,
+            truncated=False,
+            fitted_text=text,
+        )
+
+    # Step (a) exhausted at MIN_READABLE_FONT_PT floor; proceed to step (b)
+    font_size = float(MIN_FONT_SIZE_PT)
     lines = _wrap_lines_simple(text, font_name, font_size, bbox_w)
     _, h = _measure_text_block(lines, font_name, font_size, line_spacing)
     if h <= bbox_h:

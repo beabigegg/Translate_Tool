@@ -3,8 +3,8 @@ contract: env
 summary: Environment variable inventory, secret handling, and deployment sync policy.
 owner: platform-team
 surface: runtime-config
-schema-version: 0.10.0
-last-changed: 2026-06-22
+schema-version: 0.11.0
+last-changed: 2026-06-27
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -43,6 +43,8 @@ breaking-change-policy: deprecate-2-minors
 | JUDGE_ENABLED | backend | all | no | no | false | false | application-team | boolean (true/false or 1/0) | yes | When false (or 0), judge step is skipped entirely; GET /jobs/{id}/judge returns status: "disabled". Opt-in by default — set to true to enable Gemma judge pass. See BR-74. |
 | JUDGE_MODEL | backend | all | no | no | gemma3 | gemma3 | application-team | non-empty string | no | Ollama model name for the LLM judge. Used only when JUDGE_ENABLED=true. Must be a model pulled locally via Ollama (never routed through cloud providers). See BR-72, D4 in design.md. |
 | JUDGE_MAX_ITERATIONS | backend | all | no | no | 3 | 3 | application-team | positive integer | no | Maximum re-translation iterations in the judge loop per job. Loop terminates at this count even if score never reaches 高. See BR-73. |
+| PDF_RENDER_DPI | backend | all | no | no | 150 | 150 | platform-team | positive integer | yes | Controls the fitz page rasterise matrix used for layout detection: `fitz.Matrix(dpi/72, dpi/72)`. Default 150 improves classifier quality on high-DPI source documents. Set to 72 to reproduce pre-pdf-layout-refactor rasterisation behaviour. Higher values increase per-page memory and latency; values above 300 are not recommended. See BR-X in design.md (D-6). |
+| OCR_ENABLED | backend | all | no | no | false | false | platform-team | boolean (true/false or 1/0) | yes | When false (default), PDF pages whose `page.get_text()` returns near-empty content produce a WARNING and near-blank IR output. When true, enables the lazy-imported OCR backend (Surya or PaddleOCR) for such pages. The OCR library must be installed separately; the backend starts normally and CI passes without it when `OCR_ENABLED=false`. See BR-87. |
 
 ## Public Frontend Env Policy
 

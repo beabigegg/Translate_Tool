@@ -1,0 +1,15 @@
+F
+=================================== FAILURES ===================================
+________ TestBboxWhitening.test_bbox_whitening_uses_rect_not_search_for ________
+tests/test_pdf_layout_refactor.py:128: in test_bbox_whitening_uses_rect_not_search_for
+    mock_page.search_for.assert_not_called()
+/home/egg/miniforge3/lib/python3.13/unittest/mock.py:940: in assert_not_called
+    raise AssertionError(msg)
+E   AssertionError: Expected 'search_for' to not have been called. Called 1 times.
+E   Calls: [call('Hello', quads=True)].
+------------------------------ Captured log call -------------------------------
+WARNING  app.backend.renderers.fitz_renderer:fitz_renderer.py:573 Failed to insert text via cascade decision: '<=' not supported between instances of 'MagicMock' and 'int'
+=========================== short test summary info ============================
+FAILED tests/test_pdf_layout_refactor.py::TestBboxWhitening::test_bbox_whitening_uses_rect_not_search_for
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 0.19s

@@ -46,6 +46,26 @@ DOCX_ROUTING_WARNING = (
     "use output_format=pdf for layout-faithful output"
 )
 
+def _apply_formula_passthrough(elements: list) -> None:
+    """Set FORMULA elements as non-translatable with content as pass-through (AC-7, IP-R4).
+
+    This is path-independent: runs for both the ONNX detector path and the
+    heuristic path.  The detector path already sets should_translate=False for
+    FORMULA elements; this ensures the heuristic path does the same.
+
+    Mutates elements in-place.
+
+    Args:
+        elements: List of TranslatableElement objects; FORMULA-typed ones are updated.
+    """
+    from app.backend.models.translatable_document import ElementType
+    for elem in elements:
+        if elem.element_type == ElementType.FORMULA:
+            elem.should_translate = False
+            if elem.translated_content is None:
+                elem.translated_content = elem.content
+
+
 # Lazy import for PyMuPDF parser
 _pymupdf_parser = None
 
@@ -283,6 +303,11 @@ def _translate_pdf_with_pymupdf(
 
         # Get elements in reading order
         elements = doc.get_elements_in_reading_order()
+
+        # FORMULA pass-through (IP-R4): path-independent; heuristic path does not
+        # set should_translate=False for FORMULA by default, so apply it here.
+        _apply_formula_passthrough(elements)
+
         translatable = [e for e in elements if e.should_translate and e.content.strip()]
 
         log(f"[PDF] Found {len(translatable)} translatable blocks across {doc.metadata.page_count} pages")

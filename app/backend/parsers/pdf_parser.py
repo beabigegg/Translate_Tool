@@ -27,7 +27,7 @@ from app.backend.models.translatable_document import (
 )
 import os
 
-from app.backend.config import LAYOUT_DETECTOR_MODEL_PATH
+from app.backend.config import LAYOUT_DETECTOR_MODEL_PATH, PDF_RENDER_DPI
 from app.backend.parsers.base import BaseParser
 from app.backend.utils.bbox_utils import is_header_footer_region, normalize_bbox
 
@@ -97,6 +97,9 @@ class PyMuPDFParser(BaseParser):
             pages: List[PageInfo] = []
             total_chars = 0
 
+            from app.backend.config import OCR_ENABLED as _OCR_ENABLED
+            _NEAR_EMPTY_CHAR_THRESHOLD = 10  # chars per page below which OCR is attempted
+
             for page_num in range(len(doc)):
                 page = doc[page_num]
                 page_info = PageInfo(
@@ -107,10 +110,29 @@ class PyMuPDFParser(BaseParser):
                 )
                 pages.append(page_info)
 
-                # Extract text blocks with bbox
+                # Extract text blocks with bbox (paragraph-aggregated, AC-2)
                 page_elements = self._extract_page_elements(
                     page, page_num + 1, page_info.height
                 )
+
+                # OCR routing for near-empty pages (AC-7, D-7)
+                page_text = " ".join(e.content for e in page_elements).strip()
+                if len(page_text) < _NEAR_EMPTY_CHAR_THRESHOLD:
+                    # Re-check OCR_ENABLED at runtime (env var may differ per test)
+                    _ocr_now = os.environ.get("OCR_ENABLED", "false").lower() in ("1", "true", "yes")
+                    if _ocr_now:
+                        from app.backend.parsers import ocr_backend
+                        ocr_elements = ocr_backend.run_ocr(page)
+                        if ocr_elements:
+                            page_elements = ocr_elements
+                    else:
+                        logger.warning(
+                            "Page %d: near-empty text (%d chars). "
+                            "Set OCR_ENABLED=true to attempt OCR for scanned pages.",
+                            page_num + 1,
+                            len(page_text),
+                        )
+
                 elements.extend(page_elements)
 
                 # Count chars for text layer detection
@@ -164,7 +186,13 @@ class PyMuPDFParser(BaseParser):
         page_num: int,
         page_height: float,
     ) -> List[TranslatableElement]:
-        """Extract text elements from a page using line-level granularity.
+        """Extract text elements from a page with paragraph aggregation (D-2, AC-2).
+
+        Consecutive lines within the same fitz block are aggregated into one
+        paragraph-level TranslatableElement.  The individual line bboxes are
+        preserved in ``metadata["lines"]`` so the whitening step (D-1) can
+        whiten each line independently.  This is the BabelDOC paradigm where
+        the paragraph is the translation unit.
 
         Uses get_text("dict") for precise line-level bboxes, which prevents
         white rectangles from covering table borders and other content.
@@ -175,85 +203,99 @@ class PyMuPDFParser(BaseParser):
             page_height: Page height in points.
 
         Returns:
-            List of TranslatableElement objects.
+            List of TranslatableElement objects (one per block, not per line).
         """
         elements: List[TranslatableElement] = []
 
-        # Use dict mode for line-level granularity
-        # This gives us: blocks -> lines -> spans
+        # Use dict mode for block→line→span granularity
         text_dict = page.get_text("dict", sort=True)
-        element_counter = 0
 
         for block_no, block in enumerate(text_dict.get("blocks", [])):
             # Skip image blocks (type=1)
             if block.get("type") != 0:
                 continue
 
-            # Process each line in the block for smaller, more precise bboxes
-            for line_no, line in enumerate(block.get("lines", [])):
-                line_bbox = line.get("bbox", [0, 0, 0, 0])
+            block_lines = block.get("lines", [])
+            if not block_lines:
+                continue
 
-                # Collect text and style from all spans in the line
-                line_text_parts = []
-                line_style = None
+            # --- Paragraph aggregation: collect all lines in this block ---
+            block_text_parts: List[str] = []
+            block_line_bboxes: List[tuple] = []
+            block_style: Optional[StyleInfo] = None
 
+            for line in block_lines:
+                line_bbox = line.get("bbox", (0, 0, 0, 0))
+
+                # Collect text and style from all spans in this line
+                line_text_parts: List[str] = []
                 for span in line.get("spans", []):
                     span_text = span.get("text", "")
                     if span_text:
                         line_text_parts.append(span_text)
-
-                        # Capture style from first span
-                        if line_style is None:
+                        # Capture style from first span of the first line (block-level style)
+                        if block_style is None:
                             font_name = span.get("font", "")
                             font_size = span.get("size", 0)
                             flags = span.get("flags", 0)
-                            line_style = StyleInfo(
+                            block_style = StyleInfo(
                                 font_name=font_name,
                                 font_size=font_size,
-                                is_bold=bool(flags & 2**4),
-                                is_italic=bool(flags & 2**1),
+                                is_bold=bool(flags & 0x10),   # bit 4 = bold (PyMuPDF)
+                                is_italic=bool(flags & 0x02), # bit 1 = italic
+                                is_underline=False,           # underline not in fitz span flags
                                 color=self._color_to_hex(span.get("color", 0)),
                             )
 
-                # Join spans to form line text
-                line_text = "".join(line_text_parts).strip()
-                if len(line_text) < self.min_text_length:
-                    continue
+                line_text = "".join(line_text_parts)
+                if line_text.strip():
+                    block_text_parts.append(line_text)
+                    block_line_bboxes.append(tuple(line_bbox))
 
-                # Create bbox for the line
-                bbox = BoundingBox(
-                    x0=line_bbox[0],
-                    y0=line_bbox[1],
-                    x1=line_bbox[2],
-                    y1=line_bbox[3],
+            # Assemble paragraph text (join with space)
+            para_text = " ".join(t.strip() for t in block_text_parts if t.strip())
+            if len(para_text) < self.min_text_length:
+                continue
+
+            # Union of all line bboxes → paragraph bbox
+            xs0 = [b[0] for b in block_line_bboxes]
+            ys0 = [b[1] for b in block_line_bboxes]
+            xs1 = [b[2] for b in block_line_bboxes]
+            ys1 = [b[3] for b in block_line_bboxes]
+            para_bbox = BoundingBox(
+                x0=min(xs0), y0=min(ys0),
+                x1=max(xs1), y1=max(ys1),
+            )
+
+            # Determine element type and translatability
+            element_type = ElementType.TEXT
+            should_translate = True
+
+            is_hf, region = is_header_footer_region(
+                para_bbox, page_height, self.header_footer_margin_pt
+            )
+            if is_hf:
+                element_type = (
+                    ElementType.HEADER if region == "header" else ElementType.FOOTER
                 )
+                if self.skip_header_footer:
+                    should_translate = False
 
-                # Determine element type and translatability
-                element_type = ElementType.TEXT
-                should_translate = True
-
-                is_hf, region = is_header_footer_region(
-                    bbox, page_height, self.header_footer_margin_pt
-                )
-                if is_hf:
-                    element_type = (
-                        ElementType.HEADER if region == "header" else ElementType.FOOTER
-                    )
-                    if self.skip_header_footer:
-                        should_translate = False
-
-                element = TranslatableElement(
-                    element_id=f"p{page_num}_b{block_no}_l{line_no}_{uuid.uuid4().hex[:8]}",
-                    content=line_text,
-                    element_type=element_type,
-                    page_num=page_num,
-                    bbox=bbox,
-                    style=line_style,
-                    should_translate=should_translate,
-                    metadata={"block_no": block_no, "line_no": line_no},
-                )
-                elements.append(element)
-                element_counter += 1
+            element = TranslatableElement(
+                element_id=f"p{page_num}_b{block_no}_{uuid.uuid4().hex[:8]}",
+                content=para_text,
+                element_type=element_type,
+                page_num=page_num,
+                bbox=para_bbox,
+                style=block_style,
+                should_translate=should_translate,
+                metadata={
+                    "block_no": block_no,
+                    # Preserve individual line bboxes for bbox-exact whitening (D-1)
+                    "lines": block_line_bboxes,
+                },
+            )
+            elements.append(element)
 
         return elements
 
@@ -423,7 +465,7 @@ class PyMuPDFParser(BaseParser):
 
             # Rasterise page to numpy array (pixmap created, consumed, not stored)
             try:
-                pixmap = page.get_pixmap(matrix=fitz.Matrix(1, 1))
+                pixmap = page.get_pixmap(matrix=fitz.Matrix(PDF_RENDER_DPI / 72, PDF_RENDER_DPI / 72))
                 page_array = np.frombuffer(pixmap.samples, dtype=np.uint8).reshape(
                     pixmap.height, pixmap.width, pixmap.n
                 )
@@ -450,7 +492,14 @@ class PyMuPDFParser(BaseParser):
                 continue
 
             # Run detector (fail-soft: LayoutDetector.detect never raises, D-2)
-            page_viz = detector.detect(page_array, page_elems)
+            # Pass page rect in points so normalized region boxes are correctly
+            # mapped back to element bbox coordinates regardless of render DPI.
+            page_viz = detector.detect(
+                page_array,
+                page_elems,
+                page_width_pt=page.rect.width,
+                page_height_pt=page.rect.height,
+            )
             # page_array goes out of scope here; GC reclaims it
 
             if page_viz is not None:
@@ -551,7 +600,7 @@ class PyMuPDFParser(BaseParser):
 
             # Rasterise page (same pattern as _run_layout_detector)
             try:
-                pixmap = page.get_pixmap(matrix=fitz.Matrix(1, 1))
+                pixmap = page.get_pixmap(matrix=fitz.Matrix(PDF_RENDER_DPI / 72, PDF_RENDER_DPI / 72))
                 page_array = np.frombuffer(pixmap.samples, dtype=np.uint8).reshape(
                     pixmap.height, pixmap.width, pixmap.n
                 )
