@@ -939,7 +939,7 @@
             "items": {
               "type": "string"
             },
-            "description": "renderer degradation notices; null or empty list when no degradation occurred; populated by PDF processor when fitz falls back to ReportLab or when PDF is routed to bilingual DOCX; type is always string[] or null, never a bare string; additive optional field — backward-compatible; see AC-1, AC-2, AC-3"
+            "description": "degradation notices; null or empty list when no degradation occurred; populated by PDF processor when fitz falls back to ReportLab; also populated when a format-specific output_mode is requested for an incompatible file type (bilingual on non-DOCX, adjacent/annotation on non-XLSX) — one entry per affected file; type is always string[] or null, never a bare string; additive optional field — backward-compatible; see AC-1, AC-2, AC-3"
           }
         },
         "required": [
@@ -1443,9 +1443,12 @@
             "type": "string",
             "enum": [
               "append",
-              "replace"
+              "replace",
+              "bilingual",
+              "adjacent",
+              "annotation"
             ],
-            "description": "output mode for DOCX/PPTX translation; default append; replace overwrites source paragraphs/text-frames in-place; ignored (clamped to append) when len(targets) > 1 (BR-66, BR-67); invalid values rejected with HTTP 422"
+            "description": "output mode for translation; default append; bilingual (DOCX only) two-column source/translation table; adjacent/annotation (XLSX only) write beside or as comment; replace overwrites source; all format-specific modes degrade to append for other formats with job.warnings notice; ignored (clamped to append) when len(targets)>1 (BR-66, BR-67); invalid values rejected with HTTP 422"
           }
         },
         "required": [

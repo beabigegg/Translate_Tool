@@ -721,3 +721,48 @@ Single element in the response array of `POST /api/providers/test-translation`.
 | Provider timeout | That provider's slot returns `{..., error: "Provider timeout"}` |
 | All model slots fail | Response is `TestTranslationResult[]` where every element has `error`; HTTP 200 still returned |
 | `text` field empty or missing | HTTP 422 Pydantic validation error |
+
+## Per-Format output_mode Output Structure (office-output-mode)
+
+Documents the write-back shape produced by each `output_mode` value per processor.
+
+### DOCX output_mode
+
+| mode | write-back shape |
+|---|---|
+| `append` | Translation paragraph(s) appended after source paragraph as new `<w:p>` elements with INSERT_MARKER run (existing behavior). |
+| `replace` | Source paragraph runs overwritten in-place with translation; first run = translation, remaining runs cleared. Also applies to SDT content, para-in-cell, text-box. |
+| `bilingual` | Each translatable body paragraph replaced by a one-row, two-column `<w:tbl>`: col-A contains source text, col-B contains translation. Non-paragraph blocks (tables, images, text boxes, headers/footers, SDT-wrapped content) are NOT wrapped; they pass through with existing append/replace handling. Multi-target: no in-place ambiguity — one translation column per target (col-A source + col-B…N per target). Empty paragraphs pass through unchanged. |
+
+### XLSX output_mode
+
+| mode | write-back shape |
+|---|---|
+| `append` | Cell value set to `"src\n譯文"` combined string with `wrap_text=True` (existing behavior). |
+| `adjacent` | Translation written to `(row, col + original_max_column)`. Source cell value and width are unchanged. No `wrap_text`. `original_max_column` is the true used-range width captured before any writes (not a cached value). |
+| `annotation` | Translation attached as openpyxl `Comment(text, "translate-tool")` on source cell. Source cell value unchanged. Idempotent (skips if our comment already matches). If a pre-existing non-`translate-tool` comment exists, translation is appended below it (separator `\n---\n`) to preserve author comments. |
+| `replace` | Source cell value overwritten with translation only (no source+translation stack). `wrap_text=False`. No row-height inflation. |
+
+### PPTX SmartArt output_mode
+
+| mode | write-back shape |
+|---|---|
+| `append` | SmartArt `<a:t>` text set to `"original\n(translated)"` (existing behavior). |
+| `replace` | SmartArt `<a:t>` text set to `translated` only; original text removed. |
+
+### Cross-format degradation rules
+
+The orchestrator applies per-file output mode degradation: when a format-specific mode is requested for an incompatible file type, it falls back to `append` for that file and emits a human-readable notice to `job.warnings`.
+
+| requested mode | native format | degrades to | warning emitted |
+|---|---|---|---|
+| `bilingual` | DOCX, DOC | — (passes through) | no |
+| `bilingual` | XLSX, XLS, PPTX, PDF | `append` | yes |
+| `adjacent` | XLSX, XLS | — (passes through) | no |
+| `adjacent` | DOCX, DOC, PPTX, PDF | `append` | yes |
+| `annotation` | XLSX, XLS | — (passes through) | no |
+| `annotation` | DOCX, DOC, PPTX, PDF | `append` | yes |
+| `replace` | all | — (passes through) | no |
+| `append` | all | — (passes through) | no |
+
+A single job may contain mixed-format files (e.g. DOCX + XLSX). In that case each file sees its own resolved mode after degradation. The BR-67 multi-target clamp (`replace`→`append`) applies before the per-file degrade.

@@ -122,3 +122,98 @@ def test_post_jobs_output_mode_defaults_to_append(client):
     assert resp.status_code == 200, resp.text
     # output_mode forwarded to job_manager must be "append" (the default)
     assert captured.get("output_mode") == "append", f"Unexpected output_mode: {captured}"
+
+
+# ---------------------------------------------------------------------------
+# AC-1 (office-output-mode): bilingual is now a valid enum value
+# ---------------------------------------------------------------------------
+
+def test_output_mode_enum_accepts_bilingual():
+    """OutputMode enum must include BILINGUAL = 'bilingual'."""
+    from app.backend.api.schemas import OutputMode
+
+    assert hasattr(OutputMode, "BILINGUAL"), "OutputMode.BILINGUAL not found"
+    assert OutputMode.BILINGUAL == "bilingual", f"Unexpected value: {OutputMode.BILINGUAL!r}"
+    # Existing values still present
+    assert OutputMode.APPEND == "append"
+    assert OutputMode.REPLACE == "replace"
+
+
+def test_post_jobs_accepts_output_mode_bilingual(client):
+    """POST /api/jobs with output_mode=bilingual must return 200 (not 422)."""
+    with patch.object(_routes, "job_manager") as mock_jm:
+        mock_jm.create_job.side_effect = _fake_create_job
+        resp = client.post(
+            "/api/jobs",
+            files=_upload_files(),
+            data={**_base_data(), "output_mode": "bilingual"},
+        )
+    assert resp.status_code == 200, (
+        f"Expected 200 but got {resp.status_code}; body: {resp.text}"
+    )
+    assert "job_id" in resp.json()
+
+
+def test_openapi_bilingual_in_output_mode_enum():
+    """contracts/api/openapi.yml must list all five output_mode values including bilingual,
+    adjacent, and annotation."""
+    import json
+    from pathlib import Path
+
+    repo_root = Path(__file__).parent.parent
+    openapi_path = repo_root / "contracts" / "api" / "openapi.yml"
+
+    assert openapi_path.exists(), f"openapi.yml not found at {openapi_path}"
+
+    content = openapi_path.read_text()
+    # The openapi.yml is JSON emitted by cdd-kit
+    data = json.loads(content)
+
+    # Find the output_mode property in the JobCreateRequest schema
+    schemas = data.get("components", {}).get("schemas", {})
+    job_req = schemas.get("JobCreateRequest", {})
+    props = job_req.get("properties", {})
+    om_prop = props.get("output_mode", {})
+    enum_vals = om_prop.get("enum", [])
+
+    for expected in ("append", "replace", "bilingual", "adjacent", "annotation"):
+        assert expected in enum_vals, (
+            f"'{expected}' not in output_mode enum in openapi.yml. Found: {enum_vals}"
+        )
+
+
+def test_post_jobs_accepts_output_mode_adjacent(client):
+    """POST /api/jobs with output_mode=adjacent must return 200 (not 422)."""
+    with patch.object(_routes, "job_manager") as mock_jm:
+        mock_jm.create_job.side_effect = _fake_create_job
+        resp = client.post(
+            "/api/jobs",
+            files=_upload_files(),
+            data={**_base_data(), "output_mode": "adjacent"},
+        )
+    assert resp.status_code == 200, (
+        f"Expected 200 but got {resp.status_code}; body: {resp.text}"
+    )
+
+
+def test_post_jobs_accepts_output_mode_annotation(client):
+    """POST /api/jobs with output_mode=annotation must return 200 (not 422)."""
+    with patch.object(_routes, "job_manager") as mock_jm:
+        mock_jm.create_job.side_effect = _fake_create_job
+        resp = client.post(
+            "/api/jobs",
+            files=_upload_files(),
+            data={**_base_data(), "output_mode": "annotation"},
+        )
+    assert resp.status_code == 200, (
+        f"Expected 200 but got {resp.status_code}; body: {resp.text}"
+    )
+
+
+def test_output_mode_enum_has_all_five_values():
+    """OutputMode enum must have all five valid values."""
+    from app.backend.api.schemas import OutputMode
+
+    expected = {"append", "replace", "bilingual", "adjacent", "annotation"}
+    actual = {m.value for m in OutputMode}
+    assert expected == actual, f"OutputMode values mismatch: expected {expected}, got {actual}"

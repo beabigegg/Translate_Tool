@@ -385,6 +385,24 @@ def _insert_docx_translations(
                 ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
                 sdt_content = sdt_element.find(qn("w:sdtContent"))
                 if sdt_content is not None:
+                    if output_mode == "replace":
+                        # Overwrite the first paragraph in the SDT content in-place.
+                        all_paras = sdt_content.xpath(".//w:p", namespaces=ns)
+                        if all_paras:
+                            p_obj = Paragraph(all_paras[0], None)
+                            runs = p_obj.runs
+                            if runs:
+                                runs[0].text = translations[0]
+                                for r in runs[1:]:
+                                    r.text = ""
+                            else:
+                                p_obj.add_run(translations[0])
+                        else:
+                            new_p_element = OxmlElement("w:p")
+                            sdt_content.append(new_p_element)
+                            Paragraph(new_p_element, None).add_run(translations[0])
+                        ok_cnt += 1
+                        continue
                     existing_paras = sdt_content.xpath(".//w:p", namespaces=ns)
                     existing_texts = []
                     for ep in existing_paras:
@@ -408,6 +426,17 @@ def _insert_docx_translations(
             if isinstance(p._parent, _Cell):
                 cell = p._parent
                 try:
+                    if output_mode == "replace":
+                        # Overwrite the paragraph runs in-place.
+                        runs = p.runs
+                        if runs:
+                            runs[0].text = translations[0]
+                            for r in runs[1:]:
+                                r.text = ""
+                        else:
+                            p.add_run(translations[0])
+                        ok_cnt += 1
+                        continue
                     cell_paragraphs = list(cell.paragraphs)
                     p_index = -1
                     for idx, cell_p in enumerate(cell_paragraphs):
@@ -473,6 +502,25 @@ def _insert_docx_translations(
                         else:
                             p.add_run(replacement)
                         ok_cnt += 1
+                    elif output_mode == "bilingual":
+                        # Emit a two-column, one-row table: col-A = source, col-B = translation.
+                        # ADR-0007: source paragraph is replaced by the table; run-level
+                        # formatting is not preserved (cell text is a fresh run).
+                        source_text = p.text
+                        translation = translations[0]
+                        # Skip empty paragraphs — pass them through unchanged.
+                        if not source_text.strip():
+                            ok_cnt += 1
+                        else:
+                            tbl_obj = doc.add_table(rows=1, cols=2)
+                            # Relocate the table from the body end to the paragraph's position.
+                            parent = p._element.getparent()
+                            p_idx = list(parent).index(p._element)
+                            parent.insert(p_idx, tbl_obj._tbl)
+                            parent.remove(p._element)
+                            tbl_obj.cell(0, 0).text = source_text
+                            tbl_obj.cell(0, 1).text = translation
+                            ok_cnt += 1
                     else:
                         existing_texts = _scan_our_tail_texts(p, limit=max(len(translations), 4))
                         if existing_texts and len(existing_texts) >= len(translations):
@@ -508,27 +556,44 @@ def _insert_docx_translations(
                     continue
         elif seg.kind == "txbx":
             tx = seg.ref
-            if _txbx_tail_equals(tx, translations):
-                skip_cnt += 1
-                continue
-            paras = tx.xpath("./*[local-name()='p']")
-            tail_texts = []
-            scan = paras[-max(len(translations), 4):] if len(paras) else []
-            for q in scan:
-                has_zero = any(((t.text or "").find(INSERT_MARKER) >= 0) for t in q.xpath(".//*[local-name()='t']"))
-                if has_zero:
-                    qtxt = "".join([(node.text or "") for node in q.xpath(".//*[local-name()='t' or local-name()='br']")]).strip()
-                    tail_texts.append(qtxt)
-            to_add = []
-            for t in translations:
-                if not any(normalize_text(t) == normalize_text(e) for e in tail_texts):
-                    to_add.append(t)
-            if not to_add:
-                skip_cnt += 1
-                continue
-            for block in to_add:
-                _txbx_append_paragraph(tx, block, italic=True, font_size_pt=INSERT_FONT_SIZE_PT)
-            ok_cnt += 1
+            if output_mode == "replace":
+                # Overwrite the text in the first paragraph of the text box in-place.
+                paras = tx.xpath("./*[local-name()='p']")
+                if paras:
+                    t_nodes = paras[0].xpath(".//*[local-name()='t']")
+                    if t_nodes:
+                        t_nodes[0].text = translations[0]
+                        for t_node in t_nodes[1:]:
+                            t_node.text = ""
+                    else:
+                        r_elem = OxmlElement("w:r")
+                        t_elem = OxmlElement("w:t")
+                        t_elem.text = translations[0]
+                        r_elem.append(t_elem)
+                        paras[0].append(r_elem)
+                ok_cnt += 1
+            else:
+                if _txbx_tail_equals(tx, translations):
+                    skip_cnt += 1
+                    continue
+                paras = tx.xpath("./*[local-name()='p']")
+                tail_texts = []
+                scan = paras[-max(len(translations), 4):] if len(paras) else []
+                for q in scan:
+                    has_zero = any(((t.text or "").find(INSERT_MARKER) >= 0) for t in q.xpath(".//*[local-name()='t']"))
+                    if has_zero:
+                        qtxt = "".join([(node.text or "") for node in q.xpath(".//*[local-name()='t' or local-name()='br']")]).strip()
+                        tail_texts.append(qtxt)
+                to_add = []
+                for t in translations:
+                    if not any(normalize_text(t) == normalize_text(e) for e in tail_texts):
+                        to_add.append(t)
+                if not to_add:
+                    skip_cnt += 1
+                    continue
+                for block in to_add:
+                    _txbx_append_paragraph(tx, block, italic=True, font_size_pt=INSERT_FONT_SIZE_PT)
+                ok_cnt += 1
         elif seg.kind == "cell":
             # IP-4: whole-cell translation from the serializer path.
             # seg.ref is the _Cell object; translations are keyed by (tgt, text, col).

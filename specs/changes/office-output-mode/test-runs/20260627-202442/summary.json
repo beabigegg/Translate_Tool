@@ -1,0 +1,16 @@
+{
+  "change_id": "office-output-mode",
+  "phase": "full",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest /home/egg/Projects/Translate_Tool/.claude/worktrees/office-output-mode/tests/ -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/office-output-mode/test-runs/20260627-202442/junit.xml' -ra",
+  "duration_ms": 38349,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/office-output-mode/test-runs/20260627-202442/summary.json",
+    "stdout": "specs/changes/office-output-mode/test-runs/20260627-202442/stdout.log",
+    "stderr": "specs/changes/office-output-mode/test-runs/20260627-202442/stderr.log",
+    "junit": "specs/changes/office-output-mode/test-runs/20260627-202442/junit.xml"
+  },
+  "next_action": "all phases green"
+}

@@ -1,0 +1,42 @@
+change-id: office-output-mode
+agent: backend-engineer
+timestamp: "2026-06-27T20:25:00Z"
+status: complete
+artifacts:
+  - { type: files-changed, pointer: "app/backend/api/schemas.py:11-16" }
+  - { type: files-changed, pointer: "app/backend/processors/orchestrator.py:684-706" }
+  - { type: files-changed, pointer: "app/backend/processors/docx_processor.py:387-596" }
+  - { type: files-changed, pointer: "app/backend/processors/xlsx_processor.py:40-330" }
+  - { type: files-changed, pointer: "app/backend/processors/pptx_processor.py:121-470" }
+  - { type: contracts-touched, pointer: "contracts/api/api-contract.md#JobCreateRequest" }
+  - { type: contracts-touched, pointer: "contracts/api/openapi.yml" }
+  - { type: contracts-touched, pointer: "contracts/data/data-shape-contract.md#Cross-format-degradation" }
+  - { type: tests-added, pointer: "tests/test_output_mode_api.py::test_output_mode_enum_accepts_bilingual" }
+  - { type: tests-added, pointer: "tests/test_output_mode_api.py::test_post_jobs_accepts_output_mode_bilingual" }
+  - { type: tests-added, pointer: "tests/test_output_mode_api.py::test_post_jobs_accepts_output_mode_adjacent" }
+  - { type: tests-added, pointer: "tests/test_output_mode_api.py::test_post_jobs_accepts_output_mode_annotation" }
+  - { type: tests-added, pointer: "tests/test_output_mode_api.py::test_output_mode_enum_has_all_five_values" }
+  - { type: tests-added, pointer: "tests/test_output_mode_api.py::test_openapi_bilingual_in_output_mode_enum" }
+  - { type: tests-added, pointer: "tests/test_output_mode_processors.py::test_bilingual_docx_produces_two_column_table" }
+  - { type: tests-added, pointer: "tests/test_output_mode_processors.py::test_bilingual_docx_source_col_a_translation_col_b_not_same_run" }
+  - { type: tests-added, pointer: "tests/test_output_mode_processors.py::test_bilingual_docx_empty_paragraph_passthrough" }
+  - { type: tests-added, pointer: "tests/test_output_mode_processors.py::test_xlsx_adjacent_translation_at_shifted_column_source_unchanged_no_wrap" }
+  - { type: tests-added, pointer: "tests/test_output_mode_processors.py::test_xlsx_annotation_attaches_comment_source_unchanged" }
+  - { type: tests-added, pointer: "tests/test_output_mode_processors.py::test_xlsx_annotation_idempotent_existing_comment_preserved" }
+  - { type: tests-added, pointer: "tests/test_output_mode_processors.py::test_xlsx_replace_overwrites_no_stack_no_wrap_text" }
+  - { type: tests-added, pointer: "tests/test_output_mode_processors.py::test_docx_sdt_replace_overwrites_source" }
+  - { type: tests-added, pointer: "tests/test_output_mode_processors.py::test_docx_para_in_cell_replace_overwrites_source" }
+  - { type: tests-added, pointer: "tests/test_output_mode_processors.py::test_docx_textbox_replace_overwrites_source" }
+  - { type: tests-added, pointer: "tests/test_output_mode_processors.py::test_pptx_smartart_replace_text_not_appended" }
+  - { type: tests-added, pointer: "tests/test_output_mode_orchestrator.py::test_orchestrator_threads_output_mode_to_translate_xlsx" }
+  - { type: tests-added, pointer: "tests/test_output_mode_orchestrator.py::test_orchestrator_degrades_bilingual_to_append_for_non_docx_with_warning" }
+  - { type: test-output, pointer: "cdd-kit full phase: exit 0; 1009 passed, 4 skipped (all phases green)" }
+next-action: none
+notes: >
+  All AC-1..AC-8 implemented. v2 (post-contract-review): added ADJACENT and ANNOTATION to
+  OutputMode enum; added adjacent/annotation degradation logic in orchestrator for non-XLSX
+  files; updated api-contract.md enum and warnings field; updated data-shape-contract.md
+  cross-format degradation table; regenerated openapi.yml (5 enum values); added API
+  acceptance tests for adjacent and annotation. Full ladder green (collect/targeted/
+  changed-area/contract/full). One pre-existing order-dependent failure in
+  test_judge_apply.py passes in isolation; cdd-kit full phase exit 0.

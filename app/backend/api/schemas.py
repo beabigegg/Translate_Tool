@@ -11,6 +11,9 @@ from pydantic import BaseModel, Field
 class OutputMode(str, Enum):
     APPEND = "append"
     REPLACE = "replace"
+    BILINGUAL = "bilingual"
+    ADJACENT = "adjacent"
+    ANNOTATION = "annotation"
 
 
 class JobCreateResponse(BaseModel):

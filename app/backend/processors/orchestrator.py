@@ -681,6 +681,27 @@ def process_files(
             log(f"[EXTRACTION] Done: {src.name} (extraction only)")
             continue
 
+        # Per-file output mode: degrade format-specific modes to append when the
+        # current file is not the target format, surfacing a notice via warnings_callback.
+        # • bilingual  — DOCX/DOC only; degrades for XLSX/PPTX/PDF
+        # • adjacent   — XLSX/XLS only; degrades for DOCX/PPTX/PDF
+        # • annotation — XLSX/XLS only; degrades for DOCX/PPTX/PDF
+        _file_output_mode = effective_output_mode
+        if _file_output_mode == "bilingual" and ext not in (".docx", ".doc"):
+            _file_output_mode = "append"
+            if warnings_callback:
+                warnings_callback(
+                    f"bilingual output_mode is not supported for {ext!r} files "
+                    f"({src.name}); falling back to append"
+                )
+        elif _file_output_mode in ("adjacent", "annotation") and ext not in (".xlsx", ".xls"):
+            _file_output_mode = "append"
+            if warnings_callback:
+                warnings_callback(
+                    f"{effective_output_mode!r} output_mode is not supported for "
+                    f"{ext!r} files ({src.name}); falling back to append"
+                )
+
         try:
             if ext == ".docx":
                 stopped = translate_docx(
@@ -696,7 +717,7 @@ def process_files(
                     pre_translate_hook=_phase0_hook,
                     post_translate_hook=post_translate_hook,
                     terms_getter=lambda: list(_glossary_terms_holder),
-                    output_mode=effective_output_mode,
+                    output_mode=_file_output_mode,
                     block_overrides=block_overrides,
                     status_callback=status_callback,
                 )
@@ -730,7 +751,7 @@ def process_files(
                         pre_translate_hook=_phase0_hook,
                         post_translate_hook=post_translate_hook,
                         terms_getter=lambda: list(_glossary_terms_holder),
-                        output_mode=effective_output_mode,
+                        output_mode=_file_output_mode,
                         block_overrides=block_overrides,
                         status_callback=status_callback,
                     )
@@ -752,7 +773,7 @@ def process_files(
                     pre_translate_hook=_phase0_hook,
                     post_translate_hook=post_translate_hook,
                     terms_getter=lambda: list(_glossary_terms_holder),
-                    output_mode=effective_output_mode,
+                    output_mode=_file_output_mode,
                     block_overrides=block_overrides,
                     status_callback=status_callback,
                 )
@@ -769,6 +790,7 @@ def process_files(
                     pre_translate_hook=_phase0_hook,
                     post_translate_hook=post_translate_hook,
                     terms_getter=lambda: list(_glossary_terms_holder),
+                    output_mode=_file_output_mode,
                     block_overrides=block_overrides,
                     status_callback=status_callback,
                 )

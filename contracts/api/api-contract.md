@@ -155,7 +155,7 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 | judge_score | enum(低, 中, 高) | no |  | latest judge score tier; null when judge has not run, is disabled, or is unavailable; for list/summary views; see BR-72 |
 | judge_apply_status | string | no |  | apply operation lifecycle: applying, applied, failed, or null when apply not yet triggered; see BR-76, BR-77 |
 | download_url | string | no |  | URL to download translated zip; set to /api/jobs/{job_id}/download only when status==completed AND output_zip exists on disk; null otherwise |
-| warnings | string[] | no |  | renderer degradation notices; null or empty list when no degradation occurred; populated by PDF processor when fitz falls back to ReportLab or when PDF is routed to bilingual DOCX; type is always string[] or null, never a bare string; additive optional field — backward-compatible; see AC-1, AC-2, AC-3 |
+| warnings | string[] | no |  | degradation notices; null or empty list when no degradation occurred; populated by PDF processor when fitz falls back to ReportLab; also populated when a format-specific output_mode is requested for an incompatible file type (bilingual on non-DOCX, adjacent/annotation on non-XLSX) — one entry per affected file; type is always string[] or null, never a bare string; additive optional field — backward-compatible; see AC-1, AC-2, AC-3 |
 
 ### TermStatsResponse
 | field | type | required | format | notes |
@@ -313,7 +313,7 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 | model | string | no |  | model override; defaults to provider routing config (BR-4) |
 | profile | string | no |  | profile id; overrides routing group |
 | num_ctx | integer | no |  | context window override; must satisfy BR-2 |
-| output_mode | enum(append,replace) | no |  | output mode for DOCX/PPTX translation; default append; replace overwrites source paragraphs/text-frames in-place; ignored (clamped to append) when len(targets) > 1 (BR-66, BR-67); invalid values rejected with HTTP 422 |
+| output_mode | enum(append,replace,bilingual,adjacent,annotation) | no |  | output mode for translation; default append; bilingual (DOCX only) two-column source/translation table; adjacent/annotation (XLSX only) write beside or as comment; replace overwrites source; all format-specific modes degrade to append for other formats with job.warnings notice; ignored (clamped to append) when len(targets)>1 (BR-66, BR-67); invalid values rejected with HTTP 422 |
 
 ### JobJudgeResponse
 | field | type | required | format | notes |
@@ -354,7 +354,7 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 
 **POST /jobs/{job_id}/judge/apply** — triggers async re-render of the job's output document using the judge's per-block re-translated text. Preconditions (else HTTP 409): `job.status == "completed"` AND `JUDGE_ENABLED` AND `judge_status == "available"` AND `retranslated_blocks` map is non-empty AND original source files remain on disk. Unknown `job_id` → HTTP 404. On success returns HTTP 202 `{"status": "applying"}`; re-render runs in a background daemon thread. Frontend polls `GET /api/jobs/{id}` until `judge_apply_status` transitions to `applied` or `failed`. When `judge_apply_status == "applied"`, the stable `download_url` serves the updated document. A second apply call while `judge_apply_status == "applying"` returns HTTP 202 without spawning a duplicate worker (idempotent under lock). See BR-76, BR-77.
 
-**POST /api/jobs** (`output_mode`) — accepts an optional `output_mode` field (`"append"` | `"replace"`; default `"append"`). In `"append"` mode the output is bilingual (existing behavior, backward-compatible). In `"replace"` mode, source-language paragraphs (DOCX) and source text frames (PPTX) are overwritten in-place with their translations; no source text remains in the output. PDF and XLSX processors ignore `output_mode` (field accepted but has no effect). When a job targets more than one language, `output_mode` is silently clamped to `"append"` — see BR-66, BR-67.
+**POST /api/jobs** (`output_mode`) — accepts an optional `output_mode` field (`"append"` | `"replace"` | `"bilingual"` | `"adjacent"` | `"annotation"`; default `"append"`). `"append"` adds translations after source text (existing behavior). `"replace"` overwrites source paragraphs/text-frames in-place. `"bilingual"` (DOCX/DOC only) converts each body paragraph into a two-column source/translation table; degrades to `"append"` for XLSX/PPTX/PDF with a notice in `job.warnings`. `"adjacent"` (XLSX/XLS only) writes translation to the block of columns immediately to the right of the original data; degrades to `"append"` for DOCX/PPTX/PDF with a notice in `job.warnings`. `"annotation"` (XLSX/XLS only) attaches translation as a cell comment; degrades to `"append"` for DOCX/PPTX/PDF with a notice in `job.warnings`. When a job targets more than one language, `output_mode` is silently clamped to `"append"` — see BR-66, BR-67. Invalid values are rejected with HTTP 422.
 
 ## Error Format
 
