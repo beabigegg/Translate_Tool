@@ -1,0 +1,16 @@
+{
+  "change_id": "quality-metrics-gating",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest .claude/worktrees/quality-metrics-gating/tests/test_env_contract.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/quality-metrics-gating/test-runs/20260627-201750/junit.xml' -ra",
+  "duration_ms": 386,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/quality-metrics-gating/test-runs/20260627-201750/summary.json",
+    "stdout": "specs/changes/quality-metrics-gating/test-runs/20260627-201750/stdout.log",
+    "stderr": "specs/changes/quality-metrics-gating/test-runs/20260627-201750/stderr.log",
+    "junit": "specs/changes/quality-metrics-gating/test-runs/20260627-201750/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

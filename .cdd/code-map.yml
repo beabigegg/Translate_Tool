@@ -1,6 +1,6 @@
-# generated: 2026-06-27T11:56:29Z by cdd-kit 3.6.0
-# files: 185, src-lines: 48214, map-lines: 4618, compression: 10.4x
-# sources-digest: 097da6f422d9cfc44cf350960e5cf4b3f7c8e773e7cfc57b03eab60fde583039
+# generated: 2026-06-27T13:08:08Z by cdd-kit 3.3.0
+# files: 187, src-lines: 50102, map-lines: 4704, compression: 10.7x
+# sources-digest: 5f74bf2524005197e8af873a97bcdc3df1000c9db7a6f35244086d54fd9d7644
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
@@ -66,7 +66,7 @@ app/backend/api/routes.py:  # 1103 lines
     - { name: providers_models, lines: 883-914 }  # @router.get('/providers/models', response_model=List[ProviderModelEntry], respons...
     - { name: async providers_test_translation, lines: 918-1103 }  # @router.post('/providers/test-translation', response_model=List[TestTranslationRe...
 
-app/backend/api/schemas.py:  # 283 lines
+app/backend/api/schemas.py:  # 286 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: enum, items: [Enum], line: 5 }
@@ -74,71 +74,71 @@ app/backend/api/schemas.py:  # 283 lines
     - { module: pydantic, items: [BaseModel, Field], line: 8 }
   classes:
     - name: OutputMode
-      lines: 11-13
+      lines: 11-16
     - name: JobCreateResponse
-      lines: 16-17
+      lines: 19-20
     - name: JobStatus
-      lines: 20-45
+      lines: 23-48
     - name: TermImportResult
-      lines: 48-51
+      lines: 51-54
     - name: TermStatsResponse
-      lines: 54-62
+      lines: 57-65
     - name: TermItem
-      lines: 65-74
+      lines: 68-77
     - name: TermApproveRequest
-      lines: 77-80
+      lines: 80-83
     - name: TermRejectRequest
-      lines: 83-86
+      lines: 86-89
     - name: TermFlagNeedsReviewRequest
-      lines: 89-92
+      lines: 92-95
     - name: TermEditRequest
-      lines: 95-100
+      lines: 98-103
     - name: WikidataSearchRequest
-      lines: 103-107
+      lines: 106-110
     - name: WikidataCandidate
-      lines: 110-114
+      lines: 113-117
     - name: WikidataSearchResponse
-      lines: 117-119
+      lines: 120-122
     - name: WikidataImportRequest
-      lines: 122-128
+      lines: 125-131
     - name: ModelsResponse
-      lines: 131-132
+      lines: 134-135
     - name: ProfileItem
-      lines: 135-139
+      lines: 138-142
     - name: ModelConfigItem
-      lines: 142-148
+      lines: 145-151
     - name: RouteInfoEntry
-      lines: 151-157
+      lines: 154-160
     - name: RouteInfoResponse
-      lines: 160-161
+      lines: 163-164
     - name: MetricsResponse
-      lines: 164-169
+      lines: 167-172
     - name: BlockQualityScore
-      lines: 172-176
+      lines: 175-179
     - name: JobQualityResponse
-      lines: 179-183
+      lines: 182-186
     - name: JobAuditResponse
-      lines: 186-194
+      lines: 189-197
     - name: JobJudgeResponse
-      lines: 197-206
+      lines: 200-209
     - name: JobJudgeApplyResponse
-      lines: 209-211
+      lines: 212-214
     - name: ProviderHealthItem
-      lines: 218-222
+      lines: 221-225
     - name: ProviderModelEntry
-      lines: 225-229
+      lines: 228-232
     - name: TestTranslationRequest
-      lines: 232-239
+      lines: 235-242
     - name: TestTranslationResult
-      lines: 242-253
+      lines: 245-256
     - name: LayoutBoxSchema
-      lines: 260-264
+      lines: 263-267
     - name: LayoutPageSchema
-      lines: 267-272
+      lines: 270-275
     - name: LayoutFileVizResponse
-      lines: 275-278
+      lines: 278-281
     - name: LayoutVizResponse
-      lines: 281-283
+      lines: 284-286
 
 app/backend/clients/__init__.py:  # 4 lines
   imports:
@@ -255,7 +255,7 @@ app/backend/clients/openai_compatible_client.py:  # 305 lines
         - { name: set_runtime_options_override, lines: 300-301 }
         - { name: set_cache_variant, lines: 303-305 }
 
-app/backend/config.py:  # 523 lines
+app/backend/config.py:  # 528 lines
   imports:
     - { module: __future__, items: [annotations], line: 5 }
     - { module: logging, items: [], line: 7 }
@@ -297,83 +297,84 @@ app/backend/config.py:  # 523 lines
     - { name: CONTEXT_DETECTION_ENABLED, line: 108 }
     - { name: CONTEXT_SAMPLE_CHARS, line: 109 }
     - { name: CHUNK_OVERLAP_TOKENS, line: 115 }
-    - { name: QE_ENABLED, line: 120 }
-    - { name: QE_MODEL_NAME, line: 121 }
-    - { name: QE_DEVICE, line: 122 }
-    - { name: CRITIQUE_LOOP_ENABLED, line: 125 }
-    - { name: CRITIQUE_MAX_ITERATIONS, line: 126 }
-    - { name: CRITIQUE_TIMEOUT_SECONDS, line: 127 }
-    - { name: FEWSHOT_INJECTION_ENABLED, line: 132 }
-    - { name: DYNAMIC_SCENARIO_STRATEGY_ENABLED, line: 138 }
-    - { name: QWEN_CONTEXT_FLOW_ENABLED, line: 139 }
-    - { name: SCENARIO_CACHE_VARIANT_ENABLED, line: 140 }
-    - { name: EXCEL_FORMULA_MODE, line: 142 }
-    - { name: MAX_SHAPE_CHARS, line: 143 }
-    - { name: PDF_PARSER_ENGINE, line: 146 }
-    - { name: PDF_SKIP_HEADER_FOOTER, line: 147 }
-    - { name: PDF_HEADER_FOOTER_MARGIN_PT, line: 148 }
-    - { name: LAYOUT_DETECTOR_MODEL_PATH, line: 153 }
-    - { name: LAYOUT_DETECTOR_ENABLED, line: 155 }
-    - { name: PDF_RENDER_DPI, line: 160 }
-    - { name: OCR_ENABLED, line: 165 }
-    - { name: TABLE_RECOGNITION_MODEL_PATH, line: 170 }
-    - { name: TABLE_RECOGNITION_ENABLED, line: 173 }
-    - { name: JUDGE_ENABLED, line: 178 }
-    - { name: JUDGE_MODEL, line: 180 }
-    - { name: JUDGE_MAX_ITERATIONS, line: 182 }
-    - { name: LAYOUT_PRESERVATION_MODE, line: 185 }
-    - { name: DEFAULT_FONT_FAMILY, line: 186 }
-    - { name: MIN_READABLE_FONT_PT, line: 187 }
-    - { name: MIN_FONT_SIZE_PT, line: 188 }
-    - { name: MAX_FONT_SIZE_PT, line: 189 }
-    - { name: FONT_SIZE_SHRINK_FACTOR, line: 190 }
-    - { name: PDF_DRAW_MASK, line: 191 }
-    - { name: PDF_MASK_MARGIN_PT, line: 192 }
-    - { name: PDF_SHOW_MISSING_PLACEHOLDER, line: 193 }
-    - { name: FONT_SIZE_CONFIG, line: 197 }
-    - { name: MAX_SEGMENTS, line: 210 }
-    - { name: MAX_TEXT_LENGTH, line: 211 }
-    - { name: MAX_JOBS_IN_MEMORY, line: 214 }
-    - { name: JOB_TTL_HOURS, line: 215 }
-    - { name: CLEANUP_INTERVAL_MINUTES, line: 216 }
-    - { name: HTTP_POOL_CONNECTIONS, line: 219 }
-    - { name: HTTP_POOL_MAXSIZE, line: 220 }
-    - { name: ENV_CONNECT_TIMEOUT, line: 222 }
-    - { name: ENV_READ_TIMEOUT, line: 223 }
-    - { name: LIBREOFFICE_PATH, line: 226 }
-    - { name: LIBREOFFICE_TIMEOUT, line: 227 }
-    - { name: VERIFY_MAX_RETRIES, line: 229 }
-    - { name: TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED, line: 232 }
-    - { name: TERM_INJECT_CONF_THRESHOLD, line: 233 }
-    - { name: TERM_EMBEDDING_MODEL, line: 236 }
-    - { name: TERM_EMBEDDING_THRESHOLD, line: 237 }
-    - { name: TERM_EXTRACTION_MODEL, line: 238 }
-    - { name: SUPPORTED_EXTENSIONS, line: 240 }
-    - { name: LANG_CODE_MAP, line: 242 }
-    - { name: DATA_DIR, line: 314 }
-    - { name: JOBS_DIR, line: 315 }
-    - { name: LOG_DIR, line: 316 }
-    - { name: TRANSLATION_CACHE_ENABLED, line: 317 }
-    - { name: CACHE_DIR, line: 318 }
-    - { name: DEFAULT_HOST, line: 320 }
-    - { name: DEFAULT_PORT, line: 321 }
-    - { name: ALLOWED_ORIGINS, line: 323 }
+    - { name: QE_ENABLED, line: 121 }
+    - { name: QE_MODEL_NAME, line: 122 }
+    - { name: QE_DEVICE, line: 123 }
+    - { name: QE_RESCORE_THRESHOLD, line: 127 }
+    - { name: CRITIQUE_LOOP_ENABLED, line: 130 }
+    - { name: CRITIQUE_MAX_ITERATIONS, line: 131 }
+    - { name: CRITIQUE_TIMEOUT_SECONDS, line: 132 }
+    - { name: FEWSHOT_INJECTION_ENABLED, line: 137 }
+    - { name: DYNAMIC_SCENARIO_STRATEGY_ENABLED, line: 143 }
+    - { name: QWEN_CONTEXT_FLOW_ENABLED, line: 144 }
+    - { name: SCENARIO_CACHE_VARIANT_ENABLED, line: 145 }
+    - { name: EXCEL_FORMULA_MODE, line: 147 }
+    - { name: MAX_SHAPE_CHARS, line: 148 }
+    - { name: PDF_PARSER_ENGINE, line: 151 }
+    - { name: PDF_SKIP_HEADER_FOOTER, line: 152 }
+    - { name: PDF_HEADER_FOOTER_MARGIN_PT, line: 153 }
+    - { name: LAYOUT_DETECTOR_MODEL_PATH, line: 158 }
+    - { name: LAYOUT_DETECTOR_ENABLED, line: 160 }
+    - { name: PDF_RENDER_DPI, line: 165 }
+    - { name: OCR_ENABLED, line: 170 }
+    - { name: TABLE_RECOGNITION_MODEL_PATH, line: 175 }
+    - { name: TABLE_RECOGNITION_ENABLED, line: 178 }
+    - { name: JUDGE_ENABLED, line: 183 }
+    - { name: JUDGE_MODEL, line: 185 }
+    - { name: JUDGE_MAX_ITERATIONS, line: 187 }
+    - { name: LAYOUT_PRESERVATION_MODE, line: 190 }
+    - { name: DEFAULT_FONT_FAMILY, line: 191 }
+    - { name: MIN_READABLE_FONT_PT, line: 192 }
+    - { name: MIN_FONT_SIZE_PT, line: 193 }
+    - { name: MAX_FONT_SIZE_PT, line: 194 }
+    - { name: FONT_SIZE_SHRINK_FACTOR, line: 195 }
+    - { name: PDF_DRAW_MASK, line: 196 }
+    - { name: PDF_MASK_MARGIN_PT, line: 197 }
+    - { name: PDF_SHOW_MISSING_PLACEHOLDER, line: 198 }
+    - { name: FONT_SIZE_CONFIG, line: 202 }
+    - { name: MAX_SEGMENTS, line: 215 }
+    - { name: MAX_TEXT_LENGTH, line: 216 }
+    - { name: MAX_JOBS_IN_MEMORY, line: 219 }
+    - { name: JOB_TTL_HOURS, line: 220 }
+    - { name: CLEANUP_INTERVAL_MINUTES, line: 221 }
+    - { name: HTTP_POOL_CONNECTIONS, line: 224 }
+    - { name: HTTP_POOL_MAXSIZE, line: 225 }
+    - { name: ENV_CONNECT_TIMEOUT, line: 227 }
+    - { name: ENV_READ_TIMEOUT, line: 228 }
+    - { name: LIBREOFFICE_PATH, line: 231 }
+    - { name: LIBREOFFICE_TIMEOUT, line: 232 }
+    - { name: VERIFY_MAX_RETRIES, line: 234 }
+    - { name: TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED, line: 237 }
+    - { name: TERM_INJECT_CONF_THRESHOLD, line: 238 }
+    - { name: TERM_EMBEDDING_MODEL, line: 241 }
+    - { name: TERM_EMBEDDING_THRESHOLD, line: 242 }
+    - { name: TERM_EXTRACTION_MODEL, line: 243 }
+    - { name: SUPPORTED_EXTENSIONS, line: 245 }
+    - { name: LANG_CODE_MAP, line: 247 }
+    - { name: DATA_DIR, line: 319 }
+    - { name: JOBS_DIR, line: 320 }
+    - { name: LOG_DIR, line: 321 }
+    - { name: TRANSLATION_CACHE_ENABLED, line: 322 }
+    - { name: CACHE_DIR, line: 323 }
+    - { name: DEFAULT_HOST, line: 325 }
+    - { name: DEFAULT_PORT, line: 326 }
+    - { name: ALLOWED_ORIGINS, line: 328 }
   classes:
     - name: ModelType
       lines: 18-22
     - name: TimeoutConfig
-      lines: 330-383
+      lines: 335-388
       methods:
-        - { name: set_from_config, lines: 338-340 }
-        - { name: set_timeouts, lines: 342-344 }
-        - { name: clear_runtime_overrides, lines: 346-348 }
-        - { name: connect_timeout, lines: 351-364 }
-        - { name: read_timeout, lines: 367-380 }
-        - { name: get_timeout_tuple, lines: 382-383 }
+        - { name: set_from_config, lines: 343-345 }
+        - { name: set_timeouts, lines: 347-349 }
+        - { name: clear_runtime_overrides, lines: 351-353 }
+        - { name: connect_timeout, lines: 356-369 }
+        - { name: read_timeout, lines: 372-385 }
+        - { name: get_timeout_tuple, lines: 387-388 }
   functions:
-    - { name: _expand_env_vars, lines: 397-424 }
-    - { name: _expand_node, lines: 427-454 }
-    - { name: load_providers_config, lines: 457-523 }
+    - { name: _expand_env_vars, lines: 402-429 }
+    - { name: _expand_node, lines: 432-459 }
+    - { name: load_providers_config, lines: 462-528 }
 
 app/backend/main.py:  # 64 lines
   imports:
@@ -672,7 +673,7 @@ app/backend/processors/com_helpers.py:  # 145 lines
     - { name: excel_convert, lines: 50-66 }
     - { name: postprocess_docx_shapes_with_word, lines: 69-145 }
 
-app/backend/processors/docx_processor.py:  # 847 lines
+app/backend/processors/docx_processor.py:  # 912 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: os, items: [], line: 5 }
@@ -710,9 +711,9 @@ app/backend/processors/docx_processor.py:  # 847 lines
     - { name: _txbx_tail_equals, lines: 172-184 }
     - { name: _get_paragraph_key, lines: 218-226 }
     - { name: _collect_docx_segments, lines: 229-330 }
-    - { name: _insert_docx_translations, lines: 333-565 }
-    - { name: _translate_docx_via_doc2doc, lines: 568-631 }
-    - { name: translate_docx, lines: 634-847 }
+    - { name: _insert_docx_translations, lines: 333-630 }
+    - { name: _translate_docx_via_doc2doc, lines: 633-696 }
+    - { name: translate_docx, lines: 699-912 }
 
 app/backend/processors/libreoffice_helpers.py:  # 185 lines
   imports:
@@ -734,7 +735,7 @@ app/backend/processors/libreoffice_helpers.py:  # 185 lines
     - { name: doc_to_docx, lines: 158-170 }
     - { name: xls_to_xlsx, lines: 173-185 }
 
-app/backend/processors/orchestrator.py:  # 813 lines
+app/backend/processors/orchestrator.py:  # 835 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: logging, items: [], line: 5 }
@@ -761,7 +762,7 @@ app/backend/processors/orchestrator.py:  # 813 lines
     - { name: _extract_all_segments, lines: 210-291 }
     - { name: _detect_document_context, lines: 294-311 }
     - { name: _output_name, lines: 314-336 }
-    - { name: process_files, lines: 339-813 }
+    - { name: process_files, lines: 339-835 }
 
 app/backend/processors/pdf_processor.py:  # 924 lines
   imports:
@@ -794,7 +795,7 @@ app/backend/processors/pdf_processor.py:  # 924 lines
     - { name: _dispatch_render, lines: 845-895 }
     - { name: parse_pdf_to_document, lines: 898-924 }
 
-app/backend/processors/pptx_processor.py:  # 475 lines
+app/backend/processors/pptx_processor.py:  # 481 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: os, items: [], line: 5 }
@@ -824,10 +825,10 @@ app/backend/processors/pptx_processor.py:  # 475 lines
     - { name: _cell_tail_equals, lines: 64-75 }
     - { name: _cell_append, lines: 78-85 }
     - { name: _extract_smartart_texts, lines: 88-118 }
-    - { name: _update_smartart_texts, lines: 121-179 }
-    - { name: translate_pptx, lines: 182-475 }
+    - { name: _update_smartart_texts, lines: 121-185 }
+    - { name: translate_pptx, lines: 188-481 }
 
-app/backend/processors/xlsx_processor.py:  # 303 lines
+app/backend/processors/xlsx_processor.py:  # 344 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: os, items: [], line: 5 }
@@ -847,7 +848,7 @@ app/backend/processors/xlsx_processor.py:  # 303 lines
     - { module: app.backend.utils.text_utils, items: [normalize_text, should_translate], line: 21 }
   functions:
     - { name: _get_display_text_for_translation, lines: 24-37 }
-    - { name: translate_xlsx_xls, lines: 40-303 }
+    - { name: translate_xlsx_xls, lines: 40-344 }
 
 app/backend/renderers/__init__.py:  # 16 lines
   imports:
@@ -1159,7 +1160,7 @@ app/backend/services/quality_evaluator.py:  # 98 lines
     - { name: load_model, lines: 25-65 }
     - { name: score_blocks, lines: 68-98 }
 
-app/backend/services/quality_judge.py:  # 305 lines
+app/backend/services/quality_judge.py:  # 410 lines
   imports:
     - { module: __future__, items: [annotations], line: 14 }
     - { module: json, items: [], line: 16 }
@@ -1167,14 +1168,16 @@ app/backend/services/quality_judge.py:  # 305 lines
     - { module: typing, items: [Callable, Dict, List, Optional, Tuple], line: 18 }
   classes:
     - name: QualityJudge
-      lines: 56-305
+      lines: 56-410
       methods:
         - { name: __init__, lines: 63-68 }
         - { name: _parse_score, lines: 70-100 }
         - { name: _parse_feedback, lines: 102-114 }
-        - { name: evaluate, lines: 116-158 }
-        - { name: run_judge_loop, lines: 160-199 }
-        - { name: _run_judge_loop_impl, lines: 201-305 }
+        - { name: judge_block, lines: 116-131 }
+        - { name: judge_layout, lines: 133-180 }
+        - { name: evaluate, lines: 182-224 }
+        - { name: run_judge_loop, lines: 226-265 }
+        - { name: _run_judge_loop_impl, lines: 267-410 }
 
 app/backend/services/term_audit.py:  # 117 lines
   imports:
@@ -1301,7 +1304,7 @@ app/backend/services/translation_cache.py:  # 230 lines
     - { name: _make_key, lines: 26-34 }
     - { name: get_cache, lines: 216-230 }
 
-app/backend/services/translation_service.py:  # 687 lines
+app/backend/services/translation_service.py:  # 774 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: logging, items: [], line: 5 }
@@ -1314,12 +1317,14 @@ app/backend/services/translation_service.py:  # 687 lines
     - { module: app.backend.services.translation_cache, items: [get_cache], line: 28 }
     - { module: app.backend.utils.translation_helpers, items: [translate_blocks_batch], line: 29 }
   functions:
-    - { name: _ensure_opencc_s2t, lines: 41-52 }
-    - { name: _convert_to_traditional, lines: 55-67 }
-    - { name: _is_traditional_chinese_target, lines: 70-73 }
-    - { name: translate_texts, lines: 76-377 }
-    - { name: translate_document, lines: 384-533 }
-    - { name: translate_table_cells, lines: 540-687 }
+    - { name: _heuristic_should_adopt, lines: 42-56 }
+    - { name: _critique_gate_adopt, lines: 59-96 }
+    - { name: _ensure_opencc_s2t, lines: 103-114 }
+    - { name: _convert_to_traditional, lines: 117-129 }
+    - { name: _is_traditional_chinese_target, lines: 132-135 }
+    - { name: translate_texts, lines: 138-452 }
+    - { name: translate_document, lines: 459-620 }
+    - { name: translate_table_cells, lines: 627-774 }
 
 app/backend/services/translation_strategy.py:  # 349 lines
   imports:
@@ -2296,6 +2301,24 @@ tests/test_coordinate_renderer.py:  # 405 lines
   functions:
     - { name: create_test_document, lines: 25-71 }
 
+tests/test_critique_gate.py:  # 195 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 15 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 17 }
+    - { module: pytest, items: [], line: 19 }
+    - { module: app.backend.services.quality_evaluator, items: [], line: 22 }
+  functions:
+    - { name: _get_helpers, lines: 29-35 }
+    - { name: test_gate_adopts_revised_when_revised_score_strictly_higher, lines: 42-57 }
+    - { name: test_gate_keeps_original_when_revised_score_lower, lines: 60-75 }
+    - { name: test_gate_keeps_original_on_exact_tie, lines: 78-92 }
+    - { name: test_gate_keeps_draft_when_score_blocks_returns_empty, lines: 95-109 }
+    - { name: test_comet_import_error_falls_back_to_heuristic, lines: 116-133 }
+    - { name: test_pipeline_completes_with_no_exception_when_qe_unavailable, lines: 137-149 }
+    - { name: test_heuristic_penalises_empty_output_and_failure_markers, lines: 152-164 }
+    - { name: test_heuristic_rejects_extreme_length_ratios, lines: 167-183 }
+    - { name: test_heuristic_accepts_normal_revised_text, lines: 186-195 }
+
 tests/test_dead_references.py:  # 121 lines
   imports:
     - { module: __future__, items: [annotations], line: 11 }
@@ -2433,7 +2456,7 @@ tests/test_docx_parser.py:  # 226 lines
         - { name: parser_include_inserts, lines: 197-199 }
         - { name: test_skip_inserted_translation, lines: 201-226 }
 
-tests/test_env_contract.py:  # 142 lines
+tests/test_env_contract.py:  # 223 lines
   imports:
     - { module: __future__, items: [annotations], line: 7 }
     - { module: pathlib, items: [Path], line: 9 }
@@ -2459,10 +2482,19 @@ tests/test_env_contract.py:  # 142 lines
         - { name: test_term_embedding_model_wired_in_config, lines: 118-125 }
         - { name: test_term_embedding_threshold_wired_in_config, lines: 127-133 }
         - { name: test_term_extraction_model_wired_in_config, lines: 135-142 }
+    - name: TestQeDefault
+      lines: 145-223
+      methods:
+        - { name: test_qe_enabled_default_true_in_contract, lines: 148-162 }
+        - { name: test_qe_rescore_threshold_declared_in_contract, lines: 164-171 }
+        - { name: test_qe_rescore_threshold_in_schema, lines: 173-186 }
+        - { name: test_qe_rescore_threshold_in_env_template, lines: 188-195 }
+        - { name: test_qe_rescore_threshold_wired_in_config, lines: 197-206 }
+        - { name: test_qe_enabled_default_true_in_config, lines: 208-223 }
   functions:
     - { name: _contract_text, lines: 16-17 }
 
-tests/test_fewshot_glossary.py:  # 518 lines
+tests/test_fewshot_glossary.py:  # 524 lines
   imports:
     - { module: __future__, items: [annotations], line: 8 }
     - { module: hashlib, items: [], line: 10 }
@@ -2501,32 +2533,32 @@ tests/test_fewshot_glossary.py:  # 518 lines
         - { name: test_glossary_terms_sourced_from_term_db_not_hardcoded, lines: 214-223 }
         - { name: test_empty_term_db_produces_empty_glossary_block, lines: 225-230 }
     - name: TestCritiqueLoop
-      lines: 237-290
+      lines: 237-296
       methods:
         - { name: _make_client, lines: 240-246 }
         - { name: test_critique_loop_runs_at_least_once_per_request, lines: 252-268 }
-        - { name: test_revised_draft_recorded_in_tmap, lines: 274-290 }
+        - { name: test_revised_draft_recorded_in_tmap, lines: 274-296 }
     - name: TestCritiqueLoopBounds
-      lines: 297-406
+      lines: 303-412
       methods:
-        - { name: _make_client, lines: 300-306 }
-        - { name: test_loop_stops_at_critique_max_iterations, lines: 312-328 }
-        - { name: test_loop_degrades_to_last_valid_draft_on_critique_failure, lines: 334-352 }
-        - { name: test_loop_degrades_to_draft_on_timeout, lines: 359-382 }
-        - { name: test_job_does_not_fail_when_critique_times_out, lines: 388-406 }
+        - { name: _make_client, lines: 306-312 }
+        - { name: test_loop_stops_at_critique_max_iterations, lines: 318-334 }
+        - { name: test_loop_degrades_to_last_valid_draft_on_critique_failure, lines: 340-358 }
+        - { name: test_loop_degrades_to_draft_on_timeout, lines: 365-388 }
+        - { name: test_job_does_not_fail_when_critique_times_out, lines: 394-412 }
     - name: TestCacheKeyGlossaryDigest
-      lines: 413-472
+      lines: 419-478
       methods:
-        - { name: test_cache_key_differs_after_glossary_state_changes, lines: 416-445 }
-        - { name: test_pre_glossary_cache_entry_is_a_miss_after_term_added, lines: 447-472 }
+        - { name: test_cache_key_differs_after_glossary_state_changes, lines: 422-451 }
+        - { name: test_pre_glossary_cache_entry_is_a_miss_after_term_added, lines: 453-478 }
     - name: TestCritiqueMetrics
-      lines: 479-518
+      lines: 485-524
       methods:
-        - { name: test_critique_loop_invocations_increments_per_request, lines: 482-486 }
-        - { name: test_critique_iterations_total_reflects_actual_iteration_count, lines: 488-492 }
-        - { name: test_glossary_match_rate_reported_in_get_metrics, lines: 494-498 }
-        - { name: test_new_counters_initialize_to_zero, lines: 500-505 }
-        - { name: test_new_counters_reset_via_reset_helper, lines: 507-518 }
+        - { name: test_critique_loop_invocations_increments_per_request, lines: 488-492 }
+        - { name: test_critique_iterations_total_reflects_actual_iteration_count, lines: 494-498 }
+        - { name: test_glossary_match_rate_reported_in_get_metrics, lines: 500-504 }
+        - { name: test_new_counters_initialize_to_zero, lines: 506-511 }
+        - { name: test_new_counters_reset_via_reset_helper, lines: 513-524 }
   functions:
     - { name: tmp_db, lines: 27-29 }  # @pytest.fixture()
     - { name: _make_term, lines: 32-45 }
@@ -3327,7 +3359,7 @@ tests/test_orchestrator_phase0.py:  # 345 lines
     - { name: test_phase0_hook_uses_panjit_config, lines: 257-297 }
     - { name: test_phase0_hook_skips_panjit_when_disabled, lines: 304-345 }
 
-tests/test_output_mode_api.py:  # 124 lines
+tests/test_output_mode_api.py:  # 219 lines
   imports:
     - { module: __future__, items: [annotations], line: 10 }
     - { module: io, items: [], line: 12 }
@@ -3345,23 +3377,33 @@ tests/test_output_mode_api.py:  # 124 lines
     - { name: test_post_jobs_accepts_output_mode_replace, lines: 82-92 }
     - { name: test_post_jobs_rejects_invalid_output_mode_422, lines: 95-104 }
     - { name: test_post_jobs_output_mode_defaults_to_append, lines: 107-124 }
+    - { name: test_output_mode_enum_accepts_bilingual, lines: 131-139 }
+    - { name: test_post_jobs_accepts_output_mode_bilingual, lines: 142-154 }
+    - { name: test_openapi_bilingual_in_output_mode_enum, lines: 157-182 }
+    - { name: test_post_jobs_accepts_output_mode_adjacent, lines: 185-196 }
+    - { name: test_post_jobs_accepts_output_mode_annotation, lines: 199-210 }
+    - { name: test_output_mode_enum_has_all_five_values, lines: 213-219 }
 
-tests/test_output_mode_orchestrator.py:  # 212 lines
+tests/test_output_mode_orchestrator.py:  # 348 lines
   imports:
-    - { module: __future__, items: [annotations], line: 17 }
-    - { module: pathlib, items: [Path], line: 19 }
-    - { module: unittest.mock, items: [MagicMock, patch], line: 20 }
-    - { module: pytest, items: [], line: 22 }
+    - { module: __future__, items: [annotations], line: 19 }
+    - { module: pathlib, items: [Path], line: 21 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 22 }
+    - { module: pytest, items: [], line: 24 }
   functions:
-    - { name: _make_mock_client, lines: 27-34 }
-    - { name: _make_mock_pptx, lines: 37-49 }
-    - { name: _fake_translate_docx, lines: 52-71 }
-    - { name: _fake_translate_pptx, lines: 74-92 }
-    - { name: test_orchestrator_threads_output_mode_to_translate_docx, lines: 99-131 }
-    - { name: test_orchestrator_threads_output_mode_to_translate_pptx, lines: 138-171 }
-    - { name: test_orchestrator_clamps_replace_to_append_for_multi_target, lines: 178-212 }
+    - { name: _make_mock_client, lines: 29-36 }
+    - { name: _make_mock_pptx, lines: 39-51 }
+    - { name: _fake_translate_docx, lines: 54-73 }
+    - { name: _fake_translate_pptx, lines: 76-94 }
+    - { name: _fake_translate_xlsx, lines: 97-120 }
+    - { name: _make_xlsx_fixture, lines: 123-131 }
+    - { name: test_orchestrator_threads_output_mode_to_translate_docx, lines: 138-170 }
+    - { name: test_orchestrator_threads_output_mode_to_translate_pptx, lines: 177-210 }
+    - { name: test_orchestrator_clamps_replace_to_append_for_multi_target, lines: 217-251 }
+    - { name: test_orchestrator_threads_output_mode_to_translate_xlsx, lines: 258-293 }
+    - { name: test_orchestrator_degrades_bilingual_to_append_for_non_docx_with_warning, lines: 300-348 }
 
-tests/test_output_mode_processors.py:  # 381 lines
+tests/test_output_mode_processors.py:  # 841 lines
   imports:
     - { module: __future__, items: [annotations], line: 13 }
     - { module: io, items: [], line: 15 }
@@ -3384,7 +3426,20 @@ tests/test_output_mode_processors.py:  # 381 lines
     - { name: test_replace_mode_docx_translation_is_in_place, lines: 224-255 }
     - { name: test_replace_mode_pptx_no_source_text_frames_remain, lines: 262-298 }
     - { name: test_replace_mode_pptx_translation_is_in_place, lines: 301-337 }
-    - { name: test_multi_target_output_mode_clamped_to_append, lines: 344-381 }
+    - { name: test_bilingual_docx_produces_two_column_table, lines: 344-375 }
+    - { name: test_bilingual_docx_source_col_a_translation_col_b_not_same_run, lines: 378-414 }
+    - { name: test_bilingual_docx_empty_paragraph_passthrough, lines: 417-450 }
+    - { name: _make_xlsx, lines: 457-466 }
+    - { name: _mock_xlsx_client, lines: 469-473 }
+    - { name: test_xlsx_adjacent_translation_at_shifted_column_source_unchanged_no_wrap, lines: 476-515 }
+    - { name: test_xlsx_annotation_attaches_comment_source_unchanged, lines: 522-556 }
+    - { name: test_xlsx_annotation_idempotent_existing_comment_preserved, lines: 559-604 }
+    - { name: test_xlsx_replace_overwrites_no_stack_no_wrap_text, lines: 611-649 }
+    - { name: test_docx_sdt_replace_overwrites_source, lines: 656-696 }
+    - { name: test_docx_para_in_cell_replace_overwrites_source, lines: 699-724 }
+    - { name: test_docx_textbox_replace_overwrites_source, lines: 727-758 }
+    - { name: test_pptx_smartart_replace_text_not_appended, lines: 765-797 }
+    - { name: test_multi_target_output_mode_clamped_to_append, lines: 804-841 }
 
 tests/test_pdf_generator.py:  # 818 lines
   imports:
@@ -3756,7 +3811,7 @@ tests/test_providers_api.py:  # 697 lines
     - { name: _mock_health_ok, lines: 80-84 }
     - { name: _mock_health_fail, lines: 87-91 }
 
-tests/test_quality_evaluation.py:  # 423 lines
+tests/test_quality_evaluation.py:  # 561 lines
   imports:
     - { module: __future__, items: [annotations], line: 10 }
     - { module: typing, items: [List, Tuple], line: 12 }
@@ -3779,8 +3834,14 @@ tests/test_quality_evaluation.py:  # 423 lines
     - { name: test_qe_invalid_device_falls_back_to_cpu, lines: 351-392 }
     - { name: test_qe_score_includes_model_name, lines: 399-408 }
     - { name: test_qe_zero_translatable_elements_produces_empty_scores, lines: 411-423 }
+    - { name: test_per_segment_score_blocks_called_with_src_hyp_pairs, lines: 430-462 }
+    - { name: test_below_threshold_triggers_retranslation, lines: 469-487 }
+    - { name: test_threshold_env_var_parsed_as_float, lines: 490-505 }
+    - { name: test_qe_enabled_config_default_is_true, lines: 512-528 }
+    - { name: test_rescore_threshold_has_correct_type_and_default, lines: 535-544 }
+    - { name: test_rescore_threshold_out_of_range_rejected, lines: 547-561 }
 
-tests/test_quality_judge.py:  # 334 lines
+tests/test_quality_judge.py:  # 512 lines
   imports:
     - { module: __future__, items: [annotations], line: 11 }
     - { module: json, items: [], line: 13 }
@@ -3808,6 +3869,15 @@ tests/test_quality_judge.py:  # 334 lines
     - { name: test_judge_exception_degrades_gracefully, lines: 287-297 }
     - { name: test_judge_parse_failure_degrades_gracefully, lines: 301-311 }
     - { name: test_judge_client_is_ollama_not_model_router, lines: 318-334 }
+    - { name: test_per_block_judge_calls_evaluate_once_per_block_with_correct_pair_args, lines: 341-370 }
+    - { name: test_per_block_judge_score_array_length_equals_block_count, lines: 373-389 }
+    - { name: test_judge_block_high_score_returns_1_0, lines: 392-398 }
+    - { name: test_judge_block_mid_score_returns_0_5, lines: 401-407 }
+    - { name: test_judge_block_low_score_returns_0_0, lines: 410-416 }
+    - { name: test_judge_block_unavailable_returns_0_0, lines: 419-425 }
+    - { name: test_judge_layout_receives_pil_image_object_not_path, lines: 432-478 }
+    - { name: test_judge_layout_returns_int_score_between_1_and_5, lines: 481-496 }
+    - { name: test_judge_layout_returns_0_on_call_failure, lines: 499-512 }
 
 tests/test_renderer_convergence.py:  # 860 lines
   imports:
@@ -3880,7 +3950,7 @@ tests/test_renderer_convergence.py:  # 860 lines
     - { name: _make_translations, lines: 84-90 }
     - { name: _placement_to_dict, lines: 661-672 }
 
-tests/test_sentence_mode_consistency.py:  # 319 lines
+tests/test_sentence_mode_consistency.py:  # 323 lines
   imports:
     - { module: __future__, items: [annotations], line: 10 }
     - { module: inspect, items: [], line: 12 }
@@ -3896,8 +3966,8 @@ tests/test_sentence_mode_consistency.py:  # 319 lines
     - { name: test_translate_blocks_batch_respects_stop_flag, lines: 141-175 }
     - { name: test_sentence_mode_outer_loop_breaks_when_stopped, lines: 182-219 }
     - { name: test_verify_and_fill_detects_sentence_mode_failures, lines: 226-255 }
-    - { name: test_translate_texts_signature_unchanged, lines: 262-277 }
-    - { name: test_sentence_mode_backward_compat_with_chunking_change, lines: 284-319 }
+    - { name: test_translate_texts_signature_unchanged, lines: 262-281 }
+    - { name: test_sentence_mode_backward_compat_with_chunking_change, lines: 288-323 }
 
 tests/test_table_border_protection.py:  # 790 lines
   imports:
@@ -4557,6 +4627,22 @@ tests/test_translatable_document.py:  # 786 lines
         - { name: test_from_dict_missing_render_truncated_defaults_false, lines: 761-774 }
         - { name: test_render_truncated_type_is_bool, lines: 776-786 }
 
+tests/test_translate_document_parity.py:  # 248 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 13 }
+    - { module: types, items: [], line: 15 }
+    - { module: pathlib, items: [Path], line: 16 }
+    - { module: typing, items: [Dict, List, Optional, Tuple], line: 17 }
+    - { module: unittest.mock, items: [MagicMock, call, patch], line: 18 }
+    - { module: pytest, items: [], line: 20 }
+    - { module: app.backend.services.translation_service, items: [], line: 23 }
+  functions:
+    - { name: _make_minimal_doc, lines: 30-55 }
+    - { name: _make_translate_texts_mock, lines: 58-74 }
+    - { name: test_translate_document_calls_term_substitution, lines: 81-132 }
+    - { name: test_translate_document_calls_critique_loop, lines: 139-165 }
+    - { name: test_translate_document_passes_overlap_tokens_as_context, lines: 172-248 }
+
 tests/test_translation_profiles_scenarios.py:  # 31 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
@@ -4587,7 +4673,7 @@ tests/test_translation_service.py:  # 172 lines
     - { name: _make_docx_paragraphs_only, lines: 30-38 }
     - { name: _mock_client, lines: 41-48 }
 
-tests/test_translation_strategy.py:  # 469 lines
+tests/test_translation_strategy.py:  # 482 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: app.backend.config, items: [ModelType], line: 5 }
@@ -4614,5 +4700,5 @@ tests/test_translation_strategy.py:  # 469 lines
     - { name: test_translate_texts_unchanged_after_doc2doc_added, lines: 289-314 }
     - { name: test_doc2doc_does_not_mutate_shared_cache_state, lines: 317-337 }
     - { name: test_qe_hook_called_after_translation, lines: 346-413 }
-    - { name: test_qe_hook_not_called_when_disabled, lines: 416-437 }
-    - { name: test_translate_texts_unaffected_by_qe_change, lines: 440-469 }
+    - { name: test_qe_hook_not_called_when_disabled, lines: 416-450 }
+    - { name: test_translate_texts_unaffected_by_qe_change, lines: 453-482 }

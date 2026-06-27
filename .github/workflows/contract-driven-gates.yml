@@ -145,44 +145,6 @@ jobs:
         # See test-plan.md (pdf-renderer-fallback-warn) for the full AC → test mapping.
         run: pytest tests/test_pdf_render_warnings.py -x -q --tb=short
 
-      - name: Targeted tests — output_mode processors, orchestrator, API (Tier 1 — blocks merge)
-        # AC-1..AC-8 (office-output-mode): fast-fail before full suite.
-        # Covers unit (per-format output_mode branches: bilingual/adjacent/annotation/replace),
-        # integration (orchestrator degrades bilingual/adjacent/annotation for non-target formats with warning),
-        # and contract (OutputMode enum accepts all 5 values; invalid values rejected; openapi sync) test families.
-        # See test-plan.md (office-output-mode) for the full AC → test mapping.
-        run: >
-          pytest
-          tests/test_output_mode_processors.py
-          tests/test_output_mode_orchestrator.py
-          tests/test_output_mode_api.py
-          -x -q --tb=short
-
-      - name: Env schema sync — QE_RESCORE_THRESHOLD in .env.example.template and env.schema.json (Tier 1 — blocks merge)
-        # AC-4 (quality-metrics-gating): QE_RESCORE_THRESHOLD must be present in both deployment sync artefacts.
-        # Deployment Sync Policy: contracts/env/env-contract.md §Deployment Sync Policy
-        run: |
-          grep -q "QE_RESCORE_THRESHOLD" contracts/env/.env.example.template || \
-            { echo "QE_RESCORE_THRESHOLD missing from .env.example.template"; exit 1; }
-          grep -q "QE_RESCORE_THRESHOLD" contracts/env/env.schema.json || \
-            { echo "QE_RESCORE_THRESHOLD missing from env.schema.json"; exit 1; }
-
-      - name: Targeted tests — quality_judge, critique_gate, translate_document_parity, env_contract (Tier 1 — blocks merge)
-        # AC-1..AC-11 (quality-metrics-gating): fast-fail before full suite.
-        # Covers unit (per-segment QE score_blocks shape, critique gate adoption/tie/discard, judge_block per-block),
-        # resilience (QE ImportError fallback to heuristic, pipeline always completes),
-        # integration (translate_document parity: terms/critique/overlap wiring at real entry point),
-        # and env-contract (QE_ENABLED default true, QE_RESCORE_THRESHOLD schema) test families.
-        # See test-plan.md (quality-metrics-gating) for the full AC → test mapping.
-        run: >
-          pytest
-          tests/test_quality_evaluation.py
-          tests/test_quality_judge.py
-          tests/test_critique_gate.py
-          tests/test_translate_document_parity.py
-          tests/test_env_contract.py
-          -x -q --tb=short
-
       - name: Unit, contract, integration, resilience, data-boundary tests (Tier 1 — blocks merge)
         run: pytest tests/ -x -q --tb=short --junitxml=test-results/junit.xml
 

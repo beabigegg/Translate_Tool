@@ -1,0 +1,20 @@
+{
+  "change_id": "quality-metrics-gating",
+  "phase": "full",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "pytest .claude/worktrees/quality-metrics-gating/tests/ -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/quality-metrics-gating/test-runs/20260627-201757/junit.xml' -ra",
+  "duration_ms": 58477,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": ".claude.worktrees.quality-metrics-gating.tests.test_fewshot_glossary.TestCritiqueLoop::test_revised_draft_recorded_in_tmap",
+    "message": "AssertionError: assert 'initial draft' == 'revised by critique'\n  \n  - revised by critique\n  + initial draft"
+  },
+  "artifacts": {
+    "summary": "specs/changes/quality-metrics-gating/test-runs/20260627-201757/summary.json",
+    "stdout": "specs/changes/quality-metrics-gating/test-runs/20260627-201757/stdout.log",
+    "stderr": "specs/changes/quality-metrics-gating/test-runs/20260627-201757/stderr.log",
+    "junit": "specs/changes/quality-metrics-gating/test-runs/20260627-201757/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

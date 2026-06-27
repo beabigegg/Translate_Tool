@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
 visible-dirs: 58
-visible-files: 222
+visible-files: 226
 omitted-dirs: 12
 truncated-dirs: 1
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -79,6 +79,7 @@ Translate_Tool/
 |   |   |   |-- base.py
 |   |   |   |-- docx_parser.py
 |   |   |   |-- layout_detector.py
+|   |   |   |-- ocr_backend.py
 |   |   |   |-- pdf_parser.py
 |   |   |   |-- pptx_parser.py
 |   |   |   \-- table_recognizer.py
@@ -193,7 +194,9 @@ Translate_Tool/
 |   |   |-- 0003-layout-detector-runtime-and-failure-mode.md
 |   |   |-- 0004-truncation-marker-on-ir.md
 |   |   |-- 0005-judge-rerender-apply.md
-|   |   \-- 0006-table-markdown-serialization.md
+|   |   |-- 0006-table-markdown-serialization.md
+|   |   |-- 0007-bilingual-docx-dual-column.md
+|   |   \-- 0008-mllm-layout-judge-local-only-image.md
 |   \-- improvement-plan.md
 |-- scripts/
 |   |-- benchmark_full_factorial.py
@@ -247,6 +250,7 @@ Translate_Tool/
 |   |   |   |-- README.md
 |   |   |   \-- simple_test.pdf
 |   |   |-- minimal_phase0.docx
+|   |   |-- test_multiline.pdf
 |   |   \-- test.pdf
 |   |-- metrics/
 |   |   |-- __init__.py
@@ -277,6 +281,7 @@ Translate_Tool/
 |   |-- test_context_prompt_i18n.py
 |   |-- test_context_window_segments.py
 |   |-- test_coordinate_renderer.py
+|   |-- test_critique_gate.py
 |   |-- test_dead_references.py
 |   |-- test_doc_chunker.py
 |   |-- test_docx_parser.py
@@ -306,6 +311,7 @@ Translate_Tool/
 |   |-- test_output_mode_orchestrator.py
 |   |-- test_output_mode_processors.py
 |   |-- test_pdf_generator.py
+|   |-- test_pdf_layout_refactor.py
 |   |-- test_pdf_parser.py
 |   |-- test_pdf_render_warnings.py
 |   |-- test_pptx_parser.py
@@ -315,9 +321,7 @@ Translate_Tool/
 |   |-- test_quality_judge.py
 |   |-- test_renderer_convergence.py
 |   |-- test_sentence_mode_consistency.py
-|   |-- test_table_border_protection.py
-|   |-- test_table_context_translation.py
-|   \-- ... (14 more entries truncated; cap=50)
+|   \-- ... (17 more entries truncated; cap=50)
 |-- .env
 |-- .gitignore
 |-- AGENTS.md

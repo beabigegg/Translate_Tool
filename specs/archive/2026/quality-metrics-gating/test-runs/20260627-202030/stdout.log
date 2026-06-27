@@ -1,0 +1,60 @@
+........................................................................ [  7%]
+........................................................................ [ 14%]
+........................................................................ [ 21%]
+.................ss..................................................... [ 28%]
+........................................................................ [ 35%]
+........................................................................ [ 42%]
+........................................................................ [ 49%]
+......................................s................................. [ 56%]
+........................................................................ [ 63%]
+.................................................F
+=================================== FAILURES ===================================
+___________________ test_translate_texts_signature_unchanged ___________________
+.claude/worktrees/quality-metrics-gating/tests/test_sentence_mode_consistency.py:275: in test_translate_texts_signature_unchanged
+    assert params == expected, (
+E   AssertionError: Signature mismatch.
+E     Expected: ['texts', 'targets', 'src_lang', 'client', 'max_batch_chars', 'stop_flag', 'log', 'terms', 'status_callback']
+E     Actual:   ['texts', 'targets', 'src_lang', 'client', 'max_batch_chars', 'stop_flag', 'log', 'terms', 'status_callback', 'chunk_context']
+E   assert ['texts', 'ta...op_flag', ...] == ['texts', 'ta...op_flag', ...]
+E     
+E     Left contains one more item: 'chunk_context'
+E     Use -v to get more diff
+=============================== warnings summary ===============================
+../../miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21: DeprecationWarning: PyPDF2 is deprecated. Please move to the pypdf library instead.
+    warnings.warn(
+
+.claude/worktrees/quality-metrics-gating/tests/test_doc_chunker.py::TestDoc2DocPath::test_translate_document_returns_translated_document
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/torchmetrics/utilities/imports.py:23: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+    from pkg_resources import DistributionNotFound, get_distribution
+
+.claude/worktrees/quality-metrics-gating/tests/test_doc_chunker.py::TestDoc2DocPath::test_translate_document_returns_translated_document
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+.claude/worktrees/quality-metrics-gating/tests/test_doc_chunker.py::TestDoc2DocPath::test_translate_document_returns_translated_document
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+.claude/worktrees/quality-metrics-gating/tests/test_doc_chunker.py::TestDoc2DocPath::test_translate_document_returns_translated_document
+.claude/worktrees/quality-metrics-gating/tests/test_sentence_mode_consistency.py::test_sentence_mode_done_count_incremented_per_segment
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/pytorch_lightning/core/saving.py:197: Found keys that are not in the model state dict but in the checkpoint: ['encoder.model.embeddings.position_ids']
+
+.claude/worktrees/quality-metrics-gating/tests/test_doc_chunker.py: 129 warnings
+.claude/worktrees/quality-metrics-gating/tests/test_fewshot_glossary.py: 5 warnings
+.claude/worktrees/quality-metrics-gating/tests/test_glossary_enforcement.py: 6 warnings
+.claude/worktrees/quality-metrics-gating/tests/test_sentence_mode_consistency.py: 6 warnings
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/pytorch_lightning/trainer/setup.py:175: GPU available but not used. You can set it by doing `Trainer(accelerator='gpu')`.
+
+.claude/worktrees/quality-metrics-gating/tests/test_doc_chunker.py: 129 warnings
+.claude/worktrees/quality-metrics-gating/tests/test_fewshot_glossary.py: 5 warnings
+.claude/worktrees/quality-metrics-gating/tests/test_glossary_enforcement.py: 6 warnings
+.claude/worktrees/quality-metrics-gating/tests/test_sentence_mode_consistency.py: 6 warnings
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] .claude/worktrees/quality-metrics-gating/tests/test_golden_regression.py:172: No DOCX fixtures available yet
+SKIPPED [1] .claude/worktrees/quality-metrics-gating/tests/test_golden_regression.py:193: No PPTX fixtures available yet
+SKIPPED [1] .claude/worktrees/quality-metrics-gating/tests/test_pdf_parser.py:348: TABLE region-level element emission via find_tables() not yet implemented for this fixture; will be addressed in p2-layout-detection
+FAILED .claude/worktrees/quality-metrics-gating/tests/test_sentence_mode_consistency.py::test_translate_texts_signature_unchanged
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 694 passed, 3 skipped, 298 warnings in 82.77s (0:01:22)

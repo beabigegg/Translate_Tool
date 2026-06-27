@@ -1,0 +1,1 @@
+pytest /home/egg/Projects/Translate_Tool/.claude/worktrees/office-output-mode/tests/ --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/office-output-mode/test-runs/20260627-201325/junit.xml' --maxfail=1 --tb=short -ra

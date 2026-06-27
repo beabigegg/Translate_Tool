@@ -1,0 +1,16 @@
+{
+  "change_id": "office-output-mode",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest /home/egg/Projects/Translate_Tool/.claude/worktrees/office-output-mode/tests/test_env_contract.py /home/egg/Projects/Translate_Tool/.claude/worktrees/office-output-mode/tests/test_output_mode_api.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/office-output-mode/test-runs/20260627-201410/junit.xml' -ra",
+  "duration_ms": 1540,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/office-output-mode/test-runs/20260627-201410/summary.json",
+    "stdout": "specs/changes/office-output-mode/test-runs/20260627-201410/stdout.log",
+    "stderr": "specs/changes/office-output-mode/test-runs/20260627-201410/stderr.log",
+    "junit": "specs/changes/office-output-mode/test-runs/20260627-201410/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}
