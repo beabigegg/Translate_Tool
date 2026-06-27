@@ -1,0 +1,18 @@
+(node:191514) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/pages/TranslatePage.test.jsx > test_output_mode_selector_renders_both_labeled_options
+ FAIL  src/pages/TranslatePage.test.jsx > test_output_mode_default_value_is_append
+ FAIL  src/pages/TranslatePage.test.jsx > test_output_mode_replace_appends_field_to_form_data
+TypeError: Cannot read properties of undefined (reading 'clear')
+ ❯ src/pages/TranslatePage.test.jsx:65:16
+     63| 
+     64| beforeEach(() => {
+     65|   localStorage.clear();
+       |                ^
+     66|   vi.clearAllMocks();
+     67| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+

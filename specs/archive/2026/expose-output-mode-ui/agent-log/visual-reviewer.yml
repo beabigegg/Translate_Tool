@@ -1,0 +1,10 @@
+agent: visual-reviewer
+change-id: expose-output-mode-ui
+status: approved
+summary: New Select uses same component as existing controls; zero inline styles or hardcoded values introduced; token-compliant
+artifacts:
+  - type: tokens-violated
+    pointer: "none (new control introduces zero inline styles; two pre-existing violations at lines 219/239 are out of scope)"
+  - type: state-coverage
+    pointer: "default, gate-off (extraction_only), value-change dispatch, payload forwarding"
+notes: Code-only inspection (no live renderer). Pre-existing hardcoded px values at checkbox/radio inputs are out of scope.

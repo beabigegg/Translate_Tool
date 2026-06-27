@@ -1,0 +1,14 @@
+agent: contract-reviewer
+change-id: expose-output-mode-ui
+status: approved
+summary: All three required contracts verified; no edits required; output_mode fully documented
+artifacts:
+  - type: contracts-reviewed
+    pointer: "contracts/api/api-contract.md lines 306-315 and 356-357"
+  - type: contracts-reviewed
+    pointer: "contracts/business/business-rules.md lines 78-80 BR-66/BR-67 and Table S"
+  - type: contracts-reviewed
+    pointer: "contracts/css/css-contract.md token policy applies via existing TranslatePage entry"
+  - type: breaking-changes
+    pointer: "none"
+notes: output_mode is already in JobCreateRequest schema (api-contract.md), BR-66/BR-67/Table S (business-rules.md), CSS token policy inherited by TranslatePage. openapi.yml regeneration not needed.

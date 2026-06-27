@@ -1,6 +1,6 @@
-# generated: 2026-06-27T05:05:47Z by cdd-kit 3.6.0
-# files: 169, src-lines: 43806, map-lines: 4196, compression: 10.4x
-# sources-digest: ddb828034f9ac49ef405d2c83698ead176f43aa1cd2f3f14e7b663e0d762a602
+# generated: 2026-06-27T05:33:51Z by cdd-kit 3.6.0
+# files: 170, src-lines: 43941, map-lines: 4207, compression: 10.4x
+# sources-digest: b095ace331d71fdfcd430bbf0ab90513d6c138a6b888d2d37166c656f99120b1
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
@@ -1927,7 +1927,7 @@ app/frontend/src/pages/TermsReviewPage.jsx:  # 123 lines
     - { name: TermCard, lines: 7-56 }
     - { name: TermsReviewPage, lines: 58-123 }
 
-app/frontend/src/pages/TranslatePage.jsx:  # 292 lines
+app/frontend/src/pages/TranslatePage.jsx:  # 306 lines
   imports:
     - { module: react, items: ['default:React', useReducer, useState, useEffect, useCallback], line: 1 }
     - { module: sonner, items: [toast], line: 2 }
@@ -1949,13 +1949,24 @@ app/frontend/src/pages/TranslatePage.jsx:  # 292 lines
     - { module: '../components/domain/JudgePanel.jsx', items: [JudgePanel], line: 18 }
   constants:
     - { name: STEPS, line: 20 }
-    - { name: ACTIVE_JOB_KEY, line: 41 }
+    - { name: ACTIVE_JOB_KEY, line: 42 }
   functions:
-    - { name: makeInitialState, lines: 43-53 }
-    - { name: reducer, lines: 55-79 }
-    - { name: TranslatePage, lines: 81-292 }
+    - { name: makeInitialState, lines: 44-54 }
+    - { name: reducer, lines: 56-81 }
+    - { name: TranslatePage, lines: 83-306 }
 
-app/frontend/vite.config.js:  # 12 lines
+app/frontend/src/pages/TranslatePage.test.jsx:  # 117 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+    - { module: '@testing-library/react', items: [render, screen, fireEvent, waitFor], line: 2 }
+    - { module: '../contexts/SettingsContext.jsx', items: [SettingsProvider], line: 3 }
+    - { module: './TranslatePage.jsx', items: ['default:TranslatePage'], line: 4 }
+    - { module: '../api/jobs.js', items: [createJob], line: 5 }
+  functions:
+    - { name: renderApp, lines: 37-43 }
+    - { name: navigateToStep2, lines: 49-58 }
+
+app/frontend/vite.config.js:  # 16 lines
   imports:
     - { module: vite, items: [defineConfig], line: 1 }
     - { module: '@vitejs/plugin-react', items: ['default:react'], line: 2 }
