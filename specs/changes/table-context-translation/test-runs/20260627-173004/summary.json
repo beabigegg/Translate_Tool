@@ -1,0 +1,15 @@
+{
+  "change_id": "table-context-translation",
+  "phase": "changed-area",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "conda run -n translate-tool --no-capture-output pytest tests/ -v --tb=short -x",
+  "duration_ms": 26489,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/table-context-translation/test-runs/20260627-173004/summary.json",
+    "stdout": "specs/changes/table-context-translation/test-runs/20260627-173004/stdout.log",
+    "stderr": "specs/changes/table-context-translation/test-runs/20260627-173004/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

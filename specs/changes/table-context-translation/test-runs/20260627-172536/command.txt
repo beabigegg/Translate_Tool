@@ -1,0 +1,1 @@
+pytest tests/ -v --tb=short -x --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/table-context-translation/test-runs/20260627-172536/junit.xml' -q -ra

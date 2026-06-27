@@ -1,0 +1,16 @@
+{
+  "change_id": "table-context-translation",
+  "phase": "collect",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest tests/ --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/table-context-translation/specs/changes/table-context-translation/test-runs/20260627-173533/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 1141,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/table-context-translation/test-runs/20260627-173533/summary.json",
+    "stdout": "specs/changes/table-context-translation/test-runs/20260627-173533/stdout.log",
+    "stderr": "specs/changes/table-context-translation/test-runs/20260627-173533/stderr.log",
+    "junit": "specs/changes/table-context-translation/test-runs/20260627-173533/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

@@ -1,0 +1,5 @@
+artifacts:
+  - { type: adr-written, pointer: "docs/adr/0006-table-markdown-serialization.md" }
+  - { type: affected-areas, pointer: "clients(ollama,openai), processors(docx,xlsx,pptx), translation_service PDF cell-batch, new utils/table_serializer" }
+  - { type: decision-summary, pointer: "Markdown pipe-grid serialized once per table; shared serializer/remap; (text,col) dedup key; strict-shape fallback to per-cell SEG batch" }
+  - { type: risks-noted, pointer: "0 high, 4 medium (office cell-grouping restructure, manifest helpers path drift, delimiter collision, no is_header ground truth)" }

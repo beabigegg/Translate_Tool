@@ -1,0 +1,5 @@
+artifacts:
+  - { type: tiers-modified, pointer: "1, 2" }
+  - { type: gate-promotions, pointer: "n/a (no gate moved between tiers; one targeted fast-fail step added at Tier 1)" }
+  - { type: workflow-files-changed, pointer: ".github/workflows/contract-driven-gates.yml:3,107-121" }
+  - { type: required-status-checks, pointer: "contract-and-fast-tests (includes: contract-validate, openapi-sync, table_serialization+table_context_translation targeted, full suite); golden-sample-regression; layout-detector-dependency-gate; renderer-equivalence; text-expansion-benchmark" }

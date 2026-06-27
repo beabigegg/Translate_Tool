@@ -1,0 +1,20 @@
+{
+  "change_id": "table-context-translation",
+  "phase": "targeted",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "pytest tests/test_table_serialization.py tests/test_table_context_translation.py tests/test_translation_service.py -v --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/table-context-translation/test-runs/20260627-172506/junit.xml' -q --maxfail=1 -ra",
+  "duration_ms": 678,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests.test_translation_service.TestNonTableParagraphUnaffected::test_multiple_paragraphs_all_translated_via_non_table_path",
+    "message": "ValueError: too many values to unpack (expected 2)"
+  },
+  "artifacts": {
+    "summary": "specs/changes/table-context-translation/test-runs/20260627-172506/summary.json",
+    "stdout": "specs/changes/table-context-translation/test-runs/20260627-172506/stdout.log",
+    "stderr": "specs/changes/table-context-translation/test-runs/20260627-172506/stderr.log",
+    "junit": "specs/changes/table-context-translation/test-runs/20260627-172506/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

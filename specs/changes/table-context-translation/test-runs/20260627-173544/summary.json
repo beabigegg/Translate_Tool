@@ -1,0 +1,16 @@
+{
+  "change_id": "table-context-translation",
+  "phase": "changed-area",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest tests/test_table_serialization.py tests/test_table_context_translation.py tests/test_translation_service.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/table-context-translation/specs/changes/table-context-translation/test-runs/20260627-173544/junit.xml' -ra",
+  "duration_ms": 774,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/table-context-translation/test-runs/20260627-173544/summary.json",
+    "stdout": "specs/changes/table-context-translation/test-runs/20260627-173544/stdout.log",
+    "stderr": "specs/changes/table-context-translation/test-runs/20260627-173544/stderr.log",
+    "junit": "specs/changes/table-context-translation/test-runs/20260627-173544/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

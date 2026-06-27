@@ -1,0 +1,1 @@
+pytest tests/ --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/table-context-translation/specs/changes/table-context-translation/test-runs/20260627-173533/junit.xml' --maxfail=1 --tb=short -ra

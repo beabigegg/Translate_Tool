@@ -1,6 +1,6 @@
 # Contract-driven gates
 # Tier semantics: ci/gate-policy.md
-# Active change gates: (none) (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection, p2-prompt-fewshot-glossary, p2-long-doc-chunking, p2-comet-qe, p2-term-audit, download-url-in-jobstatus, remove-cross-model-refinement, fallback-chain-cloud-providers, term-extraction-db-first, settings-page-cloud-redesign, p3-docx-replace-mode, p3-table-structure, p3-llm-judge, pdf-renderer-fallback-warn, expose-output-mode-ui)
+# Active change gates: table-context-translation (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection, p2-prompt-fewshot-glossary, p2-long-doc-chunking, p2-comet-qe, p2-term-audit, download-url-in-jobstatus, remove-cross-model-refinement, fallback-chain-cloud-providers, term-extraction-db-first, settings-page-cloud-redesign, p3-docx-replace-mode, p3-table-structure, p3-llm-judge, pdf-renderer-fallback-warn, expose-output-mode-ui)
 
 name: contract-driven-gates
 
@@ -106,6 +106,21 @@ jobs:
         # and data-boundary (model unavailable, degenerate tables) test families.
         # See test-plan.md (p3-table-structure) for the full AC → test mapping.
         run: pytest tests/test_table_recognizer.py -x -q --tb=short
+
+      - name: Targeted tests — table_serialization + table_context_translation (Tier 1 — blocks merge)
+        # AC-1..AC-8 (table-context-translation): fast-fail before full suite.
+        # Covers unit (dedup key (text,col_index), serializer pipe-escape/newline, prompt
+        # instruction ordering, per-format processor grouping, all-numeric zero-call path),
+        # resilience (parse() returns None on row/col-count mismatch, pipe-missing, fallback
+        # per-cell batch preserves mapping), data-boundary (serialize→parse round-trip preserves
+        # row/col positions), and contract (BR-68/BR-69 numeric passthrough + batch coalescing)
+        # test families. Integration test for PDF TableCell IR path is included.
+        # See test-plan.md (table-context-translation) for the full AC → test mapping.
+        run: >
+          pytest
+          tests/test_table_serialization.py
+          tests/test_table_context_translation.py
+          -x -q --tb=short
 
       - name: Targeted tests — quality_judge + judge_api + orchestrator_judge + judge_apply + job_record_judge (Tier 1 — blocks merge)
         # AC-1..AC-5, AC-7, AC-8, AC-10: fast-fail before full suite.

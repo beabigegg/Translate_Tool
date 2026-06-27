@@ -1,0 +1,1 @@
+pytest tests/test_table_serialization.py tests/test_table_context_translation.py tests/test_translation_service.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/table-context-translation/specs/changes/table-context-translation/test-runs/20260627-173544/junit.xml' -ra

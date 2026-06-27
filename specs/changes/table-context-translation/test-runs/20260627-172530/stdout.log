@@ -1,0 +1,12 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.13, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/egg/Projects/Translate_Tool/.claude/worktrees/table-context-translation
+plugins: anyio-4.14.0
+collected 35 items
+
+tests/test_table_serialization.py .................                      [ 48%]
+tests/test_table_context_translation.py ...............                  [ 91%]
+tests/test_translation_service.py ...                                    [100%]
+
+- generated xml file: /home/egg/Projects/Translate_Tool/specs/changes/table-context-translation/test-runs/20260627-172530/junit.xml -
+============================== 35 passed in 0.47s ==============================

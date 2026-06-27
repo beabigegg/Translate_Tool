@@ -1,0 +1,15 @@
+{
+  "change_id": "table-context-translation",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "cdd-kit validate --contracts",
+  "duration_ms": 437,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/table-context-translation/test-runs/20260627-173553/summary.json",
+    "stdout": "specs/changes/table-context-translation/test-runs/20260627-173553/stdout.log",
+    "stderr": "specs/changes/table-context-translation/test-runs/20260627-173553/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

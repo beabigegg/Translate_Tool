@@ -1,0 +1,20 @@
+{
+  "change_id": "table-context-translation",
+  "phase": "changed-area",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "pytest tests/ -v --tb=short -x --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/table-context-translation/test-runs/20260627-172536/junit.xml' -q -ra",
+  "duration_ms": 859,
+  "first_failure": {
+    "kind": "collection-error",
+    "nodeid": "tests.test_jobstatus_download_url",
+    "message": "collection failure"
+  },
+  "artifacts": {
+    "summary": "specs/changes/table-context-translation/test-runs/20260627-172536/summary.json",
+    "stdout": "specs/changes/table-context-translation/test-runs/20260627-172536/stdout.log",
+    "stderr": "specs/changes/table-context-translation/test-runs/20260627-172536/stderr.log",
+    "junit": "specs/changes/table-context-translation/test-runs/20260627-172536/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}
