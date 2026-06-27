@@ -1,0 +1,13 @@
+agent: test-strategist
+change-id: pdf-renderer-fallback-warn
+timestamp: 2026-06-27
+status: done
+summary: >
+  Wrote test-plan.md with 9 test cases across 4 classes in
+  tests/test_pdf_render_warnings.py. Key anti-tautology guard: mock at
+  app.backend.processors.pdf_processor._run_fitz_render, enter via
+  _dispatch_render (not translate_pdf). Flagged _make_job helper in
+  test_jobstatus_download_url.py needs warnings=None attribute.
+artifacts:
+  - { type: test-plan, pointer: "specs/changes/pdf-renderer-fallback-warn/test-plan.md" }
+next-action: backend-engineer implements and writes tests

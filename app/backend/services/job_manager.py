@@ -107,6 +107,20 @@ class JobRecord:
     judge: Optional[JudgeResult] = None  # p3-llm-judge: judge result
     judge_apply_status: Optional[str] = None  # applying | applied | failed | None
     status_detail: Optional[str] = None  # current stage label shown in UI during "running"
+    warnings: Optional[List[str]] = None  # pdf-renderer-fallback-warn: render-quality degradation warnings
+
+
+def _record_job_warning(job: "JobRecord", message: str) -> None:
+    """Append a warning to job.warnings with dedup guard.
+
+    Initialises job.warnings to [] when None. Skips append if the exact
+    message is already present (idempotent — same callback may fire twice
+    if the same doc is retried).
+    """
+    if job.warnings is None:
+        job.warnings = []
+    if message not in job.warnings:
+        job.warnings.append(message)
 
 
 class JobLogger:
@@ -369,6 +383,7 @@ class JobManager:
                         post_translate_hook=qe_blocks.extend,
                         output_mode=output_mode,
                         status_callback=lambda detail: setattr(job, "status_detail", detail),
+                        warnings_callback=lambda w: _record_job_warning(job, w),
                     )
                     # process_files returns (processed, total, stopped, last_client,
                     # term_summary[, winning_provider]) — unpack flexibly for forward compat

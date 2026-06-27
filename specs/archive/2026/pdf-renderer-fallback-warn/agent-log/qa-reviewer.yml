@@ -1,0 +1,13 @@
+agent: qa-reviewer
+change-id: pdf-renderer-fallback-warn
+timestamp: 2026-06-27
+status: approved-with-risk
+summary: >
+  All ACs covered with verified non-tautological tests. 9 new tests + 17
+  existing all pass. contracts validate. One residual: openapi.json was stale
+  (missing warnings field) — fixed by regenerating both openapi.json and
+  openapi.yml. No gate-blocking findings.
+artifacts:
+  - { type: decision, pointer: "approved-with-risk" }
+  - { type: residual-fix, pointer: "contracts/api/openapi.json regenerated (was stale pre-change copy)" }
+next-action: cdd-kit gate pdf-renderer-fallback-warn --strict
