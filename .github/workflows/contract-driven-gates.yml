@@ -209,8 +209,10 @@ jobs:
         # ultralytics is forbidden (license). onnxruntime-gpu is forbidden
         # in base requirements (operator opt-in only, installed out-of-band).
         # Pass condition: grep finds no match → exit 1 from grep → ! inverts to exit 0.
+        # Exclude comment lines (^#) so doc-comments like "onnxruntime-gpu must NOT
+        # appear in…" don't trigger a false positive.
         run: |
-          ! grep -E "(ultralytics|onnxruntime-gpu)" \
+          ! grep -E "^[^#]*(ultralytics|onnxruntime-gpu)" \
             app/backend/requirements.txt \
             app/backend/environment.yml
 
