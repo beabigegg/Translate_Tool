@@ -129,7 +129,10 @@ export default function TranslatePage() {
         form.append('pdf_output_format', pdfOutputFormat);
         form.append('pdf_layout_mode', pdfLayoutMode);
       }
-      form.append('output_mode', outputMode);
+      const hasXlsx = files.some(f => /\.xlsx?$/i.test(f.name));
+      const effectiveOutputMode =
+        (selectedTargets.length > 1 || hasPdf || hasXlsx) ? 'append' : outputMode;
+      form.append('output_mode', effectiveOutputMode);
       const data = await createJob(form);
       dispatch({ type: 'SET_JOB_ID', payload: data.job_id });
       dispatch({ type: 'SET_STEP', payload: 3 });
