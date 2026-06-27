@@ -145,6 +145,19 @@ jobs:
         # See test-plan.md (pdf-renderer-fallback-warn) for the full AC → test mapping.
         run: pytest tests/test_pdf_render_warnings.py -x -q --tb=short
 
+      - name: Targeted tests — output_mode processors, orchestrator, API (Tier 1 — blocks merge)
+        # AC-1..AC-8 (office-output-mode): fast-fail before full suite.
+        # Covers unit (per-format output_mode branches: bilingual/adjacent/annotation/replace),
+        # integration (orchestrator degrades bilingual/adjacent/annotation for non-target formats with warning),
+        # and contract (OutputMode enum accepts all 5 values; invalid values rejected; openapi sync) test families.
+        # See test-plan.md (office-output-mode) for the full AC → test mapping.
+        run: >
+          pytest
+          tests/test_output_mode_processors.py
+          tests/test_output_mode_orchestrator.py
+          tests/test_output_mode_api.py
+          -x -q --tb=short
+
       - name: Unit, contract, integration, resilience, data-boundary tests (Tier 1 — blocks merge)
         run: pytest tests/ -x -q --tb=short --junitxml=test-results/junit.xml
 

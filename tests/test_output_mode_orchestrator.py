@@ -2,10 +2,12 @@
 
 AC-6: process_files() passes output_mode to translate_docx / translate_pptx.
 AC-7: with len(targets) > 1, process_files() clamps output_mode to "append".
+AC-8 (office-output-mode): process_files() threads output_mode to translate_xlsx_xls;
+      bilingual degrades to append for non-DOCX files with a warnings_callback notice.
 
 Anti-tautology:
 - Patch at consumer-bound names (app.backend.processors.orchestrator.translate_docx,
-  …translate_pptx) — module-level import pattern per CLAUDE.md.
+  …translate_pptx, …translate_xlsx_xls) — module-level import pattern per CLAUDE.md.
 - Assert call_args.kwargs["output_mode"] value (selection assertion, not count).
 - Call process_files() directly, not translate_document() (avoids tautology via
   wrong entry-point pattern per CLAUDE.md).
@@ -90,6 +92,43 @@ def _fake_translate_pptx(
     import shutil
     shutil.copy2(src_path, out_path)
     return False
+
+
+def _fake_translate_xlsx(
+    in_path,
+    out_path,
+    targets,
+    src_lang,
+    client,
+    *,
+    stop_flag=None,
+    log=None,
+    max_batch_chars=None,
+    pre_translate_hook=None,
+    post_translate_hook=None,
+    terms_getter=None,
+    block_overrides=None,
+    status_callback=None,
+    output_mode=None,
+):
+    """Minimal translate_xlsx_xls stub; creates a minimal output XLSX."""
+    import openpyxl
+    from pathlib import Path as _Path
+    wb = openpyxl.Workbook()
+    _Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    wb.save(str(_Path(out_path).with_suffix(".xlsx")))
+    return False
+
+
+def _make_xlsx_fixture(tmp_path: Path) -> Path:
+    """Create a minimal XLSX file for orchestrator tests."""
+    import openpyxl
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws["A1"] = "Hello world"
+    p = tmp_path / "test.xlsx"
+    wb.save(str(p))
+    return p
 
 
 # ---------------------------------------------------------------------------
@@ -209,4 +248,101 @@ def test_orchestrator_clamps_replace_to_append_for_multi_target(tmp_path):
     assert call_kwargs.get("output_mode") == "append", (
         f"Expected output_mode clamped to 'append' for multi-target, "
         f"got: {call_kwargs.get('output_mode')!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# office-output-mode: XLSX output_mode threading
+# ---------------------------------------------------------------------------
+
+def test_orchestrator_threads_output_mode_to_translate_xlsx(tmp_path):
+    """process_files with output_mode='replace' and an XLSX file passes output_mode='replace'
+    to translate_xlsx_xls (the missing kwarg was the pre-change bug)."""
+    from app.backend.processors.orchestrator import process_files
+
+    xlsx_path = _make_xlsx_fixture(tmp_path)
+    output_dir = tmp_path / "out"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    with (
+        patch(
+            "app.backend.processors.orchestrator.translate_xlsx_xls",
+            side_effect=_fake_translate_xlsx,
+        ) as mock_xlsx,
+        patch(
+            "app.backend.processors.orchestrator.OllamaClient",
+            return_value=_make_mock_client(),
+        ),
+    ):
+        process_files(
+            files=[xlsx_path],
+            output_dir=output_dir,
+            targets=["vi"],
+            src_lang="en",
+            include_headers_shapes_via_com=False,
+            ollama_model="qwen2.5:32b",
+            output_mode="replace",
+            log=lambda s: None,
+        )
+
+    assert mock_xlsx.called, "translate_xlsx_xls was not called"
+    call_kwargs = mock_xlsx.call_args.kwargs
+    assert call_kwargs.get("output_mode") == "replace", (
+        f"Expected output_mode='replace' threaded to translate_xlsx_xls, "
+        f"got: {call_kwargs.get('output_mode')!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# office-output-mode: bilingual degrades to append for non-DOCX with warning
+# ---------------------------------------------------------------------------
+
+def test_orchestrator_degrades_bilingual_to_append_for_non_docx_with_warning(tmp_path):
+    """process_files with output_mode='bilingual' and an XLSX file must:
+    - pass output_mode='append' to translate_xlsx_xls (degrade), and
+    - call warnings_callback with a notice about the degradation.
+    """
+    from app.backend.processors.orchestrator import process_files
+
+    xlsx_path = _make_xlsx_fixture(tmp_path)
+    output_dir = tmp_path / "out"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    warnings_received: list = []
+
+    with (
+        patch(
+            "app.backend.processors.orchestrator.translate_xlsx_xls",
+            side_effect=_fake_translate_xlsx,
+        ) as mock_xlsx,
+        patch(
+            "app.backend.processors.orchestrator.OllamaClient",
+            return_value=_make_mock_client(),
+        ),
+    ):
+        process_files(
+            files=[xlsx_path],
+            output_dir=output_dir,
+            targets=["vi"],
+            src_lang="en",
+            include_headers_shapes_via_com=False,
+            ollama_model="qwen2.5:32b",
+            output_mode="bilingual",
+            log=lambda s: None,
+            warnings_callback=warnings_received.append,
+        )
+
+    assert mock_xlsx.called, "translate_xlsx_xls was not called"
+    call_kwargs = mock_xlsx.call_args.kwargs
+    # output_mode must be degraded to "append" for the XLSX file
+    assert call_kwargs.get("output_mode") == "append", (
+        f"Expected bilingual degraded to 'append' for XLSX, "
+        f"got: {call_kwargs.get('output_mode')!r}"
+    )
+    # A warning notice must have been emitted
+    assert len(warnings_received) >= 1, (
+        "Expected at least one warning about bilingual degradation, got none"
+    )
+    assert any("bilingual" in w.lower() for w in warnings_received), (
+        f"Expected 'bilingual' in warning text, got: {warnings_received}"
     )

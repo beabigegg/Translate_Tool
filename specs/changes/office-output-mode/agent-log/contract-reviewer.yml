@@ -1,0 +1,23 @@
+agent: contract-reviewer
+change-id: office-output-mode
+date: 2026-06-27
+status: approved
+summary: >
+  BLOCKED on two items: (1) `adjacent` and `annotation` missing from OutputMode
+  enum in schemas.py and from the JobCreateRequest schema enum in api-contract.md /
+  openapi.yml — these values are documented in the data-shape contract and required
+  by AC-3/AC-4 as API-level request values; (2) cross-format degradation rule not
+  defined for `adjacent`/`annotation` on non-XLSX formats. DOCX bilingual addition
+  is correctly specified.
+artifacts:
+  - { type: contracts-reviewed, pointer: "contracts/api/api-contract.md:line 316 (JobCreateRequest enum); contracts/api/openapi.yml; contracts/data/data-shape-contract.md:lines 725-756" }
+  - { type: version-bumps, pointer: "api-contract: 0.9.0; data-shape-contract: 0.15.0 — both appropriate for additive changes" }
+  - { type: breaking-changes, pointer: "none — all changes are additive" }
+  - { type: consumers-impacted, pointer: "any client sending output_mode=adjacent or output_mode=annotation receives HTTP 422 until enum is fixed" }
+blockers:
+  - id: BLOCKER-1
+    description: "adjacent and annotation missing from OutputMode in schemas.py, api-contract.md:316, and openapi.yml"
+    fix: "Add ADJACENT='adjacent' and ANNOTATION='annotation' to OutputMode enum; update api-contract.md:316 to enum(append,replace,bilingual,adjacent,annotation); regenerate openapi.yml"
+  - id: BLOCKER-2
+    description: "Cross-format degradation rule undocumented for adjacent/annotation on non-XLSX formats"
+    fix: "Extend cross-format degradation sub-section in data-shape-contract.md to state: adjacent and annotation degrade to append (with warnings entry) on non-XLSX formats"

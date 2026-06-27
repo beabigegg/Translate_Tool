@@ -1,0 +1,5 @@
+artifacts:
+  - { type: adr-written, pointer: "docs/adr/0007-bilingual-docx-dual-column.md" }
+  - { type: affected-areas, pointer: "docx/xlsx/pptx processors, orchestrator routing, output_mode enum, api+data-shape contracts" }
+  - { type: decision-summary, pointer: "bilingual=two-column table; non-DOCX bilingual degrades to append at orchestrator; XLSX adjacent=block-shift, annotation=non-destructive Comment" }
+  - { type: risks-noted, pointer: "3 medium (p-relocation pass-through, multi-target bilingual shape, adjacent block-shift width), 0 high" }

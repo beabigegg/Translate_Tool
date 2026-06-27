@@ -1,0 +1,41 @@
+change-id: office-output-mode
+status: in-progress
+tier: 2
+context-governance: v1
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on: []
+
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: done }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: done }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no frontend change" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: skipped, note: "no env vars added" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: done }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: skipped, note: "per-format output semantics captured in data-shape contract; no new BRs" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no new CI gates" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: done }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: skipped, note: "not applicable for this change" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: done }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "not applicable" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: done }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no frontend change; Wave 1 Track A already ships output_mode selector" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: skipped, note: "no new env vars; output_mode is a per-request field" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: done }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI surface" }
+  - { id: "5.2", section: Review, title: "Visual review", status: skipped, note: "no CSS/web UI; Office document output is not a web surface" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done }
+  - { id: "5.4", section: Review, title: "QA review", status: done, note: "gate passed; 36 targeted tests passed; ac coverage AC-1..AC-8" }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done, note: "cdd-kit gate office-output-mode passed" }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "pre-commit gate hook validates; CI will re-run on PR" }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: skipped, note: "no informational gates for this change" }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no such gates planned" }
+  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }

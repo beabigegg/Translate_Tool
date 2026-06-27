@@ -54,6 +54,7 @@ def translate_xlsx_xls(
     terms_getter: Optional[Callable[[], list]] = None,
     block_overrides: Optional[Dict[str, str]] = None,
     status_callback: Optional[Callable[[Optional[str]], None]] = None,
+    output_mode: str = "append",
 ) -> bool:
     ext = Path(in_path).suffix.lower()
     out_xlsx = Path(out_path).with_suffix(".xlsx")
@@ -88,6 +89,7 @@ def translate_xlsx_xls(
                 pre_translate_hook=pre_translate_hook,
                 post_translate_hook=post_translate_hook,
                 block_overrides=block_overrides,
+                output_mode=output_mode,
             )
         finally:
             try:
@@ -243,6 +245,12 @@ def translate_xlsx_xls(
                                 if src_text == fb_text:
                                     tmap[(fb_tgt, fb_text, c - 1)] = fb_tr
 
+    # Pre-compute original max column per sheet for adjacent mode (before any writes).
+    _sheet_orig_max_col: Dict[str, int] = {}
+    if output_mode == "adjacent":
+        for _ws in wb.worksheets:
+            _sheet_orig_max_col[_ws.title] = _ws.max_column or 1
+
     for sheet_name, r, c, src_text, is_formula in segs:
         c0 = c - 1  # 0-based column index (BR-81 dedup key)
         if not all((tgt, src_text, c0) in tmap for tgt in targets):
@@ -260,23 +268,56 @@ def translate_xlsx_xls(
                     cell.comment = Comment(txt_comment, "translator")
                 continue
             continue
-        combined = "\n".join([src_text] + trs)
-        cell = ws.cell(row=r, column=c)
-        if isinstance(cell.value, str) and normalize_text(cell.value) == normalize_text(combined):
-            continue
-        cell.value = combined
-        try:
-            if cell.alignment:
-                cell.alignment = Alignment(
-                    horizontal=cell.alignment.horizontal,
-                    vertical=cell.alignment.vertical,
-                    wrap_text=True,
-                )
+        if output_mode == "adjacent":
+            # Write translation to the column block immediately to the right of the
+            # original data (shifted by the original sheet width, no wrap_text).
+            orig_max = _sheet_orig_max_col.get(sheet_name, 1)
+            ws.cell(row=r, column=c + orig_max).value = trs[0]
+        elif output_mode == "annotation":
+            # Attach translation as an openpyxl Comment; non-destructive + idempotent.
+            comment_text = "\n".join([f"[{t}] {res}" for t, res in zip(targets, trs)])
+            cell = ws.cell(row=r, column=c)
+            exist = cell.comment
+            if exist:
+                if (exist.author or "") == "translate-tool" and normalize_text(exist.text or "") == normalize_text(comment_text):
+                    continue  # idempotent: already our comment with the same text
+                # Preserve the existing comment (user-authored); append our translation below.
+                combined_comment = (exist.text or "") + "\n---\n" + comment_text
+                cell.comment = Comment(combined_comment, "translate-tool")
             else:
+                cell.comment = Comment(comment_text, "translate-tool")
+        elif output_mode == "replace":
+            # Overwrite source cell value with translation only; no src+translation stack,
+            # no wrap_text.
+            cell = ws.cell(row=r, column=c)
+            cell.value = trs[0]
+            try:
+                cell.alignment = Alignment(
+                    horizontal=cell.alignment.horizontal if cell.alignment else None,
+                    vertical=cell.alignment.vertical if cell.alignment else None,
+                    wrap_text=False,
+                )
+            except (TypeError, AttributeError):
+                pass
+        else:
+            # Default append: combine source + translations into the cell with wrap_text.
+            combined = "\n".join([src_text] + trs)
+            cell = ws.cell(row=r, column=c)
+            if isinstance(cell.value, str) and normalize_text(cell.value) == normalize_text(combined):
+                continue
+            cell.value = combined
+            try:
+                if cell.alignment:
+                    cell.alignment = Alignment(
+                        horizontal=cell.alignment.horizontal,
+                        vertical=cell.alignment.vertical,
+                        wrap_text=True,
+                    )
+                else:
+                    cell.alignment = Alignment(wrap_text=True)
+            except (TypeError, AttributeError) as exc:
+                logger.debug("Cell alignment copy failed: %s", exc)
                 cell.alignment = Alignment(wrap_text=True)
-        except (TypeError, AttributeError) as exc:
-            logger.debug("Cell alignment copy failed: %s", exc)
-            cell.alignment = Alignment(wrap_text=True)
 
     wb.save(out_xlsx)
 

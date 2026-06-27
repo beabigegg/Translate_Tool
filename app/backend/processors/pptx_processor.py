@@ -122,6 +122,7 @@ def _update_smartart_texts(
     pptx_path: str,
     out_path: str,
     translations: Dict[str, str],
+    output_mode: str = "append",
 ) -> None:
     """Update SmartArt texts with translations.
 
@@ -129,6 +130,8 @@ def _update_smartart_texts(
         pptx_path: Path to the original PPTX file.
         out_path: Path to save the updated PPTX file.
         translations: Dict mapping original text to translated text (appended).
+        output_mode: ``"replace"`` to overwrite source text; ``"append"`` to append in
+            parentheses (default).
     """
     import shutil
     import tempfile
@@ -158,8 +161,11 @@ def _update_smartart_texts(
                     if text and text.strip() in translations:
                         original = text.strip()
                         translated = translations[original]
-                        # Append translation in parentheses
-                        t_elem.text = f"{text}\n({translated})"
+                        if output_mode == "replace":
+                            t_elem.text = translated
+                        else:
+                            # Append translation in parentheses (default)
+                            t_elem.text = f"{text}\n({translated})"
                         modified = True
 
                 if modified:
@@ -455,7 +461,7 @@ def translate_pptx(
                 smartart_tmap[text] = " / ".join(translations)
 
         if smartart_tmap:
-            _update_smartart_texts(out_path, out_path, smartart_tmap)
+            _update_smartart_texts(out_path, out_path, smartart_tmap, output_mode=output_mode)
             log(f"[PPTX] SmartArt translated: {len(smartart_tmap)} items")
 
     if post_translate_hook is not None:
