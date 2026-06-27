@@ -1,0 +1,1 @@
+python -m pytest --collect-only -q tests/test_pdf_layout_refactor.py --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/pdf-layout-refactor/specs/changes/pdf-layout-refactor/test-runs/20260627-185514/junit.xml' --maxfail=1 --tb=short -ra

@@ -3,8 +3,8 @@ contract: ci
 summary: CI gate inventory, artifact retention, and rollback requirements.
 owner: platform-team
 surface: delivery-pipeline
-schema-version: 0.4.3
-last-changed: 2026-06-19
+schema-version: 0.5.0
+last-changed: 2026-06-27
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -20,6 +20,11 @@ breaking-change-policy: deprecate-2-minors
 | layout-detector-dependency-gate | 2+ | PR | yes | `! grep -E "(ultralytics|onnxruntime-gpu)" app/backend/requirements.txt app/backend/environment.yml` | platform-team | exit code 0 (no forbidden packages) |
 | renderer-equivalence | 2+ | PR | yes | pytest tests/test_ir_pipeline_decoupling.py tests/test_golden_regression.py -k "equivalence" --tb=short -q | application-team | per-element pass/fail diff (step log) |
 | text-expansion-benchmark | 2+ | PR | yes | pytest tests/test_text_expansion_benchmark.py --tb=short -q | application-team | zero-overflow + zero-tofu assertion log; covers AC-1 AC-2 AC-3 |
+| residual-text | 2+ | PR | yes | pytest tests/test_pdf_layout_refactor.py -k "residual_text" --tb=short -q | application-team | residual source-text count = 0 across all rendered PDF fixture pages |
+| biou-layout-fidelity | 2+ | PR | no | pytest tests/test_layout_metrics.py -k "biou" --tb=short -q | application-team | BIoU ≥ PR#3 metrics baseline (informational) |
+| truncation-rate | 2+ | PR | no | pytest tests/test_layout_metrics.py -k "truncation_rate" --tb=short -q | application-team | `render_truncated=True` element count = 0 across benchmark fixture set (informational) |
+| reading-order-edit-distance | 2+ | PR | no | pytest tests/test_layout_metrics.py -k "reading_order" --tb=short -q | application-team | normalized edit distance on multi-column fixture ≤ PR#3 baseline (informational) |
+| ocr-absent-gate | 2+ | PR | yes | pytest tests/test_pdf_layout_refactor.py -k "ocr_absent" --tb=short -q | application-team | all PDF gates pass or skip gracefully when `OCR_ENABLED=False` and OCR library absent |
 
 ## Required Check Policy
 

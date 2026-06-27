@@ -515,3 +515,61 @@ class TestDetectorDisabledByEnvFlagUsesHeuristic:
         # reading_order should still be set by heuristic
         orders = [e.reading_order for e in elements]
         assert all(o is not None for o in orders)
+
+
+# ---------------------------------------------------------------------------
+# DPI coordinate back-mapping: page_width_pt / page_height_pt (pdf-layout-refactor 3.6)
+# ---------------------------------------------------------------------------
+
+class TestDpiCoordinateBackMapping:
+    """detect() page_width_pt/page_height_pt params map normalized boxes to PDF points.
+
+    At DPI > 72 the pixmap is larger than the page in points (e.g. 3× at 216 DPI).
+    Without the pt params, normalized region boxes are scaled by pixel dimensions,
+    placing them at 3× their correct point-space position and causing elements to be
+    matched to the wrong region.  The params correct this.
+    """
+
+    def test_element_type_correct_with_pt_params_at_high_dpi(self):
+        """Element x=55pt (right region) gets TEXT, not FORMULA, when pt params passed.
+
+        Setup:
+          - Page: 100pt × 100pt; pixmap rasterised at 3× (300px × 300px).
+          - Left region  [0.0, 0.0, 0.48, 1.0] → Formula  (label 9).
+          - Right region [0.52, 0.0, 1.0, 1.0] → Text     (label 0).
+          - Element at x0=55pt (x-centre 72.5pt) → right region in point space.
+
+        Without pt params: map_width=300px → element overlaps left pixel region
+        (x0=55 < 144px) and gets wrongly typed as FORMULA.
+
+        With page_width_pt=100: map_width=100pt → element correctly falls in right
+        region (x0=55 > 52pt) and retains TEXT type.
+        """
+        elem = _make_element("e1", "right-half text", 55, 10, 90, 90)
+
+        # Left region = Formula (label 9), right region = Text (label 0)
+        boxes  = [[0.0, 0.0, 0.48, 1.0], [0.52, 0.0, 1.0, 1.0]]
+        scores = [0.95, 0.95]
+        labels = [9, 0]  # 9=Formula, 0=Text
+
+        mock_session = _make_mock_session(boxes, scores, labels)
+        # Pixmap is 300×300 px — simulating 3× DPI (page is actually 100×100 pt)
+        large_pixmap = _make_pixmap_array(height=300, width=300)
+
+        LayoutDetector = _get_detector_cls()
+        with patch("onnxruntime.InferenceSession", return_value=mock_session):
+            detector = LayoutDetector(model_path="/fake/path")
+            detector.detect(
+                large_pixmap,
+                [elem],
+                page_width_pt=100.0,
+                page_height_pt=100.0,
+            )
+
+        assert elem.element_type == ElementType.TEXT, (
+            f"Element at x=55pt should be in right (TEXT) region with pt params; "
+            f"got {elem.element_type} — DPI coordinate mapping may be using pixel dims"
+        )
+        assert elem.should_translate is True, (
+            "Element in TEXT region should remain translatable"
+        )

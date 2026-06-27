@@ -3,7 +3,7 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.14.0
+schema-version: 0.15.0
 last-changed: 2026-06-27
 breaking-change-policy: deprecate-2-minors
 ---
@@ -125,7 +125,7 @@ The IR is the single authoritative in-memory and serialized form that decouples 
 | `footnote` | text-level | Footnote text | existing |
 | `table` | region-level | Entire table region (container; enclosing `table_cell` elements). When table structure is recognized (p3-table-structure), the region is backed by a `TableStructure` sub-element record; otherwise it remains a plain region marker. | updated p3-table-structure |
 | `figure` | region-level | Figure or image region | added p2-ir-document-model |
-| `formula` | region-level | Mathematical formula region | added p2-ir-document-model |
+| `formula` | region-level | Mathematical formula region. **Active pass-through (pdf-layout-refactor):** `translated_content` is always set equal to `content`; no LLM call is made regardless of detection path. See BR-86. | updated pdf-layout-refactor |
 | `list` | region-level | Entire list region (container; may enclose `list_item` elements) | added p2-ir-document-model |
 
 All pre-existing values remain valid and their serialized string forms are unchanged. New region-level values are additive non-breaking: existing consumers that do not recognize them must not raise on deserialization; they may skip or passthrough such elements.
@@ -156,7 +156,7 @@ The following table is normative. The implementation constant in `layout_detecto
 | Page-footer | `footer` | |
 | Table | `table` | region container; enclosed lines remain `table_cell` per existing table marking |
 | Picture / Figure | `figure` | excluded from translation (future); region marked only |
-| Formula | `formula` | pass-through target (future); region marked only |
+| Formula | `formula` | active pass-through (pdf-layout-refactor): `translated_content` = `content`; no LLM call; path-independent (BR-86) |
 | List-item | `list` / `list_item` | region → `list`; enclosed lines → `list_item` |
 | Caption | `caption` | |
 | Footnote | `footnote` | |
@@ -198,6 +198,7 @@ Coordinate system: top-left origin; x increases right; y increases down. Unit: p
 | is_italic | boolean | no | false | italic style |
 | color | string\|null | yes | null | hex color code (e.g. `#FF0000`) |
 | background_color | string\|null | yes | null | hex background color code |
+| is_underline | boolean | no | false | underline style — **Added pdf-layout-refactor.** `True` when the span's source text carries an underline decoration. Old-format IR dicts lacking this key deserialize to `False` via `from_dict()`; backward-compatible. |
 
 ### TranslatableDocument — serialized field shape
 
@@ -211,7 +212,7 @@ Coordinate system: top-left origin; x increases right; y increases down. Unit: p
 
 ### Round-trip guarantee
 
-A document serialized by `TranslatableDocument.to_dict()` then deserialized by `TranslatableDocument.from_dict()` must produce an equivalent IR preserving all of the following fields without loss or mutation: `bbox` (all four float coordinates), `style` / font metadata (all six fields), `element_type`, `reading_order`, `render_truncated`, `element_id`, `content`, `page_num`, `should_translate`, `translated_content`, `metadata`. Floating-point bbox coordinates must round-trip without rounding or truncation. When a `table`-typed element carries `metadata["table_structure"]`, all `TableCell` fields within that structure must survive round-trip without loss (see Table/Cell IR section).
+A document serialized by `TranslatableDocument.to_dict()` then deserialized by `TranslatableDocument.from_dict()` must produce an equivalent IR preserving all of the following fields without loss or mutation: `bbox` (all four float coordinates), `style` / font metadata (all seven fields, including `is_underline` added in pdf-layout-refactor), `element_type`, `reading_order`, `render_truncated`, `element_id`, `content`, `page_num`, `should_translate`, `translated_content`, `metadata`. Floating-point bbox coordinates must round-trip without rounding or truncation. When a `table`-typed element carries `metadata["table_structure"]`, all `TableCell` fields within that structure must survive round-trip without loss (see Table/Cell IR section).
 
 ### Backward-compatibility rule
 
@@ -221,13 +222,14 @@ Old-format means a document dict produced by the pre-change `TranslatableElement
 
 ### `to_dict` compatibility rule
 
-All pre-existing keys (`element_id`, `content`, `element_type`, `page_num`, `bbox`, `style`, `should_translate`, `translated_content`, `metadata`) must remain present in `to_dict` output with the same types and semantics. `reading_order` is added as a new key (integer or `None`). `render_truncated` is added as a new key (boolean, default `False`). No existing key may be renamed, removed, or have its type narrowed.
+All pre-existing keys (`element_id`, `content`, `element_type`, `page_num`, `bbox`, `style`, `should_translate`, `translated_content`, `metadata`) must remain present in `to_dict` output with the same types and semantics. `reading_order` is added as a new key (integer or `None`). `render_truncated` is added as a new key (boolean, default `False`). No existing key may be renamed, removed, or have its type narrowed. `is_underline` is added as a new key on `StyleInfo.to_dict()` output (boolean, default `False`). Old-format IR lacking the `is_underline` key in the serialized style dict MUST deserialize to `False` via `from_dict()`; no existing key is renamed, removed, or type-narrowed.
 
 ### Known consumers of the IR
 
 | consumer | surface | impact |
 |---|---|---|
-| `app/backend/parsers/pdf_parser.py` | producer | extracts text elements; delegates reading-order assignment to `layout_detector.py` on native-PDF text-layer path; retains `round(y0,10pt)` heuristic as per-page fallback (BR-33); passes detected table regions to `table_recognizer.py` (p3-table-structure) |
+| `app/backend/parsers/pdf_parser.py` | producer | **Updated pdf-layout-refactor.** Emits paragraph-aggregated elements (BabelDOC paradigm): consecutive lines in the same block/region are grouped into one paragraph element; the paragraph is the translation unit, not the raw fitz line. Original per-line bboxes are retained in `metadata["lines"]` so bbox-exact whitening (BR-84) can mask every source line. Rasterise matrix for layout detection uses `PDF_RENDER_DPI` (default 150) — `fitz.Matrix(dpi/72, dpi/72)`. Delegates reading-order to `layout_detector.py` on native-PDF path; retains `round(y0,10pt)` heuristic as per-page fallback (BR-33). Passes detected table regions to `table_recognizer.py` (p3-table-structure). Routes near-empty pages to `ocr_backend.py` when `OCR_ENABLED=True` (BR-87). |
+| `app/backend/parsers/ocr_backend.py` | producer (new, pdf-layout-refactor) | Lazy-imported OCR backend seam (Surya or PaddleOCR) gated by `OCR_ENABLED` (default `False`). Invoked by `pdf_parser.py` when `page.get_text()` returns near-empty content but visible objects are present on the page (BR-87). Produces `TranslatableElement` objects conforming to the same IR wire schema as the native-text path. When `OCR_ENABLED=False`, this module is never imported; the system starts and CI passes without the OCR library installed. |
 | `app/backend/parsers/layout_detector.py` | producer (p2-layout-detection) | consumes rasterised page images from PyMuPDF in-process; writes `element_type` (from D-4 label mapping) and `reading_order` onto `TranslatableElement`; never changes wire schema |
 | `app/backend/parsers/table_recognizer.py` | producer (p3-table-structure) | optional ML step; attaches `TableStructure` to `table`-typed elements produced by `pdf_parser.py`; falls back gracefully when model is absent (BR-71); never changes wire schema on the `TranslatableElement` level |
 | `app/backend/parsers/docx_parser.py` | producer | must populate `reading_order` from element extraction order |

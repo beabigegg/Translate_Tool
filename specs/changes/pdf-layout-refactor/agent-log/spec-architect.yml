@@ -1,0 +1,5 @@
+artifacts:
+  - { type: adr-written, pointer: "none (no boundary/persistence/consistency change; OCR is optional lazy seam)" }
+  - { type: affected-areas, pointer: "parsers (pdf_parser, layout_detector, ocr_backend), renderers (fitz, bbox_reflow/text_region, coordinate), processors (pdf_processor), models (translatable_document), config" }
+  - { type: decision-summary, pointer: "7 IR-centred seam refactors; paragraph IR + per-span style + bbox-exact whitening + binary-search fit + LayoutReader ordering + DPI flag + formula/OCR gating" }
+  - { type: risks-noted, pointer: "0 high, 3 medium (block_id index stability, min-font source-of-truth reconciliation, DPI memory/latency)" }

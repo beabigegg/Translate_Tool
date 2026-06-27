@@ -233,6 +233,8 @@ class LayoutDetector:
         self,
         page_pixmap_array: np.ndarray,
         elements: List[TranslatableElement],
+        page_width_pt: Optional[float] = None,
+        page_height_pt: Optional[float] = None,
     ) -> Optional[dict]:
         """Detect layout regions and assign element_type + reading_order in-place.
 
@@ -243,6 +245,10 @@ class LayoutDetector:
             page_pixmap_array: HxWx3 uint8 numpy array of the page raster.
                                None or invalid → fail-soft to heuristic.
             elements: Page elements to type and order in-place.
+            page_width_pt: Page width in PDF points (used to map normalized
+                           region boxes back to element bbox coordinates).
+                           Defaults to pixmap pixel width (correct at 72 DPI).
+            page_height_pt: Page height in PDF points. Same default semantics.
 
         Returns:
             Optional[dict]: viz page dict with "detector" and "boxes" keys,
@@ -271,7 +277,7 @@ class LayoutDetector:
                 raise ValueError(
                     f"Expected HxWx3 ndarray, got {type(page_pixmap_array)}"
                 )
-            page_height, page_width = page_pixmap_array.shape[:2]
+            page_height_px, page_width_px = page_pixmap_array.shape[:2]
         except Exception as exc:
             logger.warning(
                 "LayoutDetector: invalid page_pixmap_array (%s); "
@@ -281,6 +287,11 @@ class LayoutDetector:
             _heuristic_reading_order(elements)
             return {"detector": "heuristic", "boxes": []}
 
+        # Use caller-supplied point dimensions for bbox mapping; fall back to
+        # pixel dimensions (correct only at 72 DPI where 1px ≈ 1pt).
+        map_width = page_width_pt if page_width_pt is not None else float(page_width_px)
+        map_height = page_height_pt if page_height_pt is not None else float(page_height_px)
+
         # Load ONNX session (lazy, cached, fail-soft)
         if not self._load_session():
             _heuristic_reading_order(elements)
@@ -289,7 +300,7 @@ class LayoutDetector:
         # Run inference (D-2: any error → WARNING + fallback)
         try:
             boxes, scores, labels = self._run_inference(
-                page_pixmap_array, page_height, page_width
+                page_pixmap_array, page_height_px, page_width_px
             )
         except Exception as exc:
             logger.warning(
@@ -315,11 +326,11 @@ class LayoutDetector:
 
         # Assign element_type from enclosing region (geometric containment, D-3)
         self._assign_element_types(
-            elements, accepted_regions, page_height, page_width
+            elements, accepted_regions, map_height, map_width
         )
 
         # Assign reading_order: column-aware ordering (D-3)
-        self._assign_reading_order(elements, accepted_regions, page_height, page_width)
+        self._assign_reading_order(elements, accepted_regions, map_height, map_width)
 
         # Build viz dict for ONNX detections
         return {
@@ -551,6 +562,96 @@ class LayoutDetector:
         sorted_elements = sorted(elements, key=_order_key)
         for idx, elem in enumerate(sorted_elements):
             elem.reading_order = idx
+
+
+# ---------------------------------------------------------------------------
+# LayoutReader: column-aware reading order model (pdf-layout-refactor, 3.5, D-5)
+# ---------------------------------------------------------------------------
+
+class LayoutReader:
+    """Column-aware reading-order model for page elements (AC-5, D-5).
+
+    Uses x-coordinate gap detection to assign elements to columns, then sorts
+    each column top-to-bottom (y0 ascending).  Replaces the bare x-gap
+    threshold heuristic with a parameterised gap detector.
+
+    RTL: when the page/text direction is RTL, columns are ordered right-to-left
+    (not yet implemented — fail-soft to LTR ordering, as per design D-5).
+    """
+
+    _COLUMN_GAP_MIN_PT: float = 50.0  # Minimum x-gap (points) to declare a column boundary
+
+    def sort_elements(self, elements: List[TranslatableElement]) -> List[TranslatableElement]:
+        """Return elements sorted in reading order (column-aware, top-to-bottom).
+
+        Elements without a bbox are appended at the end in original order.
+
+        Args:
+            elements: Elements to sort (mutated in-place reading_order values
+                      are NOT set here; the caller is responsible).
+
+        Returns:
+            New list with elements in reading order.
+        """
+        if not elements:
+            return []
+
+        with_bbox = [e for e in elements if e.bbox is not None]
+        without_bbox = [e for e in elements if e.bbox is None]
+
+        if not with_bbox:
+            return list(elements)
+
+        # Detect columns via x-centre gap
+        columns = self._assign_columns(with_bbox)
+
+        # Sort each column by y0 (top-to-bottom)
+        for col in columns:
+            col.sort(key=lambda e: e.bbox.y0)  # type: ignore[union-attr]
+
+        # LTR: concatenate columns left-to-right
+        result: List[TranslatableElement] = []
+        for col in columns:
+            result.extend(col)
+        result.extend(without_bbox)
+        return result
+
+    def _assign_columns(
+        self, elements: List[TranslatableElement]
+    ) -> List[List[TranslatableElement]]:
+        """Cluster elements into columns using x-centre gap detection."""
+        # Sort elements by x-centre to expose gaps
+        def _xcenter(e: TranslatableElement) -> float:
+            return (e.bbox.x0 + e.bbox.x1) / 2.0  # type: ignore[union-attr]
+
+        sorted_by_x = sorted(elements, key=_xcenter)
+        x_centers = [_xcenter(e) for e in sorted_by_x]
+
+        # Find gap positions that exceed the minimum gap threshold
+        boundaries: List[float] = []
+        for i in range(1, len(x_centers)):
+            gap = x_centers[i] - x_centers[i - 1]
+            if gap > self._COLUMN_GAP_MIN_PT:
+                # Boundary at the midpoint of the gap
+                boundaries.append((x_centers[i - 1] + x_centers[i]) / 2.0)
+
+        if not boundaries:
+            # Single column
+            return [list(elements)]
+
+        # Assign each element to a column index
+        num_cols = len(boundaries) + 1
+        columns: List[List[TranslatableElement]] = [[] for _ in range(num_cols)]
+        for elem in elements:
+            cx = _xcenter(elem)
+            col_idx = 0
+            for bound in boundaries:
+                if cx >= bound:
+                    col_idx += 1
+            columns[col_idx].append(elem)
+
+        # Remove empty columns (edge case)
+        return [col for col in columns if col]
 
 
 # ---------------------------------------------------------------------------

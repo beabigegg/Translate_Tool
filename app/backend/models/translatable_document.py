@@ -193,6 +193,7 @@ class StyleInfo:
     font_size: Optional[float] = None
     is_bold: bool = False
     is_italic: bool = False
+    is_underline: bool = False  # Added pdf-layout-refactor AC-4; default False (backward compat)
     color: Optional[str] = None  # Hex color code
     background_color: Optional[str] = None
 
@@ -203,6 +204,7 @@ class StyleInfo:
             "font_size": self.font_size,
             "is_bold": self.is_bold,
             "is_italic": self.is_italic,
+            "is_underline": self.is_underline,
             "color": self.color,
             "background_color": self.background_color,
         }
@@ -215,6 +217,7 @@ class StyleInfo:
             font_size=data.get("font_size"),
             is_bold=data.get("is_bold", False),
             is_italic=data.get("is_italic", False),
+            is_underline=data.get("is_underline", False),  # default False (backward compat)
             color=data.get("color"),
             background_color=data.get("background_color"),
         )
