@@ -1,0 +1,19 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0 -- /home/egg/miniforge3/envs/translate-tool/bin/python
+cachedir: .pytest_cache
+rootdir: /home/egg/Projects/Translate_Tool/.claude/worktrees/agent-ad9e90bc02e035286
+plugins: anyio-4.14.0, Faker-40.23.0
+collecting ... collected 4 items
+
+tests/test_output_mode_api.py::test_post_jobs_accepts_output_mode_append PASSED [ 25%]
+tests/test_output_mode_api.py::test_post_jobs_accepts_output_mode_replace PASSED [ 50%]
+tests/test_output_mode_api.py::test_post_jobs_rejects_invalid_output_mode_422 PASSED [ 75%]
+tests/test_output_mode_api.py::test_post_jobs_output_mode_defaults_to_append PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../../miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21: DeprecationWarning: PyPDF2 is deprecated. Please move to the pypdf library instead.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+========================= 4 passed, 1 warning in 0.53s =========================

@@ -1,0 +1,28 @@
+change-id: expose-output-mode-ui
+agent: frontend-engineer
+timestamp: "2026-06-27T13:36:00Z"
+status: complete
+artifacts:
+  - { type: files-changed, pointer: "app/frontend/src/pages/TranslatePage.jsx:26-40" }
+  - { type: files-changed, pointer: "app/frontend/src/pages/TranslatePage.jsx:65-67" }
+  - { type: files-changed, pointer: "app/frontend/src/pages/TranslatePage.jsx:88-90" }
+  - { type: files-changed, pointer: "app/frontend/src/pages/TranslatePage.jsx:130-131" }
+  - { type: files-changed, pointer: "app/frontend/src/pages/TranslatePage.jsx:198-212" }
+  - { type: files-changed, pointer: "app/frontend/package.json:1-22" }
+  - { type: files-changed, pointer: "app/frontend/vite.config.js:1-16" }
+  - { type: files-changed, pointer: "app/frontend/src/test-setup.js:1-24" }
+  - { type: files-changed, pointer: "app/frontend/src/pages/TranslatePage.test.jsx:1-98" }
+  - { type: components-affected, pointer: "TranslatePage (outputMode state + SELECT_OUTPUT_MODE reducer + output-mode Select)" }
+  - { type: screenshot-paths, pointer: "n/a (no automated screenshot tooling available)" }
+  - { type: accessibility-audit, pointer: "n/a (Select component uses native <select> with <label> - inherits platform a11y; no axe-core run)" }
+next-action: none
+notes: >
+  IP-1..IP-5 implemented. outputMode state added to initialState and reducer.
+  Select component (reuse) added in step-2-right gated on jobMode==='translate'.
+  form.append('output_mode', outputMode) added in handleSubmit before createJob.
+  vitest + jsdom + @testing-library/react + @testing-library/user-event added as devDeps.
+  test-setup.js stubs localStorage (Node 26 native undefined shadows jsdom) and
+  window.matchMedia (not implemented in jsdom). All 3 AC tests pass.
+  collect/targeted/changed-area phases: 3/3 pass.
+  contract phase (pytest tests/test_output_mode_api.py via conda): 4/4 pass.
+  act() warnings from SettingsProvider async effects are expected and do not fail tests.

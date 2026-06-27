@@ -1,0 +1,15 @@
+{
+  "change_id": "expose-output-mode-ui",
+  "phase": "targeted",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "cd app/frontend && npx vitest run src/pages/TranslatePage.test.jsx",
+  "duration_ms": 1461,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/expose-output-mode-ui/test-runs/20260627-133719/summary.json",
+    "stdout": "specs/changes/expose-output-mode-ui/test-runs/20260627-133719/stdout.log",
+    "stderr": "specs/changes/expose-output-mode-ui/test-runs/20260627-133719/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

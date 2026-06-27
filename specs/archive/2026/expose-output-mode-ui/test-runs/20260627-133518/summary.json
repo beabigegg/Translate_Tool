@@ -1,0 +1,20 @@
+{
+  "change_id": "expose-output-mode-ui",
+  "phase": "contract",
+  "status": "failed",
+  "exit_code": 2,
+  "command": "pytest tests/test_output_mode_api.py -v --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-ad9e90bc02e035286/specs/changes/expose-output-mode-ui/test-runs/20260627-133518/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 278,
+  "first_failure": {
+    "kind": "collection-error",
+    "nodeid": "tests.test_output_mode_api",
+    "message": "collection failure"
+  },
+  "artifacts": {
+    "summary": "specs/changes/expose-output-mode-ui/test-runs/20260627-133518/summary.json",
+    "stdout": "specs/changes/expose-output-mode-ui/test-runs/20260627-133518/stdout.log",
+    "stderr": "specs/changes/expose-output-mode-ui/test-runs/20260627-133518/stderr.log",
+    "junit": "specs/changes/expose-output-mode-ui/test-runs/20260627-133518/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}
