@@ -1,0 +1,11 @@
+agent: contract-reviewer
+change-id: tatr-parse-outputs
+timestamp: 2026-06-27
+status: complete
+summary: "contract-conformant; no drift — TableCell/TableStructure IR already contracted; no field additions, renames, or removals required"
+artifacts:
+  - { type: contracts-reviewed, pointer: "contracts/data/data-shape-contract.md" }
+  - { type: contracts-reviewed, pointer: "app/backend/models/translatable_document.py" }
+  - { type: version-bumps, pointer: "none" }
+  - { type: breaking-changes, pointer: "none" }
+notes: "Advisory: is_numeric should be computed via text_utils.is_numeric_cell(content) when real content is populated in future iteration. Safe while content='' as is_numeric_cell('')=False."

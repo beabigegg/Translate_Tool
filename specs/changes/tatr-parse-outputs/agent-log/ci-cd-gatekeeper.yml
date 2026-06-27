@@ -1,0 +1,11 @@
+change-id: tatr-parse-outputs
+agent: ci-cd-gatekeeper
+timestamp: "2026-06-27T00:00:00Z"
+status: complete
+artifacts:
+  - { type: tiers-modified, pointer: "0, 1" }
+  - { type: gate-promotions, pointer: "n/a (no tier changes; existing targeted step already covers new tests)" }
+  - { type: workflow-files-changed, pointer: "n/a (no workflow edits required; existing contract-and-fast-tests job is sufficient)" }
+  - { type: required-status-checks, pointer: "validate-contracts, table-recognizer-targeted, full-suite" }
+next-action: none
+notes: "All three required gates (validate-contracts, table-recognizer-targeted, full-suite) are already present in .github/workflows/contract-driven-gates.yml contract-and-fast-tests job. No workflow edits applied. Feature remains gated behind TABLE_RECOGNITION_ENABLED=false; no production promotion gate needed."

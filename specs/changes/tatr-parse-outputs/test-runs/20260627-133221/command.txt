@@ -1,0 +1,1 @@
+pytest tests/test_table_recognizer.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-a16162b6e8fdb9bcb/specs/changes/tatr-parse-outputs/test-runs/20260627-133221/junit.xml' -ra

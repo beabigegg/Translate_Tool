@@ -1,0 +1,16 @@
+{
+  "change_id": "tatr-parse-outputs",
+  "phase": "full",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest tests/ -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-a16162b6e8fdb9bcb/specs/changes/tatr-parse-outputs/test-runs/20260627-133857/junit.xml' -ra",
+  "duration_ms": 24842,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/tatr-parse-outputs/test-runs/20260627-133857/summary.json",
+    "stdout": "specs/changes/tatr-parse-outputs/test-runs/20260627-133857/stdout.log",
+    "stderr": "specs/changes/tatr-parse-outputs/test-runs/20260627-133857/stderr.log",
+    "junit": "specs/changes/tatr-parse-outputs/test-runs/20260627-133857/junit.xml"
+  },
+  "next_action": "all phases green"
+}

@@ -1,0 +1,16 @@
+{
+  "change_id": "tatr-parse-outputs",
+  "phase": "collect",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest tests/test_table_recognizer.py --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-a16162b6e8fdb9bcb/specs/changes/tatr-parse-outputs/test-runs/20260627-133843/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 580,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/tatr-parse-outputs/test-runs/20260627-133843/summary.json",
+    "stdout": "specs/changes/tatr-parse-outputs/test-runs/20260627-133843/stdout.log",
+    "stderr": "specs/changes/tatr-parse-outputs/test-runs/20260627-133843/stderr.log",
+    "junit": "specs/changes/tatr-parse-outputs/test-runs/20260627-133843/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}
