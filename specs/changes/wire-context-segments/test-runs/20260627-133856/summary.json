@@ -1,0 +1,15 @@
+{
+  "change_id": "wire-context-segments",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "cdd-kit validate --contracts",
+  "duration_ms": 611,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/wire-context-segments/test-runs/20260627-133856/summary.json",
+    "stdout": "specs/changes/wire-context-segments/test-runs/20260627-133856/stdout.log",
+    "stderr": "specs/changes/wire-context-segments/test-runs/20260627-133856/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

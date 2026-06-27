@@ -1,0 +1,9 @@
+change-id: wire-context-segments
+timestamp: "2026-06-27"
+agent: contract-reviewer
+status: done
+summary: Added BR-78 (context-window-segment-prefix) to contracts/business/business-rules.md; added Table V for sliding context window behavior; bumped schema-version 0.18.0→0.19.0
+artifacts:
+  - pointer: contracts/business/business-rules.md
+    note: BR-78 added at line 90; Table V added before Change Policy section
+next-action: proceed to test-strategist

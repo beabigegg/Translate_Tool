@@ -1,0 +1,20 @@
+{
+  "change_id": "wire-context-segments",
+  "phase": "quality",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "pytest tests/ -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-ab21b977b52000039/specs/changes/wire-context-segments/test-runs/20260627-133903/junit.xml' -ra",
+  "duration_ms": 1327,
+  "first_failure": {
+    "kind": "collection-error",
+    "nodeid": "tests.test_jobstatus_download_url",
+    "message": "collection failure"
+  },
+  "artifacts": {
+    "summary": "specs/changes/wire-context-segments/test-runs/20260627-133903/summary.json",
+    "stdout": "specs/changes/wire-context-segments/test-runs/20260627-133903/stdout.log",
+    "stderr": "specs/changes/wire-context-segments/test-runs/20260627-133903/stderr.log",
+    "junit": "specs/changes/wire-context-segments/test-runs/20260627-133903/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}
