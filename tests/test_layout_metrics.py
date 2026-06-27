@@ -283,13 +283,21 @@ class TestModuleImports:
         assert callable(_ctr)
 
     def test_no_app_backend_files_modified(self):
-        """No file under app/backend/ or app/frontend/ must appear in git diff HEAD."""
+        """No file under app/backend/ or app/frontend/ should appear in this PR's diff.
+
+        Uses git diff against origin/main (the merge base) so the check is
+        meaningful in CI, where git diff HEAD only shows uncommitted changes
+        (always empty on a CI checkout).
+        """
         result = subprocess.run(
-            ["git", "diff", "--name-only", "HEAD"],
+            ["git", "diff", "--name-only", "origin/main...HEAD"],
             capture_output=True,
             text=True,
             cwd=str(REPO_ROOT),
         )
+        if result.returncode != 0:
+            # origin/main not available (e.g. local dev without fetch); skip.
+            pytest.skip("origin/main not reachable — skipping PR-scope check")
         changed_files = result.stdout.splitlines()
         backend_or_frontend = [
             f for f in changed_files

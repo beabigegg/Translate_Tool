@@ -36,7 +36,7 @@ def compute_truncation_rate(elements: list) -> dict:
     for el in elements:
         if el.render_truncated:
             count += 1
-            overflow_area_sum += el.metadata.get("overflow_area", 0.0)
+            overflow_area_sum += getattr(el, "metadata", {}).get("overflow_area", 0.0)
 
     ratio = count / total if total > 0 else 0.0
 
