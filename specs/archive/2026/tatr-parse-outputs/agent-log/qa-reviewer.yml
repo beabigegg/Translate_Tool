@@ -1,0 +1,10 @@
+agent: qa-reviewer
+change-id: tatr-parse-outputs
+timestamp: 2026-06-27
+status: complete
+summary: "approved — all 8 gate items pass; F-1 sort-direction tautology resolved by adding test_row_sort_direction_asymmetric_layout (asymmetric layout binding test); 890 tests pass, 0 failures"
+artifacts:
+  - { type: test-evidence, pointer: "specs/changes/tatr-parse-outputs/test-evidence.yml" }
+  - { type: gate-results, pointer: "collect: pass, targeted: pass, changed-area: pass, full: pass (890 tests, 0 fail)" }
+  - { type: decision, pointer: "approved" }
+notes: "F-1 resolved: added asymmetric 2-row×2-col test where top row only covers left half; reversed sort would emit r0:c1 (right col intersection) which the test asserts absent. All four ladder phases re-run and passed with the new test."

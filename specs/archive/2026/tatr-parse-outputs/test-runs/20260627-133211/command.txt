@@ -1,0 +1,1 @@
+pytest tests/test_table_recognizer.py::TestParseOutputsGrid tests/test_table_recognizer.py::TestParseOutputsDegenerate tests/test_table_recognizer.py::TestParseOutputsBoxFormat -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-a16162b6e8fdb9bcb/specs/changes/tatr-parse-outputs/test-runs/20260627-133211/junit.xml' -ra

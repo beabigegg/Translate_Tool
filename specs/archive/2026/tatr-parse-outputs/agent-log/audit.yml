@@ -1,0 +1,12 @@
+- type: tier-floor-override
+  change-id: tatr-parse-outputs
+  timestamp: '2026-06-27T05:40:11.026Z'
+  declared-tier: 3
+  floor-tier: 0
+  label: critical surface (auth / payments / data migration / concurrency / secrets)
+  matched:
+    - session
+  reason: >-
+    False positive: '_session' is the ONNX InferenceSession handle (ML model runtime), not an
+    auth/HTTP session. No authentication, payments, secrets, or concurrency surface is touched.
+    TABLE_RECOGNITION_ENABLED stays false. Change gated to Tier 3.

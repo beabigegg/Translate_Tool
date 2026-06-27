@@ -221,11 +221,12 @@ class TableRecognizer:
         self,
         element: TranslatableElement,
         page_pixmap_array: np.ndarray,
-    ) -> TableStructure:
+    ) -> Optional[TableStructure]:
         """Crop the table bbox from the page raster and run ONNX inference.
 
-        Returns a TableStructure with cells derived from the model output.
-        The crop array is discarded after inference.
+        Returns a TableStructure with cells derived from the model output, or
+        None if no confident grid was detected (caller keeps element on the
+        normal path). The crop array is discarded after inference.
         """
         if element.bbox is None:
             raise ValueError(f"Element '{element.element_id}' has no bbox; cannot crop.")
@@ -268,12 +269,20 @@ class TableRecognizer:
         # For this implementation, extract rows/cols from detection boxes.
         cells, num_rows, num_cols = self._parse_outputs(outputs, element.element_id)
 
+        if num_rows == 0 or num_cols == 0 or not cells:
+            # No confident grid detected — return None so the caller leaves the
+            # element on the normal translation path instead of attaching an empty
+            # TableStructure that would silently zero-out translated_content.
+            # `not cells` catches the case where rows/cols were detected but no
+            # cell intersections survived the overlap-assignment step.
+            return None
+
         return TableStructure(
             num_rows=num_rows,
             num_cols=num_cols,
             cells=cells,
             recognizer=_RECOGNIZER_NAME,
-            recognition_confident=True,  # set False if confidence < threshold
+            recognition_confident=True,
         )
 
     def _parse_outputs(
@@ -283,28 +292,96 @@ class TableRecognizer:
     ):
         """Parse ONNX outputs into (cells, num_rows, num_cols).
 
-        This is a placeholder implementation for the TATR output format.
-        In production, this would decode the actual detection boxes into
-        row/column grid cells.  When no real model weights are present,
-        this method raises and the caller's fail-soft catches it.
-        """
-        # Real TATR: outputs[0] = logits (1,N,C), outputs[1] = boxes (1,N,4)
-        # For placeholder: if outputs are present but empty, raise to trigger fail-soft
-        if not outputs:
-            raise ValueError("Empty model outputs")
+        Implements the TATR CXCYWH decoder per implementation-plan.md
+        §Decoder Algorithm.  Degenerate / malformed inputs return ([], 0, 0)
+        without raising (AC-6).
 
-        # Minimal passthrough: treat the table as having 1 row × 1 col with
-        # the element content as the single cell. This is the degenerate case
-        # for when model output cannot be decoded.
-        cells = [
-            TableCell(
-                cell_id=f"{element_id}:r0:c0",
-                row=0, col=0,
-                content="",  # Content filled by pdf_parser from text extraction
-                is_numeric=False,
-            )
-        ]
-        return cells, 1, 1
+        outputs[0]: pred_logits, shape (1, N, C)
+        outputs[1]: pred_boxes,  shape (1, N, 4), normalized CXCYWH
+        TATR class indices: 1 = column, 2 = row  (0 = background, etc.)
+        Model input size: 768×768 px.
+        """
+        _MODEL_SIZE = 768
+        _CLS_COL = 1
+        _CLS_ROW = 2
+
+        # Guard: degenerate inputs
+        if not outputs or len(outputs) < 2:
+            return [], 0, 0
+
+        try:
+            logits = np.asarray(outputs[0])   # (1, N, C)
+            boxes  = np.asarray(outputs[1])   # (1, N, 4)
+        except Exception:
+            return [], 0, 0
+
+        # Squeeze batch dim
+        if logits.ndim == 3:
+            logits = logits[0]   # (N, C)
+        if boxes.ndim == 3:
+            boxes = boxes[0]     # (N, 4)
+
+        if logits.shape[0] == 0:
+            return [], 0, 0
+
+        row_boxes: list = []
+        col_boxes: list = []
+
+        for i in range(logits.shape[0]):
+            l = logits[i]
+            cls = int(np.argmax(l))
+            # Numerically stable softmax for the score
+            shifted = l - np.max(l)
+            exp_l = np.exp(shifted)
+            score = float(exp_l[cls] / np.sum(exp_l))
+
+            if score <= _CONFIDENCE_THRESHOLD:
+                continue
+            if cls not in (_CLS_COL, _CLS_ROW):
+                continue
+
+            # Normalized CXCYWH → pixel XYXY
+            cx, cy, w, h = (float(v) * _MODEL_SIZE for v in boxes[i])
+            x0 = cx - w / 2.0
+            y0 = cy - h / 2.0
+            x1 = cx + w / 2.0
+            y1 = cy + h / 2.0
+
+            if cls == _CLS_ROW:
+                row_boxes.append((y0, y1, x0, x1, cy))   # store cy for sort
+            else:
+                col_boxes.append((x0, x1, y0, y1, cx))   # store cx for sort
+
+        if not row_boxes or not col_boxes:
+            return [], 0, 0
+
+        # Sort rows by pixel y-center ascending → row index 0, 1, …
+        row_boxes.sort(key=lambda b: b[4])
+        # Sort cols by pixel x-center ascending → col index 0, 1, …
+        col_boxes.sort(key=lambda b: b[4])
+
+        cells: List[TableCell] = []
+        for row_i, (ry0, ry1, rx0, rx1, _rcy) in enumerate(row_boxes):
+            for col_j, (cx0, cx1, cy0, cy1, _ccx) in enumerate(col_boxes):
+                # Intersection area
+                ix0 = max(rx0, cx0)
+                iy0 = max(ry0, cy0)
+                ix1 = min(rx1, cx1)
+                iy1 = min(ry1, cy1)
+                inter_w = ix1 - ix0
+                inter_h = iy1 - iy0
+                if inter_w > 0 and inter_h > 0:
+                    cells.append(TableCell(
+                        cell_id=f"{element_id}:r{row_i}:c{col_j}",
+                        row=row_i,
+                        col=col_j,
+                        content="",
+                        row_span=1,
+                        col_span=1,
+                        is_numeric=False,
+                    ))
+
+        return cells, len(row_boxes), len(col_boxes)
 
 
 # ---------------------------------------------------------------------------

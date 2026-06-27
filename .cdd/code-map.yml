@@ -1,6 +1,6 @@
-# generated: 2026-06-27T05:04:58Z by cdd-kit 3.6.0
-# files: 169, src-lines: 43806, map-lines: 4196, compression: 10.4x
-# sources-digest: ddb828034f9ac49ef405d2c83698ead176f43aa1cd2f3f14e7b663e0d762a602
+# generated: 2026-06-27T07:29:28Z by cdd-kit 3.6.0
+# files: 169, src-lines: 44210, map-lines: 4224, compression: 10.5x
+# sources-digest: f7259d10ecfdcaf1ec559f2bfbbcd03d7d09cc1079d5b85eb82aa396ce3d9ba1
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
@@ -611,7 +611,7 @@ app/backend/parsers/pptx_parser.py:  # 379 lines
         - { name: _get_shape_bbox, lines: 314-339 }
         - { name: _classify_shape_type, lines: 341-379 }
 
-app/backend/parsers/table_recognizer.py:  # 317 lines
+app/backend/parsers/table_recognizer.py:  # 394 lines
   imports:
     - { module: __future__, items: [annotations], line: 17 }
     - { module: logging, items: [], line: 19 }
@@ -622,17 +622,17 @@ app/backend/parsers/table_recognizer.py:  # 317 lines
     - { module: app.backend.models.translatable_document, items: [TableCell, TableStructure, TranslatableElement], line: 26 }
   classes:
     - name: TableRecognizer
-      lines: 46-307
+      lines: 46-384
       methods:
         - { name: __init__, lines: 56-66 }
         - { name: _resolve_model_path, lines: 72-92 }
         - { name: _resolve_hf_path, lines: 94-107 }
         - { name: _load_session, lines: 113-150 }
         - { name: recognize, lines: 156-218 }
-        - { name: _run_recognition, lines: 220-277 }
-        - { name: _parse_outputs, lines: 279-307 }
+        - { name: _run_recognition, lines: 220-286 }
+        - { name: _parse_outputs, lines: 288-384 }
   functions:
-    - { name: _hf_hub_download, lines: 314-317 }
+    - { name: _hf_hub_download, lines: 391-394 }
 
 app/backend/processors/__init__.py:  # 0 lines
 
@@ -3685,7 +3685,7 @@ tests/test_table_border_protection.py:  # 790 lines
   functions:
     - { name: _make_fitz_rect, lines: 45-54 }
 
-tests/test_table_recognizer.py:  # 705 lines
+tests/test_table_recognizer.py:  # 1032 lines
   imports:
     - { module: __future__, items: [annotations], line: 17 }
     - { module: logging, items: [], line: 19 }
@@ -3744,6 +3744,34 @@ tests/test_table_recognizer.py:  # 705 lines
         - { name: test_all_numeric_table_no_llm_call, lines: 625-655 }
         - { name: test_all_empty_cells_no_llm_call, lines: 657-683 }
         - { name: test_merged_cells_treated_as_single_cell, lines: 685-705 }
+    - name: TestParseOutputsGrid
+      lines: 712-815
+      methods:
+        - { name: _make_2x3_outputs, lines: 722-747 }
+        - { name: test_2x3_grid_returns_six_cells, lines: 749-755 }
+        - { name: test_row_ordering_top_row_is_index_zero, lines: 757-771 }
+        - { name: test_col_ordering_leftmost_col_is_index_zero, lines: 773-782 }
+        - { name: test_cell_assigned_correct_row_col_by_overlap, lines: 784-792 }
+        - { name: test_all_cells_have_empty_content, lines: 794-798 }
+        - { name: test_num_rows_and_num_cols_match_grid, lines: 800-807 }
+        - { name: test_cell_id_format_includes_row_col, lines: 809-815 }
+    - name: TestParseOutputsDegenerate
+      lines: 822-910
+      methods:
+        - { name: _make_outputs_all_below_threshold, lines: 826-834 }
+        - { name: _make_outputs_cols_only, lines: 837-845 }
+        - { name: _make_outputs_rows_only, lines: 848-856 }
+        - { name: _make_outputs_identical_rows, lines: 859-870 }
+        - { name: test_no_detections_above_threshold_returns_empty, lines: 872-880 }
+        - { name: test_zero_rows_only_cols_returns_empty, lines: 882-890 }
+        - { name: test_zero_cols_only_rows_returns_empty, lines: 892-900 }
+        - { name: test_overlapping_bboxes_no_crash, lines: 902-910 }
+    - name: TestParseOutputsBoxFormat
+      lines: 917-1032
+      methods:
+        - { name: test_cxcywh_normalized_converts_to_pixel_coords, lines: 920-946 }
+        - { name: test_row_sort_uses_pixel_y_center, lines: 948-986 }
+        - { name: test_row_sort_direction_asymmetric_layout, lines: 988-1032 }
   functions:
     - { name: _make_table_element, lines: 61-74 }
     - { name: _make_doc, lines: 77-84 }

@@ -1,0 +1,18 @@
+change-id: tatr-parse-outputs
+agent: backend-engineer
+timestamp: "2026-06-27T13:32:30Z"
+status: complete
+artifacts:
+  - { type: files-changed, pointer: "app/backend/parsers/table_recognizer.py:279-360" }
+  - { type: tests-added, pointer: "tests/test_table_recognizer.py::TestParseOutputsGrid (7 tests), TestParseOutputsDegenerate (4 tests), TestParseOutputsBoxFormat (2 tests)" }
+  - { type: test-output, pointer: "collect: pass; targeted: 13 passed; changed-area: pass; full: pass (all 4 phases green)" }
+  - { type: contracts-touched, pointer: "n/a (no contract edits required per implementation-plan.md)" }
+next-action: none
+notes: >
+  RED run confirmed: stub returned 1 cell, new 2x3 selection tests expected 6.
+  Implemented TATR CXCYWH decoder per Decoder Algorithm in implementation-plan.md:
+  softmax scoring with max-logit subtraction for numerical stability, class
+  filter {1=col, 2=row} above _CONFIDENCE_THRESHOLD (0.5), pixel XYXY conversion
+  (768px model size), ascending y/x-center sort for row/col indexing, and
+  intersection-area cell assignment. Degenerate inputs (empty outputs, no rows,
+  no cols, below-threshold scores) return ([], 0, 0) without raising (AC-6).

@@ -703,3 +703,330 @@ class TestDegenerateTableHandling:
         assert len(ts.cells) == 1
         assert ts.cells[0].row_span == 2
         assert ts.cells[0].content == "Merged Header"
+
+
+# ---------------------------------------------------------------------------
+# TestParseOutputsGrid
+# ---------------------------------------------------------------------------
+
+class TestParseOutputsGrid:
+    """AC-1,2,3,4,8: canonical 2x3 grid decoded correctly from TATR ONNX outputs."""
+
+    # Image size: 768x768 (model input)
+    # 2 rows: top row y_center=0.25, bottom row y_center=0.75
+    # 3 cols: left x_center=0.17, mid x_center=0.50, right x_center=0.83
+    # row bbox CXCYWH: (0.5, 0.25, 1.0, 0.5) and (0.5, 0.75, 1.0, 0.5)
+    # col bbox CXCYWH: (0.17, 0.5, 0.34, 1.0), (0.5, 0.5, 0.34, 1.0), (0.83, 0.5, 0.34, 1.0)
+
+    @staticmethod
+    def _make_2x3_outputs():
+        import numpy as np
+        # 5 detections, 7 classes (TATR has classes 0..6)
+        # class 2 = row, class 1 = col
+        logits = np.zeros((1, 5, 7), dtype=np.float32)
+        # detections 0,1 -> class 2 (row)
+        logits[0, 0, 2] = 10.0
+        logits[0, 1, 2] = 10.0
+        # detections 2,3,4 -> class 1 (col)
+        logits[0, 2, 1] = 10.0
+        logits[0, 3, 1] = 10.0
+        logits[0, 4, 1] = 10.0
+
+        boxes = np.zeros((1, 5, 4), dtype=np.float32)
+        # row 0: top row CXCYWH
+        boxes[0, 0] = [0.5, 0.25, 1.0, 0.5]
+        # row 1: bottom row CXCYWH
+        boxes[0, 1] = [0.5, 0.75, 1.0, 0.5]
+        # col 0: left col CXCYWH
+        boxes[0, 2] = [0.17, 0.5, 0.34, 1.0]
+        # col 1: mid col CXCYWH
+        boxes[0, 3] = [0.50, 0.5, 0.34, 1.0]
+        # col 2: right col CXCYWH
+        boxes[0, 4] = [0.83, 0.5, 0.34, 1.0]
+
+        return [logits, boxes]
+
+    def test_2x3_grid_returns_six_cells(self):
+        assert _table_rec is not None
+        from app.backend.parsers.table_recognizer import TableRecognizer
+        cells, num_rows, num_cols = TableRecognizer()._parse_outputs(
+            self._make_2x3_outputs(), "elem-t"
+        )
+        assert len(cells) == 6
+
+    def test_row_ordering_top_row_is_index_zero(self):
+        assert _table_rec is not None
+        from app.backend.parsers.table_recognizer import TableRecognizer
+        cells, _, _ = TableRecognizer()._parse_outputs(self._make_2x3_outputs(), "elem-t")
+        row0_cells = [c for c in cells if c.row == 0]
+        row1_cells = [c for c in cells if c.row == 1]
+        assert row0_cells, "no cells at row=0"
+        assert row1_cells, "no cells at row=1"
+        # All cells at row=0 must have a smaller (or equal) y_center than cells at row=1
+        # We verify via cell_id: row=0 corresponds to top row (y_center=0.25*768=192)
+        # and row=1 corresponds to bottom row (y_center=0.75*768=576)
+        # The cell_id encodes the row index, so we check ordering is correct
+        # by confirming row=0 cell_ids contain ":r0:" and row=1 contain ":r1:"
+        assert all(":r0:" in c.cell_id for c in row0_cells)
+        assert all(":r1:" in c.cell_id for c in row1_cells)
+
+    def test_col_ordering_leftmost_col_is_index_zero(self):
+        assert _table_rec is not None
+        from app.backend.parsers.table_recognizer import TableRecognizer
+        cells, _, _ = TableRecognizer()._parse_outputs(self._make_2x3_outputs(), "elem-t")
+        col0_cells = [c for c in cells if c.col == 0]
+        col1_cells = [c for c in cells if c.col == 1]
+        assert col0_cells, "no cells at col=0"
+        assert col1_cells, "no cells at col=1"
+        assert all(":c0" in c.cell_id for c in col0_cells)
+        assert all(":c1" in c.cell_id for c in col1_cells)
+
+    def test_cell_assigned_correct_row_col_by_overlap(self):
+        """SELECTION: find the cell at row=1, col=2 by cell_id; assert row==1, col==2."""
+        assert _table_rec is not None
+        from app.backend.parsers.table_recognizer import TableRecognizer
+        cells, _, _ = TableRecognizer()._parse_outputs(self._make_2x3_outputs(), "elem-t")
+        target = next((c for c in cells if c.cell_id == "elem-t:r1:c2"), None)
+        assert target is not None, "cell 'elem-t:r1:c2' not found"
+        assert target.row == 1
+        assert target.col == 2
+
+    def test_all_cells_have_empty_content(self):
+        assert _table_rec is not None
+        from app.backend.parsers.table_recognizer import TableRecognizer
+        cells, _, _ = TableRecognizer()._parse_outputs(self._make_2x3_outputs(), "elem-t")
+        assert all(c.content == "" for c in cells)
+
+    def test_num_rows_and_num_cols_match_grid(self):
+        assert _table_rec is not None
+        from app.backend.parsers.table_recognizer import TableRecognizer
+        cells, num_rows, num_cols = TableRecognizer()._parse_outputs(
+            self._make_2x3_outputs(), "elem-t"
+        )
+        assert num_rows == 2
+        assert num_cols == 3
+
+    def test_cell_id_format_includes_row_col(self):
+        assert _table_rec is not None
+        from app.backend.parsers.table_recognizer import TableRecognizer
+        cells, _, _ = TableRecognizer()._parse_outputs(self._make_2x3_outputs(), "elem-t")
+        r0c0 = next((c for c in cells if c.row == 0 and c.col == 0), None)
+        assert r0c0 is not None
+        assert r0c0.cell_id == "elem-t:r0:c0"
+
+
+# ---------------------------------------------------------------------------
+# TestParseOutputsDegenerate
+# ---------------------------------------------------------------------------
+
+class TestParseOutputsDegenerate:
+    """AC-6: degenerate inputs return ([], 0, 0) without raising."""
+
+    @staticmethod
+    def _make_outputs_all_below_threshold():
+        import numpy as np
+        # All logits=0 → softmax scores all equal (1/7 ≈ 0.14) < 0.5
+        logits = np.zeros((1, 3, 7), dtype=np.float32)
+        boxes = np.zeros((1, 3, 4), dtype=np.float32)
+        boxes[0, 0] = [0.5, 0.25, 1.0, 0.5]
+        boxes[0, 1] = [0.5, 0.75, 1.0, 0.5]
+        boxes[0, 2] = [0.5, 0.5, 1.0, 1.0]
+        return [logits, boxes]
+
+    @staticmethod
+    def _make_outputs_cols_only():
+        import numpy as np
+        logits = np.zeros((1, 2, 7), dtype=np.float32)
+        logits[0, 0, 1] = 10.0  # class 1 = col
+        logits[0, 1, 1] = 10.0
+        boxes = np.zeros((1, 2, 4), dtype=np.float32)
+        boxes[0, 0] = [0.25, 0.5, 0.5, 1.0]
+        boxes[0, 1] = [0.75, 0.5, 0.5, 1.0]
+        return [logits, boxes]
+
+    @staticmethod
+    def _make_outputs_rows_only():
+        import numpy as np
+        logits = np.zeros((1, 2, 7), dtype=np.float32)
+        logits[0, 0, 2] = 10.0  # class 2 = row
+        logits[0, 1, 2] = 10.0
+        boxes = np.zeros((1, 2, 4), dtype=np.float32)
+        boxes[0, 0] = [0.5, 0.25, 1.0, 0.5]
+        boxes[0, 1] = [0.5, 0.75, 1.0, 0.5]
+        return [logits, boxes]
+
+    @staticmethod
+    def _make_outputs_identical_rows():
+        import numpy as np
+        # Two row detections with identical CXCYWH + one col
+        logits = np.zeros((1, 3, 7), dtype=np.float32)
+        logits[0, 0, 2] = 10.0  # row
+        logits[0, 1, 2] = 10.0  # row (identical bbox)
+        logits[0, 2, 1] = 10.0  # col
+        boxes = np.zeros((1, 3, 4), dtype=np.float32)
+        boxes[0, 0] = [0.5, 0.5, 1.0, 1.0]
+        boxes[0, 1] = [0.5, 0.5, 1.0, 1.0]  # identical
+        boxes[0, 2] = [0.5, 0.5, 1.0, 1.0]
+        return [logits, boxes]
+
+    def test_no_detections_above_threshold_returns_empty(self):
+        assert _table_rec is not None
+        from app.backend.parsers.table_recognizer import TableRecognizer
+        cells, num_rows, num_cols = TableRecognizer()._parse_outputs(
+            self._make_outputs_all_below_threshold(), "elem-t"
+        )
+        assert cells == []
+        assert num_rows == 0
+        assert num_cols == 0
+
+    def test_zero_rows_only_cols_returns_empty(self):
+        assert _table_rec is not None
+        from app.backend.parsers.table_recognizer import TableRecognizer
+        cells, num_rows, num_cols = TableRecognizer()._parse_outputs(
+            self._make_outputs_cols_only(), "elem-t"
+        )
+        assert cells == []
+        assert num_rows == 0
+        assert num_cols == 0
+
+    def test_zero_cols_only_rows_returns_empty(self):
+        assert _table_rec is not None
+        from app.backend.parsers.table_recognizer import TableRecognizer
+        cells, num_rows, num_cols = TableRecognizer()._parse_outputs(
+            self._make_outputs_rows_only(), "elem-t"
+        )
+        assert cells == []
+        assert num_rows == 0
+        assert num_cols == 0
+
+    def test_overlapping_bboxes_no_crash(self):
+        assert _table_rec is not None
+        from app.backend.parsers.table_recognizer import TableRecognizer
+        result = TableRecognizer()._parse_outputs(self._make_outputs_identical_rows(), "elem-t")
+        cells, num_rows, num_cols = result
+        # Must return well-formed tuple without raising
+        assert isinstance(cells, list)
+        assert isinstance(num_rows, int)
+        assert isinstance(num_cols, int)
+
+
+# ---------------------------------------------------------------------------
+# TestParseOutputsBoxFormat
+# ---------------------------------------------------------------------------
+
+class TestParseOutputsBoxFormat:
+    """AC-5: CXCYWH normalized → pixel XYXY conversion and sort correctness."""
+
+    def test_cxcywh_normalized_converts_to_pixel_coords(self):
+        """Single row detection at CXCYWH (0.5, 0.25, 0.3, 0.1); verify pixel XYXY."""
+        import numpy as np
+        assert _table_rec is not None
+        from app.backend.parsers.table_recognizer import TableRecognizer
+
+        # One row + one col so a cell is emitted (otherwise degenerate)
+        # Row: cx=0.5 cy=0.25 w=0.3 h=0.1
+        # Col: full-height spanning column cx=0.5 cy=0.5 w=1.0 h=1.0
+        logits = np.zeros((1, 2, 7), dtype=np.float32)
+        logits[0, 0, 2] = 10.0  # row
+        logits[0, 1, 1] = 10.0  # col
+        boxes = np.zeros((1, 2, 4), dtype=np.float32)
+        boxes[0, 0] = [0.5, 0.25, 0.3, 0.1]   # row
+        boxes[0, 1] = [0.5, 0.5, 1.0, 1.0]    # col (full width)
+
+        cells, num_rows, num_cols = TableRecognizer()._parse_outputs([logits, boxes], "elem-t")
+        # We expect 1 cell (1 row x 1 col, intersecting)
+        assert len(cells) == 1
+        # Now verify pixel conversion by checking that the intersection area is > 0
+        # (which it is, since col is full-width/height and row overlaps)
+        # The row pixel XYXY should be:
+        #   cx_px=384, cy_px=192, w_px=230.4, h_px=76.8
+        #   x0=384-115.2=268.8, y0=192-38.4=153.6, x1=384+115.2=499.2, y1=192+38.4=230.4
+        # We verify this indirectly: the row must overlap the full-width col
+        assert num_rows == 1
+        assert num_cols == 1
+
+    def test_row_sort_uses_pixel_y_center(self):
+        """Two rows: first in array has larger y_center; assert row=0 is from the smaller y_center."""
+        import numpy as np
+        assert _table_rec is not None
+        from app.backend.parsers.table_recognizer import TableRecognizer
+
+        # Row detection 0 in array: cy=0.75 (bottom) — should become row index 1
+        # Row detection 1 in array: cy=0.25 (top)   — should become row index 0
+        logits = np.zeros((1, 4, 7), dtype=np.float32)
+        logits[0, 0, 2] = 10.0   # row (bottom, inserted first)
+        logits[0, 1, 2] = 10.0   # row (top, inserted second)
+        logits[0, 2, 1] = 10.0   # col left
+        logits[0, 3, 1] = 10.0   # col right
+        boxes = np.zeros((1, 4, 4), dtype=np.float32)
+        boxes[0, 0] = [0.5, 0.75, 1.0, 0.5]   # bottom row
+        boxes[0, 1] = [0.5, 0.25, 1.0, 0.5]   # top row
+        boxes[0, 2] = [0.25, 0.5, 0.5, 1.0]   # left col
+        boxes[0, 3] = [0.75, 0.5, 0.5, 1.0]   # right col
+
+        cells, num_rows, num_cols = TableRecognizer()._parse_outputs([logits, boxes], "elem-t")
+        assert num_rows == 2
+        assert num_cols == 2
+
+        # Cell at row=0 should come from the TOP row (y_center=0.25), not bottom (0.75)
+        # The top row (cy=0.25) cells should have row=0
+        # We can verify: cell "elem-t:r0:c0" should exist and there should be a "elem-t:r1:c0"
+        r0_cells = [c for c in cells if c.row == 0]
+        r1_cells = [c for c in cells if c.row == 1]
+        assert r0_cells, "no cells at row=0"
+        assert r1_cells, "no cells at row=1"
+
+        # SELECTION: sort is applied — the top-row detection (cy=0.25, inserted SECOND
+        # in the array) must have been promoted to row index 0
+        # Verify by checking 4 cells exist with distinct (row, col) pairs
+        cell_ids = {c.cell_id for c in cells}
+        assert "elem-t:r0:c0" in cell_ids
+        assert "elem-t:r0:c1" in cell_ids
+        assert "elem-t:r1:c0" in cell_ids
+        assert "elem-t:r1:c1" in cell_ids
+
+    def test_row_sort_direction_asymmetric_layout(self):
+        """Binding sort-direction test: asymmetric layout where reversed sort changes intersections.
+
+        Layout (normalized CXCYWH, image 768x768):
+          Top row    (cx=0.25, cy=0.25, w=0.5,  h=0.5)  -> pixel [0,0,384,384]  (left half only)
+          Bottom row (cx=0.5,  cy=0.75, w=1.0,  h=0.5)  -> pixel [0,384,768,768] (full width)
+          Left col   (cx=0.25, cy=0.5,  w=0.5,  h=1.0)  -> pixel [0,0,384,768]
+          Right col  (cx=0.75, cy=0.5,  w=0.5,  h=1.0)  -> pixel [384,0,768,768]
+
+        Intersections with CORRECT sort (top row = index 0):
+          r0 x left-col  = [0,0,384,384] ∩ [0,0,384,768]  → area>0 → EMITS  "elem-t:r0:c0"
+          r0 x right-col = [0,0,384,384] ∩ [384,0,768,768]→ width=0 → NO CELL (top row stops at x=384)
+          r1 x left-col  = [0,384,768,768]∩[0,0,384,768]  → area>0 → EMITS  "elem-t:r1:c0"
+          r1 x right-col = [0,384,768,768]∩[384,0,768,768]→ area>0 → EMITS  "elem-t:r1:c1"
+
+        If sort were REVERSED (bottom row gets index 0):
+          r0 x right-col would EMIT as "elem-t:r0:c1"  ← assertion below would FAIL
+
+        Detection order in array: bottom row inserted FIRST, top row SECOND (verifies sort, not insertion order).
+        """
+        import numpy as np
+        assert _table_rec is not None
+        from app.backend.parsers.table_recognizer import TableRecognizer
+
+        logits = np.zeros((1, 4, 7), dtype=np.float32)
+        logits[0, 0, 2] = 10.0   # detection 0 = bottom row (cy=0.75, inserted first)
+        logits[0, 1, 2] = 10.0   # detection 1 = top row    (cy=0.25, inserted second)
+        logits[0, 2, 1] = 10.0   # left col
+        logits[0, 3, 1] = 10.0   # right col
+
+        boxes = np.zeros((1, 4, 4), dtype=np.float32)
+        boxes[0, 0] = [0.5,  0.75, 1.0, 0.5]   # bottom row: full-width
+        boxes[0, 1] = [0.25, 0.25, 0.5, 0.5]   # top row: left-half only
+        boxes[0, 2] = [0.25, 0.5,  0.5, 1.0]   # left col
+        boxes[0, 3] = [0.75, 0.5,  0.5, 1.0]   # right col
+
+        cells, num_rows, num_cols = TableRecognizer()._parse_outputs([logits, boxes], "elem-t")
+
+        cell_ids = {c.cell_id for c in cells}
+        # Correct sort: 3 cells (top row only overlaps left col)
+        assert len(cells) == 3, f"expected 3 cells, got {len(cells)}: {cell_ids}"
+        assert "elem-t:r0:c0" in cell_ids   # top-row × left-col EMITS
+        assert "elem-t:r0:c1" not in cell_ids  # top-row × right-col does NOT intersect
+        assert "elem-t:r1:c0" in cell_ids   # bottom-row × left-col EMITS
+        assert "elem-t:r1:c1" in cell_ids   # bottom-row × right-col EMITS

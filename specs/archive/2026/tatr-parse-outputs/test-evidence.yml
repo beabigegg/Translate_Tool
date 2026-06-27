@@ -1,0 +1,43 @@
+change-id: tatr-parse-outputs
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      pytest tests/test_table_recognizer.py --collect-only -q
+      --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-a16162b6e8fdb9bcb/specs/changes/tatr-parse-outputs/test-runs/20260627-133843/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/tatr-parse-outputs/test-runs/20260627-133843/summary.json
+    junit: specs/changes/tatr-parse-outputs/test-runs/20260627-133843/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      pytest tests/test_table_recognizer.py::TestParseOutputsGrid
+      tests/test_table_recognizer.py::TestParseOutputsDegenerate
+      tests/test_table_recognizer.py::TestParseOutputsBoxFormat -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-a16162b6e8fdb9bcb/specs/changes/tatr-parse-outputs/test-runs/20260627-133851/junit.xml'
+      -ra
+    summary: specs/changes/tatr-parse-outputs/test-runs/20260627-133851/summary.json
+    junit: specs/changes/tatr-parse-outputs/test-runs/20260627-133851/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      pytest tests/test_table_recognizer.py -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-a16162b6e8fdb9bcb/specs/changes/tatr-parse-outputs/test-runs/20260627-133854/junit.xml'
+      -ra
+    summary: specs/changes/tatr-parse-outputs/test-runs/20260627-133854/summary.json
+    junit: specs/changes/tatr-parse-outputs/test-runs/20260627-133854/junit.xml
+  - phase: full
+    status: passed
+    command: >-
+      pytest tests/ -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-a16162b6e8fdb9bcb/specs/changes/tatr-parse-outputs/test-runs/20260627-133857/junit.xml'
+      -ra
+    summary: specs/changes/tatr-parse-outputs/test-runs/20260627-133857/summary.json
+    junit: specs/changes/tatr-parse-outputs/test-runs/20260627-133857/junit.xml
+final-status: passed
