@@ -1,0 +1,15 @@
+{
+  "change_id": "pdf-renderer-fallback-warn",
+  "phase": "targeted",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "conda run -n translate-tool pytest tests/test_pdf_render_warnings.py -x -q --tb=short",
+  "duration_ms": 2263,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/pdf-renderer-fallback-warn/test-runs/20260627-133618/summary.json",
+    "stdout": "specs/changes/pdf-renderer-fallback-warn/test-runs/20260627-133618/stdout.log",
+    "stderr": "specs/changes/pdf-renderer-fallback-warn/test-runs/20260627-133618/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}
