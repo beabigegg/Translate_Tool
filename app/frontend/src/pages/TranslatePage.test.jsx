@@ -47,7 +47,7 @@ function renderApp() {
  * and clicking the "下一步" button.
  */
 function navigateToStep2() {
-  const fileInput = document.querySelector('input[type="file"]');
+  const fileInput = screen.getByTestId('file-upload-input');
   const file = new File(['content'], 'test.docx', { type: 'application/octet-stream' });
   // Override the read-only `files` property on the input element so the
   // onChange handler receives a usable file list.
