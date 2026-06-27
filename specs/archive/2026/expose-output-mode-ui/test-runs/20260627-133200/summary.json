@@ -1,0 +1,18 @@
+{
+  "change_id": "expose-output-mode-ui",
+  "phase": "collect",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "cd app/frontend && npx vitest run src/pages/TranslatePage.test.jsx",
+  "duration_ms": 1448,
+  "first_failure": {
+    "kind": "unknown",
+    "message": "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯"
+  },
+  "artifacts": {
+    "summary": "specs/changes/expose-output-mode-ui/test-runs/20260627-133200/summary.json",
+    "stdout": "specs/changes/expose-output-mode-ui/test-runs/20260627-133200/stdout.log",
+    "stderr": "specs/changes/expose-output-mode-ui/test-runs/20260627-133200/stderr.log"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

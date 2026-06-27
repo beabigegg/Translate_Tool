@@ -1,0 +1,10 @@
+
+ RUN  v2.1.9 /home/egg/Projects/Translate_Tool/.claude/worktrees/agent-ad9e90bc02e035286/app/frontend
+
+ ✓ src/pages/TranslatePage.test.jsx (3 tests) 137ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  13:35:00
+   Duration  1.04s (transform 121ms, setup 8ms, collect 255ms, tests 137ms, environment 200ms, prepare 99ms)
+

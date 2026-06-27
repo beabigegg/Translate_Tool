@@ -1,0 +1,35 @@
+agent: backend-engineer
+change-id: layout-fidelity-metrics
+date: 2026-06-27
+status: pass
+
+summary: >
+  Implemented the full layout-fidelity metrics harness (IP-1..IP-7).
+  Created tests/metrics/ package with biou.py, residual_text.py, and
+  truncation_rate.py.  Generated and committed tests/fixtures/golden/simple_test.pdf
+  via the one-shot generator script.  Implemented tests/test_layout_metrics.py
+  with all 22 test nodes.  All four cdd-kit test phases (collect, targeted,
+  changed-area, full) pass.  No app/backend/ or app/frontend/ file was touched.
+
+artifacts:
+  - { type: files-changed, pointer: "tests/metrics/__init__.py:1" }
+  - { type: files-changed, pointer: "tests/metrics/biou.py:1-46" }
+  - { type: files-changed, pointer: "tests/metrics/residual_text.py:1-43" }
+  - { type: files-changed, pointer: "tests/metrics/truncation_rate.py:1-49" }
+  - { type: files-changed, pointer: "tests/fixtures/golden/generate_simple_test_pdf.py:1-27" }
+  - { type: files-changed, pointer: "tests/fixtures/golden/simple_test.pdf (binary, 1208 bytes)" }
+  - { type: files-changed, pointer: "tests/test_layout_metrics.py:1-233" }
+  - { type: tests-added, pointer: "tests/test_layout_metrics.py::TestBIoU (4 nodes)" }
+  - { type: tests-added, pointer: "tests/test_layout_metrics.py::TestBIoUDegenerate (4 nodes)" }
+  - { type: tests-added, pointer: "tests/test_layout_metrics.py::TestResidualText (3 nodes)" }
+  - { type: tests-added, pointer: "tests/test_layout_metrics.py::TestTruncationRate (4 nodes)" }
+  - { type: tests-added, pointer: "tests/test_layout_metrics.py::TestGoldenFixture (2 nodes)" }
+  - { type: tests-added, pointer: "tests/test_layout_metrics.py::TestModuleImports (4 nodes, total 21 unique + 1 shared AC-6)" }
+  - { type: test-output, pointer: "collect: pass | targeted: pass | changed-area: pass | full: pass (all 4 phases exit 0)" }
+  - { type: contracts-touched, pointer: "n/a (no API, env, data, or business contract changes required)" }
+
+known-risks:
+  - "simple_test.pdf is a committed binary — regenerating it changes the hash; do not delete without re-committing."
+  - "test_no_app_backend_files_modified uses git diff --name-only HEAD; on a fresh clone with no previous commit this could give a false positive, but the worktree has prior commits so it is safe."
+
+next-reviewer: qa / gate runner (cdd-kit gate layout-fidelity-metrics)

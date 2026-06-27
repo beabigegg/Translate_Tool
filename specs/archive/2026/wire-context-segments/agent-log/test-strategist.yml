@@ -1,0 +1,16 @@
+agent: test-strategist
+change-id: wire-context-segments
+date: 2026-06-27
+status: done
+
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/wire-context-segments/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_context_window_segments.py → app/backend/services/context_prompts.py (build_context_prefix) + app/backend/utils/translation_helpers.py (translate_blocks_batch wiring)" }
+  - { type: coverage-tiers, pointer: "unit, unit (wiring), data-boundary — all Tier 0" }
+  - { type: mapping-completeness, pointer: "all 6 ACs covered; 11 test functions named; no AC left without a collectable target" }
+
+findings:
+  - context_prompts.py has no context-prefix builder yet; build_context_prefix() is a net-new pure function
+  - _call_ollama is the HTTP boundary in OllamaClient; payload["prompt"] contains full prompt string; correct mock point for non-tautological wiring test
+  - translate_blocks_batch() in translation_helpers.py holds the full texts list at segment granularity; natural injection point for neighbor lookup
+  - AC-6 requires a POSITIVE grep (constant IS used outside config.py), inverse of test_dead_references.py pattern which asserts ABSENCE

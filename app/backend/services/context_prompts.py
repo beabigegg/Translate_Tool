@@ -253,3 +253,45 @@ def _get_context_detection_prompt(target_lang: str) -> str:
     """
     lang_key = (target_lang or "").strip()
     return _CONTEXT_DETECTION_PROMPTS.get(lang_key, _CONTEXT_DETECTION_PROMPTS["en"])
+
+
+# ---------------------------------------------------------------------------
+# Sliding-context prefix builder (BR-78, Decision Table V)
+# ---------------------------------------------------------------------------
+
+def build_context_prefix(
+    segments: "list[str]",
+    current_idx: int,
+    n_context: int,
+    max_chars: int,
+) -> str:
+    """Return a read-only context prefix for the segment at *current_idx*.
+
+    Implements BR-78 / Decision Table V: include up to *n_context* immediately
+    preceding segments as a ``"Context (do not translate):"`` block, truncating
+    from the oldest end when combined text exceeds *max_chars*.
+
+    This is a leaf function (no app.backend imports).  Window size and char cap
+    are passed as arguments so the caller controls them and tests can vary them
+    without import-time side-effects.
+
+    Args:
+        segments:    Full list of text segments being translated.
+        current_idx: Index of the segment about to be translated.
+        n_context:   Maximum number of preceding segments to include (0 disables).
+        max_chars:   Maximum total characters for the combined context body.
+
+    Returns:
+        A ``"Context (do not translate):\\n...\\n\\n"`` prefix string,
+        or ``""`` when *n_context* <= 0 or *current_idx* == 0 (no predecessors).
+    """
+    if n_context <= 0 or current_idx <= 0:
+        return ""
+    start = max(0, current_idx - n_context)
+    preceding = segments[start:current_idx]
+    if not preceding:
+        return ""
+    context = "\n".join(preceding)
+    if len(context) > max_chars:
+        context = context[-max_chars:]
+    return f"Context (do not translate):\n{context}\n\n"

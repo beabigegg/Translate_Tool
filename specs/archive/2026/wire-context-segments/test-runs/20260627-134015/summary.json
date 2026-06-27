@@ -1,0 +1,20 @@
+{
+  "change_id": "wire-context-segments",
+  "phase": "quality",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "pytest tests/ -q --tb=short --ignore=tests/test_jobstatus_download_url.py --ignore=tests/test_judge_api.py --ignore=tests/test_model_config_api.py --ignore=tests/test_quality_evaluation.py --ignore=tests/test_output_mode_api.py --ignore=tests/test_metrics_endpoint.py --ignore=tests/test_providers_api.py --ignore=tests/test_term_api.py --ignore=tests/test_term_state_machine.py --deselect=tests/test_golden_regression.py::TestDualRunLayoutDetectorVsHeuristic::test_dual_run_layout_detector_vs_heuristic --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-ab21b977b52000039/specs/changes/wire-context-segments/test-runs/20260627-134015/junit.xml' --maxfail=1 -ra",
+  "duration_ms": 1648,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests.test_golden_regression.TestMultiColumnReadingOrderAccuracy::test_multi_column_reading_order_accuracy",
+    "message": "ModuleNotFoundError: No module named 'onnxruntime'"
+  },
+  "artifacts": {
+    "summary": "specs/changes/wire-context-segments/test-runs/20260627-134015/summary.json",
+    "stdout": "specs/changes/wire-context-segments/test-runs/20260627-134015/stdout.log",
+    "stderr": "specs/changes/wire-context-segments/test-runs/20260627-134015/stderr.log",
+    "junit": "specs/changes/wire-context-segments/test-runs/20260627-134015/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

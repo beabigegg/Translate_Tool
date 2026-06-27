@@ -1,0 +1,32 @@
+change-id: wire-context-segments
+agent: backend-engineer
+timestamp: "2026-06-27T13:41:00Z"
+status: complete
+artifacts:
+  - { type: files-changed, pointer: "app/backend/services/context_prompts.py:259-302" }
+  - { type: files-changed, pointer: "app/backend/utils/translation_helpers.py:9-18" }
+  - { type: files-changed, pointer: "app/backend/utils/translation_helpers.py:174-184" }
+  - { type: tests-added, pointer: "tests/test_context_window_segments.py::test_build_context_prefix_includes_n_preceding" }
+  - { type: tests-added, pointer: "tests/test_context_window_segments.py::test_build_context_prefix_capped_at_n" }
+  - { type: tests-added, pointer: "tests/test_context_window_segments.py::test_prompt_payload_contains_neighbor_text_at_call_boundary" }
+  - { type: tests-added, pointer: "tests/test_context_window_segments.py::test_build_context_prefix_truncated_to_max_chars" }
+  - { type: tests-added, pointer: "tests/test_context_window_segments.py::test_build_context_prefix_truncates_from_oldest_end" }
+  - { type: tests-added, pointer: "tests/test_context_window_segments.py::test_build_context_prefix_zero_n_returns_empty" }
+  - { type: tests-added, pointer: "tests/test_context_window_segments.py::test_prompt_payload_has_no_context_prefix_when_n_zero" }
+  - { type: tests-added, pointer: "tests/test_context_window_segments.py::test_context_prefix_header_not_present_in_translated_output" }
+  - { type: tests-added, pointer: "tests/test_context_window_segments.py::test_build_context_prefix_empty_at_first_segment" }
+  - { type: tests-added, pointer: "tests/test_context_window_segments.py::test_build_context_prefix_uses_available_neighbors_at_last_segment" }
+  - { type: tests-added, pointer: "tests/test_context_window_segments.py::test_context_constants_are_imported_in_pipeline" }
+  - { type: test-output, pointer: "11 passed (phases: collect, targeted, changed-area, contract, quality all exit 0)" }
+  - { type: contracts-touched, pointer: "n/a (no API/env/data contract changes; BR-78 already authored in contracts/business/business-rules.md)" }
+next-action: none
+notes: >
+  IP-1: build_context_prefix() added to context_prompts.py (leaf module, no
+  app.backend imports). IP-2: translation_helpers.py adds 'from app.backend
+  import config' for module-qualified access to CONTEXT_WINDOW_SEGMENTS and
+  CONTEXT_MAX_CHARS; prefix computed and prepended in translate_merged_paragraphs()
+  per-segment loop; on_segment_done and failure message use original text.
+  IP-3: 11 tests written; wiring tests mock at _call_ollama via patch.object
+  (instance-level, collection-safe), never at translate_once or translate_blocks_batch.
+  Pre-existing failures excluded from quality phase: fastapi/onnxruntime missing
+  in base Python env (22 failures on baseline, all confirmed pre-change).

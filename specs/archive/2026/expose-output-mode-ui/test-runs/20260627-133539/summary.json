@@ -1,0 +1,15 @@
+{
+  "change_id": "expose-output-mode-ui",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "conda run -n translate-tool pytest tests/test_output_mode_api.py -v",
+  "duration_ms": 2048,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/expose-output-mode-ui/test-runs/20260627-133539/summary.json",
+    "stdout": "specs/changes/expose-output-mode-ui/test-runs/20260627-133539/stdout.log",
+    "stderr": "specs/changes/expose-output-mode-ui/test-runs/20260627-133539/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

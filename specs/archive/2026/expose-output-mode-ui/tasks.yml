@@ -1,0 +1,42 @@
+change-id: expose-output-mode-ui
+status: in-progress
+tier: 3
+tier-floor-override: "False positive: 'sessions' appears only in a non-goal statement ('No persistence across sessions') in change-request.md. This is a pure frontend UI control that wires an existing backend field. No auth, payments, concurrency, secrets, or data migration involved."
+context-governance: v1
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on: []
+
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: skipped, note: "no architecture review required" }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: skipped, note: "UI-only change; output_mode already in backend schema; verify-only" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: done, note: "verified: token policy applies via existing TranslatePage entry; no edit needed" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: skipped, note: "no env changes" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: skipped, note: "no data shape changes" }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: done, note: "verified: BR-66/BR-67/Table S already define append/replace; no edit needed" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no CI changes" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done, note: "test-plan.md authored; 3 tests planned for TranslatePage.test.jsx" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: skipped, note: "optional at tier 3; covered by unit payload test" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: skipped, note: "not required at tier 3" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "not required at tier 3" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "not required at tier 3" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: skipped, note: "UI-only change; no backend work" }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: done }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: skipped, note: "no env/deploy changes" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: done }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: done }
+  - { id: "5.2", section: Review, title: "Visual review", status: done }
+  - { id: "5.3", section: Review, title: "Contract review", status: done }
+  - { id: "5.4", section: Review, title: "QA review", status: done }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "gates defined in ci-gates.md; CI workflow runs cdd-kit gate + pytest + npm test on PR" }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: skipped, note: "no informational gates defined at tier 3" }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "not required at tier 3" }
+  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }

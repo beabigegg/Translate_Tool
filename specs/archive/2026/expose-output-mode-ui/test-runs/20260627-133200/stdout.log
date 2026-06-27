@@ -1,0 +1,16 @@
+
+ RUN  v2.1.9 /home/egg/Projects/Translate_Tool/.claude/worktrees/agent-ad9e90bc02e035286/app/frontend
+
+ ❯ src/pages/TranslatePage.test.jsx (3 tests | 3 failed) 4ms
+   × test_output_mode_selector_renders_both_labeled_options 3ms
+     → Cannot read properties of undefined (reading 'clear')
+   × test_output_mode_default_value_is_append 0ms
+     → Cannot read properties of undefined (reading 'clear')
+   × test_output_mode_replace_appends_field_to_form_data 0ms
+     → Cannot read properties of undefined (reading 'clear')
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  13:32:01
+   Duration  936ms (transform 123ms, setup 0ms, collect 250ms, tests 4ms, environment 224ms, prepare 111ms)
+

@@ -1,0 +1,1 @@
+pytest tests/test_context_window_segments.py --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-ab21b977b52000039/specs/changes/wire-context-segments/test-runs/20260627-133828/junit.xml' --maxfail=1 --tb=short -ra

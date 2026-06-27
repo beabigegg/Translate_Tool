@@ -1,0 +1,41 @@
+change-id: wire-context-segments
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      pytest tests/test_context_window_segments.py --collect-only -q
+      --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-ab21b977b52000039/specs/changes/wire-context-segments/test-runs/20260627-133828/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/wire-context-segments/test-runs/20260627-133828/summary.json
+    junit: specs/changes/wire-context-segments/test-runs/20260627-133828/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      pytest tests/test_context_window_segments.py -v
+      --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-ab21b977b52000039/specs/changes/wire-context-segments/test-runs/20260627-133841/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/wire-context-segments/test-runs/20260627-133841/summary.json
+    junit: specs/changes/wire-context-segments/test-runs/20260627-133841/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      pytest tests/test_context_window_segments.py tests/test_context_prompt_i18n.py tests/test_dead_references.py -v
+      --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-ab21b977b52000039/specs/changes/wire-context-segments/test-runs/20260627-133850/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/wire-context-segments/test-runs/20260627-133850/summary.json
+    junit: specs/changes/wire-context-segments/test-runs/20260627-133850/junit.xml
+  - phase: contract
+    status: passed
+    command: cdd-kit validate --contracts
+    summary: specs/changes/wire-context-segments/test-runs/20260627-133856/summary.json
+  - phase: quality
+    status: passed
+    command: conda run -n translate-tool pytest -x -q --tb=short
+    summary: specs/changes/wire-context-segments/test-runs/20260627-134902/summary.json
+final-status: passed
