@@ -269,10 +269,12 @@ class TableRecognizer:
         # For this implementation, extract rows/cols from detection boxes.
         cells, num_rows, num_cols = self._parse_outputs(outputs, element.element_id)
 
-        if num_rows == 0 or num_cols == 0:
+        if num_rows == 0 or num_cols == 0 or not cells:
             # No confident grid detected — return None so the caller leaves the
             # element on the normal translation path instead of attaching an empty
             # TableStructure that would silently zero-out translated_content.
+            # `not cells` catches the case where rows/cols were detected but no
+            # cell intersections survived the overlap-assignment step.
             return None
 
         return TableStructure(
