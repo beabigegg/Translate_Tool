@@ -7,8 +7,14 @@ import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
-import fitz
 import pytest
+
+try:
+    import fitz
+    HAS_FITZ = True
+except ImportError:
+    fitz = None  # type: ignore[assignment]
+    HAS_FITZ = False
 
 from tests.metrics.biou import BIOU_REGRESSION_BUDGET, compute_biou
 from tests.metrics.residual_text import check_residual_text
@@ -147,6 +153,7 @@ class TestBIoUDegenerate:
 # TestResidualText
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(not HAS_FITZ, reason="PyMuPDF not installed")
 class TestResidualText:
 
     def test_clean_page_returns_empty_list(self):
@@ -241,6 +248,7 @@ class TestTruncationRate:
 # TestGoldenFixture
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(not HAS_FITZ, reason="PyMuPDF not installed")
 class TestGoldenFixture:
 
     _fixture_path = REPO_ROOT / "tests" / "fixtures" / "golden" / "simple_test.pdf"
