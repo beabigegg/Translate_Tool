@@ -1,0 +1,20 @@
+{
+  "change_id": "pdf-renderer-fallback-warn",
+  "phase": "collect",
+  "status": "failed",
+  "exit_code": 2,
+  "command": "pytest tests/test_pdf_render_warnings.py --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-aa0991a6272f70a12/specs/changes/pdf-renderer-fallback-warn/test-runs/20260627-133555/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 209,
+  "first_failure": {
+    "kind": "collection-error",
+    "nodeid": "tests.test_pdf_render_warnings",
+    "message": "collection failure"
+  },
+  "artifacts": {
+    "summary": "specs/changes/pdf-renderer-fallback-warn/test-runs/20260627-133555/summary.json",
+    "stdout": "specs/changes/pdf-renderer-fallback-warn/test-runs/20260627-133555/stdout.log",
+    "stderr": "specs/changes/pdf-renderer-fallback-warn/test-runs/20260627-133555/stderr.log",
+    "junit": "specs/changes/pdf-renderer-fallback-warn/test-runs/20260627-133555/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

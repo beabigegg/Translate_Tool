@@ -29,3 +29,4 @@
 | p3-table-structure | 2026 | 2026-06-22 | specs/archive/2026/p3-table-structure/ |
 | p3-llm-judge | 2026 | 2026-06-24 | specs/archive/2026/p3-llm-judge/ |
 | wire-context-segments | 2026 | 2026-06-27 | specs/archive/2026/wire-context-segments/ |
+| pdf-renderer-fallback-warn | 2026 | 2026-06-27 | specs/archive/2026/pdf-renderer-fallback-warn/ |
