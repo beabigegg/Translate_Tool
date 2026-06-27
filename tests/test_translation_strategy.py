@@ -416,20 +416,33 @@ def test_qe_hook_called_after_translation():
 def test_qe_hook_not_called_when_disabled():
     """AC-7 integration: when QE_ENABLED=False the load_model seam is never called.
 
-    Patches load_model at the consumer boundary.  Asserts call_count == 0.
+    translate_document now delegates to translate_texts; the QE_ENABLED guard in
+    _critique_gate_adopt must prevent load_model being called when QE is off.
+    Patches translate_texts (consumer-module binding) to control output, while
+    patching load_model at the definition module to track call count.
     """
     import app.backend.config as _cfg
+    import app.backend.services.translation_service as _ts_mod
     from app.backend.services.translation_service import translate_document
 
     elements = [_make_element("e1", "Hello")]
     doc = _make_doc(elements)
     client = _make_client()
 
+    def _fake_tt(texts, targets, src_lang, client, **kwargs):
+        tmap = {(tgt, t): f"[Translated] {t}" for tgt in targets for t in texts}
+        return tmap, len(texts), 0, False
+
     with patch("app.backend.services.quality_evaluator.load_model") as mock_load, \
          patch.object(_cfg, "QE_ENABLED", False), \
-         patch("app.backend.services.translation_service.translate_blocks_batch",
-               return_value=[(True, "Bonjour")]), \
-         patch("app.backend.services.translation_service.get_cache", return_value=None):
+         patch.object(_ts_mod, "translate_texts", side_effect=_fake_tt), \
+         patch("app.backend.services.doc_chunker.split_document") as mock_split, \
+         patch("app.backend.services.doc_chunker.reassemble_document"):
+        chunk = MagicMock()
+        chunk.chunk_index = 0
+        chunk.elements = elements
+        mock_split.return_value = [chunk]
+
         translate_document(doc, targets=["fr"], src_lang="en", client=client, num_ctx=4096)
 
     assert mock_load.call_count == 0, (

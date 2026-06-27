@@ -113,6 +113,72 @@ class QualityJudge:
             pass
         return ""
 
+    def judge_block(self, src: str, tgt: str) -> float:
+        """Score a single translation block (AC-5 — per-block judge scoring).
+
+        Reuses :meth:`evaluate` to score one (source, translation) pair and
+        converts the categorical 高/中/低 result to a float in [0.0, 1.0].
+
+        Args:
+            src: Source text for this block.
+            tgt: Translated text for this block.
+
+        Returns:
+            Float score: 1.0 for 高, 0.5 for 中, 0.0 for 低 or unavailable.
+        """
+        result = self.evaluate(src, tgt)
+        _score_map = {"高": 1.0, "中": 0.5, "低": 0.0}
+        return _score_map.get(result.get("score"), 0.0)  # type: ignore[return-value]
+
+    def judge_layout(self, page_image: "PIL.Image.Image") -> int:  # noqa: F821
+        """Score PDF page layout quality via Gemma (AC-6 — MLLM layout scoring).
+
+        Takes an in-memory PIL Image of a rendered page and returns an integer
+        quality score 1–5 (1 = very poor, 5 = excellent).  Only the local Gemma
+        socket is used (BR-32 / ADR 0007) — this method MUST NOT route to any
+        cloud provider.
+
+        Args:
+            page_image: PIL.Image.Image of the rendered output page.
+                        MUST be an in-memory image object, never a file path.
+
+        Returns:
+            Integer score in [1, 5].  Returns 0 on any failure (safe-degrade).
+        """
+        import base64
+        import io
+
+        try:
+            buf = io.BytesIO()
+            page_image.save(buf, format="PNG")
+            _img_b64 = base64.b64encode(buf.getvalue()).decode()
+
+            prompt = (
+                "Rate the layout quality of this translated document page on a scale of 1 to 5.\n"
+                "1 = very poor (severe overlap, cut-off text, unreadable);\n"
+                "2 = poor (notable spacing or alignment issues);\n"
+                "3 = acceptable (minor issues, mostly readable);\n"
+                "4 = good (clean layout, well aligned);\n"
+                "5 = excellent (perfect layout, professional quality).\n"
+                "Respond with ONLY the single digit (1, 2, 3, 4, or 5)."
+            )
+            payload = self._client._build_no_system_payload(prompt)
+            ok, response = self._client._call_ollama(payload)
+            if not ok:
+                logger.warning("[Judge] judge_layout(): Gemma call failed")
+                return 0
+            for char in response.strip():
+                if char.isdigit() and int(char) in range(1, 6):
+                    return int(char)
+            logger.warning(
+                "[Judge] judge_layout(): could not parse score from response: %r",
+                response[:100],
+            )
+            return 0
+        except Exception as exc:
+            logger.warning("[Judge] judge_layout() exception: %s: %s", type(exc).__name__, exc)
+            return 0
+
     def evaluate(self, source_text: str, translated_text: str, feedback: str = "") -> dict:
         """Score a (source, translation) pair.
 
@@ -231,14 +297,53 @@ class QualityJudge:
         attempts = 0
         retranslated_blocks: Optional[Dict[str, str]] = None
 
+        # Score-priority map for aggregating per-block scores (lower index = worse quality).
+        _score_priority: dict = {"低": 0, "中": 1, "高": 2}
+
         for iteration in range(max_iterations):
             attempts += 1
 
-            # Join current translations for display scoring
-            joined_source = "\n\n".join(src for _, src, _ in blocks)
-            joined_translation = "\n\n".join(current_translations[bid] for bid, _, _ in blocks)
+            # Score each block individually (IP-6 — per-block, not whole-doc join).
+            per_block_results = [
+                (bid, self.evaluate(src, current_translations[bid], feedback=current_feedback))
+                for bid, src, _ in blocks
+            ]
 
-            result = self.evaluate(joined_source, joined_translation, feedback=current_feedback)
+            # Degrade to unavailable if ANY block evaluation failed.
+            if any(r.get("judge_status") != "available" for _, r in per_block_results):
+                return JudgeResult(
+                    job_id=job_id,
+                    judge_status="unavailable",
+                    score=None,
+                    source_text=None,
+                    translated_text=None,
+                    feedback=None,
+                    attempts=attempts,
+                    model=self.model,
+                    retranslated_blocks=None,
+                )
+
+            # Aggregate: use the worst per-block score to drive loop control.
+            valid_scores = [
+                r.get("score") for _, r in per_block_results if r.get("score") in _score_priority
+            ]
+            aggregate_score: Optional[str] = (
+                min(valid_scores, key=lambda s: _score_priority[s]) if valid_scores else None
+            )
+
+            # Combine per-block feedback for the re-translation pass.
+            combined_feedback = "; ".join(
+                r.get("feedback", "")
+                for _, r in per_block_results
+                if r.get("feedback")
+            )
+
+            # Build a synthetic result dict for the existing post-loop logic.
+            result = {
+                "judge_status": "available",
+                "score": aggregate_score,
+                "feedback": combined_feedback,
+            }
 
             if result["judge_status"] != "available":
                 # Judge call failed — degrade to unavailable

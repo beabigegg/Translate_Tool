@@ -1,0 +1,20 @@
+{
+  "change_id": "quality-metrics-gating",
+  "phase": "full",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "pytest .claude/worktrees/quality-metrics-gating/tests/ -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/quality-metrics-gating/test-runs/20260627-202030/junit.xml' -ra",
+  "duration_ms": 85544,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": ".claude.worktrees.quality-metrics-gating.tests.test_sentence_mode_consistency::test_translate_texts_signature_unchanged",
+    "message": "AssertionError: Signature mismatch.\n  Expected: ['texts', 'targets', 'src_lang', 'client', 'max_batch_chars', 'stop_flag', 'log', 'terms', 'status_callback']\n  Actual:   ['texts', 'targets', 'src_lang', 'client', 'max_batch_chars', 'stop_flag', 'log', 'terms', 'status_callback', 'chunk_context']\nassert ['texts', 'ta...op_flag', ...] == ['texts', 'ta...op_flag', ...]\n  \n  Left contains one more item: 'chunk_context'\n  Use -v to get more diff"
+  },
+  "artifacts": {
+    "summary": "specs/changes/quality-metrics-gating/test-runs/20260627-202030/summary.json",
+    "stdout": "specs/changes/quality-metrics-gating/test-runs/20260627-202030/stdout.log",
+    "stderr": "specs/changes/quality-metrics-gating/test-runs/20260627-202030/stderr.log",
+    "junit": "specs/changes/quality-metrics-gating/test-runs/20260627-202030/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}
