@@ -1,0 +1,15 @@
+agent: implementation-planner
+change-id: wire-context-segments
+date: 2026-06-27
+status: done
+
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/wire-context-segments/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer (IP-1..IP-4)" }
+  - { type: scope-summary, pointer: "in: build_context_prefix in context_prompts.py + wire into translate_merged_paragraphs + new test file; out: API/FE/DB/env, base_llm_client + openai client, translation_service, legacy sentence path" }
+
+findings:
+  - "Default paragraph granularity routes translate_blocks_batch -> translate_merged_paragraphs (per-segment translate_once loop); that loop is the real injection point with full texts list + index."
+  - "Manifest forbids editing base_llm_client.py (LLMClient Protocol) and openai_compatible_client.py; therefore context must NOT change the shared translate_once signature. Plan prepends prefix into the text arg so it reaches _call_ollama prompt without signature change."
+  - "Module-qualified config access (config.CONTEXT_WINDOW_SEGMENTS) chosen to satisfy AC-6 positive grep AND make values monkeypatchable at call time."
+  - "Tier/risk mismatch noted: classification+tasks say Tier 2; test-plan frontmatter says tier 0. Flagged in Known Risks."

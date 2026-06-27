@@ -1,0 +1,16 @@
+{
+  "change_id": "wire-context-segments",
+  "phase": "targeted",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest tests/test_context_window_segments.py -v --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-ab21b977b52000039/specs/changes/wire-context-segments/test-runs/20260627-133841/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 345,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/wire-context-segments/test-runs/20260627-133841/summary.json",
+    "stdout": "specs/changes/wire-context-segments/test-runs/20260627-133841/stdout.log",
+    "stderr": "specs/changes/wire-context-segments/test-runs/20260627-133841/stderr.log",
+    "junit": "specs/changes/wire-context-segments/test-runs/20260627-133841/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

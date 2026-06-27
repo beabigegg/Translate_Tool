@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from typing import Callable, Dict, List, Optional, Tuple
 
+from app.backend import config
 from app.backend.clients.base_llm_client import LLMClient
 from app.backend.config import (
     DEFAULT_MAX_BATCH_CHARS,
@@ -13,6 +14,7 @@ from app.backend.config import (
     MIN_MAX_BATCH_CHARS,
     TRANSLATION_GRANULARITY,
 )
+from app.backend.services.context_prompts import build_context_prefix
 from app.backend.utils.logging_utils import logger
 from app.backend.utils.text_utils import is_cjk_language, split_sentences
 
@@ -171,7 +173,16 @@ def translate_merged_paragraphs(
                 progress_log(completed)
             continue
 
-        ok, translated = client.translate_once(text, tgt, src_lang)
+        prefix = build_context_prefix(
+            texts, i,
+            config.CONTEXT_WINDOW_SEGMENTS,
+            config.CONTEXT_MAX_CHARS,
+        )
+        # Apply context only when text is substantial; short single-token inputs
+        # (e.g. CJK "N/A" tokens) have LLM bypasses in the client that match on
+        # the raw text — prepending context would break those bypasses.
+        prompted_text = (prefix + text) if prefix and len(text.strip()) > 4 else text
+        ok, translated = client.translate_once(prompted_text, tgt, src_lang)
         if ok:
             results[i] = (True, translated)
             if on_segment_done:

@@ -1,0 +1,9 @@
+change-id: wire-context-segments
+timestamp: "2026-06-27"
+agent: qa-reviewer
+status: done
+summary: "Initial review blocked on test evidence masking (5 failed runs + --ignore flags). Remediated: full suite re-run in conda translate-tool env (883 passed, 4 skipped, 0 failures). Clean quality phase recorded in test-evidence.yml. cdd-kit gate passed."
+artifacts:
+  - pointer: specs/changes/wire-context-segments/test-runs/20260627-134902/summary.json
+    note: clean quality run via conda env, no masking
+next-action: create PR

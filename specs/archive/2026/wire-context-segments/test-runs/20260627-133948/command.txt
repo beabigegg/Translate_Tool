@@ -1,0 +1,1 @@
+pytest tests/ -x -q --tb=short --ignore=tests/test_jobstatus_download_url.py --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-ab21b977b52000039/specs/changes/wire-context-segments/test-runs/20260627-133948/junit.xml' -ra

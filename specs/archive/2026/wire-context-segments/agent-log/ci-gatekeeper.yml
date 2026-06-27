@@ -1,0 +1,16 @@
+agent: ci-gatekeeper
+change-id: wire-context-segments
+date: 2026-06-27
+status: done
+
+artifacts:
+  - { type: tiers-modified, pointer: "1 (PR-blocking), 2 (informational)" }
+  - { type: gate-promotions, pointer: "n/a (no gate moved between tiers; Tier-0 unit tests already run in the existing full-suite Tier-1 job)" }
+  - { type: workflow-files-changed, pointer: "n/a (no workflow file modified; existing contract-driven-gates.yml provides full coverage)" }
+  - { type: required-status-checks, pointer: "full-suite, contract-conformance" }
+
+findings:
+  - "Backend-only change: migration gate, API diff gate, frontend build gate, and OpenAPI export gate are all inapplicable."
+  - "Existing contract-driven-gates.yml runs pytest and cdd-kit validate --contracts on every PR; no new job or step required."
+  - "Immediate rollback path: set CONTEXT_WINDOW_SEGMENTS=0 in config.py to restore byte-identical prompts without a code revert (AC-3 guarantee)."
+  - "At /cdd-close: remove the cdd-kit gate wire-context-segments step from contract-driven-gates.yml per the CLAUDE.md promoted learning."

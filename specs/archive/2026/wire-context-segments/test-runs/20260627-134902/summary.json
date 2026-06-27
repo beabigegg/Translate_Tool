@@ -1,0 +1,15 @@
+{
+  "change_id": "wire-context-segments",
+  "phase": "quality",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "conda run -n translate-tool pytest -x -q --tb=short",
+  "duration_ms": 26776,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/wire-context-segments/test-runs/20260627-134902/summary.json",
+    "stdout": "specs/changes/wire-context-segments/test-runs/20260627-134902/stdout.log",
+    "stderr": "specs/changes/wire-context-segments/test-runs/20260627-134902/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

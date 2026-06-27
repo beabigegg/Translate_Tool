@@ -3,8 +3,8 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.18.0
-last-changed: 2026-06-22
+schema-version: 0.19.0
+last-changed: 2026-06-27
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -87,6 +87,7 @@ breaking-change-policy: deprecate-2-minors
 | BR-75 | judge-reflection-boundary | application-team | The downloadable output file (output_zip / download_url) reflects the INITIAL translation until the user explicitly confirms apply via POST /api/jobs/{id}/judge/apply. The judge's re-translated text is stored in JudgeResult.retranslated_blocks (per-block map) and surfaced display-only in JudgeResult.translated_text and GET /jobs/{id}/judge. The frontend MUST clearly distinguish between the judge-proposed text (display-only) and the currently downloadable file. No automatic overwrite occurs without user confirmation. | tests/test_quality_judge.py |
 | BR-76 | judge-apply-preconditions | application-team | POST /api/jobs/{id}/judge/apply returns HTTP 409 if any of the following conditions hold: (1) job.status ≠ "completed"; (2) JUDGE_ENABLED=false; (3) JobRecord.judge is None or judge_status ≠ "available"; (4) retranslated_blocks is None or empty; (5) job.input_dir no longer exists on disk (source files evicted). Unknown job_id → HTTP 404. Only when all five conditions pass does the endpoint dispatch the re-render worker and return HTTP 202. | tests/test_quality_judge.py |
 | BR-77 | judge-apply-idempotency | application-team | The apply operation is idempotent and safe to call twice. Re-render uses the stored per-block map exclusively — no LLM call is made. If an apply is already in progress (judge_apply_status = "applying"), a second POST /judge/apply returns HTTP 202 immediately without spawning a second worker thread (guarded under job.lock). The re-render writes into a temporary directory; the original output_zip is swapped only on full success. On any re-render exception, original output_zip is preserved, judge_apply_status = "failed", and WARNING is logged. | tests/test_quality_judge.py |
+| BR-78 | context-window-segment-prefix | application-team | When translating a segment, the prompt builder prepends up to `CONTEXT_WINDOW_SEGMENTS` (default: 2) immediately preceding segments as a read-only context block labeled `"Context (do not translate):"`. The combined context is capped at `CONTEXT_MAX_CHARS` (default: 300) characters; if preceding segments exceed the cap, the context is truncated from the oldest end to fit. When `CONTEXT_WINDOW_SEGMENTS = 0`, no context prefix is emitted and the prompt is identical to pre-change behavior (backward-compatible disable). For segments with fewer available predecessors than the window size (including the first segment), only the available predecessors are used; no error is raised and no padding is added. The context prefix is read-only: context-prefixed neighbor text is never itself translated or included in output. | tests/test_context_window_segments.py |
 
 ## Decision Tables
 
@@ -354,6 +355,16 @@ breaking-change-policy: deprecate-2-minors
 | Apply re-render raises exception | judge_apply_status="failed"; original output_zip preserved; WARNING logged (BR-77) | tests/test_quality_judge.py |
 | Block-id mismatch during apply re-render | Fail-soft to original output; judge_apply_status="failed"; WARNING logged (BR-77) | tests/test_quality_judge.py |
 | Download file before apply confirmed | Serves original translated output, not judge-proposed text (BR-75) | tests/test_quality_judge.py |
+
+### Table V — sliding context window behavior (BR-78)
+
+| condition | behavior | test id |
+|---|---|---|
+| `CONTEXT_WINDOW_SEGMENTS = 0` | No context prefix added; prompt identical to pre-change behavior (backward-compatible disable) | tests/test_context_window_segments.py |
+| `CONTEXT_WINDOW_SEGMENTS = 2`, segment has 2+ predecessors | Prompt includes last 2 preceding segments under "Context (do not translate):" prefix | tests/test_context_window_segments.py |
+| `CONTEXT_WINDOW_SEGMENTS = 2`, segment is first (no predecessors) | No context prefix added; no error raised | tests/test_context_window_segments.py |
+| Combined predecessor text > `CONTEXT_MAX_CHARS` (300) | Context truncated from the oldest end to fit within cap | tests/test_context_window_segments.py |
+| Context prefix present | Neighbor text never appears in translated output | tests/test_context_window_segments.py |
 
 ## Change Policy
 
