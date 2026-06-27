@@ -1,6 +1,6 @@
 # Contract-driven gates
 # Tier semantics: ci/gate-policy.md
-# Active change gates: pdf-renderer-fallback-warn (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection, p2-prompt-fewshot-glossary, p2-long-doc-chunking, p2-comet-qe, p2-term-audit, download-url-in-jobstatus, remove-cross-model-refinement, fallback-chain-cloud-providers, term-extraction-db-first, settings-page-cloud-redesign, p3-docx-replace-mode, p3-table-structure, p3-llm-judge)
+# Active change gates: (none) (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection, p2-prompt-fewshot-glossary, p2-long-doc-chunking, p2-comet-qe, p2-term-audit, download-url-in-jobstatus, remove-cross-model-refinement, fallback-chain-cloud-providers, term-extraction-db-first, settings-page-cloud-redesign, p3-docx-replace-mode, p3-table-structure, p3-llm-judge, pdf-renderer-fallback-warn)
 
 name: contract-driven-gates
 
@@ -42,9 +42,6 @@ jobs:
 
       - name: Validate contracts (Tier 1 — blocks merge)
         run: cdd-kit validate --contracts
-
-      - name: Change gate (Tier 1 — blocks merge)
-        run: cdd-kit gate pdf-renderer-fallback-warn
 
       - name: OpenAPI sync gate
         run: cdd-kit openapi export --check --out contracts/api/openapi.yml
