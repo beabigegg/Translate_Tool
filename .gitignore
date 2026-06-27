@@ -51,3 +51,6 @@ app/backend/fonts/NotoSansTC-Regular-NEW.ttf
 
 # cdd-kit local cache (do not commit)
 .cdd/code-graph.index.json
+
+# cdd-kit runtime state (do not commit)
+.cdd/runtime/
