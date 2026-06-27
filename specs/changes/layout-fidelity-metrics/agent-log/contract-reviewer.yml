@@ -1,0 +1,8 @@
+change-id: layout-fidelity-metrics
+timestamp: 2026-06-27T00:00:00Z
+agent: contract-reviewer
+status: approved
+summary: "No contracts touched; read-only BoundingBox consumption requires no data-shape update; metric modules carry no API contract obligation"
+artifacts:
+  - { type: verdict, pointer: "approved — all 9 contracts reviewed, 0 updates required" }
+next-action: proceed to test-strategist

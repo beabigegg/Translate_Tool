@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0 -- /home/egg/miniforge3/envs/translate-tool/bin/python
+cachedir: .pytest_cache
+rootdir: /home/egg/Projects/Translate_Tool/.claude/worktrees/agent-ac1eaa812a1965de0
+plugins: anyio-4.14.0, Faker-40.23.0
+collecting ... collected 21 items
+
+tests/test_layout_metrics.py::TestBIoU::test_identical_bboxes_return_1 PASSED [  4%]
+tests/test_layout_metrics.py::TestBIoU::test_disjoint_bboxes_return_0 PASSED [  9%]
+tests/test_layout_metrics.py::TestBIoU::test_partial_overlap_value_and_matched_pair PASSED [ 14%]
+tests/test_layout_metrics.py::TestBIoU::test_return_type_is_float_in_unit_interval PASSED [ 19%]
+tests/test_layout_metrics.py::TestBIoUDegenerate::test_empty_source_list PASSED [ 23%]
+tests/test_layout_metrics.py::TestBIoUDegenerate::test_empty_rendered_list PASSED [ 28%]
+tests/test_layout_metrics.py::TestBIoUDegenerate::test_zero_area_source_box PASSED [ 33%]
+tests/test_layout_metrics.py::TestBIoUDegenerate::test_zero_area_rendered_box PASSED [ 38%]
+tests/test_layout_metrics.py::TestResidualText::test_clean_page_returns_empty_list PASSED [ 42%]
+tests/test_layout_metrics.py::TestResidualText::test_leaking_text_flagged_with_region_record PASSED [ 47%]
+tests/test_layout_metrics.py::TestResidualText::test_record_contains_bbox_and_text_fields PASSED [ 52%]
+tests/test_layout_metrics.py::TestTruncationRate::test_all_truncated_ratio_is_1 PASSED [ 57%]
+tests/test_layout_metrics.py::TestTruncationRate::test_none_truncated_ratio_is_0 PASSED [ 61%]
+tests/test_layout_metrics.py::TestTruncationRate::test_partial_truncated_ratio_and_overflow_area PASSED [ 66%]
+tests/test_layout_metrics.py::TestTruncationRate::test_elements_with_none_bbox_excluded_from_overflow PASSED [ 71%]
+tests/test_layout_metrics.py::TestGoldenFixture::test_fixture_file_exists_and_is_valid_pdf PASSED [ 76%]
+tests/test_layout_metrics.py::TestGoldenFixture::test_fixture_is_exactly_one_page PASSED [ 80%]
+tests/test_layout_metrics.py::TestModuleImports::test_biou_importable_from_tests_metrics PASSED [ 85%]
+tests/test_layout_metrics.py::TestModuleImports::test_residual_text_importable_from_tests_metrics PASSED [ 90%]
+tests/test_layout_metrics.py::TestModuleImports::test_truncation_rate_importable_from_tests_metrics PASSED [ 95%]
+tests/test_layout_metrics.py::TestModuleImports::test_no_app_backend_files_modified PASSED [100%]
+
+============================== 21 passed in 0.31s ==============================

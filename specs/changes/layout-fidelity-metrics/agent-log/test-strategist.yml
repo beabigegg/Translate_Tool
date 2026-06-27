@@ -1,0 +1,8 @@
+agent: test-strategist
+run-date: 2026-06-27
+status: complete
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/layout-fidelity-metrics/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_layout_metrics.py → tests/metrics/biou.py, tests/metrics/residual_text.py, tests/metrics/truncation_rate.py" }
+  - { type: coverage-tiers, pointer: "unit, data-boundary" }
+  - { type: mapping-completeness, pointer: "all 7 acceptance criteria covered; 22 named test nodes in table" }
