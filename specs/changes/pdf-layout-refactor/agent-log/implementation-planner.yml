@@ -1,9 +1,0 @@
-agent: implementation-planner
-change-id: pdf-layout-refactor
-artifacts:
-  - { type: plan-written, pointer: "specs/changes/pdf-layout-refactor/implementation-plan.md" }
-  - { type: owner-map, pointer: "backend-engineer (all 7 items 3.1-3.7 + tests)" }
-  - { type: scope-summary, pointer: "7 items in scope (3.1-3.7); XLSX/DOCX/PPTX, TATR, critique/judge loop, API/frontend out of scope" }
-  - { type: blocker-resolved, pointer: "IP-R1 block_id: pdf:{stem}:{idx} indexes unique_texts dedup list, not element count; aggregation index-stable within a parse; do not change keying" }
-  - { type: blocker-resolved, pointer: "IP-R2 font floor: reconcile MIN_FONT_SIZE_PT=6 + 4pt docstring to single config.MIN_READABLE_FONT_PT=8 (BR-88)" }
-  - { type: blocker-resolved, pointer: "IP-R3 underline bit: prompt's 'bit 4' collides with existing bold=2**4; derive is_underline from correct PyMuPDF signal, default False" }

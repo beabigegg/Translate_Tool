@@ -1,5 +1,0 @@
-artifacts:
-  - { type: tiers-modified, pointer: "1" }
-  - { type: gate-promotions, pointer: "n/a (no promotions; biou/truncation-rate/reading-order remain informational)" }
-  - { type: workflow-files-changed, pointer: ".github/workflows/contract-driven-gates.yml:3,148-156" }
-  - { type: required-status-checks, pointer: "contract-and-fast-tests (includes pdf-layout-refactor targeted tests)" }

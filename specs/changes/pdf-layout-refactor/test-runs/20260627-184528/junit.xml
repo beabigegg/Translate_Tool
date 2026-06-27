@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.189" timestamp="2026-06-27T18:45:29.117899+08:00" hostname="EGG"><testcase classname="tests.test_pdf_layout_refactor.TestBboxWhitening" name="test_bbox_whitening_uses_rect_not_search_for" time="0.141"><failure message="AssertionError: Expected 'search_for' to not have been called. Called 1 times.&#10;Calls: [call('Hello', quads=True)].">tests/test_pdf_layout_refactor.py:128: in test_bbox_whitening_uses_rect_not_search_for
-    mock_page.search_for.assert_not_called()
-/home/egg/miniforge3/lib/python3.13/unittest/mock.py:940: in assert_not_called
-    raise AssertionError(msg)
-E   AssertionError: Expected 'search_for' to not have been called. Called 1 times.
-E   Calls: [call('Hello', quads=True)].</failure></testcase></testsuite></testsuites>
