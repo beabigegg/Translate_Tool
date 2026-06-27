@@ -221,11 +221,12 @@ class TableRecognizer:
         self,
         element: TranslatableElement,
         page_pixmap_array: np.ndarray,
-    ) -> TableStructure:
+    ) -> Optional[TableStructure]:
         """Crop the table bbox from the page raster and run ONNX inference.
 
-        Returns a TableStructure with cells derived from the model output.
-        The crop array is discarded after inference.
+        Returns a TableStructure with cells derived from the model output, or
+        None if no confident grid was detected (caller keeps element on the
+        normal path). The crop array is discarded after inference.
         """
         if element.bbox is None:
             raise ValueError(f"Element '{element.element_id}' has no bbox; cannot crop.")
@@ -268,12 +269,18 @@ class TableRecognizer:
         # For this implementation, extract rows/cols from detection boxes.
         cells, num_rows, num_cols = self._parse_outputs(outputs, element.element_id)
 
+        if num_rows == 0 or num_cols == 0:
+            # No confident grid detected — return None so the caller leaves the
+            # element on the normal translation path instead of attaching an empty
+            # TableStructure that would silently zero-out translated_content.
+            return None
+
         return TableStructure(
             num_rows=num_rows,
             num_cols=num_cols,
             cells=cells,
             recognizer=_RECOGNIZER_NAME,
-            recognition_confident=True,  # set False if confidence < threshold
+            recognition_confident=True,
         )
 
     def _parse_outputs(
