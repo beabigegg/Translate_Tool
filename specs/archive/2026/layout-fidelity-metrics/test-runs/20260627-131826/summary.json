@@ -1,0 +1,15 @@
+{
+  "change_id": "layout-fidelity-metrics",
+  "phase": "targeted",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "conda run -n translate-tool pytest tests/test_layout_metrics.py -v",
+  "duration_ms": 1735,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/layout-fidelity-metrics/test-runs/20260627-131826/summary.json",
+    "stdout": "specs/changes/layout-fidelity-metrics/test-runs/20260627-131826/stdout.log",
+    "stderr": "specs/changes/layout-fidelity-metrics/test-runs/20260627-131826/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

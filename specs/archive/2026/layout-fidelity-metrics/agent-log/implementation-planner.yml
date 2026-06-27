@@ -1,0 +1,4 @@
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/layout-fidelity-metrics/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer (IP-1..IP-7, all test-only)" }
+  - { type: scope-summary, pointer: "in: tests/metrics/ (3 modules + __init__), golden PDF fixture, tests/test_layout_metrics.py (22 nodes); out: any app/backend or app/frontend edit, CI gate wiring (Track G), scipy/skimage deps" }

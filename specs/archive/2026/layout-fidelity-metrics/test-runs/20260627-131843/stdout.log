@@ -1,0 +1,69 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0
+rootdir: /home/egg/Projects/Translate_Tool/.claude/worktrees/agent-ac1eaa812a1965de0
+plugins: anyio-4.14.0, Faker-40.23.0
+collected 897 items
+
+tests/test_bbox_utils.py .......................                         [  2%]
+tests/test_context_prompt_i18n.py .......                                [  3%]
+tests/test_coordinate_renderer.py ................                       [  5%]
+tests/test_dead_references.py ...........                                [  6%]
+tests/test_doc_chunker.py .......................................        [ 10%]
+tests/test_docx_parser.py ...........                                    [ 11%]
+tests/test_env_contract.py ...............                               [ 13%]
+tests/test_fewshot_glossary.py ...........................               [ 16%]
+tests/test_font_utils.py ..............................................  [ 21%]
+tests/test_glossary_enforcement.py ........                              [ 22%]
+tests/test_golden_regression.py ....ss......                             [ 23%]
+tests/test_inline_renderer.py ........                                   [ 24%]
+tests/test_ir_pipeline_decoupling.py ...........                         [ 26%]
+tests/test_job_record_judge.py ...                                       [ 26%]
+tests/test_jobstatus_download_url.py .................                   [ 28%]
+tests/test_judge_api.py ..........                                       [ 29%]
+tests/test_judge_apply.py ....                                           [ 29%]
+tests/test_layout_detector.py ................                           [ 31%]
+tests/test_layout_metrics.py .....................                       [ 34%]
+tests/test_llm_client_protocol.py ..............                         [ 35%]
+tests/test_metrics_counters.py .....................                     [ 37%]
+tests/test_metrics_endpoint.py ........                                  [ 38%]
+tests/test_model_config_api.py ......                                    [ 39%]
+tests/test_model_router.py ...........................................   [ 44%]
+tests/test_ollama_client_dynamic_strategy.py ...                         [ 44%]
+tests/test_openai_compatible_client.py .................                 [ 46%]
+tests/test_orchestrator_judge.py ......                                  [ 47%]
+tests/test_orchestrator_phase0.py ...                                    [ 47%]
+tests/test_output_mode_api.py ....                                       [ 47%]
+tests/test_output_mode_orchestrator.py ...                               [ 48%]
+tests/test_output_mode_processors.py ..........                          [ 49%]
+tests/test_pdf_generator.py ...........................                  [ 52%]
+tests/test_pdf_parser.py .................s...                           [ 54%]
+tests/test_pptx_parser.py ............                                   [ 56%]
+tests/test_provider_fallback.py ......................                   [ 58%]
+tests/test_providers_api.py ..........................                   [ 61%]
+tests/test_quality_evaluation.py ..............                          [ 62%]
+tests/test_quality_judge.py .................                            [ 64%]
+tests/test_renderer_convergence.py ..............................        [ 68%]
+tests/test_sentence_mode_consistency.py ........                         [ 69%]
+tests/test_table_border_protection.py .........s...                      [ 70%]
+tests/test_table_recognizer.py .......................                   [ 73%]
+tests/test_term_api.py .........                                         [ 74%]
+tests/test_term_audit.py ..................                              [ 76%]
+tests/test_term_db.py .................                                  [ 78%]
+tests/test_term_extractor.py ............................                [ 81%]
+tests/test_term_extractor_resilience.py .............                    [ 82%]
+tests/test_term_state_machine.py ........                                [ 83%]
+tests/test_text_expansion_benchmark.py .............................     [ 86%]
+tests/test_text_region_renderer.py ..................................... [ 90%]
+.........                                                                [ 91%]
+tests/test_translatable_document.py .................................... [ 95%]
+................                                                         [ 97%]
+tests/test_translation_profiles_scenarios.py ...                         [ 97%]
+tests/test_translation_strategy.py ..................                    [100%]
+
+=============================== warnings summary ===============================
+../../../../../miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21: DeprecationWarning: PyPDF2 is deprecated. Please move to the pypdf library instead.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================== 893 passed, 4 skipped, 1 warning in 25.37s ==================
