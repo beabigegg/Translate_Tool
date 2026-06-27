@@ -130,7 +130,7 @@ def translate_xlsx_xls(
     )
 
     log(f"[Excel] cells: {len(segs)}")
-    # Preserve document order for better batch context
+    # Preserve document order for better batch context (used for pre/post hooks)
     _seen: set[str] = set()
     uniq: list[str] = []
     for s in segs:
@@ -141,43 +141,114 @@ def translate_xlsx_xls(
         pre_translate_hook(uniq)
     _terms = terms_getter() if terms_getter else None
 
-    # p3-llm-judge: block_overrides seam — when provided, use stored re-translated text
-    # instead of calling the LLM (D7). Block ids use the same key as post_translate_hook.
+    # p3-llm-judge: block_overrides seam
     _ext_name = os.path.splitext(in_path)[1].lstrip(".")
     _file_stem = os.path.splitext(os.path.basename(in_path))[0]
     stopped = False
+
+    # IP-4 (BR-81): tmap uses 3-element key (tgt, src_text, col) where col is 0-based.
+    # Each worksheet is treated as a table; one translate_once call per worksheet per target.
+    tmap: Dict = {}
+
     if block_overrides is not None:
-        tmap: Dict = {}
+        # For block_overrides, map each block's text to all cells with matching text.
+        idx_map: Dict[str, str] = {}
         for idx, src_text in enumerate(uniq):
             block_id = f"{_ext_name}:{_file_stem}:{idx}"
+            if block_id in block_overrides:
+                idx_map[src_text] = block_overrides[block_id]
+        for sheet_name, r, c, src_text, is_formula in segs:
+            c0 = c - 1  # 0-based
             for tgt in targets:
-                if block_id in block_overrides:
-                    tmap[(tgt, src_text)] = block_overrides[block_id]
-                else:
-                    tmap[(tgt, src_text)] = src_text
+                tmap[(tgt, src_text, c0)] = idx_map.get(src_text, src_text)
         log(f"[Excel] block_overrides applied: {len(block_overrides)} overrides, {len(uniq)} blocks")
     else:
-        tmap, _, fail_cnt, stopped = translate_texts(
-            uniq,
-            targets,
-            src_lang,
-            client,
-            max_batch_chars=max_batch_chars,
-            stop_flag=stop_flag,
-            log=log,
-            terms=_terms,
-            status_callback=status_callback,
-        )
+        # IP-4: per-worksheet serialization — one translate_once call per worksheet per target.
+        from collections import defaultdict
+        from dataclasses import dataclass as _dc
+        from app.backend.utils import table_serializer
 
-        if fail_cnt and not stopped:
-            from app.backend.utils.translation_verification import verify_and_fill_tmap
-            verify_and_fill_tmap(tmap, client, src_lang, stop_flag=stop_flag, log=log)
+        @_dc
+        class _XlCellProxy:
+            row: int
+            col: int
+            content: str
+            is_numeric: bool = False
+
+        # Group segs by worksheet
+        sheet_segs: Dict = defaultdict(list)
+        for seg in segs:
+            sheet_segs[seg[0]].append(seg)
+
+        for sheet_name, s_segs in sheet_segs.items():
+            if stop_flag and stop_flag.is_set():
+                stopped = True
+                break
+            ws = wb[sheet_name]
+            num_rows = ws.max_row
+            num_cols = ws.max_column
+
+            # Map (r-1, c-1) → text for non-formula cells
+            cells_by_pos = {(seg[1] - 1, seg[2] - 1): seg[3] for seg in s_segs if not seg[4]}
+
+            proxy_cells = [
+                _XlCellProxy(row=r0, col=c0, content=cells_by_pos.get((r0, c0), ""))
+                for r0 in range(num_rows) for c0 in range(num_cols)
+            ]
+
+            for tgt in targets:
+                if stop_flag and stop_flag.is_set():
+                    stopped = True
+                    break
+                src_for_prompt = src_lang or "auto"
+                serialized = table_serializer.serialize(proxy_cells)
+                prompt = client._build_table_translate_prompt(serialized, src_for_prompt, tgt)
+                # grid stays None on any error → fallback always runs (BR-82)
+                grid = None
+                try:
+                    ok, response = client.translate_once(prompt, tgt, src_lang)
+                    if ok:
+                        grid = table_serializer.parse(response, num_rows, num_cols)
+                        if grid is None:
+                            logger.warning(
+                                "[Excel] Sheet '%s': parse() returned None (expected %d×%d); "
+                                "falling back to per-cell batch for target=%s",
+                                sheet_name, num_rows, num_cols, tgt,
+                            )
+                except Exception as exc:
+                    logger.warning(
+                        "[Excel] Sheet '%s' translate_once failed (target=%s): %s; "
+                        "falling back to per-cell batch",
+                        sheet_name, tgt, exc,
+                    )
+                if grid is not None:
+                    for ws_name, r, c, src_text, is_formula in s_segs:
+                        if not is_formula:
+                            r0, c0 = r - 1, c - 1
+                            tmap[(tgt, src_text, c0)] = grid[r0][c0]
+                else:
+                    # Fallback: per-cell batch (BR-82)
+                    fallback_texts = list(dict.fromkeys(
+                        s[3] for s in s_segs
+                        if not s[4] and should_translate(s[3], src_for_prompt)
+                    ))
+                    if fallback_texts:
+                        fb_tmap, _, _, _ = translate_texts(
+                            fallback_texts, [tgt], src_lang, client,
+                            max_batch_chars=max_batch_chars,
+                            stop_flag=stop_flag, log=log,
+                        )
+                        for (fb_tgt, fb_text), fb_tr in fb_tmap.items():
+                            for ws_name, r, c, src_text, is_formula in s_segs:
+                                if src_text == fb_text:
+                                    tmap[(fb_tgt, fb_text, c - 1)] = fb_tr
 
     for sheet_name, r, c, src_text, is_formula in segs:
-        if not all((tgt, src_text) in tmap for tgt in targets):
+        c0 = c - 1  # 0-based column index (BR-81 dedup key)
+        if not all((tgt, src_text, c0) in tmap for tgt in targets):
             continue
         ws = wb[sheet_name]
-        trs = [tmap[(tgt, src_text)] for tgt in targets]
+        trs = [tmap[(tgt, src_text, c0)] for tgt in targets]
         if is_formula:
             if excel_formula_mode == "skip":
                 continue
@@ -210,11 +281,17 @@ def translate_xlsx_xls(
     wb.save(out_xlsx)
 
     if post_translate_hook is not None:
+        # Build a flat (tgt, src_text) → translation lookup from the 3-element tmap
+        # by taking the first matching cell translation for each unique text.
+        flat_tmap: Dict = {}
+        for (tgt, src_text, col), tr in tmap.items():
+            if (tgt, src_text) not in flat_tmap:
+                flat_tmap[(tgt, src_text)] = tr
         tuples: List[Tuple[str, str, str]] = []
         for idx, src_text in enumerate(uniq):
             for tgt in targets:
-                if (tgt, src_text) in tmap:
-                    tuples.append((f"{_ext_name}:{_file_stem}:{idx}", src_text, tmap[(tgt, src_text)]))
+                if (tgt, src_text) in flat_tmap:
+                    tuples.append((f"{_ext_name}:{_file_stem}:{idx}", src_text, flat_tmap[(tgt, src_text)]))
         if tuples:
             post_translate_hook(tuples)
 

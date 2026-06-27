@@ -3,7 +3,7 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.13.0
+schema-version: 0.14.0
 last-changed: 2026-06-27
 breaking-change-policy: deprecate-2-minors
 ---
@@ -337,7 +337,7 @@ The table/cell IR extends the unified `TranslatableDocument` IR to represent str
 
 ### Scope
 
-Table structure recognition applies to **PDF documents only** in p3-table-structure. DOCX/PPTX native table elements are out of scope (CER-001 deferred). For non-PDF formats, this section does not apply.
+Table structure recognition (ML-based `TableStructure` attachment) applies to **PDF documents only** in p3-table-structure. Whole-table Markdown pipe-grid serialization (BR-79 through BR-82) and per-column dedup (BR-81) apply to DOCX, XLSX, and PPTX processors in table-context-translation; these processors group cells by their native table object rather than by an ML-attached `TableStructure`.
 
 ### TableCell — in-memory data shape
 
@@ -380,7 +380,7 @@ When `TableStructure` is absent from `metadata` (model unavailable, or non-PDF i
 | Batch coalescing | All `TableCell` entries from the same `TableStructure` whose `is_numeric=False` and `content` is non-empty MUST be sent to the LLM in **a single batch call** per table (BR-69) |
 | Numeric exclusion | Cells with `is_numeric=True` MUST be excluded from the LLM batch; `translated_content = content`; `translation_status = "passthrough"` (BR-68) |
 | Empty cell handling | Cells with `content == ""` are excluded from the batch; `translated_content = ""`; `translation_status = "skipped"` |
-| Translation result assignment | After the batch call returns, each cell's `translated_content` and `translation_status` are updated in place; the parent `TranslatableElement.translated_content` is set to a reconstructed table representation (format: tab-separated cells, newline-separated rows); see design.md §Reconstruction Format |
+| Translation result assignment | **Whole-table path (BR-82 parse success):** each cell's `translated_content = grid[r][c]`; `translation_status = "translated"` (non-numeric, non-empty) or unchanged (numeric/empty); parent `TranslatableElement.translated_content` = the translated Markdown pipe-grid string returned by the LLM. **Fallback path (shape mismatch):** each cell assigned from per-cell SEG batch result; parent `TranslatableElement.translated_content` = tab-separated cells, newline-separated rows (p3-table-structure behavior unchanged). |
 | Batch failure | If the LLM batch call fails, the BR-25 failure placeholder is applied to all non-numeric cells' `translated_content`; `translation_status = "failed"` for those cells; job's `fail_cnt` incremented |
 | No flattened translation | A `table`-typed element with a recognized `TableStructure` MUST NOT be translated as a flattened paragraph (BR-70) |
 | Chunker atomicity | A `table`-typed element with a recognized `TableStructure` MUST be treated as an atomic unit by the chunker; its cell batch MUST NOT be split across chunk boundaries |
@@ -407,8 +407,61 @@ A serialized IR lacking `metadata["table_structure"]` on a `table`-typed element
 |---|---|---|
 | `app/backend/parsers/table_recognizer.py` | producer | creates `TableStructure`; attaches to parent `TranslatableElement.metadata`; lazy-loads ML model; falls back gracefully when unavailable |
 | `app/backend/parsers/pdf_parser.py` | mediator | passes `table`-typed elements to `table_recognizer.py`; attaches result to element metadata |
-| `app/backend/services/translation_service.py` (cell-batch path) | consumer | reads `TableStructure`; coalesces non-numeric cells into one LLM batch per table; writes `translated_content` and `translation_status` per cell |
+| `app/backend/services/translation_service.py` (cell-batch path) | consumer | reads `TableStructure`; invokes `table_serializer.serialize()` (BR-79); sends one whole-table LLM call (BR-69); validates response shape (BR-82); falls back to per-cell SEG batch on mismatch; writes `translated_content` and `translation_status` per cell |
+| `app/backend/utils/table_serializer.py` | utility (table-context-translation) | NEW — shared `serialize(cells) -> str` and `parse(text, num_rows, num_cols) -> grid\|None`; single source of truth for Markdown pipe-grid format; consumed by `ollama_client.py`, `openai_compatible_client.py`, and `translation_service.py` (PDF cell path) |
 | `tests/test_table_recognizer.py` | test consumer | asserts `TableStructure` shape, `is_numeric` classification, batch coalescing, numeric passthrough, degenerate-table handling |
+
+### Table Serialization Wire Format
+
+**Added in table-context-translation. Source of truth: `app/backend/utils/table_serializer.py`.**
+
+This subsection is normative. The implementation MUST conform to this format on both the serialize and parse paths.
+
+#### Serialization (input to LLM)
+
+| rule | detail |
+|---|---|
+| Row delimiter | `\n` (newline) between rows; no trailing newline |
+| Cell delimiter | `\|` (pipe) between cells within a row; no leading or trailing `\|` |
+| Pipe escape | Literal `\|` in cell content MUST be escaped as `\\\|` before serialization |
+| Newline normalization | Embedded `\n` in cell content MUST be replaced by a single space |
+| Placeholder cells | Numeric (`is_numeric=True`) and empty cells are serialized unchanged as positional placeholders; their content is not sent for translation but occupies the correct grid position |
+
+#### Parse / Shape Validation (remap contract)
+
+| rule | detail |
+|---|---|
+| Strip separator lines | Lines consisting entirely of `---` (Markdown header-separator) are stripped before validation |
+| Keep pipe lines | Only lines containing at least one `\|` are counted as data rows |
+| Shape acceptance | Accepted iff `len(data_lines) == num_rows` AND `all(len(split_row) == num_cols)` for every row |
+| Split on unescaped `\|` only | `\\\|` is a literal cell character, not a delimiter |
+| Unescape after split | Replace `\\\|` → `\|` in each cell value after splitting |
+| Trim | Strip leading/trailing whitespace from each cell value after splitting and unescaping |
+| Accept outcome | For each non-numeric, non-empty cell at origin `(r, c)`: `translated_content = grid[r][c]`; `translation_status = "translated"`. Numeric → `passthrough`; empty → `skipped` (BR-68). |
+| Reject outcome | Any shape mismatch (row count, col count, or no `\|` found) → return `None`; caller falls back to per-cell SEG batch (BR-82) |
+| Spanning cells | Origin cell `(r, c)` is assigned from `grid[r][c]`; spanned positions are empty placeholders and are not re-assigned |
+
+#### Round-trip guarantee
+
+`serialize(cells)` → LLM echoes the grid unchanged → `parse(response, num_rows, num_cols)` MUST restore each cell's content exactly (modulo whitespace trimming).
+
+### Office Processor Cell Dedup Key (DOCX/XLSX/PPTX)
+
+**Added in table-context-translation.**
+
+The translation-map key (`tmap` key) schema for table cells changes in DOCX, XLSX, and PPTX processors.
+
+| segment type | `tmap` key |
+|---|---|
+| Table cell (within a recognized table group) | `(tgt, src_text, col)` — `col` is the 0-based column index |
+| Non-table segment (paragraph, heading, list item, etc.) | `(tgt, src_text, None)` — unchanged |
+
+Rules:
+
+- The `col` dimension ensures the same text in different columns (e.g. the header word "Lead" and the data word "Lead") receives an independent translation rather than being deduplicated.
+- Both the **build pass** (tmap population, dedup set) and the **restore pass** (`_insert_*translations`) MUST use the same three-element key schema within a single processor run.
+- `col = None` for non-table segments is backward-compatible: all existing test expectations for paragraphs/headings/lists are unaffected.
+- PDF cells do NOT use this flat-dedup key (BR-83); PDF cells are position-unique inside `TableStructure` and never enter the office `tmap` stream.
 
 ---
 

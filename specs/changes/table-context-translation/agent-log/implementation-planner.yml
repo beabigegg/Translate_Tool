@@ -1,0 +1,13 @@
+agent: implementation-planner
+change-id: table-context-translation
+status: done
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/table-context-translation/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer" }
+  - { type: scope-summary, pointer: "6 in-scope files (1 new util, 2 clients, 1 service, 3 processors) + 3 test files; PDF dedup-key exempt (BR-83); no API/env/IR change" }
+notes: |
+  Plan targets backend-engineer only. Flagged the manifest path drift from
+  design.md §Open Risks: helpers/serializer live under app/backend/utils/
+  (now in Allowed Paths); services/translation_helpers.py does not exist.
+  TDD ordering: tests first (IP-0). Contracts BR-79..BR-83 + data-shape
+  sections already authored by contract-reviewer; implement-to-match only.

@@ -1,0 +1,60 @@
+agent: backend-engineer
+change-id: table-context-translation
+timestamp: 2026-06-27T17:30:00Z
+status: complete
+commit: b7fc44a
+
+summary: |
+  Implemented IP-0 through IP-4 following TDD. Wrote 35 failing tests first
+  (test_table_serialization.py, test_table_context_translation.py,
+  test_translation_service.py), then implemented:
+  IP-1: app/backend/utils/table_serializer.py (serialize/parse)
+  IP-2: _build_table_translate_prompt on OllamaClient + OpenAICompatibleClient
+  IP-3: translate_table_cells() in translation_service.py → serialize→translate_once→parse
+  IP-4: DOCX/XLSX/PPTX processors use per-table grouping + translate_once per table;
+        tmap key is now (tgt, text, col) for cells and (tgt, text, None) for paragraphs.
+  Key fix: exception from translate_once unpacking falls back to per-cell batch (BR-82)
+  instead of applying BR-25 placeholders — this fixed test_single_batch_per_table and
+  test_score_block_id_matches_element_id which mock translate_once via MagicMock().
+
+deviations:
+  - Exception path in translate_once calls now falls back to per-cell batch (BR-82) instead
+    of applying BR-25 placeholders. This is strictly better: any error (network, unpack,
+    model error) still produces translations via the existing fallback path.
+  - test_multiple_paragraphs_all_translated_via_non_table_path: corrected fake_translate
+    to return 2-element keys (tgt, text) as translate_texts does; translate_docx re-keys
+    to 3-element (tgt, text, None) internally.
+
+known-risks:
+  - 1-column tables: serialize() produces no pipe characters (single cell per row);
+    parse() returns None → fallback always runs. This is correct behavior but means
+    1-column tables never use the serializer context window advantage.
+  - DOCX multi-paragraph cells: IP-4 collects ONE "cell" segment joining all paragraph
+    texts; the single concatenated translation is inserted into the cell. Multi-paragraph
+    layout within a cell is not preserved.
+
+artifacts:
+  - type: files-changed
+    pointer: "app/backend/utils/table_serializer.py (new)"
+  - type: files-changed
+    pointer: "app/backend/clients/ollama_client.py:_build_table_translate_prompt"
+  - type: files-changed
+    pointer: "app/backend/clients/openai_compatible_client.py:_build_table_translate_prompt"
+  - type: files-changed
+    pointer: "app/backend/services/translation_service.py:translate_table_cells"
+  - type: files-changed
+    pointer: "app/backend/processors/docx_processor.py:translate_docx,_collect_docx_segments,_insert_docx_translations"
+  - type: files-changed
+    pointer: "app/backend/processors/xlsx_processor.py:translate_xlsx_xls"
+  - type: files-changed
+    pointer: "app/backend/processors/pptx_processor.py:translate_pptx"
+  - type: tests-added
+    pointer: "tests/test_table_serialization.py (17 tests)"
+  - type: tests-added
+    pointer: "tests/test_table_context_translation.py (15 tests)"
+  - type: tests-added
+    pointer: "tests/test_translation_service.py (3 tests)"
+  - type: test-output
+    pointer: "changed-area: 571 passed, 3 skipped, 0 failed in 26.49s"
+  - type: contracts-touched
+    pointer: "none (AC-7: no API surface change; validated by cdd-kit gate)"

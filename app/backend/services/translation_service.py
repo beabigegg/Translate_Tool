@@ -610,9 +610,47 @@ def translate_table_cells(
             # All-numeric or all-empty — no LLM call needed
             log(f"[CELL-BATCH] element {element.element_id}: no translatable cells for {tgt}")
         else:
-            # Coalesce into exactly one batch call (BR-69)
-            batch_texts = [c.content for c in translatable_cells]
+            # IP-3: Whole-table serialization → single translate_once call (BR-79/BR-80/BR-82)
+            # grid stays None on any error → fallback always runs (BR-82).
+            from app.backend.utils import table_serializer
+            serialized = table_serializer.serialize(ts.cells)
+            src_for_prompt = src_lang or "auto"
+            prompt = client._build_table_translate_prompt(serialized, src_for_prompt, tgt)
+            grid = None
             try:
+                ok, response = client.translate_once(prompt, tgt, src_lang)
+                if ok:
+                    grid = table_serializer.parse(response, ts.num_rows, ts.num_cols)
+                    if grid is None:
+                        logger.warning(
+                            "[CELL-BATCH] element %s: parse() returned None for target=%s "
+                            "(expected %d×%d); falling back to per-cell SEG batch (BR-82). "
+                            "Response excerpt: %s",
+                            element.element_id,
+                            tgt,
+                            ts.num_rows,
+                            ts.num_cols,
+                            response[:120] if response else "",
+                        )
+            except Exception as exc:
+                logger.warning(
+                    "[CELL-BATCH] element %s whole-table call failed (target=%s): %s; "
+                    "falling back to per-cell SEG batch (BR-82)",
+                    element.element_id,
+                    tgt,
+                    exc,
+                )
+            if grid is not None:
+                # Assign grid[r][c] to each non-numeric, non-empty cell
+                for cell in ts.cells:
+                    r, c = cell.row, cell.col
+                    if cell.content and not cell.is_numeric:
+                        if 0 <= r < ts.num_rows and 0 <= c < ts.num_cols:
+                            cell.translated_content = grid[r][c]
+                            cell.translation_status = "translated"
+            else:
+                # Fallback: per-cell SEG batch (BR-82) — preserves 1:1 mapping (AC-8)
+                batch_texts = [c.content for c in translatable_cells]
                 results = translate_blocks_batch(
                     batch_texts,
                     tgt,
@@ -622,25 +660,14 @@ def translate_table_cells(
                     stop_flag=stop_flag,
                     log=log,
                 )
-                for batch_pos, (ok, translated) in enumerate(results):
+                for batch_pos, (cell_ok, translated) in enumerate(results):
                     cell = translatable_cells[batch_pos]
-                    if ok:
+                    if cell_ok:
                         cell.translated_content = translated
                         cell.translation_status = "translated"
                     else:
-                        # BR-25 placeholder + failed status
                         cell.translated_content = f"[Translation failed|{tgt}] {cell.content}"
                         cell.translation_status = "failed"
-            except Exception as exc:
-                logger.warning(
-                    "[CELL-BATCH] element %s batch failed (target=%s): %s; applying BR-25 placeholders",
-                    element.element_id,
-                    tgt,
-                    exc,
-                )
-                for cell in translatable_cells:
-                    cell.translated_content = f"[Translation failed|{tgt}] {cell.content}"
-                    cell.translation_status = "failed"
 
     # Write updated cells back into metadata (in-place mutation of the dict)
     element.metadata["table_structure"] = ts.to_dict()

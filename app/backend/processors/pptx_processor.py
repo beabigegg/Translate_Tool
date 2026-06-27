@@ -198,8 +198,9 @@ def translate_pptx(
     status_callback: Optional[Callable[[Optional[str]], None]] = None,
 ) -> bool:
     prs = pptx.Presentation(in_path)
-    # segs: List of (segment_type, object_ref, text)
-    segs: List[Tuple[str, Any, str]] = []
+    # segs: List of (segment_type, object_ref, text, row, col, table_id)
+    # row/col/table_id are None for non-table segments (IP-4 / BR-81).
+    segs: List[Tuple[str, Any, str, Optional[int], Optional[int], Optional[int]]] = []
     total_text_length = 0
 
     for slide in prs.slides:
@@ -208,11 +209,12 @@ def translate_pptx(
             if getattr(shape, "has_table", False):
                 try:
                     table = shape.table
-                    for row in table.rows:
-                        for cell in row.cells:
+                    shape_id = id(shape)  # unique per-table identifier (IP-4)
+                    for r_idx, row in enumerate(table.rows):
+                        for c_idx, cell in enumerate(row.cells):
                             txt = _cell_text(cell)
                             if txt:
-                                segs.append((SEGMENT_TABLE_CELL, cell, txt))
+                                segs.append((SEGMENT_TABLE_CELL, cell, txt, r_idx, c_idx, shape_id))
                                 total_text_length += len(txt)
                     continue
                 except Exception:
@@ -225,7 +227,7 @@ def translate_pptx(
             tf = shape.text_frame
             txt = _ppt_text_of_tf(tf)
             if txt.strip():
-                segs.append((SEGMENT_TEXT_FRAME, tf, txt))
+                segs.append((SEGMENT_TEXT_FRAME, tf, txt, None, None, None))
                 total_text_length += len(txt)
 
     # Extract SmartArt texts
@@ -246,17 +248,22 @@ def translate_pptx(
     )
 
     # Count segments by type for logging
-    tf_count = sum(1 for seg_type, _, _ in segs if seg_type == SEGMENT_TEXT_FRAME)
-    cell_count = sum(1 for seg_type, _, _ in segs if seg_type == SEGMENT_TABLE_CELL)
+    tf_count = sum(1 for seg in segs if seg[0] == SEGMENT_TEXT_FRAME)
+    cell_count = sum(1 for seg in segs if seg[0] == SEGMENT_TABLE_CELL)
     smartart_count = len(smartart_segs)
     log(f"[PPTX] segments: {total_segs} (text frames: {tf_count}, table cells: {cell_count}, SmartArt: {smartart_count})")
 
-    # Collect all unique texts for translation
-    all_texts = [s for _, _, s in segs] + [s for _, _, s in smartart_segs]
-    # Preserve document order for better batch context
+    # IP-4: separate table cell segments from non-table segments.
+    # Text frames and SmartArt use the existing translate_texts path (2-element keys).
+    # Table cells use per-table serialization (translate_once; 3-element keys).
+    tf_segs = [seg for seg in segs if seg[0] == SEGMENT_TEXT_FRAME]
+    cell_segs = [seg for seg in segs if seg[0] == SEGMENT_TABLE_CELL]
+
+    # Collect unique texts from non-table segments + SmartArt for the translate_texts batch.
+    all_tf_texts = [seg[2] for seg in tf_segs] + [s for _, _, s in smartart_segs]
     _seen: set[str] = set()
     uniq: list[str] = []
-    for t in all_texts:
+    for t in all_tf_texts:
         if t not in _seen and should_translate(t, (src_lang or "auto")):
             _seen.add(t)
             uniq.append(t)
@@ -265,22 +272,26 @@ def translate_pptx(
         pre_translate_hook(uniq)
     _terms = terms_getter() if terms_getter else None
 
-    # p3-llm-judge: block_overrides seam — when provided, use stored re-translated text
-    # instead of calling the LLM (D7). Block ids use the same key as post_translate_hook.
+    # p3-llm-judge: block_overrides seam
     _file_stem = os.path.splitext(os.path.basename(in_path))[0]
     stopped = False
+
+    # para_tmap: 2-element key (tgt, text) for text frames + SmartArt.
+    # final_tmap: 3-element key (tgt, text, col) for ALL segments:
+    #   text frames → col=None; table cells → col=0-based column index.
+    para_tmap: Dict = {}
+
     if block_overrides is not None:
-        tmap: Dict = {}
         for idx, src_text in enumerate(uniq):
             block_id = f"pptx:{_file_stem}:{idx}"
             for tgt in targets:
                 if block_id in block_overrides:
-                    tmap[(tgt, src_text)] = block_overrides[block_id]
+                    para_tmap[(tgt, src_text)] = block_overrides[block_id]
                 else:
-                    tmap[(tgt, src_text)] = src_text
+                    para_tmap[(tgt, src_text)] = src_text
         log(f"[PPTX] block_overrides applied: {len(block_overrides)} overrides, {len(uniq)} blocks")
     else:
-        tmap, _, fail_cnt, stopped = translate_texts(
+        para_tmap, _, fail_cnt, stopped = translate_texts(
             uniq,
             targets,
             src_lang,
@@ -294,14 +305,101 @@ def translate_pptx(
 
         if fail_cnt and not stopped:
             from app.backend.utils.translation_verification import verify_and_fill_tmap
-            verify_and_fill_tmap(tmap, client, src_lang, stop_flag=stop_flag, log=log)
+            verify_and_fill_tmap(para_tmap, client, src_lang, stop_flag=stop_flag, log=log)
+
+    # Build final_tmap: re-key text frames to (tgt, text, None)
+    final_tmap: Dict = {}
+    for (tgt, text), tr in para_tmap.items():
+        final_tmap[(tgt, text, None)] = tr
+
+    # IP-4: translate each table group via serializer → one translate_once call per table.
+    if cell_segs and not stopped:
+        from collections import defaultdict
+        from dataclasses import dataclass as _dc
+        from app.backend.utils import table_serializer
+
+        @_dc
+        class _PptCellProxy:
+            row: int
+            col: int
+            content: str
+            is_numeric: bool = False
+
+        # Group by table_id (shape id)
+        table_groups: Dict = defaultdict(list)
+        for seg in cell_segs:
+            table_groups[seg[5]].append(seg)  # seg[5] = table_id
+
+        for table_id, t_segs in table_groups.items():
+            if stop_flag and stop_flag.is_set():
+                stopped = True
+                break
+            num_rows = max(seg[3] for seg in t_segs) + 1  # seg[3] = row
+            num_cols = max(seg[4] for seg in t_segs) + 1  # seg[4] = col
+
+            cells_by_pos = {(seg[3], seg[4]): seg[2] for seg in t_segs}
+            proxy_cells = [
+                _PptCellProxy(row=r, col=c, content=cells_by_pos.get((r, c), ""))
+                for r in range(num_rows) for c in range(num_cols)
+            ]
+
+            for tgt in targets:
+                if stop_flag and stop_flag.is_set():
+                    stopped = True
+                    break
+                src_for_prompt = src_lang or "auto"
+                serialized = table_serializer.serialize(proxy_cells)
+                prompt = client._build_table_translate_prompt(serialized, src_for_prompt, tgt)
+                # grid stays None on any error → fallback always runs (BR-82)
+                grid = None
+                try:
+                    ok, response = client.translate_once(prompt, tgt, src_lang)
+                    if ok:
+                        grid = table_serializer.parse(response, num_rows, num_cols)
+                        if grid is None:
+                            from app.backend.utils.logging_utils import logger as _log
+                            _log.warning(
+                                "[PPTX] Table %s: parse() returned None (expected %d×%d); "
+                                "falling back to per-cell batch for target=%s",
+                                table_id, num_rows, num_cols, tgt,
+                            )
+                except Exception as exc:
+                    from app.backend.utils.logging_utils import logger as _log
+                    _log.warning(
+                        "[PPTX] Table %s translate_once failed (target=%s): %s; "
+                        "falling back to per-cell batch",
+                        table_id, tgt, exc,
+                    )
+                if grid is not None:
+                    for seg in t_segs:
+                        r, c, txt = seg[3], seg[4], seg[2]
+                        if txt.strip():
+                            final_tmap[(tgt, txt, c)] = grid[r][c]
+                else:
+                    # Fallback: per-cell batch (BR-82)
+                    fallback_texts = list(dict.fromkeys(
+                        seg[2] for seg in t_segs
+                        if seg[2].strip() and should_translate(seg[2], src_for_prompt)
+                    ))
+                    if fallback_texts:
+                        fb_tmap, _, _, _ = translate_texts(
+                            fallback_texts, [tgt], src_lang, client,
+                            max_batch_chars=max_batch_chars,
+                            stop_flag=stop_flag, log=log,
+                        )
+                        for (fb_tgt, fb_text), fb_tr in fb_tmap.items():
+                            for seg in t_segs:
+                                if seg[2] == fb_text:
+                                    final_tmap[(fb_tgt, fb_text, seg[4])] = fb_tr
 
     # Apply translations to text frames and table cells
     ok_cnt = skip_cnt = 0
-    for seg_type, obj_ref, s in segs:
-        if not all((tgt, s) in tmap for tgt in targets):
+    for seg in segs:
+        seg_type, obj_ref, s = seg[0], seg[1], seg[2]
+        col = seg[4]  # None for text frames, 0-based int for table cells
+        if not all((tgt, s, col) in final_tmap for tgt in targets):
             continue
-        trs = [tmap[(tgt, s)] for tgt in targets]
+        trs = [final_tmap[(tgt, s, col)] for tgt in targets]
 
         if seg_type == SEGMENT_TEXT_FRAME:
             if output_mode == "replace":
@@ -352,8 +450,8 @@ def translate_pptx(
         # Build translation map for SmartArt: original -> combined translations
         smartart_tmap: Dict[str, str] = {}
         for _, _, text in smartart_segs:
-            if all((tgt, text) in tmap for tgt in targets):
-                translations = [tmap[(tgt, text)] for tgt in targets]
+            if all((tgt, text) in para_tmap for tgt in targets):
+                translations = [para_tmap[(tgt, text)] for tgt in targets]
                 smartart_tmap[text] = " / ".join(translations)
 
         if smartart_tmap:
@@ -364,8 +462,8 @@ def translate_pptx(
         tuples: List[Tuple[str, str, str]] = []
         for idx, src_text in enumerate(uniq):
             for tgt in targets:
-                if (tgt, src_text) in tmap:
-                    tuples.append((f"pptx:{_file_stem}:{idx}", src_text, tmap[(tgt, src_text)]))
+                if (tgt, src_text) in para_tmap:
+                    tuples.append((f"pptx:{_file_stem}:{idx}", src_text, para_tmap[(tgt, src_text)]))
         if tuples:
             post_translate_hook(tuples)
 

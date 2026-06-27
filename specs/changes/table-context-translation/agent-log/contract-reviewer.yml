@@ -1,0 +1,10 @@
+change-id: table-context-translation
+agent: contract-reviewer
+status: done
+summary: "Added BR-79–83 to business-rules.md (v0.20.0); two new subsections + dedup-key schema to data-shape-contract.md (v0.14.0)"
+artifacts:
+  - { type: contracts-updated, pointer: "contracts/business/business-rules.md §Rule Inventory (BR-79–83), §Table T" }
+  - { type: contracts-updated, pointer: "contracts/data/data-shape-contract.md §Table Serialization Wire Format, §Office Processor Cell Dedup Key" }
+  - { type: version-bumps, pointer: "business-rules.md: 0.19.0 → 0.20.0; data-shape-contract.md: 0.13.0 → 0.14.0" }
+  - { type: breaking-changes, pointer: "none — additive rules only" }
+next-action: test-strategist done; ci-cd-gatekeeper next

@@ -1,0 +1,1 @@
+pytest tests/test_table_serialization.py tests/test_table_context_translation.py tests/test_translation_service.py -v --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/table-context-translation/test-runs/20260627-172530/junit.xml' -q --maxfail=1 -ra

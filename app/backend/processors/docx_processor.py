@@ -185,13 +185,34 @@ def _txbx_tail_equals(tx: Any, translations: List[str]) -> bool:
 
 
 class Segment:
-    """Represents a segment of text to be translated in a document."""
+    """Represents a segment of text to be translated in a document.
 
-    def __init__(self, kind: str, ref: Any, ctx: str, text: str) -> None:
+    For table cells (kind="cell"):
+        col       — 0-based column index (used as tmap dedup key; BR-81)
+        row       — 0-based row index (used for serializer grid building)
+        table_id  — id() of the table XML element (used for per-table grouping; AC-1)
+
+    For non-table segments (kind="para", "txbx"):
+        col, row, table_id are all None (tmap key uses col=None; BR-81).
+    """
+
+    def __init__(
+        self,
+        kind: str,
+        ref: Any,
+        ctx: str,
+        text: str,
+        col: Optional[int] = None,
+        row: Optional[int] = None,
+        table_id: Optional[int] = None,
+    ) -> None:
         self.kind = kind
         self.ref = ref
         self.ctx = ctx
         self.text = text
+        self.col = col
+        self.row = row
+        self.table_id = table_id
 
 
 def _get_paragraph_key(p: Paragraph) -> int:
@@ -229,6 +250,7 @@ def _collect_docx_segments(
             logger.warning("Paragraph processing error: %s", exc)
 
     def _process_container_content(container, ctx: str) -> None:
+        nonlocal total_text_length  # needed to update length for table cell segments
         if container._element is None:
             return
         for child_element in container._element:
@@ -237,11 +259,31 @@ def _collect_docx_segments(
                 p = Paragraph(child_element, container)
                 _add_paragraph(p, ctx)
             elif qname.endswith("}tbl"):
+                # IP-4: materialize table cells as "cell" segments (one per cell)
+                # rather than recursing into per-paragraph segments.
+                # Each cell carries (row, col, table_id) for per-table grouping
+                # and (tgt, text, col) dedup key (BR-81).
                 table = Table(child_element, container)
-                for r_idx, row in enumerate(table.rows, 1):
-                    for c_idx, cell in enumerate(row.cells, 1):
+                tid = id(child_element)
+                for r_idx, row in enumerate(table.rows):  # 0-based
+                    for c_idx, cell in enumerate(row.cells):  # 0-based
                         cell_ctx = f"{ctx} > Tbl(r{r_idx},c{c_idx})"
-                        _process_container_content(cell, cell_ctx)
+                        # Aggregate all paragraph text in this cell
+                        cell_text_parts = []
+                        for p in cell.paragraphs:
+                            try:
+                                txt = _p_text_with_breaks(p)
+                                if txt.strip() and not _is_our_insert_block(p):
+                                    cell_text_parts.append(txt)
+                            except Exception:
+                                pass
+                        cell_text = "\n".join(cell_text_parts)
+                        # Collect cell even if empty (positional placeholder for serializer)
+                        segs.append(Segment(
+                            "cell", cell, cell_ctx, cell_text,
+                            col=c_idx, row=r_idx, table_id=tid,
+                        ))
+                        total_text_length += len(cell_text)
             elif qname.endswith("}sdt"):
                 sdt_ctx = f"{ctx} > SDT"
                 ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
@@ -291,11 +333,17 @@ def _collect_docx_segments(
 def _insert_docx_translations(
     doc: Any,
     segs: List[Segment],
-    tmap: Dict[Tuple[str, str], str],
+    tmap: Dict[Tuple, str],
     targets: List[str],
     log: Callable[[str], None] = lambda s: None,
     output_mode: str = "append",
 ) -> Tuple[int, int]:
+    """Insert translations from *tmap* into the document segments.
+
+    tmap key schema (IP-4 / BR-81):
+        - table cell segments: (tgt, src_text, col)   — col is 0-based column index
+        - non-table segments:  (tgt, src_text, None)  — col=None for paragraphs/textboxes
+    """
     ok_cnt = skip_cnt = 0
 
     def _add_formatted_run(p: Paragraph, text: str, italic: bool, font_size_pt: int) -> None:
@@ -315,15 +363,18 @@ def _insert_docx_translations(
             tag_run.font.size = Pt(font_size_pt)
 
     for seg in segs:
-        has_any_translation = any((tgt, seg.text) in tmap for tgt in targets)
+        # IP-4 (BR-81): tmap key uses (tgt, text, col) for table cells (col=int)
+        # and (tgt, text, None) for non-table segments (para/txbx).
+        _seg_key = (seg.text, seg.col)  # col is None for non-table segs
+        has_any_translation = any((tgt, seg.text, seg.col) in tmap for tgt in targets)
         if not has_any_translation:
             log(f"[SKIP] No translation: {seg.ctx} | {seg.text[:50]}...")
             continue
 
         translations = []
         for tgt in targets:
-            if (tgt, seg.text) in tmap:
-                translations.append(tmap[(tgt, seg.text)])
+            if (tgt, seg.text, seg.col) in tmap:
+                translations.append(tmap[(tgt, seg.text, seg.col)])
             else:
                 log(f"[WARN] Missing {tgt} translation: {seg.text[:30]}...")
                 translations.append(f"[Translation missing|{tgt}] {seg.text[:50]}...")
@@ -478,6 +529,38 @@ def _insert_docx_translations(
             for block in to_add:
                 _txbx_append_paragraph(tx, block, italic=True, font_size_pt=INSERT_FONT_SIZE_PT)
             ok_cnt += 1
+        elif seg.kind == "cell":
+            # IP-4: whole-cell translation from the serializer path.
+            # seg.ref is the _Cell object; translations are keyed by (tgt, text, col).
+            cell = seg.ref
+            try:
+                # Check if translation already inserted (has INSERT_MARKER paragraph)
+                if any(_is_our_insert_block(p) for p in cell.paragraphs):
+                    skip_cnt += 1
+                    log(f"[SKIP] Cell already has translations: {seg.text[:30]}...")
+                    continue
+                if output_mode == "replace":
+                    # Replace first paragraph text in-place with the first translation
+                    replacement = translations[0]
+                    paras = list(cell.paragraphs)
+                    if paras and paras[0].runs:
+                        paras[0].runs[0].text = replacement
+                        for run in paras[0].runs[1:]:
+                            run.text = ""
+                    elif paras:
+                        paras[0].text = replacement
+                    else:
+                        new_p = cell.add_paragraph()
+                        new_p.add_run(replacement)
+                else:
+                    # Append each translation as a new italic paragraph in the cell
+                    for block in translations:
+                        new_p = cell.add_paragraph()
+                        _add_formatted_run(new_p, block, italic=True, font_size_pt=INSERT_FONT_SIZE_PT)
+                ok_cnt += 1
+            except Exception as exc:
+                log(f"[ERROR] Cell translation insert failed: {exc}")
+                continue
     log(f"[DOCX] Inserted: {ok_cnt} segments, skipped: {skip_cnt}")
     return ok_cnt, skip_cnt
 
@@ -578,12 +661,16 @@ def translate_docx(
     segs = _collect_docx_segments(doc)
     log(f"[DOCX] segments: {len(segs)}")
 
-    # Preserve document order (don't sort) so that adjacent segments stay
-    # together in translation batches — gives the model better context and
-    # avoids mixing already-English text with Chinese text at batch heads.
+    # IP-4: separate non-table segments (para/txbx) from table cell segments.
+    # Table cells are translated per-table via the shared serializer (one LLM call
+    # per table); non-table segments use the existing translate_texts path.
+    para_segs = [s for s in segs if s.table_id is None]
+    cell_segs = [s for s in segs if s.table_id is not None]
+
+    # Deduplicate non-table segment texts for translation batch
     seen_texts: set[str] = set()
-    uniq_texts: list[str] = []
-    for s in segs:
+    uniq_texts: list[str] = []  # kept for post_translate_hook indexing
+    for s in para_segs:
         if s.text not in seen_texts and should_translate(s.text, (src_lang or "auto")):
             seen_texts.add(s.text)
             uniq_texts.append(s.text)
@@ -596,19 +683,22 @@ def translate_docx(
     import os as _os
     file_stem = _os.path.splitext(_os.path.basename(in_path))[0]
     stopped = False
+
+    # para_tmap uses 2-element keys (tgt, text) — standard translate_texts output.
+    # final_tmap uses 3-element keys (tgt, text, col) for the restore pass (BR-81).
+    para_tmap: Dict = {}
+    fail_cnt = 0
+
     if block_overrides is not None:
-        # Build tmap from overrides map; fall through to LLM for any unmatched block.
-        tmap: Dict = {}
-        fail_cnt = 0
+        # Build para_tmap from overrides map; applies to non-table segments only.
         for idx, src_text in enumerate(uniq_texts):
             block_id = f"docx:{file_stem}:{idx}"
             if block_id in block_overrides:
                 for tgt in targets:
-                    tmap[(tgt, src_text)] = block_overrides[block_id]
+                    para_tmap[(tgt, src_text)] = block_overrides[block_id]
             else:
-                # Block not in override map — this is a mismatch; keep source text
                 for tgt in targets:
-                    tmap[(tgt, src_text)] = src_text
+                    para_tmap[(tgt, src_text)] = src_text
         log(f"[DOCX] block_overrides applied: {len(block_overrides)} overrides, {len(uniq_texts)} blocks")
     else:
         # Long-document semantic chunking path (P2-6): use translate_document for
@@ -616,14 +706,14 @@ def translate_docx(
         _LONG_DOC_CHARS = 40_000
         _total_chars = sum(len(t) for t in uniq_texts)
         if len(targets) == 1 and _total_chars > _LONG_DOC_CHARS:
-            tmap, _, fail_cnt, stopped = _translate_docx_via_doc2doc(
+            para_tmap, _, fail_cnt, stopped = _translate_docx_via_doc2doc(
                 uniq_texts, targets[0], src_lang, client,
                 stop_flag=stop_flag, log=log,
                 max_batch_chars=max_batch_chars, terms=_terms,
                 in_path=in_path, status_callback=status_callback,
             )
         else:
-            tmap, _, fail_cnt, stopped = translate_texts(
+            para_tmap, _, fail_cnt, stopped = translate_texts(
                 uniq_texts,
                 targets,
                 src_lang,
@@ -640,19 +730,108 @@ def translate_docx(
 
         if fail_cnt and not stopped:
             from app.backend.utils.translation_verification import verify_and_fill_tmap
-            verify_and_fill_tmap(tmap, client, src_lang, stop_flag=stop_flag, log=log)
+            verify_and_fill_tmap(para_tmap, client, src_lang, stop_flag=stop_flag, log=log)
 
-    if tmap:
+    # Build 3-element final_tmap from para_tmap (re-key col=None) and table cell tmap.
+    final_tmap: Dict = {}
+    for (tgt, text), tr in para_tmap.items():
+        final_tmap[(tgt, text, None)] = tr
+
+    # IP-4: translate each table group via serializer → one translate_once call per table.
+    if cell_segs and not stopped:
+        from collections import defaultdict
+        from app.backend.utils import table_serializer
+
+        # Group cell segments by table_id
+        table_groups: Dict = defaultdict(list)
+        for s in cell_segs:
+            table_groups[s.table_id].append(s)
+
+        # Duck-typed proxy for table_serializer.serialize() (needs .row/.col/.content/.is_numeric)
+        from dataclasses import dataclass as _dc
+
+        @_dc
+        class _CellProxy:
+            row: int
+            col: int
+            content: str
+            is_numeric: bool = False
+
+        for table_id, t_segs in table_groups.items():
+            if stop_flag and stop_flag.is_set():
+                stopped = True
+                break
+            # Determine grid dimensions from segments
+            num_rows = max(s.row for s in t_segs) + 1
+            num_cols = max(s.col for s in t_segs) + 1
+            # Build cells compatible with table_serializer
+
+            # Include ALL grid positions (including empty cells as positional placeholders)
+            cells_by_pos: Dict = {(s.row, s.col): s.text for s in t_segs}
+            proxy_cells = [
+                _CellProxy(row=r, col=c, content=cells_by_pos.get((r, c), ""))
+                for r in range(num_rows) for c in range(num_cols)
+            ]
+
+            for tgt in targets:
+                if stop_flag and stop_flag.is_set():
+                    stopped = True
+                    break
+                src_for_prompt = src_lang or "auto"
+                serialized = table_serializer.serialize(proxy_cells)
+                prompt = client._build_table_translate_prompt(serialized, src_for_prompt, tgt)
+                # grid stays None on any error → fallback always runs (BR-82)
+                grid = None
+                try:
+                    ok, response = client.translate_once(prompt, tgt, src_lang)
+                    if ok:
+                        grid = table_serializer.parse(response, num_rows, num_cols)
+                        if grid is None:
+                            logger.warning(
+                                "[DOCX] Table group %s: parse() returned None (expected %d×%d); "
+                                "falling back to per-cell batch for target=%s",
+                                table_id, num_rows, num_cols, tgt,
+                            )
+                except Exception as exc:
+                    logger.warning(
+                        "[DOCX] Table group %s translate_once failed (target=%s): %s; "
+                        "falling back to per-cell batch",
+                        table_id, tgt, exc,
+                    )
+                if grid is not None:
+                    for s in t_segs:
+                        r, c = s.row, s.col
+                        if s.text.strip() and 0 <= r < num_rows and 0 <= c < num_cols:
+                            final_tmap[(tgt, s.text, c)] = grid[r][c]
+                else:
+                    # Fallback: translate each unique cell text individually (BR-82)
+                    uniq_cell_texts = list(dict.fromkeys(
+                        s.text for s in t_segs if s.text.strip()
+                        and should_translate(s.text, src_for_prompt)
+                    ))
+                    if uniq_cell_texts:
+                        fallback_tmap, _, _, _ = translate_texts(
+                            uniq_cell_texts, [tgt], src_lang, client,
+                            max_batch_chars=max_batch_chars,
+                            stop_flag=stop_flag, log=log,
+                        )
+                        for (fb_tgt, fb_text), fb_tr in fallback_tmap.items():
+                            # Apply to ALL cells with this text across their actual columns
+                            for s in t_segs:
+                                if s.text == fb_text:
+                                    final_tmap[(fb_tgt, fb_text, s.col)] = fb_tr
+
+    if final_tmap:
         # R1: doc2doc long-doc path always uses append; output_mode="replace" is a follow-up.
         effective_mode = "append" if (len(targets) == 1 and sum(len(t) for t in uniq_texts) > 40_000) else output_mode
-        _insert_docx_translations(doc, segs, tmap, targets, log=log, output_mode=effective_mode)
+        _insert_docx_translations(doc, segs, final_tmap, targets, log=log, output_mode=effective_mode)
 
     if post_translate_hook is not None:
         tuples: List[Tuple[str, str, str]] = []
         for idx, src_text in enumerate(uniq_texts):
             for tgt in targets:
-                if (tgt, src_text) in tmap:
-                    tuples.append((f"docx:{file_stem}:{idx}", src_text, tmap[(tgt, src_text)]))
+                if (tgt, src_text) in para_tmap:  # use para_tmap (2-element) for hook
+                    tuples.append((f"docx:{file_stem}:{idx}", src_text, para_tmap[(tgt, src_text)]))
         if tuples:
             post_translate_hook(tuples)
 

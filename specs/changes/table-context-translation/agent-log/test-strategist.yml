@@ -1,0 +1,7 @@
+change-id: table-context-translation
+agent: test-strategist
+status: done
+summary: "Wrote test-plan.md; 3 new test files: test_table_serialization.py (unit), test_table_context_translation.py (unit+integration), non-regression in test_translation_service.py"
+artifacts:
+  - { type: test-plan, pointer: "specs/changes/table-context-translation/test-plan.md" }
+next-action: ci-cd-gatekeeper writes ci-gates.md

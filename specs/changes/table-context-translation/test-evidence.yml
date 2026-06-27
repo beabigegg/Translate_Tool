@@ -1,0 +1,46 @@
+change-id: table-context-translation
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      pytest tests/ --collect-only -q
+      --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/table-context-translation/specs/changes/table-context-translation/test-runs/20260627-173533/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/table-context-translation/test-runs/20260627-173533/summary.json
+    junit: specs/changes/table-context-translation/test-runs/20260627-173533/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      pytest tests/test_table_serialization.py tests/test_table_context_translation.py -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/table-context-translation/specs/changes/table-context-translation/test-runs/20260627-173542/junit.xml'
+      -ra
+    summary: specs/changes/table-context-translation/test-runs/20260627-173542/summary.json
+    junit: specs/changes/table-context-translation/test-runs/20260627-173542/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      pytest tests/test_table_serialization.py tests/test_table_context_translation.py tests/test_translation_service.py
+      -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/table-context-translation/specs/changes/table-context-translation/test-runs/20260627-173544/junit.xml'
+      -ra
+    summary: specs/changes/table-context-translation/test-runs/20260627-173544/summary.json
+    junit: specs/changes/table-context-translation/test-runs/20260627-173544/junit.xml
+  - phase: contract
+    status: passed
+    command: cdd-kit validate --contracts
+    summary: specs/changes/table-context-translation/test-runs/20260627-173553/summary.json
+  - phase: full
+    status: passed
+    command: >-
+      pytest tests/ -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/table-context-translation/specs/changes/table-context-translation/test-runs/20260627-173603/junit.xml'
+      -ra
+    summary: specs/changes/table-context-translation/test-runs/20260627-173603/summary.json
+    junit: specs/changes/table-context-translation/test-runs/20260627-173603/junit.xml
+final-status: passed

@@ -1,0 +1,11 @@
+change-id: table-context-translation
+agent: change-classifier
+status: done
+summary: "Tier 2 medium-risk enhancement; Architecture Review Required; 8 ACs; 7 required agents"
+artifacts:
+  - { type: tier, pointer: "Tier 2" }
+  - { type: risk, pointer: "medium / cross-module (clients ↔ processors ↔ services)" }
+  - { type: architecture-review, pointer: "yes — serialization format, remap strategy, dedup-key semantics, PDF IR consumption" }
+  - { type: required-artifacts, pointer: "change-classification.md §Required Artifacts" }
+  - { type: context-manifest-draft, pointer: "specs/changes/table-context-translation/context-manifest.md" }
+next-action: spec-architect writes design.md

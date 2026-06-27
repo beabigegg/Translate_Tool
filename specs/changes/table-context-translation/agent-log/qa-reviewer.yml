@@ -1,0 +1,10 @@
+change-id: table-context-translation
+agent: qa-reviewer
+status: done
+summary: "APPROVED — 961 passed, 35 targeted pass, gate green; blocker (contracts not on branch) resolved by committing BR-79..BR-83 to feature branch"
+artifacts:
+  - { type: test-results, pointer: "test-evidence.yml: collect/targeted/changed-area/contract/full all passed" }
+  - { type: gate, pointer: "cdd-kit gate table-context-translation: PASSED" }
+  - { type: removed-test, pointer: "test_no_app_backend_files_modified removed (PR-scope meta-guard from Wave 1, structurally incompatible with backend PRs)" }
+  - { type: design-deviations, pointer: "1-col tables fall back to per-cell (no pipes); exception→fallback not placeholder — both safe" }
+next-action: create PR
