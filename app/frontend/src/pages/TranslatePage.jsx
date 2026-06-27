@@ -32,6 +32,7 @@ const initialState = {
   enableTermExtraction: true,
   pdfOutputFormat: 'docx',
   pdfLayoutMode: 'overlay',
+  outputMode: 'append',
   jobId: null,
   jobStatus: null,
   error: null,
@@ -62,6 +63,7 @@ function reducer(state, action) {
     case 'SET_MODE': return { ...state, jobMode: action.payload };
     case 'SET_ENABLE_TERM': return { ...state, enableTermExtraction: action.payload };
     case 'SET_PDF_OUTPUT': return { ...state, pdfOutputFormat: action.payload.format, pdfLayoutMode: action.payload.mode };
+    case 'SET_OUTPUT_MODE': return { ...state, outputMode: action.payload };
     case 'SET_STEP': return { ...state, step: action.payload };
     case 'SET_JOB_ID': {
       try { if (action.payload) localStorage.setItem(ACTIVE_JOB_KEY, action.payload); } catch {}
@@ -85,7 +87,7 @@ export default function TranslatePage() {
   const { state: settings } = useSettings();
   const [history, setHistory] = useLocalStorage('translationHistory', []);
 
-  const { step, files, selectedTargets, srcLang, selectedProfile, jobMode, enableTermExtraction, pdfOutputFormat, pdfLayoutMode, jobId, jobStatus, loading } = state;
+  const { step, files, selectedTargets, srcLang, selectedProfile, jobMode, enableTermExtraction, pdfOutputFormat, pdfLayoutMode, outputMode, jobId, jobStatus, loading } = state;
   const isTranslating = jobStatus && !['completed', 'failed', 'cancelled'].includes(jobStatus.status);
 
   // Fetch judge data once when job reaches completed status
@@ -125,6 +127,7 @@ export default function TranslatePage() {
         form.append('pdf_output_format', pdfOutputFormat);
         form.append('pdf_layout_mode', pdfLayoutMode);
       }
+      form.append('output_mode', outputMode);
       const data = await createJob(form);
       dispatch({ type: 'SET_JOB_ID', payload: data.job_id });
       dispatch({ type: 'SET_STEP', payload: 3 });
@@ -196,6 +199,17 @@ export default function TranslatePage() {
             </div>
             <Select label="來源語言" options={srcLangOptions} value={srcLang} onChange={e => dispatch({ type: 'SET_SRC_LANG', payload: e.target.value })} />
             <Select label="翻譯情境" options={profileOptions} value={selectedProfile} onChange={e => dispatch({ type: 'SET_PROFILE', payload: e.target.value })} />
+            {jobMode === 'translate' && (
+              <Select
+                label="輸出方式"
+                options={[
+                  { value: 'append', label: '原文在下方' },
+                  { value: 'replace', label: '原地取代/覆蓋原文' },
+                ]}
+                value={outputMode}
+                onChange={e => dispatch({ type: 'SET_OUTPUT_MODE', payload: e.target.value })}
+              />
+            )}
             {jobMode === 'translate' && (
               <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', cursor: 'pointer', marginTop: 'var(--space-3)' }}>
                 <input

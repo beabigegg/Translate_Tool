@@ -1,0 +1,15 @@
+agent: test-strategist
+run-date: 2026-06-27
+status: complete
+
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/expose-output-mode-ui/test-plan.md" }
+  - { type: tdd-pairs, pointer: "app/frontend/src/pages/TranslatePage.test.jsx → app/frontend/src/pages/TranslatePage.jsx" }
+  - { type: coverage-tiers, pointer: "unit (Tier 0), contract regression (Tier 0), visual/manual" }
+  - { type: mapping-completeness, pointer: "AC-1 AC-2 AC-3 mapped to unit tests; AC-4 manual; AC-5 existing backend test" }
+
+notes: |
+  No frontend test runner exists (package.json has no vitest/jest). Implementation
+  must bootstrap vitest + @testing-library/react before the test file can be collected.
+  The three unit tests must fail before the selector is added (TDD red phase).
+  createJob is a FormData-based call; tests must inspect FormData entries, not JSON body.

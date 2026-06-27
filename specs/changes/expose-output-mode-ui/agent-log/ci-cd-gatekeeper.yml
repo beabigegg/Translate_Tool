@@ -1,0 +1,14 @@
+change-id: expose-output-mode-ui
+agent: ci-cd-gatekeeper
+timestamp: "2026-06-27T00:00:00Z"
+status: complete
+artifacts:
+  - { type: tiers-modified, pointer: "1" }
+  - { type: gate-promotions, pointer: "n/a (no gates moved between tiers; three new Tier 1 gates defined)" }
+  - { type: workflow-files-changed, pointer: ".github/workflows/contract-driven-gates.yml" }
+  - { type: required-status-checks, pointer: "contract-and-fast-tests, expose-output-mode-ui-gate" }
+next-action: none
+notes: >
+  frontend-output-mode-test gate will block merge until test-strategist adds
+  vitest + @testing-library/react and a "test" npm script to app/frontend/package.json.
+  No backend changes; tests/test_output_mode_api.py already guards AC-5.

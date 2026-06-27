@@ -1,0 +1,1 @@
+pytest tests/test_output_mode_api.py -v --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-ad9e90bc02e035286/specs/changes/expose-output-mode-ui/test-runs/20260627-133518/junit.xml' -q --maxfail=1 --tb=short -ra

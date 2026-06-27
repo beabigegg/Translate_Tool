@@ -1,0 +1,12 @@
+- type: tier-floor-override
+  change-id: expose-output-mode-ui
+  timestamp: '2026-06-27T05:43:56.594Z'
+  declared-tier: 3
+  floor-tier: 0
+  label: critical surface (auth / payments / data migration / concurrency / secrets)
+  matched:
+    - sessions
+  reason: >-
+    False positive: 'sessions' appears only in a non-goal statement ('No persistence across
+    sessions') in change-request.md. This is a pure frontend UI control that wires an existing
+    backend field. No auth, payments, concurrency, secrets, or data migration involved.
