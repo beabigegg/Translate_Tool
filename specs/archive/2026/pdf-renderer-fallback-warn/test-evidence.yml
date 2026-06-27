@@ -1,0 +1,27 @@
+change-id: pdf-renderer-fallback-warn
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: collect
+    status: passed
+    command: conda run -n translate-tool pytest tests/test_pdf_render_warnings.py --collect-only -q
+    summary: specs/changes/pdf-renderer-fallback-warn/test-runs/20260627-133610/summary.json
+  - phase: targeted
+    status: passed
+    command: conda run -n translate-tool pytest tests/test_pdf_render_warnings.py -x -q --tb=short
+    summary: specs/changes/pdf-renderer-fallback-warn/test-runs/20260627-133618/summary.json
+  - phase: changed-area
+    status: passed
+    command: >-
+      conda run -n translate-tool pytest tests/test_pdf_render_warnings.py tests/test_jobstatus_download_url.py -x -q
+      --tb=short
+    summary: specs/changes/pdf-renderer-fallback-warn/test-runs/20260627-133627/summary.json
+  - phase: full
+    status: passed
+    command: conda run -n translate-tool pytest tests/ -x -q --tb=short
+    summary: specs/changes/pdf-renderer-fallback-warn/test-runs/20260627-133653/summary.json
+final-status: passed

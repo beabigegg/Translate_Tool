@@ -1,0 +1,50 @@
+change-id: pdf-renderer-fallback-warn
+agent: backend-engineer
+date: 2026-06-27
+status: complete
+
+summary: >
+  Implemented the warnings seam for PDF render-quality degradation. Added
+  warnings: Optional[List[str]] to JobRecord and JobStatus, serialized via
+  getattr in the job_status route, threaded warnings_callback through
+  process_files → translate_pdf → _translate_pdf_to_pdf → _dispatch_render,
+  wired the callback from create_job, added module-level constants, updated
+  the existing _make_job helper, created 9 new tests, and regenerated openapi.yml.
+
+artifacts:
+  - type: files-changed
+    pointer: "app/backend/services/job_manager.py:109-126 (JobRecord.warnings field + _record_job_warning helper + warnings_callback wiring in create_job)"
+  - type: files-changed
+    pointer: "app/backend/api/schemas.py:45 (JobStatus.warnings field)"
+  - type: files-changed
+    pointer: "app/backend/api/routes.py:342 (warnings=getattr(job,'warnings',None) in JobStatus constructor)"
+  - type: files-changed
+    pointer: "app/backend/processors/pdf_processor.py:38-49 (FITZ_FALLBACK_WARNING + DOCX_ROUTING_WARNING constants); 77 (warnings_callback param on translate_pdf); 136 (forward to _translate_pdf_to_pdf); 165-167 (DOCX_ROUTING_WARNING emit); 580 (warnings_callback param on _translate_pdf_to_pdf); 748 (forward to _dispatch_render); 813 (warnings_callback param on _dispatch_render); 838-839 (FITZ_FALLBACK_WARNING emit)"
+  - type: files-changed
+    pointer: "app/backend/processors/orchestrator.py:363 (warnings_callback param on process_files); 790 (forward to translate_pdf)"
+  - type: files-changed
+    pointer: "tests/test_jobstatus_download_url.py:51 (job.warnings = None in _make_job helper)"
+  - type: files-changed
+    pointer: "contracts/api/openapi.yml (regenerated with warnings field)"
+  - type: tests-added
+    pointer: "tests/test_pdf_render_warnings.py::TestFitzFallbackWarning::test_fitz_exception_emits_exact_fallback_warning"
+  - type: tests-added
+    pointer: "tests/test_pdf_render_warnings.py::TestFitzFallbackWarning::test_fitz_mock_targets_consumer_call_site_not_renderer_module"
+  - type: tests-added
+    pointer: "tests/test_pdf_render_warnings.py::TestDocxRoutingWarning::test_docx_routing_emits_exact_layout_skip_warning"
+  - type: tests-added
+    pointer: "tests/test_pdf_render_warnings.py::TestNoDegradationNoWarning::test_no_warning_when_fitz_succeeds"
+  - type: tests-added
+    pointer: "tests/test_pdf_render_warnings.py::TestWarningsSchema::test_warnings_field_is_list_or_none_not_bare_string"
+  - type: tests-added
+    pointer: "tests/test_pdf_render_warnings.py::TestWarningsSchema::test_jobstatus_schema_has_warnings_field"
+  - type: tests-added
+    pointer: "tests/test_pdf_render_warnings.py::TestWarningsApiPropagation::test_fitz_fallback_warning_in_api_response"
+  - type: tests-added
+    pointer: "tests/test_pdf_render_warnings.py::TestWarningsApiPropagation::test_docx_routing_warning_in_api_response"
+  - type: tests-added
+    pointer: "tests/test_pdf_render_warnings.py::TestWarningsApiPropagation::test_no_warnings_is_null_or_empty_in_api_response"
+  - type: test-output
+    pointer: "collect=pass, targeted=pass, changed-area=pass, full=pass (all phases green)"
+  - type: contracts-touched
+    pointer: "contracts/api/openapi.yml regenerated (warnings field now present in JobStatus schema)"

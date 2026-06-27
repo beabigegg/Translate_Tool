@@ -1,0 +1,12 @@
+agent: implementation-planner
+change-id: pdf-renderer-fallback-warn
+timestamp: 2026-06-27
+status: done
+summary: >
+  Wrote implementation-plan.md. Key findings: warnings_callback seam must thread
+  through process_files→translate_pdf→_translate_pdf_to_pdf→_dispatch_render.
+  AC-2 emit site is in translate_pdf after COM block (line 166). AC-1 emit in
+  _dispatch_render except block. JobRecord assembly is in job_manager.py.
+artifacts:
+  - { type: implementation-plan, pointer: "specs/changes/pdf-renderer-fallback-warn/implementation-plan.md" }
+next-action: backend-engineer implements per plan

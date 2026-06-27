@@ -48,6 +48,7 @@ def _make_job(
     job.judge = None
     job.judge_apply_status = None
     job.status_detail = None
+    job.warnings = None
     job.lock = threading.Lock()
     return job
 

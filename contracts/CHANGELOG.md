@@ -8,6 +8,12 @@ While a contract is at 0.x (draft), entries here are optional.
 Once a contract reaches 1.0.0, every schema-version bump must have
 a corresponding entry below.
 
+## [api 0.9.0] — 2026-06-27
+Added: `JobStatus.warnings` — optional `string[]` field (null/empty when no degradation; two verbatim values: fitz→ReportLab fallback string and PDF→bilingual DOCX routing string; type always `string[]` or `null`, never a bare string). Updated: `GET /jobs/{job_id}` endpoint note to document `warnings` field semantics. Additive optional field — backward-compatible. Added in change `pdf-renderer-fallback-warn`.
+
+## [data 0.13.0] — 2026-06-27
+Added: `JobStatus / JobRecord — warnings field` optional column subsection — `string[]`, nullable, null/empty when no degradation; two verbatim warning strings (fitz→ReportLab fallback; PDF→bilingual DOCX routing); type always `string[]` or `null`; additive optional field, backward-compatible; cross-reference to `api-contract.md JobStatus` schema. Added in change `pdf-renderer-fallback-warn`.
+
 ## [business 0.12.0] — 2026-06-19
 Added: BR-59 (terminology-audit-scope — only `approved` terms in hit-rate denominator; `unverified`, `needs_review`, `rejected` excluded). Added: BR-60 (terminology-audit-match-algorithm — case-insensitive exact substring default; optional configurable lemmatized mode using `blingfire`; no spaCy/NLTK). Added: BR-61 (terminology-audit-safe-degradation — audit exception caught, WARNING logged, `JobRecord.audit=None`, job not failed; mirrors BR-56). Added: Table Q (terminology audit decision table, 9 condition rows).
 
