@@ -178,7 +178,10 @@ def translate_merged_paragraphs(
             config.CONTEXT_WINDOW_SEGMENTS,
             config.CONTEXT_MAX_CHARS,
         )
-        prompted_text = prefix + text
+        # Apply context only when text is substantial; short single-token inputs
+        # (e.g. CJK "N/A" tokens) have LLM bypasses in the client that match on
+        # the raw text — prepending context would break those bypasses.
+        prompted_text = (prefix + text) if prefix and len(text.strip()) > 4 else text
         ok, translated = client.translate_once(prompted_text, tgt, src_lang)
         if ok:
             results[i] = (True, translated)
