@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "API behavior, compatibility rules, and endpoint contract requirements.",
-    "version": "0.8.0",
+    "version": "0.9.0",
     "description": "- response style: JSON (Pydantic response models); binary endpoints return file streams (FileResponse / StreamingResponse)."
   },
   "paths": {
@@ -933,6 +933,13 @@
           "download_url": {
             "type": "string",
             "description": "URL to download translated zip; set to /api/jobs/{job_id}/download only when status==completed AND output_zip exists on disk; null otherwise"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "renderer degradation notices; null or empty list when no degradation occurred; populated by PDF processor when fitz falls back to ReportLab or when PDF is routed to bilingual DOCX; type is always string[] or null, never a bare string; additive optional field — backward-compatible; see AC-1, AC-2, AC-3"
           }
         },
         "required": [

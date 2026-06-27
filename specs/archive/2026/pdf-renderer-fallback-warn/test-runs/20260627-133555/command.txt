@@ -1,0 +1,1 @@
+pytest tests/test_pdf_render_warnings.py --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/agent-aa0991a6272f70a12/specs/changes/pdf-renderer-fallback-warn/test-runs/20260627-133555/junit.xml' --maxfail=1 --tb=short -ra

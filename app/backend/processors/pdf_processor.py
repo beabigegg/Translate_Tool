@@ -36,6 +36,15 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# pdf-renderer-fallback-warn: exact warning strings (em-dash —, NOT ASCII hyphen)
+FITZ_FALLBACK_WARNING = (
+    "PDF rendering quality reduced: fell back to basic renderer — "
+    "images and formatting may be lost"
+)
+DOCX_ROUTING_WARNING = (
+    "Layout preservation skipped: PDF was converted to bilingual DOCX mode — "
+    "use output_format=pdf for layout-faithful output"
+)
 
 # Lazy import for PyMuPDF parser
 _pymupdf_parser = None
@@ -74,6 +83,7 @@ def translate_pdf(
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
     block_overrides: Optional[Dict[str, str]] = None,
+    warnings_callback: Optional[Callable[[str], None]] = None,
 ) -> bool:
     """Translate a PDF file.
 
@@ -122,6 +132,7 @@ def translate_pdf(
             pre_translate_hook=pre_translate_hook,
             post_translate_hook=post_translate_hook,
             block_overrides=block_overrides,
+            warnings_callback=warnings_callback,
         )
 
     # Try Windows COM conversion first (highest quality)
@@ -150,6 +161,10 @@ def translate_pdf(
             return stopped
         except (OSError, RuntimeError) as exc:
             log(f"[PDF] Word import failed, fallback to text extract: {exc}")
+
+    # Notify caller that layout-faithful output is not available (DOCX route only).
+    if warnings_callback:
+        warnings_callback(DOCX_ROUTING_WARNING)
 
     # Determine which parser to use
     should_use_pymupdf = use_pymupdf if use_pymupdf is not None else (PDF_PARSER_ENGINE == "pymupdf")
@@ -577,6 +592,7 @@ def _translate_pdf_to_pdf(
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
     block_overrides: Optional[Dict[str, str]] = None,
+    warnings_callback: Optional[Callable[[str], None]] = None,
 ) -> bool:
     """Translate PDF to PDF with layout preservation.
 
@@ -730,6 +746,7 @@ def _translate_pdf_to_pdf(
                 draw_mask=should_draw_mask,
                 doc_id=os.path.basename(in_path),
                 log=log,
+                warnings_callback=warnings_callback,
             )
             output_files.append(lang_out_path)
             log(f"[PDF] Generated: {Path(lang_out_path).name}")
@@ -809,6 +826,7 @@ def _dispatch_render(
     draw_mask: bool,
     doc_id: str,
     log=None,
+    warnings_callback: Optional[Callable[[str], None]] = None,
 ) -> None:
     """Dispatch to fitz primary renderer; fall back to ReportLab on unhandled exception.
 
@@ -838,6 +856,8 @@ def _dispatch_render(
             f"[PDF] fitz render failed ({type(exc).__name__}) for '{doc_id}'; "
             f"falling back to ReportLab. Exception: {exc}"
         )
+        if warnings_callback:
+            warnings_callback(FITZ_FALLBACK_WARNING)
         # ReportLab fallback — if this also raises, propagate to job manager.
         _run_reportlab_render(
             doc=doc,
