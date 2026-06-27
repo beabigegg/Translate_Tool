@@ -1,6 +1,6 @@
 # Contract-driven gates
 # Tier semantics: ci/gate-policy.md
-# Active change gates: expose-output-mode-ui (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection, p2-prompt-fewshot-glossary, p2-long-doc-chunking, p2-comet-qe, p2-term-audit, download-url-in-jobstatus, remove-cross-model-refinement, fallback-chain-cloud-providers, term-extraction-db-first, settings-page-cloud-redesign, p3-docx-replace-mode, p3-table-structure, p3-llm-judge)
+# Active change gates: (none) (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection, p2-prompt-fewshot-glossary, p2-long-doc-chunking, p2-comet-qe, p2-term-audit, download-url-in-jobstatus, remove-cross-model-refinement, fallback-chain-cloud-providers, term-extraction-db-first, settings-page-cloud-redesign, p3-docx-replace-mode, p3-table-structure, p3-llm-judge, expose-output-mode-ui)
 
 name: contract-driven-gates
 
@@ -42,9 +42,6 @@ jobs:
 
       - name: Validate contracts (Tier 1 — blocks merge)
         run: cdd-kit validate --contracts
-
-      - name: Change gate (Tier 1 — blocks merge)
-        run: cdd-kit gate expose-output-mode-ui
 
       - name: OpenAPI sync gate
         run: cdd-kit openapi export --check --out contracts/api/openapi.yml
@@ -322,9 +319,6 @@ jobs:
       - name: Install frontend dependencies
         working-directory: app/frontend
         run: npm install
-
-      - name: cdd-kit gate — expose-output-mode-ui (Tier 1 — blocks merge)
-        run: cdd-kit gate expose-output-mode-ui
 
       - name: Frontend component tests — output-mode selector (Tier 1 — blocks merge)
         # AC-1: selector renders labeled options "原文在下方" (value append) and "原地取代/覆蓋原文" (value replace)
