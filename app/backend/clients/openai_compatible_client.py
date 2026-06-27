@@ -172,6 +172,29 @@ class OpenAICompatibleClient:
             )
             return []
 
+    @staticmethod
+    def _build_table_translate_prompt(serialized_table: str, src_lang: str, tgt_lang: str) -> str:
+        """Build a prompt for whole-table translation (table-context-translation, IP-2).
+
+        Instruction placed BEFORE the serialized table (AC-2 / BR-80).
+        Wording must be identical to OllamaClient._build_table_translate_prompt.
+
+        Args:
+            serialized_table: Markdown pipe-grid from table_serializer.serialize().
+            src_lang: Source language code or name.
+            tgt_lang: Target language code or name.
+
+        Returns:
+            Prompt string ready for translate_once().
+        """
+        return (
+            f"Translate the following table from {src_lang} to {tgt_lang}. "
+            f"Keep the exact Markdown pipe-grid structure. "
+            f"Translate only the text content, preserving every '|' delimiter, "
+            f"row count, and column count. Output the translated grid only.\n\n"
+            f"{serialized_table}"
+        )
+
     def translate_once(self, text: str, tgt: str, src_lang: Optional[str]) -> Tuple[bool, str]:
         """Translate a single text segment via /v1/chat/completions.
 

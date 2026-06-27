@@ -623,6 +623,29 @@ class OllamaClient:
         return False, "[Extended retry failed after multiple attempts]"
 
     @staticmethod
+    def _build_table_translate_prompt(serialized_table: str, src_lang: str, tgt_lang: str) -> str:
+        """Build a prompt for whole-table translation (table-context-translation, IP-2).
+
+        The instruction is placed BEFORE the serialized table so the model sees
+        the task description before reading the grid (AC-2 / BR-80).
+
+        Args:
+            serialized_table: Markdown pipe-grid string from table_serializer.serialize().
+            src_lang: Source language code or name.
+            tgt_lang: Target language code or name.
+
+        Returns:
+            Prompt string ready for translate_once().
+        """
+        return (
+            f"Translate the following table from {src_lang} to {tgt_lang}. "
+            f"Keep the exact Markdown pipe-grid structure. "
+            f"Translate only the text content, preserving every '|' delimiter, "
+            f"row count, and column count. Output the translated grid only.\n\n"
+            f"{serialized_table}"
+        )
+
+    @staticmethod
     def _build_batch_translategemma_prompt(texts: List[str], target_language: str, source_language: Optional[str]) -> str:
         """Build batch translation prompt with numbered segment markers for better parsing."""
         tgt_name, tgt_code = LANG_CODE_MAP.get(target_language, (target_language, target_language.lower()[:2]))
