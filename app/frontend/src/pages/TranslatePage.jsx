@@ -89,6 +89,8 @@ export default function TranslatePage() {
 
   const { step, files, selectedTargets, srcLang, selectedProfile, jobMode, enableTermExtraction, pdfOutputFormat, pdfLayoutMode, outputMode, jobId, jobStatus, loading } = state;
   const isTranslating = jobStatus && !['completed', 'failed', 'cancelled'].includes(jobStatus.status);
+  const replaceUnsupported = selectedTargets.length > 1 ||
+    files.some(f => /\.(pdf|xlsx?)$/i.test(f.name));
 
   // Fetch judge data once when job reaches completed status
   useEffect(() => {
@@ -202,11 +204,13 @@ export default function TranslatePage() {
             {jobMode === 'translate' && (
               <Select
                 label="輸出方式"
-                options={[
-                  { value: 'append', label: '原文在下方' },
-                  { value: 'replace', label: '原地取代/覆蓋原文' },
-                ]}
-                value={outputMode}
+                options={replaceUnsupported
+                  ? [{ value: 'append', label: '原文在下方（多目標或 PDF/XLSX 不支援取代）' }]
+                  : [
+                      { value: 'append', label: '原文在下方' },
+                      { value: 'replace', label: '原地取代/覆蓋原文' },
+                    ]}
+                value={replaceUnsupported ? 'append' : outputMode}
                 onChange={e => dispatch({ type: 'SET_OUTPUT_MODE', payload: e.target.value })}
               />
             )}
