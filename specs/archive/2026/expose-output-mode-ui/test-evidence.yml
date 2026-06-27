@@ -1,0 +1,25 @@
+change-id: expose-output-mode-ui
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: collect
+    status: passed
+    command: cd app/frontend && npx vitest run src/pages/TranslatePage.test.jsx
+    summary: specs/changes/expose-output-mode-ui/test-runs/20260627-133711/summary.json
+  - phase: targeted
+    status: passed
+    command: cd app/frontend && npx vitest run src/pages/TranslatePage.test.jsx
+    summary: specs/changes/expose-output-mode-ui/test-runs/20260627-133719/summary.json
+  - phase: changed-area
+    status: passed
+    command: cd app/frontend && npx vitest run src/pages/TranslatePage.test.jsx
+    summary: specs/changes/expose-output-mode-ui/test-runs/20260627-133725/summary.json
+  - phase: contract
+    status: passed
+    command: conda run -n translate-tool pytest tests/test_output_mode_api.py -v
+    summary: specs/changes/expose-output-mode-ui/test-runs/20260627-133733/summary.json
+final-status: passed

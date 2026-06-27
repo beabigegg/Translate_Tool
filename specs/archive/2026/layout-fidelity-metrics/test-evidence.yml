@@ -1,0 +1,25 @@
+change-id: layout-fidelity-metrics
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: collect
+    status: passed
+    command: conda run -n translate-tool pytest --collect-only tests/test_layout_metrics.py
+    summary: specs/changes/layout-fidelity-metrics/test-runs/20260627-131820/summary.json
+  - phase: targeted
+    status: passed
+    command: conda run -n translate-tool pytest tests/test_layout_metrics.py -v
+    summary: specs/changes/layout-fidelity-metrics/test-runs/20260627-131826/summary.json
+  - phase: changed-area
+    status: passed
+    command: conda run -n translate-tool pytest tests/test_layout_metrics.py -v
+    summary: specs/changes/layout-fidelity-metrics/test-runs/20260627-131831/summary.json
+  - phase: full
+    status: passed
+    command: conda run -n translate-tool pytest
+    summary: specs/changes/layout-fidelity-metrics/test-runs/20260627-131843/summary.json
+final-status: passed

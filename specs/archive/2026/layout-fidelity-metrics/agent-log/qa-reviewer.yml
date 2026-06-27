@@ -1,0 +1,10 @@
+change-id: layout-fidelity-metrics
+timestamp: 2026-06-27T00:00:00Z
+agent: qa-reviewer
+status: approved
+summary: "All 4 test phases passed (893 tests suite-wide); all artifacts present; no production files touched; BIoU selection assertion confirmed"
+artifacts:
+  - { type: decision, pointer: "approved" }
+  - { type: test-coverage, pointer: "21 nodes in test_layout_metrics.py, all pass" }
+  - { type: cosmetic-note, pointer: "docstring said 22 nodes, actual is 21 (AC-6 shares AC-1 node); corrected" }
+next-action: run cdd-kit gate layout-fidelity-metrics

@@ -24,7 +24,7 @@ export function FileDropZone({ onFilesAdded }) {
       <Upload size={32} />
       <p>拖曳檔案至此，或點擊選擇</p>
       <p className="text-muted">支援: {ACCEPTED_EXTENSIONS.join(', ')}</p>
-      <input ref={inputRef} type="file" multiple accept={ACCEPTED_EXTENSIONS.join(',')} style={{ display: 'none' }} onChange={e => handleFiles(e.target.files)} />
+      <input ref={inputRef} type="file" multiple accept={ACCEPTED_EXTENSIONS.join(',')} style={{ display: 'none' }} onChange={e => handleFiles(e.target.files)} data-testid="file-upload-input" />
     </div>
   );
 }

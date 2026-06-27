@@ -1,0 +1,12 @@
+agent: qa-reviewer
+change-id: expose-output-mode-ui
+status: ready-with-notes
+summary: All required gates green; 3 unit tests pass; backend regression guard pass; contracts verified; no new regressions; pre-existing a11y issue noted for follow-up
+artifacts:
+  - type: gate-results
+    pointer: "unit(AC1-3): pass, contract(AC5): pass, visual(AC4): pass, contracts-verified: pass"
+  - type: decision
+    pointer: "approved (ready-with-notes)"
+  - type: failure-routing
+    pointer: "pre-existing Select.jsx WCAG 1.3.1 a11y -> ui-ux-reviewer + frontend-engineer (separate change)"
+notes: Two superseded failed run dirs are bootstrap corrections re-run green. All contract claims independently verified.

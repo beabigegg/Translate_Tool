@@ -1,0 +1,12 @@
+agent: implementation-planner
+change-id: expose-output-mode-ui
+status: done
+summary: >
+  Wrote implementation-plan.md for the TranslatePage output-mode selector
+  (frontend-only, Tier 3). Plan covers state+reducer+wiring edits, vitest test
+  infra, and the AC-1..AC-3 test file (owned by frontend-engineer).
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/expose-output-mode-ui/implementation-plan.md" }
+  - { type: owner-map, pointer: "frontend-engineer (impl IP-1..IP-5 incl. test file)" }
+  - { type: scope-summary, pointer: "in: selector+wiring+vitest infra+test; out: backend/contract/i18n/localStorage/per-segment" }
+  - { type: blocked-reason, pointer: "non-blocking for planner; CER-001 (app/frontend/package.json) + vite.config.js must be allowed before frontend-engineer adds the test runner" }
