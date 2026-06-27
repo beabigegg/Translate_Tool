@@ -1,0 +1,14 @@
+agent: contract-reviewer
+change-id: pdf-renderer-fallback-warn
+timestamp: 2026-06-27
+status: changes-applied
+summary: >
+  Reviewed GET /api/jobs/{id} JobStatus schema. Added warnings field to
+  api-contract.md (0.8.0→0.9.0), updated endpoint note, added optional column
+  to data-shape-contract.md (0.12.0→0.13.0), added CHANGELOG entries.
+  No breaking changes. openapi regeneration deferred to backend-engineer.
+artifacts:
+  - { type: contracts-updated, pointer: "contracts/api/api-contract.md" }
+  - { type: contracts-updated, pointer: "contracts/data/data-shape-contract.md" }
+  - { type: changelog-updated, pointer: "contracts/CHANGELOG.md" }
+next-action: implementation-planner then backend-engineer

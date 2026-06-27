@@ -3,8 +3,8 @@ contract: api
 summary: API behavior, compatibility rules, and endpoint contract requirements.
 owner: application-team
 surface: api
-schema-version: 0.8.0
-last-changed: 2026-06-22
+schema-version: 0.9.0
+last-changed: 2026-06-27
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -155,6 +155,7 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 | judge_score | enum(低, 中, 高) | no |  | latest judge score tier; null when judge has not run, is disabled, or is unavailable; for list/summary views; see BR-72 |
 | judge_apply_status | string | no |  | apply operation lifecycle: applying, applied, failed, or null when apply not yet triggered; see BR-76, BR-77 |
 | download_url | string | no |  | URL to download translated zip; set to /api/jobs/{job_id}/download only when status==completed AND output_zip exists on disk; null otherwise |
+| warnings | string[] | no |  | renderer degradation notices; null or empty list when no degradation occurred; populated by PDF processor when fitz falls back to ReportLab or when PDF is routed to bilingual DOCX; type is always string[] or null, never a bare string; additive optional field — backward-compatible; see AC-1, AC-2, AC-3 |
 
 ### TermStatsResponse
 | field | type | required | format | notes |
@@ -339,7 +340,7 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 
 **POST /terms/flag-needs-review** — flags a term for human review by transitioning it to `needs_review` status. Terms in `needs_review` are not injected until approved (BR-29). Returns HTTP 200 `{"status": "needs_review"}` on success; HTTP 404 `{"detail": "Term not found"}` when the term does not exist.
 
-**GET /jobs/{job_id}** — `download_url` is set to `/api/jobs/{job_id}/download` only when `status == "completed"` AND the output archive exists on disk; it is `null` in all other states (running, failed, stopped, or completed with missing archive). The download endpoint itself (`GET /jobs/{job_id}/download`) is a separate route and is not changed by this field addition.
+**GET /jobs/{job_id}** — `download_url` is set to `/api/jobs/{job_id}/download` only when `status == "completed"` AND the output archive exists on disk; it is `null` in all other states (running, failed, stopped, or completed with missing archive). The download endpoint itself (`GET /jobs/{job_id}/download`) is a separate route and is not changed by this field addition. `warnings` is an optional string array (null or `[]` when no degradation); populated by the PDF processor when rendering quality is reduced; verbatim strings are defined in the `JobStatus` schema above. Existing consumers that do not read `warnings` are unaffected (AC-3).
 
 **GET /providers/health** — returns health status for each configured provider. Each element: `{provider, status, latency_ms}` where `status` is one of `online`, `offline`, `not_configured`. `latency_ms` is omitted when `status` is `not_configured`. PANJIT is always probed; DeepSeek is probed only when a valid key is supplied via the `X-DeepSeek-Api-Key` request header, otherwise returned as `not_configured`. The key is transmitted as a header (not a query parameter) to prevent exposure in server access logs and browser history (BR-65). See BR-63.
 

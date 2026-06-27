@@ -3,8 +3,8 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.12.0
-last-changed: 2026-06-22
+schema-version: 0.13.0
+last-changed: 2026-06-27
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -34,6 +34,11 @@ breaking-change-policy: deprecate-2-minors
 | column | type | nullable | allowed values | fallback | validation |
 |---|---|---:|---|---|---|
 | provider | string | yes | any provider ID from `config/providers.yml` (e.g. `panjit`, `deepseek`, `ollama-local`) | null | Set by orchestrator only at point of successful provider call; never supplied by clients. Null for pre-existing jobs and Ollama-only jobs. Additive optional field — backward-compatible. |
+
+### JobStatus / JobRecord — warnings field (added in pdf-renderer-fallback-warn)
+| column | type | nullable | allowed values | fallback | validation |
+|---|---|---:|---|---|---|
+| warnings | string[] | yes | ordered list of renderer degradation strings; verbatim values defined in `contracts/api/api-contract.md > ## Schemas > JobStatus` | null | Set by PDF processor only at rendering time; never supplied by clients. Null or empty list when no degradation occurred. Type is always string[] or null — never a bare string. Additive optional field — backward-compatible. |
 
 See `contracts/api/api-contract.md > ## Schemas > JobStatus` for the authoritative full field table.
 
