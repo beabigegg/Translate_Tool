@@ -1,0 +1,1 @@
+pytest .claude/worktrees/quality-metrics-gating/tests/ --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/quality-metrics-gating/test-runs/20260627-201123/junit.xml' --maxfail=1 --tb=short -ra

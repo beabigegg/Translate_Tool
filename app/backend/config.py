@@ -114,12 +114,17 @@ CONTEXT_SAMPLE_CHARS = 500  # Max chars to sample from file for context detectio
 # Has no effect when the document fits in one chunk (BR-52).
 CHUNK_OVERLAP_TOKENS: int = int(os.environ.get("CHUNK_OVERLAP_TOKENS", "50"))
 
-# Quality Evaluation configuration (p2-comet-qe, BR-54..BR-58)
-# QE_ENABLED: set to "true"/"1" to activate COMET scoring after each job.
-# Default is disabled (false) so no model or torch is loaded at startup (BR-57).
-QE_ENABLED: bool = os.environ.get("QE_ENABLED", "false").lower() in ("true", "1")
+# Quality Evaluation configuration (p2-comet-qe, BR-54..BR-58; quality-metrics-gating AC-3, AC-4)
+# QE_ENABLED: set to "false"/"0" to disable COMET scoring. Default is enabled (true).
+# When enabled, the critique loop uses QE as the adoption gate (AC-7); falls back to
+# length-ratio heuristic if the COMET library is not installed (AC-8).
+QE_ENABLED: bool = os.environ.get("QE_ENABLED", "true").lower() in ("true", "1")
 QE_MODEL_NAME: str = os.environ.get("QE_MODEL_NAME", "Unbabel/wmt22-cometkiwi-da")
 QE_DEVICE: str = os.environ.get("QE_DEVICE", "cpu")
+# QE_RESCORE_THRESHOLD: segments whose post-job QE score falls below this value are
+# flagged for re-translation in the post-translate hook (AC-2, AC-4). Ignored when
+# QE_ENABLED=false. Range: [0.0, 1.0]; default 0.5 (model-scale dependent — tune for deployment).
+QE_RESCORE_THRESHOLD: float = float(os.environ.get("QE_RESCORE_THRESHOLD", "0.5"))
 
 # Critique loop configuration (p2-prompt-fewshot-glossary, BR-44)
 CRITIQUE_LOOP_ENABLED: bool = os.environ.get("CRITIQUE_LOOP_ENABLED", "1").lower() in ("1", "true", "yes")

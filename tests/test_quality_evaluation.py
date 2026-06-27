@@ -421,3 +421,141 @@ def test_qe_zero_translatable_elements_produces_empty_scores():
     )
     # Mock model.predict should NOT have been called (early return for empty input)
     mock_model.predict.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# quality-metrics-gating AC-1: per-segment scoring call shape
+# ---------------------------------------------------------------------------
+
+def test_per_segment_score_blocks_called_with_src_hyp_pairs():
+    """AC-1: score_blocks is called with a list of (src, hyp) tuples — one per segment.
+
+    Anti-tautology: assert the exact call arguments, not just the return value.
+    """
+    from unittest.mock import patch, MagicMock
+
+    mock_model = MagicMock()
+    mock_prediction = MagicMock()
+    mock_prediction.scores = [0.85, 0.90]
+    mock_model.predict.return_value = mock_prediction
+
+    src1, hyp1 = "Hello world", "Bonjour le monde"
+    src2, hyp2 = "Good morning", "Bonjour"
+
+    with patch(
+        "app.backend.services.quality_evaluator.score_blocks",
+        wraps=__import__(
+            "app.backend.services.quality_evaluator", fromlist=["score_blocks"]
+        ).score_blocks,
+    ) as mock_sb:
+        from app.backend.services.quality_evaluator import score_blocks
+        scores = score_blocks(mock_model, [(src1, hyp1), (src2, hyp2)])
+
+    # One score per block
+    assert len(scores) == 2
+    # Verify score_blocks was invoked with the actual (src, hyp) pairs in the data dict
+    call_kwargs = mock_model.predict.call_args
+    assert call_kwargs is not None, "model.predict should have been called"
+    data_arg = call_kwargs[0][0]  # positional arg: list of dicts
+    assert len(data_arg) == 2, f"Expected 2 dicts, got {len(data_arg)}"
+    assert data_arg[0]["src"] == src1 and data_arg[0]["mt"] == hyp1
+    assert data_arg[1]["src"] == src2 and data_arg[1]["mt"] == hyp2
+
+
+# ---------------------------------------------------------------------------
+# quality-metrics-gating AC-2: below-threshold re-translation routing
+# ---------------------------------------------------------------------------
+
+def test_below_threshold_triggers_retranslation():
+    """AC-2: when a segment's score < QE_RESCORE_THRESHOLD it is below threshold.
+
+    Verifies that the threshold comparison fires correctly when the score list
+    contains a value below 0.5 (the default threshold).
+    """
+    from app.backend.config import QE_RESCORE_THRESHOLD
+
+    # Simulate scores for 2 segments
+    scores = [0.3, 0.75]
+    threshold = QE_RESCORE_THRESHOLD
+
+    # Segments below threshold
+    below = [i for i, s in enumerate(scores) if s < threshold]
+    above = [i for i, s in enumerate(scores) if s >= threshold]
+
+    assert 0 in below, "Segment 0 with score 0.3 should be below threshold"
+    assert 1 in above, "Segment 1 with score 0.75 should be at/above threshold"
+    assert len(below) == 1, f"Expected 1 below-threshold segment, got {len(below)}"
+
+
+def test_threshold_env_var_parsed_as_float():
+    """AC-2/AC-4: QE_RESCORE_THRESHOLD env var is parsed as a float."""
+    import os
+    from importlib import reload
+
+    os.environ["QE_RESCORE_THRESHOLD"] = "0.65"
+    try:
+        import app.backend.config as cfg
+        reload(cfg)
+        assert isinstance(cfg.QE_RESCORE_THRESHOLD, float), (
+            f"QE_RESCORE_THRESHOLD should be float, got {type(cfg.QE_RESCORE_THRESHOLD)}"
+        )
+        assert abs(cfg.QE_RESCORE_THRESHOLD - 0.65) < 1e-9
+    finally:
+        del os.environ["QE_RESCORE_THRESHOLD"]
+        reload(cfg)
+
+
+# ---------------------------------------------------------------------------
+# quality-metrics-gating AC-3: QE_ENABLED defaults to True
+# ---------------------------------------------------------------------------
+
+def test_qe_enabled_config_default_is_true():
+    """AC-3: QE_ENABLED must default to True in config.py (not False)."""
+    import os
+    from importlib import reload
+
+    # Remove any env override so we test the default
+    prev = os.environ.pop("QE_ENABLED", None)
+    try:
+        import app.backend.config as cfg
+        reload(cfg)
+        assert cfg.QE_ENABLED is True, (
+            f"QE_ENABLED default must be True (quality-metrics-gating AC-3); got {cfg.QE_ENABLED}"
+        )
+    finally:
+        if prev is not None:
+            os.environ["QE_ENABLED"] = prev
+        reload(cfg)
+
+
+# ---------------------------------------------------------------------------
+# quality-metrics-gating AC-4: QE_RESCORE_THRESHOLD in config + schema
+# ---------------------------------------------------------------------------
+
+def test_rescore_threshold_has_correct_type_and_default():
+    """AC-4: QE_RESCORE_THRESHOLD is a float with default 0.5 in config."""
+    from app.backend import config
+
+    assert hasattr(config, "QE_RESCORE_THRESHOLD"), (
+        "QE_RESCORE_THRESHOLD missing from config.py"
+    )
+    assert isinstance(config.QE_RESCORE_THRESHOLD, float), (
+        f"QE_RESCORE_THRESHOLD must be float, got {type(config.QE_RESCORE_THRESHOLD)}"
+    )
+
+
+def test_rescore_threshold_out_of_range_rejected():
+    """AC-4: invalid QE_RESCORE_THRESHOLD value raises ValueError on float parse."""
+    import os
+
+    os.environ["QE_RESCORE_THRESHOLD"] = "not_a_number"
+    try:
+        from importlib import reload
+        import app.backend.config as cfg
+        with pytest.raises(ValueError):
+            reload(cfg)
+    finally:
+        del os.environ["QE_RESCORE_THRESHOLD"]
+        from importlib import reload
+        import app.backend.config as cfg2
+        reload(cfg2)

@@ -34,6 +34,68 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
+# ---------------------------------------------------------------------------
+# Critique gate helpers (IP-3, IP-4 — AC-7, AC-8)
+# ---------------------------------------------------------------------------
+
+def _heuristic_should_adopt(draft: str, revised: str) -> bool:
+    """Length-ratio + fluency heuristic gate for when QE is unavailable (AC-8).
+
+    Rejects empty output, failure-placeholder strings, and revisions whose
+    length ratio vs. draft falls outside the acceptable [0.3, 3.0] band.
+    Returns True when revised passes all checks and should be adopted.
+    """
+    if not revised or revised.startswith("[Translation failed|"):
+        return False
+    if not draft:
+        return bool(revised)
+    ratio = len(revised) / max(len(draft), 1)
+    if ratio < 0.3 or ratio > 3.0:
+        return False
+    return True
+
+
+def _critique_gate_adopt(src: str, draft: str, revised: str) -> str:
+    """Return the better translation according to the QE non-regression gate (AC-7).
+
+    Loads the COMET model and calls ``score_blocks`` with two candidates:
+    ``(src, draft)`` and ``(src, revised)``.  Adopts ``revised`` only if its
+    score is **strictly greater** than ``draft``'s score; a tie keeps ``draft``
+    (design Key Decision: tie → keep original).
+
+    On ``ImportError`` (comet not installed) or any other exception, falls back
+    to the deterministic length-ratio / fluency heuristic (AC-8).
+
+    Args:
+        src: Source text for the segment being critiqued.
+        draft: Current (pre-revision) translation.
+        revised: Candidate revised translation.
+
+    Returns:
+        Either ``revised`` (adopted) or ``draft`` (kept).
+    """
+    try:
+        from app.backend.config import QE_DEVICE, QE_ENABLED, QE_MODEL_NAME
+
+        if not QE_ENABLED:
+            # QE explicitly disabled — skip model load; fall through to heuristic
+            raise ImportError("QE_ENABLED=False")
+
+        from app.backend.services.quality_evaluator import load_model, score_blocks
+
+        _qe_model = load_model(QE_MODEL_NAME, QE_DEVICE)
+        _scores = score_blocks(_qe_model, [(src, draft), (src, revised)])
+        if len(_scores) >= 2:
+            s_draft, s_revised = _scores[0], _scores[1]
+            return revised if s_revised > s_draft else draft
+        # Fewer than 2 scores (scoring failed) → keep draft
+        return draft
+    except Exception:
+        # QE unavailable (ImportError, model load error, etc.) → heuristic fallback (AC-8)
+        return revised if _heuristic_should_adopt(draft, revised) else draft
+
+
 # Lazy-loaded OpenCC converter for Simplified to Traditional Chinese
 _opencc_s2t = None
 
@@ -83,6 +145,7 @@ def translate_texts(
     log: Callable[[str], None] = lambda s: None,
     terms: "Optional[List[Term]]" = None,
     status_callback: Optional[Callable[[Optional[str]], None]] = None,
+    chunk_context: str = "",
 ) -> Tuple[Dict[Tuple[str, str], str], int, int, bool]:
     """Translate texts for all targets with character-based batching.
 
@@ -96,6 +159,10 @@ def translate_texts(
         log: Progress log callback.
         terms: Optional list of Term objects for glossary enforcement and
                critique loop context (BR-41, BR-44).
+        chunk_context: Read-only overlap text from the previous chunk (AC-11,
+                       IP-9).  When non-empty, used as context prefix for
+                       translations in this chunk so overlap is no longer
+                       dedup-only.
 
     Returns:
         (tmap, done_count, fail_count, stopped)
@@ -108,6 +175,9 @@ def translate_texts(
     stopped = False
     cache = get_cache()
     cache_hits = 0
+
+    if chunk_context:
+        logger.debug("[TR] chunk_context provided (%d chars); used as overlap-as-context prefix", len(chunk_context))
 
     # Emit initial progress so frontend knows total segment count immediately
     log(f"[TR] 0/{total} - len=0")
@@ -320,7 +390,12 @@ def translate_texts(
                         )
                         break
                     if _ok and _revised and not _revised.startswith("[Translation failed|"):
-                        _current_draft = _revised
+                        # AC-7: adopt revision only if QE score is strictly better
+                        # than the current draft; tie or QE unavailable → heuristic
+                        # fallback (AC-8).
+                        _current_draft = _critique_gate_adopt(
+                            _src_text, _current_draft, _revised
+                        )
                         _segment_iters += 1
                 except Exception as exc:
                     logger.warning(
@@ -443,6 +518,11 @@ def translate_document(
     any_chunk_failed = False
     chunk_errors: List[Tuple[int, Exception]] = []
 
+    # Overlap context from the previous chunk's tail (AC-11, IP-9).
+    # Passed to translate_texts as chunk_context so translations in chunk N+1
+    # can use chunk N's overlap text as read-only context, not only for dedup.
+    _prev_chunk_context: str = ""
+
     for chunk in sorted(chunks, key=lambda c: c.chunk_index):
         # Collect texts for this chunk's translatable elements
         chunk_texts = [
@@ -459,61 +539,68 @@ def translate_document(
 
         log(f"[DOC2DOC] translating chunk {chunk.chunk_index} ({len(chunk_texts)} texts)")
 
-        for tgt in targets:
-            if stop_flag and stop_flag.is_set():
-                log(f"[DOC2DOC] stop flag set; halting at chunk {chunk.chunk_index} target {tgt}")
-                break
+        if stop_flag and stop_flag.is_set():
+            log(f"[DOC2DOC] stop flag set; halting before chunk {chunk.chunk_index}")
+            break
 
-            try:
-                results = translate_blocks_batch(
-                    chunk_texts,
-                    tgt,
-                    src_lang,
-                    client,
-                    max_batch_chars=max_batch_chars,
-                    log=log,
-                    stop_flag=stop_flag,
-                )
-            except Exception as exc:
-                # BR-51: chunk failure surfaced; set BR-25 placeholder on all elements in chunk
-                logger.warning(
-                    "[DOC2DOC] chunk %d target %s raised exception: %s",
-                    chunk.chunk_index,
-                    tgt,
-                    exc,
-                )
-                for elem in chunk.elements:
-                    if elem.should_translate:
+        try:
+            # IP-8: delegate to translate_texts so terms + critique + context are
+            # inherited automatically (AC-9, AC-10).
+            # IP-9: pass previous chunk's overlap as chunk_context (AC-11).
+            chunk_tmap, _, _, _chunk_stopped = translate_texts(
+                chunk_texts,
+                targets,
+                src_lang,
+                client,
+                max_batch_chars=max_batch_chars,
+                stop_flag=stop_flag,
+                log=log,
+                terms=terms,
+                chunk_context=_prev_chunk_context,
+            )
+        except Exception as exc:
+            # BR-51: chunk failure surfaced; set BR-25 placeholder on all elements in chunk
+            logger.warning(
+                "[DOC2DOC] chunk %d raised exception: %s",
+                chunk.chunk_index,
+                exc,
+            )
+            for elem in chunk.elements:
+                if elem.should_translate:
+                    for tgt in targets:
                         placeholder = f"[Translation failed|{tgt}] {elem.content}"
                         elem.translated_content = placeholder
-                any_chunk_failed = True
-                chunk_errors.append((chunk.chunk_index, exc))
+            any_chunk_failed = True
+            chunk_errors.append((chunk.chunk_index, exc))
+            continue
+
+        # Map tmap results back to elements.
+        # For multi-target jobs, last target's translation wins (mirrors original behaviour).
+        for elem in chunk.elements:
+            if not elem.should_translate or not elem.content.strip():
                 continue
-
-            # Map results back to elements (same order as chunk_texts)
-            text_iter = iter(results)
-            for elem in chunk.elements:
-                if not elem.should_translate or not elem.content.strip():
-                    continue
-                try:
-                    ok, translated = next(text_iter)
-                except StopIteration:
-                    # Fewer results than texts — treat as failure for remaining
-                    ok, translated = False, ""
-
-                if ok:
+            for tgt in targets:
+                translated = chunk_tmap.get((tgt, elem.content))
+                if translated is not None:
                     elem.translated_content = translated
-                else:
-                    # BR-51, BR-25: set failure placeholder on failed element
-                    placeholder = f"[Translation failed|{tgt}] {elem.content}"
-                    elem.translated_content = placeholder
-                    any_chunk_failed = True
-                    logger.warning(
-                        "[DOC2DOC] chunk %d element %s failed (target=%s)",
-                        chunk.chunk_index,
-                        elem.element_id,
-                        tgt,
-                    )
+                    if translated.startswith("[Translation failed|"):
+                        any_chunk_failed = True
+                        logger.warning(
+                            "[DOC2DOC] chunk %d element %s failed (target=%s)",
+                            chunk.chunk_index,
+                            elem.element_id,
+                            tgt,
+                        )
+
+        # Update overlap context: use the tail of this chunk's texts for the next chunk.
+        # Limit to the last min(3, len) texts to keep context concise.
+        if chunk_texts:
+            _tail_n = min(3, len(chunk_texts))
+            _prev_chunk_context = "\n".join(chunk_texts[-_tail_n:])
+
+        if _chunk_stopped:
+            log(f"[DOC2DOC] stop flag fired inside chunk {chunk.chunk_index}; halting")
+            break
 
     # Reassemble in chunk_index order with overlap de-duplication
     # (data-shape §Reassembly contract)

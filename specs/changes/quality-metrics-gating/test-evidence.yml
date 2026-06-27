@@ -1,0 +1,60 @@
+change-id: quality-metrics-gating
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      pytest .claude/worktrees/quality-metrics-gating/tests/ --collect-only -q
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/quality-metrics-gating/test-runs/20260627-201123/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/quality-metrics-gating/test-runs/20260627-201123/summary.json
+    junit: specs/changes/quality-metrics-gating/test-runs/20260627-201123/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      pytest .claude/worktrees/quality-metrics-gating/tests/test_quality_evaluation.py
+      .claude/worktrees/quality-metrics-gating/tests/test_quality_judge.py
+      .claude/worktrees/quality-metrics-gating/tests/test_critique_gate.py
+      .claude/worktrees/quality-metrics-gating/tests/test_translate_document_parity.py
+      .claude/worktrees/quality-metrics-gating/tests/test_env_contract.py -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/quality-metrics-gating/test-runs/20260627-201142/junit.xml'
+      -ra
+    summary: specs/changes/quality-metrics-gating/test-runs/20260627-201142/summary.json
+    junit: specs/changes/quality-metrics-gating/test-runs/20260627-201142/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      pytest .claude/worktrees/quality-metrics-gating/tests/test_quality_evaluation.py
+      .claude/worktrees/quality-metrics-gating/tests/test_quality_judge.py
+      .claude/worktrees/quality-metrics-gating/tests/test_critique_gate.py
+      .claude/worktrees/quality-metrics-gating/tests/test_translate_document_parity.py
+      .claude/worktrees/quality-metrics-gating/tests/test_judge_api.py
+      .claude/worktrees/quality-metrics-gating/tests/test_context_window_segments.py
+      .claude/worktrees/quality-metrics-gating/tests/test_translation_strategy.py
+      .claude/worktrees/quality-metrics-gating/tests/test_env_contract.py -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/quality-metrics-gating/test-runs/20260627-201627/junit.xml'
+      -ra
+    summary: specs/changes/quality-metrics-gating/test-runs/20260627-201627/summary.json
+    junit: specs/changes/quality-metrics-gating/test-runs/20260627-201627/junit.xml
+  - phase: contract
+    status: passed
+    command: >-
+      pytest .claude/worktrees/quality-metrics-gating/tests/test_env_contract.py -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/quality-metrics-gating/test-runs/20260627-201750/junit.xml'
+      -ra
+    summary: specs/changes/quality-metrics-gating/test-runs/20260627-201750/summary.json
+    junit: specs/changes/quality-metrics-gating/test-runs/20260627-201750/junit.xml
+  - phase: full
+    status: passed
+    command: >-
+      pytest .claude/worktrees/quality-metrics-gating/tests/ -x -q --tb=short
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/quality-metrics-gating/test-runs/20260627-202420/junit.xml'
+      -ra
+    summary: specs/changes/quality-metrics-gating/test-runs/20260627-202420/summary.json
+    junit: specs/changes/quality-metrics-gating/test-runs/20260627-202420/junit.xml
+final-status: passed

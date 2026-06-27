@@ -1,0 +1,16 @@
+{
+  "change_id": "quality-metrics-gating",
+  "phase": "full",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest .claude/worktrees/quality-metrics-gating/tests/ -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/quality-metrics-gating/test-runs/20260627-202420/junit.xml' -ra",
+  "duration_ms": 162246,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/quality-metrics-gating/test-runs/20260627-202420/summary.json",
+    "stdout": "specs/changes/quality-metrics-gating/test-runs/20260627-202420/stdout.log",
+    "stderr": "specs/changes/quality-metrics-gating/test-runs/20260627-202420/stderr.log",
+    "junit": "specs/changes/quality-metrics-gating/test-runs/20260627-202420/junit.xml"
+  },
+  "next_action": "all phases green"
+}

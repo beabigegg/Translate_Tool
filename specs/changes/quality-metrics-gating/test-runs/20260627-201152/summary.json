@@ -1,0 +1,20 @@
+{
+  "change_id": "quality-metrics-gating",
+  "phase": "changed-area",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "pytest .claude/worktrees/quality-metrics-gating/tests/test_quality_evaluation.py .claude/worktrees/quality-metrics-gating/tests/test_quality_judge.py .claude/worktrees/quality-metrics-gating/tests/test_critique_gate.py .claude/worktrees/quality-metrics-gating/tests/test_translate_document_parity.py .claude/worktrees/quality-metrics-gating/tests/test_judge_api.py .claude/worktrees/quality-metrics-gating/tests/test_context_window_segments.py .claude/worktrees/quality-metrics-gating/tests/test_translation_strategy.py .claude/worktrees/quality-metrics-gating/tests/test_env_contract.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/quality-metrics-gating/test-runs/20260627-201152/junit.xml' -ra",
+  "duration_ms": 76041,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": ".claude.worktrees.quality-metrics-gating.tests.test_translation_strategy::test_qe_hook_not_called_when_disabled",
+    "message": "AssertionError: load_model must NOT be called when QE_ENABLED=False\nassert 3 == 0\n +  where 3 = <MagicMock name='load_model' id='135106414159056'>.call_count"
+  },
+  "artifacts": {
+    "summary": "specs/changes/quality-metrics-gating/test-runs/20260627-201152/summary.json",
+    "stdout": "specs/changes/quality-metrics-gating/test-runs/20260627-201152/stdout.log",
+    "stderr": "specs/changes/quality-metrics-gating/test-runs/20260627-201152/stderr.log",
+    "junit": "specs/changes/quality-metrics-gating/test-runs/20260627-201152/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

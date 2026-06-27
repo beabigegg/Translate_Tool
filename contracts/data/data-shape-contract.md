@@ -766,3 +766,42 @@ The orchestrator applies per-file output mode degradation: when a format-specifi
 | `append` | all | — (passes through) | no |
 
 A single job may contain mixed-format files (e.g. DOCX + XLSX). In that case each file sees its own resolved mode after degradation. The BR-67 multi-target clamp (`replace`→`append`) applies before the per-file degrade.
+
+---
+
+## Quality-Metrics-Gating Extensions
+
+**Added in quality-metrics-gating.**
+
+### Per-segment QE score list (AC-1, AC-2)
+
+`score_blocks(model, blocks)` returns `List[float]` — one score per `(src, mt)` input pair. This list
+is the per-segment scoring surface for both the critique adoption gate (BR-89) and the
+post-job rescore threshold check (BR-92).
+
+| aspect | contract |
+|---|---|
+| Shape | `len(scores) == len(blocks)` always; empty list returned on internal failure (BR-56 safe-degrade) |
+| Score type | `float`; range and scale are model-dependent (see BR-54) |
+| Critique gate usage | Two-element call `[(src, draft), (src, revised)]`; adopt revised iff `scores[1] > scores[0]` (strict); tie keeps draft (BR-89) |
+| Post-job threshold usage | Per-segment score compared to `QE_RESCORE_THRESHOLD`; segments below threshold flagged for re-translation (BR-92, AC-2; wired in job_manager.py post-translate hook, CER-002) |
+
+### Per-block judge score (AC-5)
+
+`QualityJudge.judge_block(src, tgt) -> float` scores one translation block via `evaluate()`.
+
+| field | type | notes |
+|---|---|---|
+| return value | float | 1.0 = 高 (high), 0.5 = 中 (acceptable), 0.0 = 低 (poor) or unavailable |
+| one call per block | see BR-94 | evaluate() MUST be called with individual (src[i], tgt[i]) pairs; joined whole-doc call is non-conforming |
+
+### PDF MLLM layout score (AC-6)
+
+`QualityJudge.judge_layout(page_image: PIL.Image.Image) -> int` scores the layout quality of a rendered page.
+
+| field | type | notes |
+|---|---|---|
+| page_image input | PIL.Image.Image | MUST be an in-memory PIL image; file paths are non-conforming (BR-95) |
+| return value | int | integer in [1, 5]; 1 = very poor, 5 = excellent; 0 on any failure (safe-degrade) |
+| privacy | local only | uses local Gemma socket only; never routed to a cloud provider (BR-32 / ADR 0007) |
+| call site | seam-only | method exists on QualityJudge; PDF processor wiring intentionally deferred to a future change (seam-only in quality-metrics-gating) |

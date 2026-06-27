@@ -278,13 +278,19 @@ class TestCritiqueLoop:
         primary = self._make_client("hymt-model")
         primary.translate_once.return_value = (True, "revised by critique")
 
-        tmap, _, _, _ = translate_texts(
-            texts=["Hello world"],
-            targets=["zh-TW"],
-            src_lang="en",
-            client=primary,
-            terms=[],
-        )
+        # Bypass the QE adoption gate: this test verifies the critique loop runs and
+        # records revised output, NOT which scoring policy wins.  Force-adopt revised.
+        with patch(
+            "app.backend.services.translation_service._critique_gate_adopt",
+            side_effect=lambda src, draft, revised: revised,
+        ):
+            tmap, _, _, _ = translate_texts(
+                texts=["Hello world"],
+                targets=["zh-TW"],
+                src_lang="en",
+                client=primary,
+                terms=[],
+            )
 
         # After critique loop, tmap holds the refined (critique) output
         assert tmap[("zh-TW", "Hello world")] == "revised by critique"

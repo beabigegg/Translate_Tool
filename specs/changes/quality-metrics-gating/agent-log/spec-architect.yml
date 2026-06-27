@@ -1,0 +1,5 @@
+artifacts:
+  - { type: adr-written, pointer: "docs/adr/0007-mllm-layout-judge-local-only-image.md" }
+  - { type: affected-areas, pointer: "QE, LLM judge, critique loop, long-doc path, env/config" }
+  - { type: decision-summary, pointer: "score-gated critique (QE inline + heuristic fallback); per-block judge via evaluate(); in-memory local-only MLLM layout image; translate_document delegates to translate_texts for parity" }
+  - { type: risks-noted, pointer: "1 high (QE default-on VRAM/latency), 3 medium (rescore threshold default, MLLM privacy, API surface CER-001)" }
