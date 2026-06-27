@@ -1,0 +1,20 @@
+{
+  "change_id": "pdf-layout-refactor",
+  "phase": "full",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "pytest -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/pdf-layout-refactor/specs/changes/pdf-layout-refactor/test-runs/20260627-185655/junit.xml' -ra",
+  "duration_ms": 813,
+  "first_failure": {
+    "kind": "collection-error",
+    "nodeid": "tests.test_jobstatus_download_url",
+    "message": "collection failure"
+  },
+  "artifacts": {
+    "summary": "specs/changes/pdf-layout-refactor/test-runs/20260627-185655/summary.json",
+    "stdout": "specs/changes/pdf-layout-refactor/test-runs/20260627-185655/stdout.log",
+    "stderr": "specs/changes/pdf-layout-refactor/test-runs/20260627-185655/stderr.log",
+    "junit": "specs/changes/pdf-layout-refactor/test-runs/20260627-185655/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

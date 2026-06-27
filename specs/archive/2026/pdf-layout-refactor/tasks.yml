@@ -1,0 +1,43 @@
+change-id: pdf-layout-refactor
+status: in-progress
+tier: 1
+context-governance: v1
+archive-tasks:
+  - "6.2"
+  - "6.3"
+  - "7.1"
+  - "7.2"
+depends-on: []
+
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: done }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: skipped, note: "no API surface change" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no frontend/UI" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: done }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: done }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: done }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: done }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: done }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: done }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: done }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "no stress/soak required" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: done }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no frontend change" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: skipped, note: "config flags in config.py only" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: done }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI surface" }
+  - { id: "5.2", section: Review, title: "Visual review", status: done }
+  - { id: "5.3", section: Review, title: "Contract review", status: done }
+  - { id: "5.4", section: Review, title: "QA review", status: done }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: pending }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: pending }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no such gates planned" }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: skipped, note: "all durable rules in contracts (BR-84..88, env 0.11.0, data-shape 0.15.0, ci-gate 0.5.0); DPI fix in code+test; no new agent-workflow patterns" }

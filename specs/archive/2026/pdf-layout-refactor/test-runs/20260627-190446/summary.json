@@ -1,0 +1,16 @@
+{
+  "change_id": "pdf-layout-refactor",
+  "phase": "full",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/pdf-layout-refactor/specs/changes/pdf-layout-refactor/test-runs/20260627-190446/junit.xml' -ra",
+  "duration_ms": 26305,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/pdf-layout-refactor/test-runs/20260627-190446/summary.json",
+    "stdout": "specs/changes/pdf-layout-refactor/test-runs/20260627-190446/stdout.log",
+    "stderr": "specs/changes/pdf-layout-refactor/test-runs/20260627-190446/stderr.log",
+    "junit": "specs/changes/pdf-layout-refactor/test-runs/20260627-190446/junit.xml"
+  },
+  "next_action": "all phases green"
+}

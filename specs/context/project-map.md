@@ -3,8 +3,8 @@ artifact: project-map
 generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
-visible-dirs: 57
-visible-files: 214
+visible-dirs: 58
+visible-files: 222
 omitted-dirs: 12
 truncated-dirs: 1
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -123,6 +123,7 @@ Translate_Tool/
 |   |   |   |-- font_utils.py
 |   |   |   |-- logging_utils.py
 |   |   |   |-- resource_utils.py
+|   |   |   |-- table_serializer.py
 |   |   |   |-- text_utils.py
 |   |   |   |-- translation_helpers.py
 |   |   |   \-- translation_verification.py
@@ -151,7 +152,8 @@ Translate_Tool/
 |   |   |   |-- styles/
 |   |   |   |   \-- ... (max depth)
 |   |   |   |-- App.jsx
-|   |   |   \-- main.jsx
+|   |   |   |-- main.jsx
+|   |   |   \-- test-setup.js
 |   |   |-- index.html
 |   |   |-- package-lock.json
 |   |   |-- package.json
@@ -190,7 +192,8 @@ Translate_Tool/
 |   |   |-- 0002-ir-elementtype-serialized-values.md
 |   |   |-- 0003-layout-detector-runtime-and-failure-mode.md
 |   |   |-- 0004-truncation-marker-on-ir.md
-|   |   \-- 0005-judge-rerender-apply.md
+|   |   |-- 0005-judge-rerender-apply.md
+|   |   \-- 0006-table-markdown-serialization.md
 |   \-- improvement-plan.md
 |-- scripts/
 |   |-- benchmark_full_factorial.py
@@ -240,9 +243,16 @@ Translate_Tool/
 |   |   |   |   \-- ... (max depth)
 |   |   |   |-- pptx/
 |   |   |   |   \-- ... (max depth)
-|   |   |   \-- README.md
+|   |   |   |-- generate_simple_test_pdf.py
+|   |   |   |-- README.md
+|   |   |   \-- simple_test.pdf
 |   |   |-- minimal_phase0.docx
 |   |   \-- test.pdf
+|   |-- metrics/
+|   |   |-- __init__.py
+|   |   |-- biou.py
+|   |   |-- residual_text.py
+|   |   \-- truncation_rate.py
 |   |-- templates/
 |   |   |-- data-boundary/
 |   |   |   \-- malformed-data.spec.md
@@ -265,6 +275,7 @@ Translate_Tool/
 |   |-- conftest.py
 |   |-- test_bbox_utils.py
 |   |-- test_context_prompt_i18n.py
+|   |-- test_context_window_segments.py
 |   |-- test_coordinate_renderer.py
 |   |-- test_dead_references.py
 |   |-- test_doc_chunker.py
@@ -281,6 +292,7 @@ Translate_Tool/
 |   |-- test_judge_api.py
 |   |-- test_judge_apply.py
 |   |-- test_layout_detector.py
+|   |-- test_layout_metrics.py
 |   |-- test_llm_client_protocol.py
 |   |-- test_metrics_counters.py
 |   |-- test_metrics_endpoint.py
@@ -295,6 +307,7 @@ Translate_Tool/
 |   |-- test_output_mode_processors.py
 |   |-- test_pdf_generator.py
 |   |-- test_pdf_parser.py
+|   |-- test_pdf_render_warnings.py
 |   |-- test_pptx_parser.py
 |   |-- test_provider_fallback.py
 |   |-- test_providers_api.py
@@ -303,12 +316,8 @@ Translate_Tool/
 |   |-- test_renderer_convergence.py
 |   |-- test_sentence_mode_consistency.py
 |   |-- test_table_border_protection.py
-|   |-- test_table_recognizer.py
-|   |-- test_term_api.py
-|   |-- test_term_audit.py
-|   |-- test_term_db.py
-|   |-- test_term_extractor_resilience.py
-|   \-- ... (7 more entries truncated; cap=50)
+|   |-- test_table_context_translation.py
+|   \-- ... (14 more entries truncated; cap=50)
 |-- .env
 |-- .gitignore
 |-- AGENTS.md

@@ -1,0 +1,1 @@
+pytest tests/test_pdf_layout_refactor.py -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/pdf-layout-refactor/specs/changes/pdf-layout-refactor/test-runs/20260627-184528/junit.xml' -ra

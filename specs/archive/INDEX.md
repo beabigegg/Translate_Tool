@@ -33,3 +33,4 @@
 | wire-context-segments | 2026 | 2026-06-27 | specs/archive/2026/wire-context-segments/ |
 | tatr-parse-outputs | 2026 | 2026-06-27 | specs/archive/2026/tatr-parse-outputs/ |
 | pdf-renderer-fallback-warn | 2026 | 2026-06-27 | specs/archive/2026/pdf-renderer-fallback-warn/ |
+| pdf-layout-refactor | 2026 | 2026-06-27 | specs/archive/2026/pdf-layout-refactor/ |

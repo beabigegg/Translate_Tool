@@ -1,6 +1,6 @@
 # Contract-driven gates
 # Tier semantics: ci/gate-policy.md
-# Active change gates: pdf-layout-refactor (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection, p2-prompt-fewshot-glossary, p2-long-doc-chunking, p2-comet-qe, p2-term-audit, download-url-in-jobstatus, remove-cross-model-refinement, fallback-chain-cloud-providers, term-extraction-db-first, settings-page-cloud-redesign, p3-docx-replace-mode, p3-table-structure, p3-llm-judge, pdf-renderer-fallback-warn, expose-output-mode-ui, wire-context-segments, layout-fidelity-metrics, tatr-parse-outputs, pdf-renderer-fallback-warn, table-context-translation)
+# Active change gates: (none) (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection, p2-prompt-fewshot-glossary, p2-long-doc-chunking, p2-comet-qe, p2-term-audit, download-url-in-jobstatus, remove-cross-model-refinement, fallback-chain-cloud-providers, term-extraction-db-first, settings-page-cloud-redesign, p3-docx-replace-mode, p3-table-structure, p3-llm-judge, pdf-renderer-fallback-warn, expose-output-mode-ui, wire-context-segments, layout-fidelity-metrics, tatr-parse-outputs, pdf-renderer-fallback-warn, table-context-translation, pdf-layout-refactor)
 
 name: contract-driven-gates
 
@@ -144,15 +144,6 @@ jobs:
         # (GET /api/jobs/{id} warnings propagation) test families.
         # See test-plan.md (pdf-renderer-fallback-warn) for the full AC → test mapping.
         run: pytest tests/test_pdf_render_warnings.py -x -q --tb=short
-
-      - name: pdf-layout-refactor targeted tests
-        # AC-1..AC-8: fast-fail before full suite.
-        # Covers residual-text (AC-1), bbox-exact whitening (AC-1), paragraph aggregation (AC-2),
-        # scale-fit floor (AC-3), span StyleInfo (AC-4), reading-order (AC-5), DPI matrix (AC-6),
-        # formula pass-through + scanned routing (AC-7), OCR-absent resilience + TATR unaffected (AC-8).
-        # See ci-gates.md and test-plan.md for full AC → test mapping.
-        run: |
-          pytest tests/test_pdf_layout_refactor.py -x -q --tb=short
 
       - name: Unit, contract, integration, resilience, data-boundary tests (Tier 1 — blocks merge)
         run: pytest tests/ -x -q --tb=short --junitxml=test-results/junit.xml

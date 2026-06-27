@@ -1,0 +1,15 @@
+{
+  "change_id": "pdf-layout-refactor",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "cdd-kit validate --contracts --env --ci",
+  "duration_ms": 528,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/pdf-layout-refactor/test-runs/20260627-185543/summary.json",
+    "stdout": "specs/changes/pdf-layout-refactor/test-runs/20260627-185543/stdout.log",
+    "stderr": "specs/changes/pdf-layout-refactor/test-runs/20260627-185543/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

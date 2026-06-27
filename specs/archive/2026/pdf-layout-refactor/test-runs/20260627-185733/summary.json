@@ -1,0 +1,20 @@
+{
+  "change_id": "pdf-layout-refactor",
+  "phase": "full",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "pytest -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/.claude/worktrees/pdf-layout-refactor/specs/changes/pdf-layout-refactor/test-runs/20260627-185733/junit.xml' -ra",
+  "duration_ms": 19503,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests.test_pdf_parser.TestPyMuPDFParserIntegration::test_reading_order",
+    "message": "AssertionError: Elements not in reading order\nassert (1, 40, 50.0) >= (1, 80, 50.0)"
+  },
+  "artifacts": {
+    "summary": "specs/changes/pdf-layout-refactor/test-runs/20260627-185733/summary.json",
+    "stdout": "specs/changes/pdf-layout-refactor/test-runs/20260627-185733/stdout.log",
+    "stderr": "specs/changes/pdf-layout-refactor/test-runs/20260627-185733/stderr.log",
+    "junit": "specs/changes/pdf-layout-refactor/test-runs/20260627-185733/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}
