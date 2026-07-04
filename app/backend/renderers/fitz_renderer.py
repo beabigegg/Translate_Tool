@@ -26,18 +26,18 @@ from app.backend.config import (
     FONT_SIZE_CONFIG,
     LANG_CODE_MAP,
     PDF_MASK_MARGIN_PT,
-    PDF_SHOW_MISSING_PLACEHOLDER,
 )
 from app.backend.renderers.base import RenderMode
 from app.backend.renderers.bbox_reflow import reflow_document
 from app.backend.renderers.text_region_renderer import (
     TextRegion,
+    _wrap_lines_simple,
     create_text_regions_from_elements,
     fit_text_cascade,
     render_text_region,
 )
 from app.backend.services.metrics import record_font_cache_hit, record_font_cache_miss
-from app.backend.utils.font_utils import register_fonts
+from app.backend.utils.font_utils import get_font_for_language, register_fonts
 
 if TYPE_CHECKING:
     from app.backend.models.translatable_document import TranslatableDocument
@@ -46,6 +46,9 @@ logger = logging.getLogger(__name__)
 
 # Lazy import for fitz (PyMuPDF)
 fitz = None
+
+# Sentinel for PDFGenerator._font_file_resolved ("not yet looked up")
+_FONT_FILE_UNSET = object()
 
 
 # ---------------------------------------------------------------------------
@@ -150,6 +153,9 @@ class PDFGenerator:
         self.log = log
         self._font_config = self._get_font_config()
         self._missing_translations: List[str] = []  # Track missing translations
+        # Lazily-resolved font file path; sentinel distinguishes "not looked up"
+        # from "looked up, not found" so the disk search runs at most once.
+        self._font_file_resolved: object = _FONT_FILE_UNSET
 
     @property
     def missing_translation_count(self) -> int:
@@ -274,19 +280,19 @@ class PDFGenerator:
                     # Skipped by reflow (null bbox or should_translate=False)
                     continue
 
-                # The reflow Placement already resolved the translated text (or fell back
-                # to content).  Use the translations dict override when available so that
-                # external translation results still take priority, then fall back to the
-                # Placement text (which itself falls back to content).
+                # Resolve the translated text: the translations dict override takes
+                # priority; the Placement text is used only when it is an actual
+                # translation (translated_content), not its content fallback.
+                # When no translation exists at all, the element is skipped BEFORE
+                # any whitening rect is queued — the original text stays visible
+                # instead of being redacted to a blank box or re-typeset verbatim.
                 original_text = element.content.strip()
-                translated_text = translations.get(original_text, placement.text)
-                if translated_text is None:
-                    # Track missing translation
+                translated_text = translations.get(original_text)
+                if translated_text is None and placement.text != element.content:
+                    translated_text = placement.text
+                if translated_text is None or not str(translated_text).strip():
                     self._missing_translations.append(original_text[:50])
-                    if PDF_SHOW_MISSING_PLACEHOLDER:
-                        translated_text = f"[未翻譯] {original_text[:20]}..."
-                    else:
-                        continue
+                    continue
 
                 # Bbox-exact whitening: use IR bbox directly; no search_for (D-1).
                 # For paragraph-aggregated elements, whiten each original line bbox
@@ -358,9 +364,16 @@ class PDFGenerator:
     def _get_font_file(self) -> Optional[str]:
         """Get the font file path for the target language.
 
+        The disk search is memoized per generator instance — this method is
+        called once per inserted text block, and the answer never changes
+        within a generation run.
+
         Returns:
             Path to font file or None if not found.
         """
+        if self._font_file_resolved is not _FONT_FILE_UNSET:
+            return self._font_file_resolved  # type: ignore[return-value]
+
         from app.backend.utils.font_utils import find_font_file
 
         # Map language codes to font file patterns
@@ -384,52 +397,12 @@ class PDFGenerator:
             font_path = find_font_file(patterns)
             if font_path:
                 self.log(f"[PDF] Using font file: {font_path}")
-                return str(font_path)
+                self._font_file_resolved = str(font_path)
+                return self._font_file_resolved
 
         self.log(f"[PDF] No font file found for {self.target_lang} (code: {lang_code})")
+        self._font_file_resolved = None
         return None
-
-    def _wrap_text(self, text: str, font, fontsize: float, max_width: float) -> List[str]:
-        """Wrap text to fit within max_width.
-
-        Args:
-            text: Text to wrap.
-            font: PyMuPDF font object.
-            fontsize: Font size in points.
-            max_width: Maximum width in points.
-
-        Returns:
-            List of wrapped lines.
-        """
-        if not text:
-            return [""]
-
-        wrapped_lines = []
-        for line in text.split("\n"):
-            if not line:
-                wrapped_lines.append("")
-                continue
-
-            # Check if line fits
-            if font.text_length(line, fontsize=fontsize) <= max_width:
-                wrapped_lines.append(line)
-                continue
-
-            # Need to wrap this line
-            current_line = ""
-            for char in line:
-                test_line = current_line + char
-                if font.text_length(test_line, fontsize=fontsize) <= max_width:
-                    current_line = test_line
-                else:
-                    if current_line:
-                        wrapped_lines.append(current_line)
-                    current_line = char
-
-            if current_line:
-                wrapped_lines.append(current_line)
-
-        return wrapped_lines if wrapped_lines else [""]
 
     def _insert_text_in_rect(
         self,
@@ -501,9 +474,28 @@ class PDFGenerator:
         # Build a minimal StyleInfo-compatible dict for the cascade.
         from app.backend.models.translatable_document import StyleInfo, BoundingBox as _BBox
 
+        # Starting font size: prefer the ORIGINAL text's size (from the parsed
+        # element style) so translated text matches the surrounding typography;
+        # fall back to the language config max when style info is unavailable.
+        initial_size = float(fc["max"])
+        elem_style = getattr(element, "style", None) if element is not None else None
+        if elem_style is not None and getattr(elem_style, "font_size", None):
+            try:
+                orig_size = float(elem_style.font_size)
+                if orig_size > 0:
+                    initial_size = orig_size
+            except (TypeError, ValueError):
+                pass
+
+        # Measure with the actual registered font for the target language so
+        # the cascade's wrap/height decisions match what will be rendered.
+        # (get_font_for_language falls back to Helvetica, whose CJK widths are
+        # em-estimated by calculate_text_width.)
+        measure_font_name = get_font_for_language(self.target_lang)
+
         style = StyleInfo(
-            font_size=float(fc["max"]),
-            font_name=None,  # cascade uses calculate_text_width (ReportLab); font object for I/O
+            font_size=initial_size,
+            font_name=measure_font_name,
         )
         bbox_obj = _BBox(
             x0=float(rect.x0),
@@ -529,18 +521,28 @@ class PDFGenerator:
             )
 
         render_text = decision.fitted_text if decision.fitted_text else text
-        final_font_size = max(decision.font_size, float(fc["min"]))
+        final_font_size = decision.font_size
         line_spacing = decision.line_spacing
 
-        # Render via fitz TextWriter using the cascade decision
+        # Render via fitz TextWriter using the cascade decision.
+        # Line breaks come from the SAME wrap function the cascade measured with,
+        # so the rendered line count matches the fit decision; the overflow guard
+        # below is a last-resort safety net, not the primary fit mechanism.
         try:
-            wrapped_lines = self._wrap_text(render_text, font, final_font_size, rect.width)
+            wrapped_lines = _wrap_lines_simple(
+                render_text, measure_font_name, final_font_size, rect.width
+            )
             tw = fitz.TextWriter(page.rect)
             x = rect.x0
             y = rect.y0 + final_font_size  # Baseline offset
+            bottom_limit = rect.y1 + final_font_size * 0.25  # small descender tolerance
 
             for line in wrapped_lines:
-                if y > rect.y1:
+                if y > bottom_limit:
+                    logger.debug(
+                        "[cascade] render overflow guard fired in bbox "
+                        f"({rect.width:.1f}×{rect.height:.1f}); dropping remaining lines"
+                    )
                     break
                 tw.append((x, y), line, font=font, fontsize=final_font_size)
                 y += final_font_size * line_spacing
@@ -600,7 +602,18 @@ class PDFGenerator:
             # Get elements for this page
             elements = elements_by_page.get(page_num + 1, [])
 
-            if elements and self.draw_mask:
+            # Build the translated overlay regions FIRST so the source-text mask
+            # covers exactly the areas that will receive a translated overlay.
+            # Elements without a translation (or with should_translate=False)
+            # keep their source text visible on the right panel instead of being
+            # redacted to a blank white box.
+            regions = (
+                create_text_regions_from_elements(elements, translations, self.target_lang)
+                if elements
+                else []
+            )
+
+            if regions and self.draw_mask:
                 # Bug (b) fix (p2-table-border-protection, AC-2): mask source text
                 # on the right-panel copy before the translated overlay is placed.
                 # Without this pass, source text copied via show_pdf_page bleeds
@@ -608,25 +621,22 @@ class PDFGenerator:
                 # Use redact annotations so the text content stream is actually
                 # removed (draw_rect only visually covers text but does not remove
                 # it from the PDF text layer queried by get_text()).
-                # Each element's bbox is offset by src_rect.width (right-half origin).
-                for elem in elements:
-                    if elem.bbox is None:
-                        continue
+                # Each region's rect is offset by src_rect.width (right-half origin).
+                for region in regions:
                     mask_rect = fitz.Rect(
-                        elem.bbox.x0 + src_rect.width,
-                        elem.bbox.y0,
-                        elem.bbox.x1 + src_rect.width,
-                        elem.bbox.y1,
+                        region.x0 + src_rect.width,
+                        region.y0,
+                        region.x1 + src_rect.width,
+                        region.y1,
                     )
                     new_page.draw_rect(mask_rect, color=None, fill=(1, 1, 1))
                     new_page.add_redact_annot(mask_rect, fill=(1, 1, 1))
                 new_page.apply_redactions(graphics=0)
 
-            if elements:
+            if regions:
                 # Create translation overlay for right side
                 overlay_pdf = self._create_page_overlay(
-                    elements,
-                    translations,
+                    regions,
                     src_rect.width,
                     src_rect.height,
                     x_offset=0,  # Will be placed at right side
@@ -660,17 +670,15 @@ class PDFGenerator:
 
     def _create_page_overlay(
         self,
-        elements: list,
-        translations: Dict[str, str],
+        regions: List[TextRegion],
         page_width: float,
         page_height: float,
         x_offset: float = 0,
     ) -> Optional[bytes]:
-        """Create a PDF overlay for a single page.
+        """Create a PDF overlay for a single page from pre-built text regions.
 
         Args:
-            elements: TranslatableElements for this page.
-            translations: Text translations.
+            regions: TextRegions to render (from create_text_regions_from_elements).
             page_width: Page width in points.
             page_height: Page height in points.
             x_offset: X offset for positioning (for side-by-side).
@@ -678,11 +686,6 @@ class PDFGenerator:
         Returns:
             PDF bytes or None if no regions to render.
         """
-        # Create text regions
-        regions = create_text_regions_from_elements(
-            elements, translations, self.target_lang
-        )
-
         if not regions:
             return None
 

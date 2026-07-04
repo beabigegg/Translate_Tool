@@ -378,6 +378,8 @@ class PyMuPDFParser(BaseParser):
                 page_elements[elem.page_num] = []
             page_elements[elem.page_num].append(elem)
 
+        table_counter = 0
+        elements_changed = False
         for page_num in range(len(doc)):
             page = doc[page_num]
             try:
@@ -393,15 +395,266 @@ class PyMuPDFParser(BaseParser):
                         x1=table.bbox[2],
                         y1=table.bbox[3],
                     )
+                    table_id = f"p{page_num + 1}_t{table_counter}"
+                    table_counter += 1
+
+                    # Map detected cell rects to (row, col) grid positions so the
+                    # translation layer can serialize the whole table as context
+                    # (table-context-translation for PDF).  Fail-soft: any error
+                    # degrades to the legacy in_table marking without grid coords.
+                    try:
+                        cell_grid = self._build_cell_grid(table)
+                    except Exception:
+                        cell_grid = []
+
+                    page_elems = page_elements.get(page_num + 1, [])
+                    inside = [
+                        elem for elem in page_elems
+                        if elem.bbox and self._is_inside(elem.bbox, table_bbox)
+                    ]
+
+                    # fitz text blocks frequently merge a whole table ROW into one
+                    # block.  When any element spans multiple cells, rebuild this
+                    # table's elements from span geometry so each grid cell becomes
+                    # its own element (correct translation unit AND overlay bbox).
+                    rebuilt: List[TranslatableElement] = []
+                    if cell_grid and inside and any(
+                        self._spans_multiple_cells(elem.bbox, cell_grid) for elem in inside
+                    ):
+                        try:
+                            rebuilt = self._split_elements_by_cells(
+                                page, page_num + 1, table_id, cell_grid
+                            )
+                        except Exception as exc:
+                            logger.debug(
+                                f"Per-cell split failed for {table_id}: {exc}; "
+                                "keeping merged elements."
+                            )
+                            rebuilt = []
+
+                    if rebuilt:
+                        inside_ids = {id(e) for e in inside}
+                        page_elems[:] = [
+                            e for e in page_elems if id(e) not in inside_ids
+                        ] + rebuilt
+                        page_elements[page_num + 1] = page_elems
+                        elements_changed = True
+                        continue
 
                     # Mark elements inside table bbox as table cells
-                    for elem in page_elements.get(page_num + 1, []):
-                        if elem.bbox and self._is_inside(elem.bbox, table_bbox):
-                            elem.element_type = ElementType.TABLE_CELL
-                            elem.metadata["in_table"] = True
+                    for elem in inside:
+                        elem.element_type = ElementType.TABLE_CELL
+                        elem.metadata["in_table"] = True
+                        elem.metadata["table_id"] = table_id
+                        rc = self._locate_cell(elem.bbox, cell_grid)
+                        if rc is not None:
+                            elem.metadata["table_row"] = rc[0]
+                            elem.metadata["table_col"] = rc[1]
 
             except Exception as e:
                 logger.debug(f"Table detection failed on page {page_num + 1}: {e}")
+
+        if elements_changed:
+            # Rebuild the flat element list from the per-page lists (replaced
+            # merged row-blocks with per-cell elements).  Downstream reading-order
+            # sorting re-sequences globally, so intra-page append order is fine.
+            rebuilt_all: List[TranslatableElement] = []
+            for pg in sorted(page_elements.keys()):
+                rebuilt_all.extend(page_elements[pg])
+            elements[:] = rebuilt_all
+
+    @staticmethod
+    def _spans_multiple_cells(
+        bbox: Optional[BoundingBox],
+        cell_grid: List[Tuple[int, int, Tuple[float, float, float, float]]],
+    ) -> bool:
+        """Return True when bbox meaningfully overlaps more than one table cell."""
+        if bbox is None:
+            return False
+        hit = 0
+        for _, _, rect in cell_grid:
+            ix0 = max(bbox.x0, rect[0])
+            iy0 = max(bbox.y0, rect[1])
+            ix1 = min(bbox.x1, rect[2])
+            iy1 = min(bbox.y1, rect[3])
+            # Require a non-trivial overlap (> 4 pt²) to ignore border grazing.
+            if ix1 - ix0 > 2.0 and iy1 - iy0 > 2.0:
+                hit += 1
+                if hit > 1:
+                    return True
+        return False
+
+    def _split_elements_by_cells(
+        self,
+        page: Any,  # fitz.Page
+        page_num: int,
+        table_id: str,
+        cell_grid: List[Tuple[int, int, Tuple[float, float, float, float]]],
+    ) -> List[TranslatableElement]:
+        """Build one TranslatableElement per table cell from span geometry.
+
+        Used when fitz block aggregation merged text across cell boundaries.
+        Each span on the page whose center falls inside a cell rect is assigned
+        to that cell; spans are regrouped into lines and joined the same way
+        paragraph aggregation joins them.
+
+        Returns:
+            One element per non-empty cell (element_type=TABLE_CELL, with
+            table_id/table_row/table_col metadata).  Empty list when no spans
+            land in any cell.
+        """
+        text_dict = page.get_text("dict")
+        spans_by_cell: Dict[Tuple[int, int], List[Tuple[tuple, str, dict]]] = {}
+
+        for block in text_dict.get("blocks", []):
+            if block.get("type") != 0:
+                continue
+            for line in block.get("lines", []):
+                for span in line.get("spans", []):
+                    span_text = span.get("text", "")
+                    if not span_text.strip():
+                        continue
+                    sb = span.get("bbox", (0, 0, 0, 0))
+                    cx = (sb[0] + sb[2]) / 2.0
+                    cy = (sb[1] + sb[3]) / 2.0
+                    for ri, ci, rect in cell_grid:
+                        if rect[0] <= cx <= rect[2] and rect[1] <= cy <= rect[3]:
+                            spans_by_cell.setdefault((ri, ci), []).append(
+                                (tuple(sb), span_text, span)
+                            )
+                            break
+
+        rect_by_cell = {(ri, ci): rect for ri, ci, rect in cell_grid}
+
+        new_elements: List[TranslatableElement] = []
+        for (ri, ci), spans in sorted(spans_by_cell.items()):
+            # Group spans into visual lines by rounded top edge, then x.
+            spans.sort(key=lambda s: (round(s[0][1] / 3.0), s[0][0]))
+            line_groups: List[List[Tuple[tuple, str, dict]]] = []
+            last_y_key = None
+            for s in spans:
+                y_key = round(s[0][1] / 3.0)
+                if last_y_key is None or y_key != last_y_key:
+                    line_groups.append([])
+                    last_y_key = y_key
+                line_groups[-1].append(s)
+
+            line_texts: List[str] = []
+            line_bboxes: List[tuple] = []
+            for group in line_groups:
+                text = "".join(g[1] for g in group).strip()
+                if not text:
+                    continue
+                line_texts.append(text)
+                line_bboxes.append((
+                    min(g[0][0] for g in group),
+                    min(g[0][1] for g in group),
+                    max(g[0][2] for g in group),
+                    max(g[0][3] for g in group),
+                ))
+
+            content = " ".join(line_texts)
+            if len(content) < self.min_text_length or not line_bboxes:
+                continue
+
+            # Tight text bbox from the spans, then extend right/bottom to the
+            # cell rect (minus a border padding) so translations that run longer
+            # than the source can use the cell's empty space instead of being
+            # shrunk/truncated inside the source text's tight bbox.  Whitening
+            # stays tight via metadata["lines"], sparing the cell borders.
+            tight_x0 = min(b[0] for b in line_bboxes)
+            tight_y0 = min(b[1] for b in line_bboxes)
+            tight_x1 = max(b[2] for b in line_bboxes)
+            tight_y1 = max(b[3] for b in line_bboxes)
+            cell_rect = rect_by_cell.get((ri, ci))
+            if cell_rect is not None:
+                _pad = 2.0
+                tight_x1 = max(tight_x1, cell_rect[2] - _pad)
+                tight_y1 = max(tight_y1, cell_rect[3] - _pad)
+            cell_bbox = BoundingBox(x0=tight_x0, y0=tight_y0, x1=tight_x1, y1=tight_y1)
+
+            first_span = line_groups[0][0][2]
+            flags = first_span.get("flags", 0)
+            style = StyleInfo(
+                font_name=first_span.get("font", ""),
+                font_size=first_span.get("size", 0),
+                is_bold=bool(flags & 0x10),
+                is_italic=bool(flags & 0x02),
+                is_underline=False,
+                color=self._color_to_hex(first_span.get("color", 0)),
+            )
+
+            new_elements.append(TranslatableElement(
+                element_id=f"p{page_num}_{table_id}_r{ri}c{ci}_{uuid.uuid4().hex[:8]}",
+                content=content,
+                element_type=ElementType.TABLE_CELL,
+                page_num=page_num,
+                bbox=cell_bbox,
+                style=style,
+                should_translate=True,
+                metadata={
+                    "in_table": True,
+                    "table_id": table_id,
+                    "table_row": ri,
+                    "table_col": ci,
+                    # Per-line bboxes for bbox-exact whitening (D-1)
+                    "lines": line_bboxes,
+                },
+            ))
+
+        return new_elements
+
+    @staticmethod
+    def _build_cell_grid(table: Any) -> List[Tuple[int, int, Tuple[float, float, float, float]]]:
+        """Map each detected table-cell rect to a (row, col) grid position.
+
+        fitz Table.cells is an unordered list of cell rect tuples (merged cells
+        may appear as None).  Row/column indices are derived by clustering the
+        cell top edges (rows) and left edges (columns) with a small tolerance.
+
+        Returns:
+            List of (row, col, rect) triples; empty list when no cells found.
+        """
+        rects = [r for r in (getattr(table, "cells", None) or []) if r is not None]
+        if not rects:
+            return []
+
+        def _cluster(vals: List[float], tol: float = 2.0) -> List[float]:
+            out: List[float] = []
+            for v in sorted(vals):
+                if not out or v - out[-1] > tol:
+                    out.append(v)
+            return out
+
+        def _idx(sorted_vals: List[float], v: float, tol: float = 2.0) -> Optional[int]:
+            for i, s in enumerate(sorted_vals):
+                if abs(v - s) <= tol:
+                    return i
+            return None
+
+        row_ys = _cluster([r[1] for r in rects])
+        col_xs = _cluster([r[0] for r in rects])
+
+        grid: List[Tuple[int, int, Tuple[float, float, float, float]]] = []
+        for r in rects:
+            ri = _idx(row_ys, r[1])
+            ci = _idx(col_xs, r[0])
+            if ri is not None and ci is not None:
+                grid.append((ri, ci, tuple(r)))
+        return grid
+
+    @staticmethod
+    def _locate_cell(
+        bbox: BoundingBox,
+        cell_grid: List[Tuple[int, int, Tuple[float, float, float, float]]],
+    ) -> Optional[Tuple[int, int]]:
+        """Return the (row, col) of the table cell containing the bbox center."""
+        cx = (bbox.x0 + bbox.x1) / 2.0
+        cy = (bbox.y0 + bbox.y1) / 2.0
+        for ri, ci, rect in cell_grid:
+            if rect[0] <= cx <= rect[2] and rect[1] <= cy <= rect[3]:
+                return (ri, ci)
+        return None
 
     def _is_inside(self, inner: BoundingBox, outer: BoundingBox) -> bool:
         """Check if inner bbox is inside outer bbox (with tolerance)."""

@@ -416,6 +416,20 @@ def get_font_for_language(lang: str) -> str:
     return LANGUAGE_FONT_MAP["default"][0]
 
 
+def _is_cjk_char(ch: str) -> bool:
+    """Return True for full-width CJK characters (rendered at ~1 em advance)."""
+    code = ord(ch)
+    return (
+        0x4E00 <= code <= 0x9FFF      # CJK Unified Ideographs
+        or 0x3400 <= code <= 0x4DBF   # CJK Extension A
+        or 0x3000 <= code <= 0x303F   # CJK punctuation
+        or 0x3040 <= code <= 0x30FF   # Hiragana / Katakana
+        or 0xAC00 <= code <= 0xD7AF   # Hangul syllables
+        or 0xF900 <= code <= 0xFAFF   # CJK Compatibility Ideographs
+        or 0xFF00 <= code <= 0xFF60   # Full-width forms
+    )
+
+
 def calculate_text_width(text: str, font_name: str, font_size: float) -> float:
     """Calculate the width of text in points.
 
@@ -429,11 +443,19 @@ def calculate_text_width(text: str, font_name: str, font_size: float) -> float:
     """
     try:
         font = pdfmetrics.getFont(font_name)
-        return font.stringWidth(text, font_size)
     except KeyError:
         # Fallback to Helvetica
         font = pdfmetrics.getFont("Helvetica")
-        return font.stringWidth(text, font_size)
+
+    # Built-in Type1 fonts (Helvetica etc.) carry no CJK glyphs and under-measure
+    # full-width characters.  Estimate each CJK char at 1 em so fit decisions made
+    # against a missing/unregistered font never under-count the rendered width.
+    if not isinstance(font, TTFont) and any(_is_cjk_char(ch) for ch in text):
+        non_cjk = "".join(ch for ch in text if not _is_cjk_char(ch))
+        cjk_count = len(text) - len(non_cjk)
+        return font.stringWidth(non_cjk, font_size) + cjk_count * font_size
+
+    return font.stringWidth(text, font_size)
 
 
 def calculate_text_height(font_name: str, font_size: float) -> float:

@@ -106,11 +106,36 @@ def _measure_text_block(
     return max_w, total_h
 
 
+def _split_oversized_token(
+    token: str, font_name: str, font_size: float, max_width: float
+) -> List[str]:
+    """Split a token wider than ``max_width`` at character level.
+
+    Needed for spaceless scripts (CJK) and long unbreakable runs (URLs), which
+    have no word boundaries to wrap on.  Each returned piece fits within
+    ``max_width`` (a single character wider than the box is emitted as-is).
+    """
+    pieces: List[str] = []
+    current = ""
+    for ch in token:
+        test = current + ch
+        if current and calculate_text_width(test, font_name, font_size) > max_width:
+            pieces.append(current)
+            current = ch
+        else:
+            current = test
+    if current:
+        pieces.append(current)
+    return pieces
+
+
 def _wrap_lines_simple(text: str, font_name: str, font_size: float, max_width: float) -> List[str]:
     """Word-wrap ``text`` to fit within ``max_width`` points.
 
     Returns a list of output lines.  Words are split on spaces; a word that
-    alone exceeds the width is placed on its own line (no mid-word split).
+    alone exceeds the width (e.g. a CJK run, which has no spaces at all) is
+    split at character level so measured line counts match what a renderer
+    doing character wrapping will actually produce.
     """
     result: List[str] = []
     for paragraph in text.split("\n"):
@@ -123,10 +148,16 @@ def _wrap_lines_simple(text: str, font_name: str, font_size: float, max_width: f
             test = (current + " " + word).strip() if current else word
             if calculate_text_width(test, font_name, font_size) <= max_width:
                 current = test
-            else:
-                if current:
-                    result.append(current)
+                continue
+            if current:
+                result.append(current)
+                current = ""
+            if calculate_text_width(word, font_name, font_size) <= max_width:
                 current = word
+            else:
+                pieces = _split_oversized_token(word, font_name, font_size, max_width)
+                result.extend(pieces[:-1])
+                current = pieces[-1] if pieces else ""
         if current:
             result.append(current)
     return result if result else [""]
@@ -140,7 +171,11 @@ def _truncate_to_fit(
     max_width: float,
     max_height: float,
 ) -> str:
-    """Clip ``text`` to the last whole word that fits, appending "…".
+    """Clip ``text`` to the longest prefix that fits, appending "…".
+
+    Prefers a word boundary when the text contains spaces; falls back to a
+    character boundary for spaceless scripts (CJK) so the result is never an
+    empty clip of otherwise-renderable text.
 
     The returned string always ends with "…" (U+2026 HORIZONTAL ELLIPSIS).
     If the ellipsis alone does not fit in the bbox, the empty string is returned
@@ -149,24 +184,30 @@ def _truncate_to_fit(
     ellipsis = "…"
     ellipsis_w = calculate_text_width(ellipsis, font_name, font_size)
 
-    words = text.split()
-    candidate = ""
-    for word in words:
-        test = (candidate + " " + word).strip() if candidate else word
-        lines = _wrap_lines_simple(test + ellipsis, font_name, font_size, max_width)
+    def _fits(candidate: str) -> bool:
+        lines = _wrap_lines_simple(candidate, font_name, font_size, max_width)
         _, h = _measure_text_block(lines, font_name, font_size, line_spacing)
-        # Also check max width of each line candidate
-        ok = all(
+        return h <= max_height and all(
             calculate_text_width(line, font_name, font_size) <= max_width
             for line in lines
         )
-        if ok and h <= max_height:
-            candidate = test
-        else:
-            break
 
-    if candidate:
-        return candidate + ellipsis
+    # Binary-search the longest character prefix that fits with the ellipsis.
+    lo, hi = 0, len(text)
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if _fits(text[:mid].rstrip() + ellipsis):
+            lo = mid
+        else:
+            hi = mid - 1
+
+    prefix = text[:lo].rstrip()
+    # Prefer a whole-word boundary when the cut lands mid-word in spaced text.
+    if prefix and lo < len(text) and not text[lo].isspace() and " " in prefix:
+        prefix = prefix.rsplit(" ", 1)[0].rstrip()
+
+    if prefix:
+        return prefix + ellipsis
     # Nothing fits — return bare ellipsis if it fits, else empty string
     if ellipsis_w <= max_width and font_size * line_spacing <= max_height:
         return ellipsis
@@ -629,6 +670,13 @@ def create_text_regions_from_elements(
         translated_text = translations.get(original_text)
 
         if translated_text is None:
+            # Fall back to the IR-resolved translation when it is an actual
+            # translation (not the content itself).
+            ir_translation = getattr(element, "translated_content", None)
+            if ir_translation is not None and ir_translation != element.content:
+                translated_text = ir_translation
+
+        if translated_text is None or not str(translated_text).strip():
             logger.warning(f"No translation for: {original_text[:30]}...")
             continue
 
