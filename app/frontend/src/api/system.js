@@ -21,6 +21,19 @@ export function getProviderModels() {
   return get('/api/providers/models');
 }
 
+export async function getProviderLiveModels(providerId, deepseekApiKey = null) {
+  const headers = {};
+  if (providerId === 'deepseek' && deepseekApiKey) {
+    headers['X-DeepSeek-Api-Key'] = deepseekApiKey;
+  }
+  const res = await fetch(`/api/providers/${providerId}/live-models`, { headers });
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({}));
+    throw new Error(payload.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
 export function testTranslation(payload) {
   return post(
     '/api/providers/test-translation',

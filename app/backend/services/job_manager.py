@@ -108,6 +108,7 @@ class JobRecord:
     judge_apply_status: Optional[str] = None  # applying | applied | failed | None
     status_detail: Optional[str] = None  # current stage label shown in UI during "running"
     warnings: Optional[List[str]] = None  # pdf-renderer-fallback-warn: render-quality degradation warnings
+    api_key_override: Optional[str] = None  # user-supplied API key (e.g. DeepSeek); never persisted
 
 
 def _record_job_warning(job: "JobRecord", message: str) -> None:
@@ -293,6 +294,7 @@ class JobManager:
         mode: str = "translation",
         enable_term_extraction: bool = True,
         output_mode: str = "append",
+        api_key_override: Optional[str] = None,
     ) -> JobRecord:
         # Cleanup by capacity before creating new job
         self._cleanup_by_capacity()
@@ -310,7 +312,7 @@ class JobManager:
             shutil.copy2(src, dest)
             stored_files.append(dest)
 
-        job = JobRecord(job_id=job_id, input_dir=input_dir, output_dir=output_dir, mode=mode)
+        job = JobRecord(job_id=job_id, input_dir=input_dir, output_dir=output_dir, mode=mode, api_key_override=api_key_override)
         # total_files = files × groups (each group translates all files to its target languages)
         job.total_files = len(stored_files) * len(route_groups)
         self.jobs[job_id] = job
@@ -380,6 +382,7 @@ class JobManager:
                         mode=mode,
                         term_db=term_db,
                         provider_id=group.provider,
+                        api_key_override=job.api_key_override,
                         post_translate_hook=qe_blocks.extend,
                         output_mode=output_mode,
                         status_callback=lambda detail: setattr(job, "status_detail", detail),

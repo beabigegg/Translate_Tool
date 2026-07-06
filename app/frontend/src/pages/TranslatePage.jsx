@@ -12,6 +12,7 @@ import { useJobPolling } from '../hooks/useJobPolling.js';
 import { useLocalStorage } from '../hooks/useLocalStorage.js';
 import { useSettings } from '../contexts/SettingsContext.jsx';
 import { createJob, cancelJob, getJudge } from '../api/jobs.js';
+import { getProviderLiveModels } from '../api/system.js';
 import { ALL_LANGUAGES } from '../constants/languages.js';
 import { DEFAULT_SRC_LANG, DEFAULT_PROFILE, HISTORY_MAX_ENTRIES } from '../constants/defaults.js';
 import { LayoutViewer } from '../components/domain/LayoutViewer.jsx';
@@ -33,6 +34,8 @@ const initialState = {
   pdfOutputFormat: 'docx',
   pdfLayoutMode: 'overlay',
   outputMode: 'append',
+  providerOverride: 'auto',
+  modelOverride: null,
   jobId: null,
   jobStatus: null,
   error: null,
@@ -64,6 +67,8 @@ function reducer(state, action) {
     case 'SET_ENABLE_TERM': return { ...state, enableTermExtraction: action.payload };
     case 'SET_PDF_OUTPUT': return { ...state, pdfOutputFormat: action.payload.format, pdfLayoutMode: action.payload.mode };
     case 'SET_OUTPUT_MODE': return { ...state, outputMode: action.payload };
+    case 'SET_PROVIDER': return { ...state, providerOverride: action.payload, modelOverride: null };
+    case 'SET_MODEL': return { ...state, modelOverride: action.payload };
     case 'SET_STEP': return { ...state, step: action.payload };
     case 'SET_JOB_ID': {
       try { if (action.payload) localStorage.setItem(ACTIVE_JOB_KEY, action.payload); } catch {}
@@ -84,13 +89,33 @@ export default function TranslatePage() {
   const [state, dispatch] = useReducer(reducer, null, makeInitialState);
   const [showLayout, setShowLayout] = useState(false);
   const [judgeData, setJudgeData] = useState(null);
+  const [liveModels, setLiveModels] = useState([]);
+  const [modelsLoading, setModelsLoading] = useState(false);
   const { state: settings } = useSettings();
   const [history, setHistory] = useLocalStorage('translationHistory', []);
 
-  const { step, files, selectedTargets, srcLang, selectedProfile, jobMode, enableTermExtraction, pdfOutputFormat, pdfLayoutMode, outputMode, jobId, jobStatus, loading } = state;
+  const { step, files, selectedTargets, srcLang, selectedProfile, jobMode, enableTermExtraction, pdfOutputFormat, pdfLayoutMode, outputMode, providerOverride, modelOverride, jobId, jobStatus, loading } = state;
   const isTranslating = jobStatus && !['completed', 'failed', 'cancelled'].includes(jobStatus.status);
   const replaceUnsupported = selectedTargets.length > 1 ||
     files.some(f => /\.(pdf|xlsx?)$/i.test(f.name));
+
+  const deepseekKey = (() => { try { return localStorage.getItem('deepseek_api_key') || ''; } catch { return ''; } })();
+
+  // Fetch live models when provider selector changes
+  useEffect(() => {
+    if (providerOverride === 'auto') {
+      setLiveModels([]);
+      return;
+    }
+    setModelsLoading(true);
+    getProviderLiveModels(providerOverride, providerOverride === 'deepseek' ? deepseekKey : null)
+      .then(models => {
+        setLiveModels(models);
+        dispatch({ type: 'SET_MODEL', payload: models[0] || null });
+      })
+      .catch(() => setLiveModels([]))
+      .finally(() => setModelsLoading(false));
+  }, [providerOverride]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch judge data once when job reaches completed status
   useEffect(() => {
@@ -133,6 +158,11 @@ export default function TranslatePage() {
       const effectiveOutputMode =
         (selectedTargets.length > 1 || hasPdf || hasXlsx) ? 'append' : outputMode;
       form.append('output_mode', effectiveOutputMode);
+      if (providerOverride && providerOverride !== 'auto') {
+        form.append('provider_override', providerOverride);
+        if (modelOverride) form.append('model_override', modelOverride);
+        if (providerOverride === 'deepseek' && deepseekKey) form.append('deepseek_api_key', deepseekKey);
+      }
       const data = await createJob(form);
       dispatch({ type: 'SET_JOB_ID', payload: data.job_id });
       dispatch({ type: 'SET_STEP', payload: 3 });
@@ -204,6 +234,34 @@ export default function TranslatePage() {
             </div>
             <Select label="來源語言" options={srcLangOptions} value={srcLang} onChange={e => dispatch({ type: 'SET_SRC_LANG', payload: e.target.value })} />
             <Select label="翻譯情境" options={profileOptions} value={selectedProfile} onChange={e => dispatch({ type: 'SET_PROFILE', payload: e.target.value })} />
+            {jobMode === 'translate' && (() => {
+              const providerOptions = [
+                { value: 'auto', label: '自動（依語言路由）' },
+                { value: 'panjit', label: 'PANJIT API' },
+                ...(deepseekKey ? [{ value: 'deepseek', label: 'DeepSeek' }] : []),
+              ];
+              const modelOptions = modelsLoading
+                ? [{ value: '', label: '載入中...' }]
+                : liveModels.map(m => ({ value: m, label: m }));
+              return (
+                <>
+                  <Select
+                    label="翻譯端點"
+                    options={providerOptions}
+                    value={providerOverride}
+                    onChange={e => dispatch({ type: 'SET_PROVIDER', payload: e.target.value })}
+                  />
+                  {providerOverride !== 'auto' && (
+                    <Select
+                      label="模型"
+                      options={modelOptions}
+                      value={modelOverride || ''}
+                      onChange={e => dispatch({ type: 'SET_MODEL', payload: e.target.value })}
+                    />
+                  )}
+                </>
+              );
+            })()}
             {jobMode === 'translate' && (
               <Select
                 label="輸出方式"

@@ -357,6 +357,7 @@ def process_files(
     mode: str = "translation",
     term_db=None,
     provider_id: Optional[str] = None,
+    api_key_override: Optional[str] = None,
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
     output_mode: str = "append",
     block_overrides: Optional[Dict[str, str]] = None,
@@ -418,12 +419,14 @@ def process_files(
             if _cfg:
                 _providers = {p["id"]: p for p in _cfg.get("providers", [])}
                 _prov = _providers.get(_provider_id)
-                if _prov and _prov.get("enabled") is True:
+                _enabled = _prov.get("enabled") is True if _prov else False
+                if _prov and (_enabled or api_key_override):
                     _models = _prov.get("models", {})
-                    _model_name = _models.get("translate") or ollama_model
+                    _model_name = ollama_model or _models.get("translate")
+                    _effective_key = api_key_override if api_key_override else _prov.get("api_key", "")
                     _cloud_client = OpenAICompatibleClient(
                         base_url=_prov["base_url"],
-                        api_key=_prov["api_key"],
+                        api_key=_effective_key,
                         model=_model_name,
                         provider_id=_provider_id,
                         verify_ssl=_prov.get("tls_verify", True),

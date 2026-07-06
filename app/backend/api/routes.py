@@ -154,6 +154,9 @@ async def create_job(
     mode: str = Form("translation"),  # "translation" or "extraction_only"
     enable_term_extraction: bool = Form(True),
     output_mode: OutputMode = Form(OutputMode.APPEND),
+    provider_override: Optional[str] = Form(None),
+    model_override: Optional[str] = Form(None),
+    deepseek_api_key: Optional[str] = Form(None),
 ) -> JobCreateResponse:
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded")
@@ -162,41 +165,64 @@ async def create_job(
     if not target_list:
         raise HTTPException(status_code=400, detail="No target languages provided")
 
-    # Auto-routing: group targets by benchmark-optimal model, or use manual override
-    route_groups_result = resolve_route_groups(
-        target_list, profile_override=profile, provider_config=_providers_config
-    )
-    if route_groups_result is None:
-        # Manual profile override: profile selects system-prompt; model/provider still come
-        # from cloud routing when providers.yml is configured (p1-cloud-providers).
-        explicit_profile = get_profile(profile)
-        cloud_groups = resolve_route_groups(
-            target_list, profile_override=None, provider_config=_providers_config
-        ) if _providers_config else None
-        if cloud_groups:
-            # Use cloud provider + model, but apply the selected profile's system prompt.
-            route_groups = [
-                RouteGroup(
-                    targets=g.targets,
-                    model=g.model,
-                    profile_id=explicit_profile.id,
-                    model_type=g.model_type,
-                    provider=g.provider,
-                )
-                for g in cloud_groups
-            ]
-        else:
-            # No cloud config — fall back to profile's Ollama model (legacy path).
-            route_groups = [RouteGroup(
-                targets=target_list,
-                model=explicit_profile.model,
-                profile_id=explicit_profile.id,
-                model_type=explicit_profile.model_type,
-            )]
-        ref_model_type = route_groups[0].model_type
+    # Manual provider/model override: bypass auto-routing and use caller-specified provider + model.
+    api_key_override: Optional[str] = None
+    if provider_override and provider_override != "auto":
+        if not _providers_config:
+            raise HTTPException(status_code=400, detail="No providers configured")
+        providers_map = {p["id"]: p for p in _providers_config.get("providers", [])}
+        prov = providers_map.get(provider_override)
+        if not prov:
+            raise HTTPException(status_code=400, detail=f"Unknown provider '{provider_override}'")
+        prov_models = prov.get("models", {})
+        forced_model = model_override or prov_models.get("translate") or ""
+        forced_profile = profile or "general"
+        route_groups = [RouteGroup(
+            targets=target_list,
+            model=forced_model,
+            profile_id=forced_profile,
+            model_type="general",
+            provider=provider_override,
+        )]
+        ref_model_type = "general"
+        if provider_override == "deepseek" and deepseek_api_key:
+            api_key_override = deepseek_api_key
     else:
-        route_groups = route_groups_result
-        ref_model_type = route_groups[0].model_type if route_groups else ModelType.GENERAL.value
+        # Auto-routing: group targets by benchmark-optimal model, or use manual override
+        route_groups_result = resolve_route_groups(
+            target_list, profile_override=profile, provider_config=_providers_config
+        )
+        if route_groups_result is None:
+            # Manual profile override: profile selects system-prompt; model/provider still come
+            # from cloud routing when providers.yml is configured (p1-cloud-providers).
+            explicit_profile = get_profile(profile)
+            cloud_groups = resolve_route_groups(
+                target_list, profile_override=None, provider_config=_providers_config
+            ) if _providers_config else None
+            if cloud_groups:
+                # Use cloud provider + model, but apply the selected profile's system prompt.
+                route_groups = [
+                    RouteGroup(
+                        targets=g.targets,
+                        model=g.model,
+                        profile_id=explicit_profile.id,
+                        model_type=g.model_type,
+                        provider=g.provider,
+                    )
+                    for g in cloud_groups
+                ]
+            else:
+                # No cloud config — fall back to profile's Ollama model (legacy path).
+                route_groups = [RouteGroup(
+                    targets=target_list,
+                    model=explicit_profile.model,
+                    profile_id=explicit_profile.id,
+                    model_type=explicit_profile.model_type,
+                )]
+            ref_model_type = route_groups[0].model_type
+        else:
+            route_groups = route_groups_result
+            ref_model_type = route_groups[0].model_type if route_groups else ModelType.GENERAL.value
 
     try:
         resolved_model_type = ModelType((ref_model_type or ModelType.GENERAL.value).lower())
@@ -239,6 +265,7 @@ async def create_job(
             mode=mode,
             enable_term_extraction=enable_term_extraction,
             output_mode=output_mode.value,
+            api_key_override=api_key_override,
         )
         return JobCreateResponse(job_id=job.job_id)
     finally:
@@ -912,6 +939,46 @@ def providers_models() -> List[ProviderModelEntry]:
         ))
 
     return results
+
+
+@router.get("/providers/{provider_id}/live-models", response_model=List[str])
+def provider_live_models(provider_id: str, request: Request) -> List[str]:
+    """Fetch translatable model list directly from the provider's /v1/models endpoint.
+
+    Excludes embedding and reranker models.
+    DeepSeek requires ``X-DeepSeek-Api-Key`` header.
+    """
+    if not _providers_config:
+        raise HTTPException(status_code=404, detail="No providers configured")
+
+    providers_map = {p["id"]: p for p in _providers_config.get("providers", [])}
+    prov = providers_map.get(provider_id)
+    if not prov:
+        raise HTTPException(status_code=404, detail=f"Provider '{provider_id}' not found")
+
+    base_url = prov.get("base_url", "")
+    if not base_url:
+        raise HTTPException(status_code=400, detail="Provider has no base_url configured")
+
+    if provider_id == "deepseek":
+        api_key = (request.headers.get("X-DeepSeek-Api-Key") or "").strip()
+        if not api_key:
+            raise HTTPException(status_code=403, detail="DeepSeek requires X-DeepSeek-Api-Key header")
+    else:
+        api_key = prov.get("api_key", "")
+
+    verify_ssl = prov.get("tls_verify", True)
+
+    client = OpenAICompatibleClient(
+        base_url=base_url,
+        api_key=api_key,
+        model="",
+        provider_id=provider_id,
+        connect_timeout=10.0,
+        read_timeout=30.0,
+        verify_ssl=verify_ssl,
+    )
+    return client.list_live_models()
 
 
 @router.post("/providers/test-translation", response_model=List[TestTranslationResult], response_model_exclude_none=True, status_code=200)

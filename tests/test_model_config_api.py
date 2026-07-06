@@ -101,6 +101,7 @@ def test_create_job_rejects_out_of_range_num_ctx(routes_module, monkeypatch) -> 
                 pdf_output_format="pdf",
                 pdf_layout_mode="overlay",
                 output_mode=OutputMode.APPEND,
+                provider_override=None,
             )
         )
 
@@ -128,6 +129,7 @@ def test_create_job_passes_valid_num_ctx_override(routes_module, monkeypatch) ->
             pdf_output_format="pdf",
             pdf_layout_mode="overlay",
             output_mode=OutputMode.APPEND,
+            provider_override=None,
         )
     )
 

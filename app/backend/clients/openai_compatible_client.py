@@ -263,6 +263,37 @@ class OpenAICompatibleClient:
         """
         return list(_STATIC_MODEL_LIST)
 
+    def list_live_models(self) -> List[str]:
+        """Fetch the live model list from /v1/models, excluding embedding and reranker models.
+
+        Returns:
+            List of translatable model ID strings; empty list on any error.
+        """
+        try:
+            resp = self._session.get(
+                self._models_url(),
+                headers=self._auth_headers,
+                timeout=(10.0, 30.0),
+            )
+            if resp.status_code != 200:
+                return []
+            data = resp.json()
+            result = []
+            for m in data.get("data", []):
+                mid = m.get("id", "")
+                info = m.get("info") or {}
+                task = info.get("task", "")
+                if task in ("embedding", "reranker"):
+                    continue
+                mid_lower = mid.lower()
+                if "embedding" in mid_lower or "reranker" in mid_lower:
+                    continue
+                result.append(mid)
+            return result
+        except Exception as exc:
+            logger.debug("[%s] list_live_models failed: %s", self.provider_id, exc)
+            return []
+
     def unload(self) -> Tuple[bool, str]:
         """No-op for cloud providers (no in-memory model to evict).
 
