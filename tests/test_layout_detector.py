@@ -106,7 +106,7 @@ class TestDetectRegionsReturnsTypedBoxes:
         # Mock one region: Title, full-page (normalised 0..1)
         boxes  = [[0.0, 0.0, 1.0, 1.0]]
         scores = [0.95]
-        labels = [2]  # label index for "Title" in heron class list
+        labels = [10]  # label index for "Title" in heron class list (canonical DocLayNet order)
 
         mock_session = _make_mock_session(boxes, scores, labels)
 
@@ -152,6 +152,74 @@ class TestLabelMappingAllKnownLabels:
             )
 
 
+class TestHeronClassIndexOrderMatchesCanonicalDocLayNet:
+    """Regression (real-PDF misclassification bug): pin _HERON_CLASS_NAMES to the
+    real docling-layout-heron-onnx raw class-index order.
+
+    The ONNX model returns raw integer label ids with NO "+1 background offset"
+    (verified empirically against the model's real output on a real multi-column
+    PDF: e.g. raw id 9 boxes always sit on ordinary paragraph text, raw id 8
+    boxes always sit on tabular data, raw id 10 boxes always sit on document
+    titles). This is the canonical DocLayNet (DLNv1) *alphabetical* class order
+    used by the reference implementation
+    (docling_ibm_models.layoutmodel.labels.LayoutLabels._canonical).
+
+    A prior version of _HERON_CLASS_NAMES used a different, incorrect index
+    order (an index-by-appearance-in-HERON_LABEL_MAP guess) that silently
+    mistyped most real body-text/table/title regions as FIGURE/FORMULA,
+    which in turn silently skipped translation for them (should_translate is
+    forced False for FIGURE/FORMULA by design). This test pins the correct
+    index -> label -> ElementType chain end-to-end so a future accidental
+    reordering of _HERON_CLASS_NAMES is caught immediately.
+    """
+
+    # (raw class index, expected label string, expected ElementType)
+    CANONICAL_DOCLAYNET_ORDER = [
+        (0, "Caption", ElementType.CAPTION),
+        (1, "Footnote", ElementType.FOOTNOTE),
+        (2, "Formula", ElementType.FORMULA),
+        (3, "List-item", ElementType.LIST_ITEM),
+        (4, "Page-footer", ElementType.FOOTER),
+        (5, "Page-header", ElementType.HEADER),
+        (6, "Picture", ElementType.FIGURE),
+        (7, "Section-header", ElementType.TITLE),
+        (8, "Table", ElementType.TABLE),
+        (9, "Text", ElementType.TEXT),
+        (10, "Title", ElementType.TITLE),
+    ]
+
+    def test_class_names_list_matches_canonical_order(self):
+        from app.backend.parsers.layout_detector import _HERON_CLASS_NAMES
+
+        expected_names = [label for _, label, _ in self.CANONICAL_DOCLAYNET_ORDER]
+        assert _HERON_CLASS_NAMES == expected_names, (
+            f"_HERON_CLASS_NAMES = {_HERON_CLASS_NAMES!r}, "
+            f"expected canonical DocLayNet order {expected_names!r}"
+        )
+
+    def test_map_class_index_matches_canonical_element_types(self):
+        from app.backend.parsers.layout_detector import _map_class_index
+
+        for class_idx, label, expected_type in self.CANONICAL_DOCLAYNET_ORDER:
+            actual = _map_class_index(class_idx)
+            assert actual == expected_type, (
+                f"_map_class_index({class_idx}) [{label!r}] = {actual!r}, "
+                f"expected {expected_type!r}"
+            )
+
+    def test_real_body_text_and_table_indices_do_not_become_figure_or_formula(self):
+        """Direct regression for the reported symptom: raw ids for Text (9) and
+        Table (8) — the two classes real body-text/table content is detected
+        as — must never resolve to FIGURE or FORMULA (which would wrongly
+        force should_translate=False on real prose/tables)."""
+        from app.backend.parsers.layout_detector import _map_class_index
+
+        assert _map_class_index(9) == ElementType.TEXT
+        assert _map_class_index(8) == ElementType.TABLE
+        for idx in (8, 9):
+            assert _map_class_index(idx) not in (ElementType.FIGURE, ElementType.FORMULA)
+
+
 class TestUnknownLabelDefaultsToText:
     """AC-1: unknown heron label → 'text', never raises."""
 
@@ -178,10 +246,11 @@ class TestIRElementTypeWrittenFromRegion:
     def test_ir_element_type_written_from_region(self):
         elements = [_make_element("e1", "body text", 5, 50, 400, 70)]
 
-        # Regions: "Text" class (should map to TEXT)
+        # Regions: "Text" class (should map to TEXT); index 9 in canonical
+        # DocLayNet order (see _HERON_CLASS_NAMES).
         boxes  = [[0.0, 0.4, 1.0, 0.8]]
         scores = [0.9]
-        labels = [0]  # index 0 = "Text"
+        labels = [9]  # index 9 = "Text" (canonical DocLayNet order)
 
         mock_session = _make_mock_session(boxes, scores, labels)
 
@@ -190,8 +259,11 @@ class TestIRElementTypeWrittenFromRegion:
             detector = LayoutDetector(model_path="/fake/path")
             detector.detect(_make_pixmap_array(), elements)
 
-        # element_type must be an ElementType instance
+        # element_type must be an ElementType instance, and specifically TEXT
+        # for a "Text"-labelled region (regression: a scrambled/off-by-one
+        # class index table would silently mistype this as some other class).
         assert isinstance(elements[0].element_type, ElementType)
+        assert elements[0].element_type == ElementType.TEXT
 
 
 class TestIRReadingOrderWrittenFromDetector:
@@ -535,8 +607,8 @@ class TestDpiCoordinateBackMapping:
 
         Setup:
           - Page: 100pt × 100pt; pixmap rasterised at 3× (300px × 300px).
-          - Left region  [0.0, 0.0, 0.48, 1.0] → Formula  (label 9).
-          - Right region [0.52, 0.0, 1.0, 1.0] → Text     (label 0).
+          - Left region  [0.0, 0.0, 0.48, 1.0] → Formula  (label 2).
+          - Right region [0.52, 0.0, 1.0, 1.0] → Text     (label 9).
           - Element at x0=55pt (x-centre 72.5pt) → right region in point space.
 
         Without pt params: map_width=300px → element overlaps left pixel region
@@ -547,10 +619,10 @@ class TestDpiCoordinateBackMapping:
         """
         elem = _make_element("e1", "right-half text", 55, 10, 90, 90)
 
-        # Left region = Formula (label 9), right region = Text (label 0)
+        # Left region = Formula (label 2), right region = Text (label 9)
         boxes  = [[0.0, 0.0, 0.48, 1.0], [0.52, 0.0, 1.0, 1.0]]
         scores = [0.95, 0.95]
-        labels = [9, 0]  # 9=Formula, 0=Text
+        labels = [2, 9]  # 2=Formula, 9=Text (canonical DocLayNet order)
 
         mock_session = _make_mock_session(boxes, scores, labels)
         # Pixmap is 300×300 px — simulating 3× DPI (page is actually 100×100 pt)

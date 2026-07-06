@@ -219,6 +219,59 @@ def _get_pymupdf_parser():
     return _pymupdf_parser if _pymupdf_parser else None
 
 
+def _save_layout_viz(doc: "TranslatableDocument", in_path: str, out_path: str) -> None:
+    """Persist layout_viz.json + page thumbnails for the layout viewer overlay.
+
+    Shared by every PDF processing path (DOCX output and PDF-to-PDF output) so
+    ``GET /api/jobs/{id}`` can report ``layout_viz_available`` consistently
+    regardless of chosen output_format/layout_mode. Non-critical: all failures
+    are swallowed so the render/translation pipeline is never blocked by this.
+
+    Multiple PDFs in the same job merge into one layout_viz.json under "files".
+    """
+    if not doc.layout_viz:
+        return
+    import json
+    import fitz as _fitz  # noqa: PLC0415
+    job_dir = Path(out_path).parent.parent
+    viz_path = job_dir / "layout_viz.json"
+    try:
+        existing_files: dict = {}
+        if viz_path.exists():
+            try:
+                existing_files = json.loads(viz_path.read_text(encoding="utf-8")).get("files", {})
+            except Exception:
+                existing_files = {}
+        file_name = Path(in_path).name
+        existing_files[file_name] = {
+            "file_name": file_name,
+            "total_pages": len(doc.layout_viz),
+            "pages": doc.layout_viz,
+        }
+        viz_path.write_text(
+            json.dumps({"files": existing_files}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except Exception:
+        pass  # viz is non-critical; don't block translation
+
+    # Render page thumbnails for layout viewer image overlay.
+    # Store per-file under layout_pages/<stem>/page_N.jpg so multi-file
+    # jobs don't collide.  Rendering is non-critical; errors are swallowed.
+    pages_dir = job_dir / "layout_pages" / Path(in_path).stem
+    pages_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        render_doc = _fitz.open(in_path)
+        mat = _fitz.Matrix(1.2, 1.2)  # ~86 DPI — small files, fast render
+        for pg in render_doc:
+            pix = pg.get_pixmap(matrix=mat)
+            jpg_bytes = pix.tobytes(output="jpeg", jpg_quality=60)
+            (pages_dir / f"page_{pg.number + 1}.jpg").write_bytes(jpg_bytes)
+        render_doc.close()
+    except Exception:
+        pass  # thumbnails are non-critical
+
+
 def translate_pdf(
     in_path: str,
     out_path: str,
@@ -388,47 +441,7 @@ def _translate_pdf_with_pymupdf(
         doc = parser.parse(in_path)
 
         # Save layout viz data if available (non-critical).
-        # Multiple PDFs in the same job merge into one layout_viz.json under "files" key.
-        if doc.layout_viz:
-            import json
-            import fitz as _fitz  # noqa: PLC0415
-            job_dir = Path(out_path).parent.parent
-            viz_path = job_dir / "layout_viz.json"
-            try:
-                existing_files: dict = {}
-                if viz_path.exists():
-                    try:
-                        existing_files = json.loads(viz_path.read_text(encoding="utf-8")).get("files", {})
-                    except Exception:
-                        existing_files = {}
-                file_name = Path(in_path).name
-                existing_files[file_name] = {
-                    "file_name": file_name,
-                    "total_pages": len(doc.layout_viz),
-                    "pages": doc.layout_viz,
-                }
-                viz_path.write_text(
-                    json.dumps({"files": existing_files}, ensure_ascii=False),
-                    encoding="utf-8",
-                )
-            except Exception:
-                pass  # viz is non-critical; don't block translation
-
-            # Render page thumbnails for layout viewer image overlay.
-            # Store per-file under layout_pages/<stem>/page_N.jpg so multi-file
-            # jobs don't collide.  Rendering is non-critical; errors are swallowed.
-            pages_dir = job_dir / "layout_pages" / Path(in_path).stem
-            pages_dir.mkdir(parents=True, exist_ok=True)
-            try:
-                render_doc = _fitz.open(in_path)
-                mat = _fitz.Matrix(1.2, 1.2)  # ~86 DPI — small files, fast render
-                for pg in render_doc:
-                    pix = pg.get_pixmap(matrix=mat)
-                    jpg_bytes = pix.tobytes(output="jpeg", jpg_quality=60)
-                    (pages_dir / f"page_{pg.number + 1}.jpg").write_bytes(jpg_bytes)
-                render_doc.close()
-            except Exception:
-                pass  # thumbnails are non-critical
+        _save_layout_viz(doc, in_path, out_path)
 
         if not doc.metadata.has_text_layer:
             log("[PDF] Warning: PDF appears to be scanned (low text content)")
@@ -808,6 +821,9 @@ def _translate_pdf_to_pdf(
         # Parse PDF
         log(f"[PDF] Parsing with PyMuPDF: {os.path.basename(in_path)}")
         doc = parser.parse(in_path)
+
+        # Save layout viz data if available (non-critical).
+        _save_layout_viz(doc, in_path, out_path)
 
         if not doc.metadata.has_text_layer:
             log("[PDF] Warning: PDF appears to be scanned (low text content)")

@@ -50,21 +50,41 @@ HERON_LABEL_MAP: dict[str, str] = {
     "Footnote":       ElementType.FOOTNOTE.value,
 }
 
-# heron-101 integer class index → label name (DocLayNet order)
+# heron-101 integer class index -> label name.
+#
+# This is the canonical DocLayNet (DLNv1) class order emitted by the
+# docling-layout-heron-onnx model, i.e. the *alphabetical* label order used
+# by the reference implementation (docling_ibm_models.layoutmodel.labels.
+# LayoutLabels._canonical), NOT model-output declaration order and NOT the
+# order the labels happen to be listed in HERON_LABEL_MAP above. The raw
+# label ids are used directly with no "+1 background offset" (this ONNX
+# export is not an `RTDetrForObjectDetection` model in the docling_ibm_models
+# sense, so LayoutLabels.canonical_categories() applies, not
+# shifted_canonical_categories()).
+#
+# Verified empirically against docling-layout-heron-onnx raw output on a real
+# multi-column technical data sheet: geometric position of each detected
+# region only makes sense under this ordering (e.g. label id 5 boxes sit at
+# the very top of the page -> "Page-header", never near the bottom; label id
+# 6 boxes are small isolated regions -> "Picture"; label id 9 boxes cover
+# ordinary paragraph text -> "Text"; label id 8 boxes cover tabular data ->
+# "Table"). A prior ordering here (index-by-appearance-in-HERON_LABEL_MAP)
+# was NOT the model's real class order and caused most real Text/Table/
+# Title/Section-header regions to be misread as Table/Picture/Section-header/
+# Formula-ish classes, marking normal prose as FIGURE/FORMULA and skipping
+# translation for it.
 _HERON_CLASS_NAMES: list[str] = [
-    "Text",          # 0
-    "Paragraph",     # 1
-    "Title",         # 2
-    "Section-header",# 3
-    "Page-header",   # 4
-    "Page-footer",   # 5
-    "Table",         # 6
-    "Picture",       # 7
-    "Figure",        # 8
-    "Formula",       # 9
-    "List-item",     # 10
-    "Caption",       # 11
-    "Footnote",      # 12
+    "Caption",        # 0
+    "Footnote",       # 1
+    "Formula",        # 2
+    "List-item",      # 3
+    "Page-footer",    # 4
+    "Page-header",    # 5
+    "Picture",        # 6
+    "Section-header", # 7
+    "Table",          # 8
+    "Text",           # 9
+    "Title",          # 10
 ]
 
 # HuggingFace repo for weight auto-download (D-5 tier 3)
