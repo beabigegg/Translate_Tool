@@ -343,3 +343,317 @@ def test_phase0_hook_skips_panjit_when_disabled(tmp_path):
         f"Disabled PANJIT → hook must pass panjit_base_url=None; "
         f"got {kw.get('panjit_base_url')!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# support-legacy-office-formats: .doc/.xls/.ppt conversion branch coverage
+# ---------------------------------------------------------------------------
+#
+# These tests backfill the previously-untested .doc/.xls Phase-0 and main
+# conversion branches, and cover the new .ppt branches (IP-3/IP-4). Anti-
+# tautology guards per CLAUDE.md:
+# - Phase-0 tests call _extract_all_segments() directly, not process_files().
+# - Main-branch tests call process_files() directly, not translate_document().
+# - Conversion mocks are patched at the consumer-bound name
+#   (app.backend.processors.orchestrator.<name>), matching the module-level
+#   import pattern already used above.
+# - Assertions check WHICH path/content was produced (selection), not merely
+#   that a mock was called.
+
+
+def _make_real_pptx_with_text(path: Path, text: str) -> None:
+    from pptx import Presentation
+    from pptx.util import Inches
+
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    box = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(4), Inches(2))
+    box.text_frame.text = text
+    prs.save(str(path))
+
+
+def test_ppt_phase0_extraction_branch_converts_via_libreoffice(tmp_path):
+    """AC-2: _extract_all_segments() .ppt branch converts via ppt_to_pptx, then
+    extracts text via python-pptx's Presentation walk (same shape as .pptx branch).
+    """
+    from app.backend.processors.orchestrator import _extract_all_segments
+
+    ppt_path = tmp_path / "legacy.ppt"
+    ppt_path.write_bytes(b"fake-ole-ppt-bytes")  # content irrelevant; ppt_to_pptx is mocked
+
+    def _fake_ppt_to_pptx(input_path, output_path):
+        assert input_path == str(ppt_path), (
+            f"ppt_to_pptx must receive the .ppt source path, got {input_path!r}"
+        )
+        _make_real_pptx_with_text(Path(output_path), "Legacy slide text needs translation")
+
+    with (
+        patch("app.backend.processors.orchestrator.is_libreoffice_available", return_value=True),
+        patch(
+            "app.backend.processors.orchestrator.ppt_to_pptx",
+            side_effect=_fake_ppt_to_pptx,
+        ) as mock_convert,
+    ):
+        chunks = _extract_all_segments(ppt_path)
+
+    assert mock_convert.called, "ppt_to_pptx must be invoked for .ppt Phase-0 extraction"
+    assert any("Legacy slide text" in c for c in chunks), (
+        f"Expected extracted pptx text in Phase-0 chunks, got: {chunks}"
+    )
+
+
+def test_xls_phase0_extraction_branch_converts_via_libreoffice(tmp_path):
+    """AC-3: _extract_all_segments() .xls branch converts via xls_to_xlsx, then
+    extracts row-level units via openpyxl (backfill — previously untested)."""
+    from app.backend.processors.orchestrator import _extract_all_segments
+
+    xls_path = tmp_path / "legacy.xls"
+    xls_path.write_bytes(b"fake-ole-xls-bytes")
+
+    def _fake_xls_to_xlsx(input_path, output_path):
+        assert input_path == str(xls_path)
+        import openpyxl
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws["A1"] = "Header"
+        ws["A2"] = "Legacy row value needs translation"
+        wb.save(output_path)
+
+    with (
+        patch("app.backend.processors.orchestrator.is_libreoffice_available", return_value=True),
+        patch(
+            "app.backend.processors.orchestrator.xls_to_xlsx",
+            side_effect=_fake_xls_to_xlsx,
+        ) as mock_convert,
+    ):
+        chunks = _extract_all_segments(xls_path)
+
+    assert mock_convert.called, "xls_to_xlsx must be invoked for .xls Phase-0 extraction"
+    assert any("Legacy row value" in c for c in chunks), (
+        f"Expected extracted xlsx row text in Phase-0 chunks, got: {chunks}"
+    )
+
+
+def test_doc_main_branch_converts_and_routes_to_translate_docx(tmp_path):
+    """AC-3: process_files() .doc main branch converts via doc_to_docx, then routes
+    the converted temp .docx (not the original .doc) into translate_docx (backfill)."""
+    from app.backend.processors.orchestrator import process_files
+
+    doc_path = tmp_path / "legacy.doc"
+    doc_path.write_bytes(b"fake-ole-doc-bytes")
+    output_dir = tmp_path / "out"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _fake_doc_to_docx(input_path, output_path):
+        Path(output_path).write_bytes(b"converted-docx")
+
+    def _fake_translate_docx(src_path, out_path, *a, **kw):
+        Path(out_path).write_bytes(b"translated")
+        return False
+
+    with (
+        patch("app.backend.processors.orchestrator.is_libreoffice_available", return_value=True),
+        patch(
+            "app.backend.processors.orchestrator.doc_to_docx",
+            side_effect=_fake_doc_to_docx,
+        ) as mock_convert,
+        patch(
+            "app.backend.processors.orchestrator.translate_docx",
+            side_effect=_fake_translate_docx,
+        ) as mock_translate,
+        patch(
+            "app.backend.processors.orchestrator.OllamaClient",
+            return_value=_make_mock_ollama_client(),
+        ),
+    ):
+        process_files(
+            files=[doc_path],
+            output_dir=output_dir,
+            targets=["vi"],
+            src_lang="en",
+            include_headers_shapes_via_com=False,
+            ollama_model="qwen2.5:32b",
+            log=lambda s: None,
+        )
+
+    assert mock_convert.called, "doc_to_docx must be invoked for .doc main-conversion branch"
+    assert mock_translate.called, "translate_docx must be called with the converted temp .docx"
+    call_args = mock_translate.call_args
+    tmp_docx_arg = call_args.args[0]
+    assert tmp_docx_arg.endswith(".docx"), f"Expected temp .docx, got {tmp_docx_arg}"
+    assert tmp_docx_arg != str(doc_path), (
+        "translate_docx must receive the converted temp file, not the original .doc"
+    )
+
+
+def test_ppt_main_branch_routes_through_ppt_to_pptx_to_translate_pptx(tmp_path):
+    """AC-2: process_files() .ppt main branch converts via ppt_to_pptx, then routes
+    the converted temp .pptx into translate_pptx with the .pptx-mapped output name (IP-5)."""
+    from app.backend.processors.orchestrator import process_files
+
+    ppt_path = tmp_path / "legacy.ppt"
+    ppt_path.write_bytes(b"fake-ole-ppt-bytes")
+    output_dir = tmp_path / "out"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _fake_ppt_to_pptx(input_path, output_path):
+        assert input_path == str(ppt_path)
+        Path(output_path).write_bytes(b"converted-pptx")
+
+    def _fake_translate_pptx(src_path, out_path, *a, **kw):
+        Path(out_path).write_bytes(b"translated")
+        return False
+
+    with (
+        patch("app.backend.processors.orchestrator.is_libreoffice_available", return_value=True),
+        patch(
+            "app.backend.processors.orchestrator.ppt_to_pptx",
+            side_effect=_fake_ppt_to_pptx,
+        ) as mock_convert,
+        patch(
+            "app.backend.processors.orchestrator.translate_pptx",
+            side_effect=_fake_translate_pptx,
+        ) as mock_translate,
+        patch(
+            "app.backend.processors.orchestrator.OllamaClient",
+            return_value=_make_mock_ollama_client(),
+        ),
+    ):
+        process_files(
+            files=[ppt_path],
+            output_dir=output_dir,
+            targets=["vi"],
+            src_lang="en",
+            include_headers_shapes_via_com=False,
+            ollama_model="qwen2.5:32b",
+            log=lambda s: None,
+        )
+
+    assert mock_convert.called, "ppt_to_pptx must be invoked for .ppt main-conversion branch"
+    assert mock_translate.called, "translate_pptx must be called with the converted temp .pptx"
+    call_args = mock_translate.call_args
+    tmp_pptx_arg = call_args.args[0]
+    out_path_arg = call_args.args[1]
+    assert tmp_pptx_arg.endswith(".pptx"), f"Expected temp .pptx, got {tmp_pptx_arg}"
+    assert tmp_pptx_arg != str(ppt_path), (
+        "translate_pptx must receive the converted temp file, not the original .ppt"
+    )
+    # IP-5: .ppt output filename must map to .pptx, not stay .ppt.
+    assert out_path_arg.endswith("legacy_translated.pptx"), (
+        f"Expected _output_name() to map .ppt -> _translated.pptx, got {out_path_arg!r}"
+    )
+
+
+def test_doc_xls_ppt_skip_without_crash_when_libreoffice_unavailable(tmp_path):
+    """AC-4: with LibreOffice unavailable and no COM, .doc and .ppt are skipped
+    (logged, `continue`) without raising; .xls dispatch is unconditional at the
+    orchestrator level (conversion-gating lives inside translate_xlsx_xls, out of
+    orchestrator's scope per Known Risks) so it proceeds normally."""
+    from app.backend.processors.orchestrator import process_files
+
+    doc_path = tmp_path / "a.doc"
+    doc_path.write_bytes(b"x")
+    xls_path = tmp_path / "b.xls"
+    xls_path.write_bytes(b"x")
+    ppt_path = tmp_path / "c.ppt"
+    ppt_path.write_bytes(b"x")
+    output_dir = tmp_path / "out"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    logs: list = []
+
+    with (
+        patch("app.backend.processors.orchestrator.is_libreoffice_available", return_value=False),
+        patch("app.backend.processors.orchestrator.is_win32com_available", return_value=False),
+        patch(
+            "app.backend.processors.orchestrator.translate_xlsx_xls",
+            return_value=False,
+        ) as mock_xlsx,
+        patch(
+            "app.backend.processors.orchestrator.OllamaClient",
+            return_value=_make_mock_ollama_client(),
+        ),
+    ):
+        processed, total, stopped, client, term_summary, provider = process_files(
+            files=[doc_path, xls_path, ppt_path],
+            output_dir=output_dir,
+            targets=["vi"],
+            src_lang="en",
+            include_headers_shapes_via_com=False,
+            ollama_model="qwen2.5:32b",
+            log=logs.append,
+        )
+
+    assert stopped is False, "job must not be marked stopped due to a missing converter"
+    assert total == 3
+    # .doc and .ppt are skipped without a converter; only .xls reaches dispatch.
+    assert processed == 1, (
+        f"Expected only the .xls file to be counted as processed, got {processed}"
+    )
+    assert mock_xlsx.called, "translate_xlsx_xls must still be dispatched for .xls"
+    assert any("Cannot convert .doc" in l for l in logs), (
+        f"Expected an actionable .doc skip log, got: {logs}"
+    )
+    assert any("Cannot convert .ppt" in l for l in logs), (
+        f"Expected an actionable .ppt skip log, got: {logs}"
+    )
+
+
+def test_conversion_failure_for_one_file_does_not_abort_job_or_other_files(tmp_path):
+    """AC-4: a raised conversion exception for one file (.ppt) is caught by the
+    per-file try/except and does not abort the job or prevent other files
+    (a plain .docx) from being processed."""
+    from app.backend.processors.orchestrator import process_files
+
+    ppt_path = tmp_path / "broken.ppt"
+    ppt_path.write_bytes(b"x")
+
+    output_dir = tmp_path / "out"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _raise_on_convert(input_path, output_path):
+        raise RuntimeError("LibreOffice conversion failed (rc=1): simulated failure")
+
+    def _fake_translate_docx(src_path, out_path, *a, **kw):
+        Path(out_path).write_bytes(b"translated")
+        return False
+
+    logs: list = []
+
+    with (
+        patch("app.backend.processors.orchestrator.is_libreoffice_available", return_value=True),
+        patch(
+            "app.backend.processors.orchestrator.ppt_to_pptx",
+            side_effect=_raise_on_convert,
+        ) as mock_convert,
+        patch(
+            "app.backend.processors.orchestrator.translate_docx",
+            side_effect=_fake_translate_docx,
+        ) as mock_translate,
+        patch(
+            "app.backend.processors.orchestrator.OllamaClient",
+            return_value=_make_mock_ollama_client(),
+        ),
+    ):
+        processed, total, stopped, client, term_summary, provider = process_files(
+            files=[ppt_path, _FIXTURE_DOCX],
+            output_dir=output_dir,
+            targets=["vi"],
+            src_lang="en",
+            include_headers_shapes_via_com=False,
+            ollama_model="qwen2.5:32b",
+            log=logs.append,
+        )
+
+    assert mock_convert.called
+    assert stopped is False
+    assert total == 2
+    assert processed == 1, (
+        f"Expected only the .docx file counted as processed (the .ppt conversion "
+        f"failure must not count), got {processed}"
+    )
+    assert mock_translate.called, "translate_docx must still be called for the second file"
+    assert any("[ERROR]" in l and "broken.ppt" in l for l in logs), (
+        f"Expected an [ERROR] log entry for the failed .ppt conversion, got: {logs}"
+    )

@@ -1,0 +1,19 @@
+change-id: support-legacy-office-formats
+agent: qa-reviewer
+status: done
+decision: approved
+summary: >
+  Release-readiness verified against artifacts, not claims. test-evidence.yml
+  clean (final-status: passed, all 4 required phases passed, no waivers). Both
+  mid-flight corrections (live-models API contract row, LIBREOFFICE_PATH/TIMEOUT
+  env-contract rows) confirmed landed in source. AC-1..AC-8 genuinely covered
+  by real assertions (exact-string, selection-based, not count-based). tasks.yml
+  clean — no wrongly-pending items, skips justified for Tier 2. Anti-tautology
+  check passed: orchestrator tests call process_files()/_extract_all_segments()
+  directly, never the higher-level translate_document() wrapper. Two
+  non-blocking cosmetic UI follow-ups noted (extension-list grouping, CSS wrap
+  check) — neither gates merge.
+artifacts:
+  - { type: decision, pointer: "approved / ready to merge" }
+  - { type: verification-evidence, pointer: "test-evidence.yml final-status: passed; contracts/api/api-contract.md:53; contracts/env/env-contract.md:49-50" }
+next-action: run cdd-kit gate support-legacy-office-formats

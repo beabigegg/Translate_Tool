@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "API behavior, compatibility rules, and endpoint contract requirements.",
-    "version": "0.9.0",
+    "version": "0.10.0",
     "description": "- response style: JSON (Pydantic response models); binary endpoints return file streams (FileResponse / StreamingResponse)."
   },
   "paths": {
@@ -705,6 +705,37 @@
         ],
         "x-cdd-errors": "202 applying; 404 job not found; 409 preconditions not met"
       }
+    },
+    "/api/providers/{provider_id}/live-models": {
+      "get": {
+        "summary": "GET /api/providers/{provider_id}/live-models",
+        "responses": {
+          "200": {
+            "description": "Contract response: -"
+          },
+          "400": {
+            "description": "Error response (see contract error format)"
+          },
+          "403": {
+            "description": "Error response (see contract error format)"
+          },
+          "404": {
+            "description": "Error response (see contract error format)"
+          }
+        },
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-cdd-response-contract": "-",
+        "x-cdd-errors": "400, 403, 404"
+      }
     }
   },
   "x-cdd-generated-from": "contracts/api/api-contract.md",
@@ -939,7 +970,7 @@
             "items": {
               "type": "string"
             },
-            "description": "degradation notices; null or empty list when no degradation occurred; populated by PDF processor when fitz falls back to ReportLab; also populated when a format-specific output_mode is requested for an incompatible file type (bilingual on non-DOCX, adjacent/annotation on non-XLSX) — one entry per affected file; type is always string[] or null, never a bare string; additive optional field — backward-compatible; see AC-1, AC-2, AC-3"
+            "description": "degradation notices; null or empty list when no degradation occurred; populated by PDF processor when fitz falls back to ReportLab; also populated when a format-specific output_mode is requested for an incompatible file type (bilingual on non-DOCX, adjacent/annotation on non-XLSX) — one entry per affected file; also populated with one entry per successfully converted legacy file (.doc/.xls/.ppt via LibreOffice) disclosing lossy-conversion risk — see BR-9, BR-96; type is always string[] or null, never a bare string; additive optional field — backward-compatible; see AC-1, AC-2, AC-3"
           }
         },
         "required": [
@@ -1416,7 +1447,7 @@
         "properties": {
           "file": {
             "type": "string",
-            "description": "one or more document files (DOCX, PPTX, XLSX, PDF); multipart upload",
+            "description": "one or more document files (DOCX, DOC, PPTX, PPT, XLSX, XLS, PDF); multipart upload. Legacy .doc/.xls/.ppt are converted to .docx/.xlsx/.pptx via LibreOffice before entering the pipeline; see BR-9, BR-96",
             "format": "binary"
           },
           "target_language": {

@@ -1,0 +1,16 @@
+change-id: support-legacy-office-formats
+agent: implementation-planner
+status: done
+summary: >
+  Wrote implementation-plan.md with 8 numbered required changes (IP-1..IP-8),
+  exact line targets verified against current source, verbatim BR-96 warnings
+  wiring snippet, full AC-to-test-node table, TDD-first ordering, and the
+  collect->targeted->changed-area->contract->quality->full test ladder. Found
+  and assigned two gaps design.md missed: _output_name has no .ppt case
+  (IP-5), and .xls conversion is encapsulated inside translate_xlsx_xls so the
+  BR-96 warning must fire at a single post-dispatch site (IP-6) covering all
+  three formats. Flagged accepted minor gap: COM-only .doc conversion (no
+  LibreOffice) emits no BR-96 disclosure since the string says "via LibreOffice".
+artifacts:
+  - { type: implementation-plan, pointer: "specs/changes/support-legacy-office-formats/implementation-plan.md" }
+next-action: backend-engineer implements IP-1..IP-7 (TDD, failing tests first), then frontend-engineer implements IP-8

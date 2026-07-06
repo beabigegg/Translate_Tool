@@ -1,6 +1,6 @@
 # Contract-driven gates
 # Tier semantics: ci/gate-policy.md
-# Active change gates: (none) (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection, p2-prompt-fewshot-glossary, p2-long-doc-chunking, p2-comet-qe, p2-term-audit, download-url-in-jobstatus, remove-cross-model-refinement, fallback-chain-cloud-providers, term-extraction-db-first, settings-page-cloud-redesign, p3-docx-replace-mode, p3-table-structure, p3-llm-judge, pdf-renderer-fallback-warn, expose-output-mode-ui, wire-context-segments, layout-fidelity-metrics, tatr-parse-outputs, pdf-renderer-fallback-warn, table-context-translation, pdf-layout-refactor)
+# Active change gates: support-legacy-office-formats (archived: p1-cloud-providers, p1-provider-routing, p1-font-lru-cache, p2-ir-document-model, p2-layout-detection, p2-renderer-convergence, p2-text-expansion, p2-table-border-protection, p2-prompt-fewshot-glossary, p2-long-doc-chunking, p2-comet-qe, p2-term-audit, download-url-in-jobstatus, remove-cross-model-refinement, fallback-chain-cloud-providers, term-extraction-db-first, settings-page-cloud-redesign, p3-docx-replace-mode, p3-table-structure, p3-llm-judge, pdf-renderer-fallback-warn, expose-output-mode-ui, wire-context-segments, layout-fidelity-metrics, tatr-parse-outputs, pdf-renderer-fallback-warn, table-context-translation, pdf-layout-refactor)
 
 name: contract-driven-gates
 
@@ -314,6 +314,50 @@ jobs:
         run: |
           # Stress/soak deferred to p1-observability-metrics per change-classification.md §Tasks Not Applicable 3.5
           echo "No stress/soak targets configured for this change — skipping."
+
+  libreoffice-conversion-gate:
+    name: libreoffice-conversion-gate
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+
+      - name: Install LibreOffice (best-effort — never fails the gate)
+        # SHOULD-install per contracts/ci/ci-gate-contract.md §LibreOffice Conversion Gate:
+        # exercises the real .doc/.xls/.ppt conversion path on every PR when it succeeds.
+        # continue-on-error: if apt-get fails (network/mirror issue), the gate must still
+        # pass via graceful skip — never fail the merge due to CI infra, not test logic.
+        continue-on-error: true
+        run: sudo apt-get update && sudo apt-get install -y libreoffice-core
+
+      - name: Install Python dependencies
+        run: pip install -r app/backend/requirements.txt
+
+      - name: LibreOffice conversion gate (Tier 2 — blocks merge on PR)
+        # AC-1..AC-4 (support-legacy-office-formats): doc_to_docx/xls_to_xlsx/ppt_to_pptx +
+        # is_libreoffice_available() unit coverage. Real-binary tests MUST be marked
+        # @pytest.mark.skipif(not is_libreoffice_available(), ...) so this step passes
+        # (via skip) whether or not the install step above succeeded. The mocked
+        # graceful-degradation sub-test has no skipif and always runs.
+        # See contracts/ci/ci-gate-contract.md §LibreOffice Conversion Gate.
+        run: >
+          pytest tests/test_libreoffice_helpers.py
+          --tb=short -q
+          --junitxml=test-results/libreoffice-conversion-gate.xml
+
+      - name: Upload libreoffice-conversion-gate results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: libreoffice-conversion-gate-results
+          path: test-results/libreoffice-conversion-gate.xml
+          retention-days: 14
 
   expose-output-mode-ui-gate:
     name: expose-output-mode-ui-gate

@@ -3,8 +3,8 @@ contract: api
 summary: API behavior, compatibility rules, and endpoint contract requirements.
 owner: application-team
 surface: api
-schema-version: 0.9.0
-last-changed: 2026-06-27
+schema-version: 0.10.0
+last-changed: 2026-07-06
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -50,6 +50,7 @@ breaking-change-policy: deprecate-2-minors
 | POST | /providers/test-translation | none | TestTranslationRequest | TestTranslationResult[] | 400, 422 | tests/test_providers_api.py |
 | GET | /jobs/{job_id}/judge | none | - | JobJudgeResponse | 200 (judge_status: available/disabled/unavailable); 404 job not found | tests/contract/ |
 | POST | /jobs/{job_id}/judge/apply | none | - | JobJudgeApplyResponse | 202 applying; 404 job not found; 409 preconditions not met | tests/contract/ |
+| GET | /api/providers/{provider_id}/live-models | none | - | - | 400, 403, 404 | tests/test_providers_api.py |
 
 ## Schemas
 
@@ -155,7 +156,7 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 | judge_score | enum(低, 中, 高) | no |  | latest judge score tier; null when judge has not run, is disabled, or is unavailable; for list/summary views; see BR-72 |
 | judge_apply_status | string | no |  | apply operation lifecycle: applying, applied, failed, or null when apply not yet triggered; see BR-76, BR-77 |
 | download_url | string | no |  | URL to download translated zip; set to /api/jobs/{job_id}/download only when status==completed AND output_zip exists on disk; null otherwise |
-| warnings | string[] | no |  | degradation notices; null or empty list when no degradation occurred; populated by PDF processor when fitz falls back to ReportLab; also populated when a format-specific output_mode is requested for an incompatible file type (bilingual on non-DOCX, adjacent/annotation on non-XLSX) — one entry per affected file; type is always string[] or null, never a bare string; additive optional field — backward-compatible; see AC-1, AC-2, AC-3 |
+| warnings | string[] | no |  | degradation notices; null or empty list when no degradation occurred; populated by PDF processor when fitz falls back to ReportLab; also populated when a format-specific output_mode is requested for an incompatible file type (bilingual on non-DOCX, adjacent/annotation on non-XLSX) — one entry per affected file; also populated with one entry per successfully converted legacy file (.doc/.xls/.ppt via LibreOffice) disclosing lossy-conversion risk — see BR-9, BR-96; type is always string[] or null, never a bare string; additive optional field — backward-compatible; see AC-1, AC-2, AC-3 |
 
 ### TermStatsResponse
 | field | type | required | format | notes |
@@ -307,7 +308,7 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 ### JobCreateRequest
 | field | type | required | format | notes |
 |---|---|---|---|---|
-| file | string | yes | binary | one or more document files (DOCX, PPTX, XLSX, PDF); multipart upload |
+| file | string | yes | binary | one or more document files (DOCX, DOC, PPTX, PPT, XLSX, XLS, PDF); multipart upload. Legacy .doc/.xls/.ppt are converted to .docx/.xlsx/.pptx via LibreOffice before entering the pipeline; see BR-9, BR-96 |
 | target_language | string | yes |  | comma-separated target language codes; ≥1 non-empty value required (BR-3) |
 | source_language | string | no |  | source language code; auto-detected when omitted |
 | model | string | no |  | model override; defaults to provider routing config (BR-4) |
@@ -340,11 +341,13 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 
 **POST /terms/flag-needs-review** — flags a term for human review by transitioning it to `needs_review` status. Terms in `needs_review` are not injected until approved (BR-29). Returns HTTP 200 `{"status": "needs_review"}` on success; HTTP 404 `{"detail": "Term not found"}` when the term does not exist.
 
-**GET /jobs/{job_id}** — `download_url` is set to `/api/jobs/{job_id}/download` only when `status == "completed"` AND the output archive exists on disk; it is `null` in all other states (running, failed, stopped, or completed with missing archive). The download endpoint itself (`GET /jobs/{job_id}/download`) is a separate route and is not changed by this field addition. `warnings` is an optional string array (null or `[]` when no degradation); populated by the PDF processor when rendering quality is reduced; verbatim strings are defined in the `JobStatus` schema above. Existing consumers that do not read `warnings` are unaffected (AC-3).
+**GET /jobs/{job_id}** — `download_url` is set to `/api/jobs/{job_id}/download` only when `status == "completed"` AND the output archive exists on disk; it is `null` in all other states (running, failed, stopped, or completed with missing archive). The download endpoint itself (`GET /jobs/{job_id}/download`) is a separate route and is not changed by this field addition. `warnings` is an optional string array (null or `[]` when no degradation); populated by the PDF processor when rendering quality is reduced, and by the legacy-format conversion step (`.doc`/`.xls`/`.ppt` via LibreOffice, BR-9/BR-96); verbatim strings are defined in the `JobStatus` schema above. Existing consumers that do not read `warnings` are unaffected (AC-3).
 
 **GET /providers/health** — returns health status for each configured provider. Each element: `{provider, status, latency_ms}` where `status` is one of `online`, `offline`, `not_configured`. `latency_ms` is omitted when `status` is `not_configured`. PANJIT is always probed; DeepSeek is probed only when a valid key is supplied via the `X-DeepSeek-Api-Key` request header, otherwise returned as `not_configured`. The key is transmitted as a header (not a query parameter) to prevent exposure in server access logs and browser history (BR-65). See BR-63.
 
 **GET /providers/models** — returns the model list for each provider, sourced from `config/providers.yml` in-memory (already loaded via `load_providers_config()`). NOT a live `/v1/models` network call. Returns `ProviderModelEntry[]` where each entry has `{provider, translate_model, long_doc_model}`. See BR-63.
+
+**GET /api/providers/{provider_id}/live-models** — fetches the translatable model list directly from the provider's live `/v1/models` endpoint (unlike `GET /providers/models`, which is config-sourced). Returns a bare JSON array of model-name strings (`string[]`), excluding embedding and reranker models. HTTP 404 `{"detail": "No providers configured"}` when no providers are configured; HTTP 404 `{"detail": "Provider '{provider_id}' not found"}` for an unknown provider; HTTP 400 `{"detail": "Provider has no base_url configured"}`; HTTP 403 `{"detail": "DeepSeek requires X-DeepSeek-Api-Key header"}` when `provider_id == "deepseek"` and the `X-DeepSeek-Api-Key` header is missing or blank.
 
 **POST /providers/test-translation** — runs a parallel test translation across the requested models. Synchronous (no `job_id`). Request: `TestTranslationRequest` with fields `text`, `src_lang`, `targets[]`, optional `profile`, `models[]`, `deepseek_api_key`. Response: `TestTranslationResult[]` — `{model_id, provider, duration_ms}` plus optional `translation`, `comet_score` (omitted when `QE_ENABLED=false`), and `error` (present when that model call failed). Partial failure is isolated per model. DeepSeek path not invoked without a key — returns `error: "DeepSeek API key not provided"`. See BR-64, BR-65.
 
@@ -353,6 +356,8 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 **GET /jobs/{job_id}/judge** — returns judge evaluation results produced by the Gemma judge after job completion. HTTP 200 with `judge_status: "available"` and populated score/feedback fields when judge results are ready. HTTP 200 with `judge_status: "disabled"` when `JUDGE_ENABLED=false`. HTTP 200 with `judge_status: "unavailable"` when Gemma was unreachable or any judge exception occurred. HTTP 404 for an unknown `job_id`. The `translated_text` field is a display-only joined view of the judge's accepted final text — it is NOT the document output until the user confirms apply (see BR-75). See BR-72, BR-73, BR-74, BR-75.
 
 **POST /jobs/{job_id}/judge/apply** — triggers async re-render of the job's output document using the judge's per-block re-translated text. Preconditions (else HTTP 409): `job.status == "completed"` AND `JUDGE_ENABLED` AND `judge_status == "available"` AND `retranslated_blocks` map is non-empty AND original source files remain on disk. Unknown `job_id` → HTTP 404. On success returns HTTP 202 `{"status": "applying"}`; re-render runs in a background daemon thread. Frontend polls `GET /api/jobs/{id}` until `judge_apply_status` transitions to `applied` or `failed`. When `judge_apply_status == "applied"`, the stable `download_url` serves the updated document. A second apply call while `judge_apply_status == "applying"` returns HTTP 202 without spawning a duplicate worker (idempotent under lock). See BR-76, BR-77.
+
+**POST /api/jobs** (legacy Office formats) — accepts `.doc`, `.xls`, `.ppt` in addition to `.docx`/`.xlsx`/`.pptx`/`.pdf` (BR-9). Legacy files are converted to their modern counterpart (`.docx`/`.xlsx`/`.pptx`) via LibreOffice-headless before entering the extraction/translation/rendering pipeline. When LibreOffice is unavailable (`is_libreoffice_available()` returns false) or a specific file's conversion raises, that file is skipped with a `[WARNING]`/`[ERROR]` log entry and an actionable install message — no HTTP error is raised, and the job is not transitioned to `status: "failed"` solely because one legacy file could not be converted; other files in the same job continue processing normally. Every successfully converted legacy file adds exactly one entry to `job.warnings` disclosing the lossy-conversion risk (see `JobStatus.warnings` above). See BR-9, BR-96.
 
 **POST /api/jobs** (`output_mode`) — accepts an optional `output_mode` field (`"append"` | `"replace"` | `"bilingual"` | `"adjacent"` | `"annotation"`; default `"append"`). `"append"` adds translations after source text (existing behavior). `"replace"` overwrites source paragraphs/text-frames in-place. `"bilingual"` (DOCX/DOC only) converts each body paragraph into a two-column source/translation table; degrades to `"append"` for XLSX/PPTX/PDF with a notice in `job.warnings`. `"adjacent"` (XLSX/XLS only) writes translation to the block of columns immediately to the right of the original data; degrades to `"append"` for DOCX/PPTX/PDF with a notice in `job.warnings`. `"annotation"` (XLSX/XLS only) attaches translation as a cell comment; degrades to `"append"` for DOCX/PPTX/PDF with a notice in `job.warnings`. When a job targets more than one language, `output_mode` is silently clamped to `"append"` — see BR-66, BR-67. Invalid values are rejected with HTTP 422.
 

@@ -1,0 +1,22 @@
+change-id: support-legacy-office-formats
+agent: dependency-security-reviewer
+status: done
+decision: changes-required (documentation gap only; no code/security blocker)
+summary: >
+  Reviewed libreoffice_helpers.py subprocess invocation, temp-file handling,
+  timeout, supply chain, and license compliance. Found: subprocess.run uses
+  argv-list (no shell=True, no command injection risk); temp dirs via
+  tempfile.mkdtemp (no path traversal); LIBREOFFICE_TIMEOUT enforced with
+  cleanup in finally (no resource exhaustion); no new Python/npm packages
+  (LibreOffice correctly excluded from environment.yml/requirements.txt as an
+  OS binary); MPL 2.0 license via arm's-length subprocess invocation creates no
+  obligation on this codebase (unlike bundled-model CC-BY-NC-SA cases). One gap
+  found: LIBREOFFICE_PATH/LIBREOFFICE_TIMEOUT (pre-existing env vars in
+  config.py) were undocumented in env-contract.md's variable table. Fixed by
+  main Claude: added table rows, .env.example.template entries, and
+  env.schema.json properties; re-validated (Env semantic: 39 vars checked,
+  passed) and re-ran the contract test-evidence phase (passed).
+artifacts:
+  - { type: security-findings, pointer: "0 blocking; subprocess/temp-file/timeout/supply-chain/license all clear" }
+  - { type: doc-gap-fixed, pointer: "contracts/env/env-contract.md, contracts/env/.env.example.template, contracts/env/env.schema.json — LIBREOFFICE_PATH/LIBREOFFICE_TIMEOUT rows added" }
+next-action: none — qa-reviewer for release readiness

@@ -559,3 +559,107 @@ def test_rescore_threshold_out_of_range_rejected():
         from importlib import reload
         import app.backend.config as cfg2
         reload(cfg2)
+
+
+# ---------------------------------------------------------------------------
+# support-legacy-office-formats (AC-7 / BR-96 / ADR-0009):
+# QE scoring path (post_translate_hook seam) is unchanged for converted
+# legacy documents.
+# ---------------------------------------------------------------------------
+
+def test_qe_scoring_invoked_identically_for_converted_legacy_document(tmp_path):
+    """AC-7: the post_translate_hook (QE scoring seam) receives IDENTICAL call
+    args for a converted .doc file as for a native .docx file — BR-96/ADR-0009:
+    QE scoring is unchanged for converted documents (no distinct threshold or
+    reinterpretation).
+
+    Anti-tautology: asserts the hook's EXACT payload is equal between the two
+    runs (selection assertion on hook content), not merely that the hook fired.
+    """
+    from pathlib import Path as _Path
+    from app.backend.processors.orchestrator import process_files
+
+    _fixture_docx = _Path(__file__).parent / "fixtures" / "minimal_phase0.docx"
+
+    def _make_client():
+        mock = MagicMock()
+        mock.system_prompt = ""
+        mock.model_type = "general"
+        mock._is_translation_dedicated.return_value = False
+        mock._is_translategemma_model.return_value = False
+        return mock
+
+    qe_payload = [("Hello world", "Bonjour le monde", "block-1")]
+
+    def _fake_translate_docx(src_path, out_path, targets, src_lang, client, *, post_translate_hook=None, **kw):
+        if post_translate_hook is not None:
+            post_translate_hook(qe_payload)
+        return False
+
+    # Run 1: native .docx.
+    hook_docx = MagicMock()
+    output_dir1 = tmp_path / "out1"
+    output_dir1.mkdir()
+    with (
+        patch(
+            "app.backend.processors.orchestrator.translate_docx",
+            side_effect=_fake_translate_docx,
+        ),
+        patch(
+            "app.backend.processors.orchestrator.OllamaClient",
+            return_value=_make_client(),
+        ),
+    ):
+        process_files(
+            files=[_fixture_docx],
+            output_dir=output_dir1,
+            targets=["vi"],
+            src_lang="en",
+            include_headers_shapes_via_com=False,
+            ollama_model="qwen2.5:32b",
+            log=lambda s: None,
+            post_translate_hook=hook_docx,
+        )
+
+    # Run 2: converted .doc (LibreOffice available, conversion mocked).
+    hook_doc = MagicMock()
+    doc_path = tmp_path / "legacy.doc"
+    doc_path.write_bytes(b"x")
+    output_dir2 = tmp_path / "out2"
+    output_dir2.mkdir()
+
+    def _fake_doc_to_docx(input_path, output_path):
+        _Path(output_path).write_bytes(b"converted")
+
+    with (
+        patch("app.backend.processors.orchestrator.is_libreoffice_available", return_value=True),
+        patch(
+            "app.backend.processors.orchestrator.doc_to_docx",
+            side_effect=_fake_doc_to_docx,
+        ),
+        patch(
+            "app.backend.processors.orchestrator.translate_docx",
+            side_effect=_fake_translate_docx,
+        ),
+        patch(
+            "app.backend.processors.orchestrator.OllamaClient",
+            return_value=_make_client(),
+        ),
+    ):
+        process_files(
+            files=[doc_path],
+            output_dir=output_dir2,
+            targets=["vi"],
+            src_lang="en",
+            include_headers_shapes_via_com=False,
+            ollama_model="qwen2.5:32b",
+            log=lambda s: None,
+            post_translate_hook=hook_doc,
+        )
+
+    hook_docx.assert_called_once_with(qe_payload)
+    hook_doc.assert_called_once_with(qe_payload)
+    assert hook_docx.call_args == hook_doc.call_args, (
+        "post_translate_hook (QE scoring seam) must receive identical call args "
+        "for a converted .doc file as for a native .docx file"
+    )

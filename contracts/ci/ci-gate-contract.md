@@ -3,8 +3,8 @@ contract: ci
 summary: CI gate inventory, artifact retention, and rollback requirements.
 owner: platform-team
 surface: delivery-pipeline
-schema-version: 0.5.0
-last-changed: 2026-06-27
+schema-version: 0.6.0
+last-changed: 2026-07-06
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -25,6 +25,7 @@ breaking-change-policy: deprecate-2-minors
 | truncation-rate | 2+ | PR | no | pytest tests/test_layout_metrics.py -k "truncation_rate" --tb=short -q | application-team | `render_truncated=True` element count = 0 across benchmark fixture set (informational) |
 | reading-order-edit-distance | 2+ | PR | no | pytest tests/test_layout_metrics.py -k "reading_order" --tb=short -q | application-team | normalized edit distance on multi-column fixture ≤ PR#3 baseline (informational) |
 | ocr-absent-gate | 2+ | PR | yes | pytest tests/test_pdf_layout_refactor.py -k "ocr_absent" --tb=short -q | application-team | all PDF gates pass or skip gracefully when `OCR_ENABLED=False` and OCR library absent |
+| libreoffice-conversion-gate | 2+ | PR | yes | pytest tests/test_libreoffice_helpers.py --tb=short -q | application-team | pass, or skip-with-marker when LibreOffice absent from runner (see policy below); mocked degrade-path sub-test always runs |
 
 ## Required Check Policy
 
@@ -85,6 +86,26 @@ All gates in the Gate Inventory marked `required: yes` must pass before a PR is 
 **Offline constraint**: runs with no network access, no GPU; uses pre-committed IR fixtures.
 
 **Report artifact**: per-element pass/fail diff to stdout (captured as step log). No external artifact store required at Tier 2.
+
+## LibreOffice Conversion Gate
+
+**Gate name**: `libreoffice-conversion-gate`
+
+**Added in support-legacy-office-formats.**
+
+**Scope**: Runs `tests/test_libreoffice_helpers.py` (unit coverage for `doc_to_docx`, `xls_to_xlsx`, `ppt_to_pptx`, `is_libreoffice_available()`). The `.doc`/`.xls`/`.ppt` branches in `tests/test_orchestrator_phase0.py` are exercised by the main `pytest tests/ -x -q` job and are subject to the same skip-vs-required split defined below — they are not a separate gate.
+
+- The CI runner SHOULD install `libreoffice-core` in a setup step (e.g. `apt-get install -y libreoffice-core`) so the real conversion path is exercised on every PR, rather than perpetually skipped. This install step MUST NOT be allowed to fail the gate (see Workflow Changes in the per-change `ci-gates.md`) — if the install step itself fails or is unavailable, the suite must still pass via graceful skip, never via a red gate caused by infra.
+- Tests requiring the real binary MUST be marked `@pytest.mark.skipif(not is_libreoffice_available(), reason="LibreOffice not installed on this runner")` so the suite degrades gracefully (skip, not fail) on any runner where the install step is unavailable or fails.
+- The graceful-degradation path itself (LibreOffice absent → file skipped, warning logged, job not failed) MUST be tested with a mocked/forced-`False` `is_libreoffice_available()` — this sub-test does NOT require the real binary and MUST run unconditionally (never skipped) on every runner.
+
+**Pass condition**: all `.doc`/`.xls`/`.ppt` conversion unit tests pass when LibreOffice is present; all such tests skip cleanly (no CI failure) when LibreOffice is absent; the mocked graceful-degradation test always runs and always passes.
+
+**Fail condition**: any test failure (as opposed to skip) when LibreOffice is absent; the mocked degrade-path test failing or being skipped under any condition.
+
+**Offline constraint**: no network access required at test-run time; if installed, LibreOffice is installed from the OS package cache/mirror in a separate CI setup step, not fetched at test-run time.
+
+**Cross-reference**: LibreOffice is a documented OPTIONAL external binary dependency — see `contracts/env/env-contract.md` § External Binary Dependencies.
 
 ## Informational Gate Promotion Policy
 

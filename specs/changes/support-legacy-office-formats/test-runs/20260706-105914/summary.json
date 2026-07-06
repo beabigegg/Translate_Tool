@@ -1,0 +1,16 @@
+{
+  "change_id": "support-legacy-office-formats",
+  "phase": "changed-area",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest tests/contract/test_legacy_conversion_disclosure.py tests/test_libreoffice_helpers.py tests/test_orchestrator_phase0.py tests/test_quality_evaluation.py -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/support-legacy-office-formats/test-runs/20260706-105914/junit.xml'",
+  "duration_ms": 1076,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/support-legacy-office-formats/test-runs/20260706-105914/summary.json",
+    "stdout": "specs/changes/support-legacy-office-formats/test-runs/20260706-105914/stdout.log",
+    "stderr": "specs/changes/support-legacy-office-formats/test-runs/20260706-105914/stderr.log",
+    "junit": "specs/changes/support-legacy-office-formats/test-runs/20260706-105914/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

@@ -1,0 +1,20 @@
+agent: frontend-engineer
+change-id: support-legacy-office-formats
+task: IP-8
+status: done
+summary: >
+  Added .doc/.xls/.ppt to ACCEPTED_EXTENSIONS and their matching MIME types
+  (application/msword, application/vnd.ms-excel, application/vnd.ms-powerpoint)
+  to ACCEPTED_MIME_TYPES in fileTypes.js. Verified FileDropZone.jsx reads
+  purely from ACCEPTED_EXTENSIONS (accept attribute, display text, filename
+  filter) with no hardcoded format list or format-specific logic; no edit
+  required, per implementation-plan.md line 28.
+artifacts:
+  - { type: files-changed, pointer: "app/frontend/src/constants/fileTypes.js:1-9" }
+  - { type: components-affected, pointer: "n/a (FileDropZone.jsx verified unchanged, reads from constant only)" }
+  - { type: screenshot-paths, pointer: "n/a (AC-6 visual rendering owned by ui-ux-reviewer/visual-reviewer per test-plan.md L29,L64)" }
+  - { type: accessibility-audit, pointer: "n/a (no interactive/markup change; accept/display strings only)" }
+notes: >
+  No frontend test scope assigned in test-plan.md for this task (AC-6 explicitly
+  owned by ui-ux-reviewer/visual-reviewer). Pure data constant change with no new
+  logic branches, so no unit test was authored. No backend/contract/test files touched.

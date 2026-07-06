@@ -1,0 +1,15 @@
+{
+  "change_id": "support-legacy-office-formats",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "cdd-kit validate --contracts --env --ci",
+  "duration_ms": 551,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/support-legacy-office-formats/test-runs/20260706-110656/summary.json",
+    "stdout": "specs/changes/support-legacy-office-formats/test-runs/20260706-110656/stdout.log",
+    "stderr": "specs/changes/support-legacy-office-formats/test-runs/20260706-110656/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

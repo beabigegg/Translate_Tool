@@ -27,7 +27,12 @@ from app.backend.config import (
 )
 from app.backend.processors.com_helpers import is_win32com_available, word_convert
 from app.backend.processors.docx_processor import translate_docx
-from app.backend.processors.libreoffice_helpers import doc_to_docx, is_libreoffice_available, xls_to_xlsx
+from app.backend.processors.libreoffice_helpers import (
+    doc_to_docx,
+    is_libreoffice_available,
+    ppt_to_pptx,
+    xls_to_xlsx,
+)
 from app.backend.processors.pdf_processor import translate_pdf
 from app.backend.processors.pptx_processor import translate_pptx
 from app.backend.processors.xlsx_processor import translate_xlsx_xls
@@ -283,6 +288,28 @@ def _extract_all_segments(file_path: Path, chunk_size: int = _PHASE0_CHUNK_SIZE)
                     _os.unlink(tmp_docx) if _os.path.exists(tmp_docx) else None
             else:
                 units.append(file_path.stem.replace("_", " ").replace("-", " "))
+        elif ext == ".ppt":
+            if is_libreoffice_available():
+                import tempfile
+                tmp_pptx = tempfile.mktemp(suffix=".pptx")
+                try:
+                    ppt_to_pptx(str(file_path), tmp_pptx)
+                    from pptx import Presentation
+                    prs = Presentation(tmp_pptx)
+                    paragraphs = []
+                    for slide in prs.slides:
+                        for shape in slide.shapes:
+                            if shape.has_text_frame:
+                                for para in shape.text_frame.paragraphs:
+                                    t = para.text.strip()
+                                    if t:
+                                        paragraphs.append(t)
+                    units = _split_paragraphs_to_sentences(paragraphs)
+                finally:
+                    import os as _os
+                    _os.unlink(tmp_pptx) if _os.path.exists(tmp_pptx) else None
+            else:
+                units.append(file_path.stem.replace("_", " ").replace("-", " "))
     except Exception as exc:
         logger.debug("Phase 0 text extraction failed for %s: %s", file_path.name, exc)
 
@@ -331,8 +358,12 @@ def _output_name(src: Path, output_format: Optional[str] = None, output_suffix: 
         if output_format == "pdf":
             return f"{stem}_translated{tag}.pdf"
         return f"{stem}_translated{tag}.docx"
-    if ext in (".doc", ".xls"):
-        return f"{stem}_translated{tag}.docx" if ext == ".doc" else f"{stem}_translated{tag}.xlsx"
+    if ext in (".doc", ".xls", ".ppt"):
+        if ext == ".doc":
+            return f"{stem}_translated{tag}.docx"
+        if ext == ".ppt":
+            return f"{stem}_translated{tag}.pptx"
+        return f"{stem}_translated{tag}.xlsx"
     return f"{stem}_translated{tag}{ext}"
 
 
@@ -763,6 +794,40 @@ def process_files(
                         os.remove(tmp_docx)
                     except OSError:
                         pass
+            elif ext == ".ppt":
+                tmp_pptx = str(output_dir / f"{src.stem}__tmp.pptx")
+                if is_libreoffice_available():
+                    log("[PPT] Converting to .pptx via LibreOffice")
+                    ppt_to_pptx(str(src), tmp_pptx)
+                else:
+                    log(
+                        "[PPT] Cannot convert .ppt: LibreOffice is not available. "
+                        "Install LibreOffice: sudo apt install libreoffice-core (Linux) / "
+                        "brew install --cask libreoffice (macOS)"
+                    )
+                    continue
+                try:
+                    stopped = translate_pptx(
+                        tmp_pptx,
+                        str(out_path),
+                        targets,
+                        src_lang,
+                        client,
+                        stop_flag=stop_flag,
+                        log=log,
+                        max_batch_chars=max_batch_chars,
+                        pre_translate_hook=_phase0_hook,
+                        post_translate_hook=post_translate_hook,
+                        terms_getter=lambda: list(_glossary_terms_holder),
+                        output_mode=_file_output_mode,
+                        block_overrides=block_overrides,
+                        status_callback=status_callback,
+                    )
+                finally:
+                    try:
+                        os.remove(tmp_pptx)
+                    except OSError:
+                        pass
             elif ext == ".pptx":
                 stopped = translate_pptx(
                     str(src),
@@ -818,6 +883,12 @@ def process_files(
             else:
                 log(f"[SKIP] Unsupported file: {src.name}")
                 continue
+            if ext in (".doc", ".xls", ".ppt") and is_libreoffice_available():
+                if warnings_callback:
+                    warnings_callback(
+                        f"{src.name} converted from a legacy format via LibreOffice; "
+                        f"layout fidelity may be lower than a native format."
+                    )
             processed_count += 1
             if stopped:
                 log(f"[STOP] file interrupted: {src.name}")
