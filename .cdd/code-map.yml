@@ -1,13 +1,13 @@
-# generated: 2026-06-27T13:08:08Z by cdd-kit 3.3.0
-# files: 187, src-lines: 50102, map-lines: 4704, compression: 10.7x
-# sources-digest: 5f74bf2524005197e8af873a97bcdc3df1000c9db7a6f35244086d54fd9d7644
+# generated: 2026-07-02T10:50:33Z by cdd-kit 3.6.0
+# files: 188, src-lines: 50752, map-lines: 4742, compression: 10.7x
+# sources-digest: ad5da96cb084f0e17b2123f7077c05e0047329062cc3d0375b91a20c76ca0caf
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
 
 app/backend/api/__init__.py:  # 0 lines
 
-app/backend/api/routes.py:  # 1103 lines
+app/backend/api/routes.py:  # 1170 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: asyncio, items: [], line: 5 }
@@ -38,33 +38,34 @@ app/backend/api/routes.py:  # 1103 lines
     - { name: profiles, lines: 101-110 }  # @router.get('/profiles', response_model=List[ProfileItem])
     - { name: model_config, lines: 114-130 }  # @router.get('/model-config', response_model=List[ModelConfigItem])
     - { name: route_info, lines: 134-141 }  # @router.get('/route-info', response_model=RouteInfoResponse)
-    - { name: async create_job, lines: 145-245 }  # @router.post('/jobs', response_model=JobCreateResponse)
-    - { name: job_status, lines: 249-344 }  # @router.get('/jobs/{job_id}', response_model=JobStatus)
-    - { name: cancel_job, lines: 348-351 }  # @router.post('/jobs/{job_id}/cancel')
-    - { name: job_quality, lines: 355-380 }  # @router.get('/jobs/{job_id}/quality', response_model=JobQualityResponse)
-    - { name: job_audit, lines: 384-399 }  # @router.get('/jobs/{job_id}/audit', response_model=JobAuditResponse)
-    - { name: get_job_judge, lines: 403-429 }  # @router.get('/jobs/{job_id}/judge', response_model=JobJudgeResponse)
-    - { name: post_job_judge_apply, lines: 433-474 }  # @router.post('/jobs/{job_id}/judge/apply', status_code=202)
-    - { name: job_layout, lines: 478-514 }  # @router.get('/jobs/{job_id}/layout', response_model=LayoutVizResponse)
-    - { name: job_layout_page, lines: 518-529 }  # @router.get('/jobs/{job_id}/layout/page/{file_stem}/{page_num}')
-    - { name: download, lines: 533-543 }  # @router.get('/jobs/{job_id}/download')
-    - { name: get_stats, lines: 548-552 }  # @router.get('/stats')
-    - { name: cache_stats, lines: 556-562 }  # @router.get('/cache/stats')
-    - { name: clear_cache, lines: 566-572 }  # @router.delete('/cache')
-    - { name: terms_stats, lines: 580-593 }  # @router.get('/terms/stats', response_model=TermStatsResponse)
-    - { name: terms_export, lines: 597-627 }  # @router.get('/terms/export')
-    - { name: async terms_import, lines: 631-666 }  # @router.post('/terms/import', response_model=TermImportResult)
-    - { name: terms_unverified, lines: 670-689 }  # @router.get('/terms/unverified', response_model=List[TermItem])
-    - { name: terms_approve, lines: 693-698 }  # @router.post('/terms/approve')
-    - { name: terms_reject, lines: 702-707 }  # @router.post('/terms/reject')
-    - { name: terms_flag_needs_review, lines: 711-716 }  # @router.post('/terms/flag-needs-review')
-    - { name: terms_approved, lines: 720-739 }  # @router.get('/terms/approved', response_model=List[TermItem])
-    - { name: terms_edit, lines: 743-754 }  # @router.patch('/terms/edit')
-    - { name: wikidata_search, lines: 762-774 }  # @router.post('/terms/wikidata/search', response_model=WikidataSearchResponse)
-    - { name: wikidata_import, lines: 778-793 }  # @router.post('/terms/wikidata/import')
-    - { name: providers_health, lines: 802-879 }  # @router.get('/providers/health', response_model=List[ProviderHealthItem], respons...
-    - { name: providers_models, lines: 883-914 }  # @router.get('/providers/models', response_model=List[ProviderModelEntry], respons...
-    - { name: async providers_test_translation, lines: 918-1103 }  # @router.post('/providers/test-translation', response_model=List[TestTranslationRe...
+    - { name: async create_job, lines: 145-272 }  # @router.post('/jobs', response_model=JobCreateResponse)
+    - { name: job_status, lines: 276-371 }  # @router.get('/jobs/{job_id}', response_model=JobStatus)
+    - { name: cancel_job, lines: 375-378 }  # @router.post('/jobs/{job_id}/cancel')
+    - { name: job_quality, lines: 382-407 }  # @router.get('/jobs/{job_id}/quality', response_model=JobQualityResponse)
+    - { name: job_audit, lines: 411-426 }  # @router.get('/jobs/{job_id}/audit', response_model=JobAuditResponse)
+    - { name: get_job_judge, lines: 430-456 }  # @router.get('/jobs/{job_id}/judge', response_model=JobJudgeResponse)
+    - { name: post_job_judge_apply, lines: 460-501 }  # @router.post('/jobs/{job_id}/judge/apply', status_code=202)
+    - { name: job_layout, lines: 505-541 }  # @router.get('/jobs/{job_id}/layout', response_model=LayoutVizResponse)
+    - { name: job_layout_page, lines: 545-556 }  # @router.get('/jobs/{job_id}/layout/page/{file_stem}/{page_num}')
+    - { name: download, lines: 560-570 }  # @router.get('/jobs/{job_id}/download')
+    - { name: get_stats, lines: 575-579 }  # @router.get('/stats')
+    - { name: cache_stats, lines: 583-589 }  # @router.get('/cache/stats')
+    - { name: clear_cache, lines: 593-599 }  # @router.delete('/cache')
+    - { name: terms_stats, lines: 607-620 }  # @router.get('/terms/stats', response_model=TermStatsResponse)
+    - { name: terms_export, lines: 624-654 }  # @router.get('/terms/export')
+    - { name: async terms_import, lines: 658-693 }  # @router.post('/terms/import', response_model=TermImportResult)
+    - { name: terms_unverified, lines: 697-716 }  # @router.get('/terms/unverified', response_model=List[TermItem])
+    - { name: terms_approve, lines: 720-725 }  # @router.post('/terms/approve')
+    - { name: terms_reject, lines: 729-734 }  # @router.post('/terms/reject')
+    - { name: terms_flag_needs_review, lines: 738-743 }  # @router.post('/terms/flag-needs-review')
+    - { name: terms_approved, lines: 747-766 }  # @router.get('/terms/approved', response_model=List[TermItem])
+    - { name: terms_edit, lines: 770-781 }  # @router.patch('/terms/edit')
+    - { name: wikidata_search, lines: 789-801 }  # @router.post('/terms/wikidata/search', response_model=WikidataSearchResponse)
+    - { name: wikidata_import, lines: 805-820 }  # @router.post('/terms/wikidata/import')
+    - { name: providers_health, lines: 829-906 }  # @router.get('/providers/health', response_model=List[ProviderHealthItem], respons...
+    - { name: providers_models, lines: 910-941 }  # @router.get('/providers/models', response_model=List[ProviderModelEntry], respons...
+    - { name: provider_live_models, lines: 945-981 }  # @router.get('/providers/{provider_id}/live-models', response_model=List[str])
+    - { name: async providers_test_translation, lines: 985-1170 }  # @router.post('/providers/test-translation', response_model=List[TestTranslationRe...
 
 app/backend/api/schemas.py:  # 286 lines
   imports:
@@ -223,7 +224,7 @@ app/backend/clients/ollama_client.py:  # 883 lines
     - { name: _drop_english_preamble, lines: 67-89 }
     - { name: list_ollama_models, lines: 874-883 }
 
-app/backend/clients/openai_compatible_client.py:  # 305 lines
+app/backend/clients/openai_compatible_client.py:  # 336 lines
   imports:
     - { module: __future__, items: [annotations], line: 18 }
     - { module: logging, items: [], line: 20 }
@@ -232,7 +233,7 @@ app/backend/clients/openai_compatible_client.py:  # 305 lines
     - { module: requests, items: [], line: 24 }
   classes:
     - name: OpenAICompatibleClient
-      lines: 42-305
+      lines: 42-336
       methods:
         - { name: __init__, lines: 57-82 }
         - { name: cache_model_key, lines: 85-89 }
@@ -248,12 +249,13 @@ app/backend/clients/openai_compatible_client.py:  # 305 lines
         - { name: translate_batch, lines: 216-235 }
         - { name: health, lines: 237-253 }
         - { name: list_models, lines: 255-264 }
-        - { name: unload, lines: 266-272 }
-        - { name: health_check, lines: 288-290 }
-        - { name: _is_translation_dedicated, lines: 292-294 }
-        - { name: _is_translategemma_model, lines: 296-298 }
-        - { name: set_runtime_options_override, lines: 300-301 }
-        - { name: set_cache_variant, lines: 303-305 }
+        - { name: list_live_models, lines: 266-295 }
+        - { name: unload, lines: 297-303 }
+        - { name: health_check, lines: 319-321 }
+        - { name: _is_translation_dedicated, lines: 323-325 }
+        - { name: _is_translategemma_model, lines: 327-329 }
+        - { name: set_runtime_options_override, lines: 331-332 }
+        - { name: set_cache_variant, lines: 334-336 }
 
 app/backend/config.py:  # 528 lines
   imports:
@@ -526,7 +528,7 @@ app/backend/parsers/docx_parser.py:  # 477 lines
         - { name: _get_paragraph_key, lines: 439-453 }
         - { name: _classify_paragraph_type, lines: 455-477 }
 
-app/backend/parsers/layout_detector.py:  # 664 lines
+app/backend/parsers/layout_detector.py:  # 684 lines
   imports:
     - { module: __future__, items: [annotations], line: 15 }
     - { module: logging, items: [], line: 17 }
@@ -539,28 +541,28 @@ app/backend/parsers/layout_detector.py:  # 664 lines
     - { name: HERON_LABEL_MAP, line: 37 }
   classes:
     - name: LayoutDetector
-      lines: 115-564
+      lines: 135-584
       methods:
-        - { name: __init__, lines: 125-135 }
-        - { name: _resolve_model_path, lines: 141-167 }
-        - { name: _resolve_hf_path, lines: 169-182 }
-        - { name: _load_session, lines: 188-226 }
-        - { name: detect, lines: 232-347 }
-        - { name: _run_inference, lines: 353-403 }
-        - { name: _assign_element_types, lines: 405-430 }
-        - { name: _find_best_region, lines: 432-455 }
-        - { name: _overlap_area, lines: 458-472 }
-        - { name: _assign_reading_order, lines: 474-564 }
+        - { name: __init__, lines: 145-155 }
+        - { name: _resolve_model_path, lines: 161-187 }
+        - { name: _resolve_hf_path, lines: 189-202 }
+        - { name: _load_session, lines: 208-246 }
+        - { name: detect, lines: 252-367 }
+        - { name: _run_inference, lines: 373-423 }
+        - { name: _assign_element_types, lines: 425-450 }
+        - { name: _find_best_region, lines: 452-475 }
+        - { name: _overlap_area, lines: 478-492 }
+        - { name: _assign_reading_order, lines: 494-584 }
     - name: LayoutReader
-      lines: 571-654
+      lines: 591-674
       methods:
-        - { name: sort_elements, lines: 584-617 }
-        - { name: _assign_columns, lines: 619-654 }
+        - { name: sort_elements, lines: 604-637 }
+        - { name: _assign_columns, lines: 639-674 }
   functions:
-    - { name: _map_label, lines: 81-87 }
-    - { name: _map_class_index, lines: 90-94 }
-    - { name: _heuristic_reading_order, lines: 97-112 }
-    - { name: hf_hub_download, lines: 661-664 }
+    - { name: _map_label, lines: 101-107 }
+    - { name: _map_class_index, lines: 110-114 }
+    - { name: _heuristic_reading_order, lines: 117-132 }
+    - { name: hf_hub_download, lines: 681-684 }
 
 app/backend/parsers/ocr_backend.py:  # 70 lines
   imports:
@@ -735,7 +737,7 @@ app/backend/processors/libreoffice_helpers.py:  # 185 lines
     - { name: doc_to_docx, lines: 158-170 }
     - { name: xls_to_xlsx, lines: 173-185 }
 
-app/backend/processors/orchestrator.py:  # 835 lines
+app/backend/processors/orchestrator.py:  # 838 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: logging, items: [], line: 5 }
@@ -762,9 +764,9 @@ app/backend/processors/orchestrator.py:  # 835 lines
     - { name: _extract_all_segments, lines: 210-291 }
     - { name: _detect_document_context, lines: 294-311 }
     - { name: _output_name, lines: 314-336 }
-    - { name: process_files, lines: 339-835 }
+    - { name: process_files, lines: 339-838 }
 
-app/backend/processors/pdf_processor.py:  # 924 lines
+app/backend/processors/pdf_processor.py:  # 940 lines
   imports:
     - { module: __future__, items: [annotations], line: 8 }
     - { module: logging, items: [], line: 10 }
@@ -786,14 +788,15 @@ app/backend/processors/pdf_processor.py:  # 924 lines
   functions:
     - { name: _apply_formula_passthrough, lines: 49-66 }
     - { name: _get_pymupdf_parser, lines: 73-87 }
-    - { name: translate_pdf, lines: 90-219 }
-    - { name: _translate_pdf_with_pymupdf, lines: 222-480 }
-    - { name: _translate_pdf_with_pypdf2, lines: 483-603 }
-    - { name: _translate_pdf_to_pdf, lines: 606-794 }
-    - { name: _run_fitz_render, lines: 801-818 }
-    - { name: _run_reportlab_render, lines: 821-842 }
-    - { name: _dispatch_render, lines: 845-895 }
-    - { name: parse_pdf_to_document, lines: 898-924 }
+    - { name: _save_layout_viz, lines: 90-140 }
+    - { name: translate_pdf, lines: 143-272 }
+    - { name: _translate_pdf_with_pymupdf, lines: 275-493 }
+    - { name: _translate_pdf_with_pypdf2, lines: 496-616 }
+    - { name: _translate_pdf_to_pdf, lines: 619-810 }
+    - { name: _run_fitz_render, lines: 817-834 }
+    - { name: _run_reportlab_render, lines: 837-858 }
+    - { name: _dispatch_render, lines: 861-911 }
+    - { name: parse_pdf_to_document, lines: 914-940 }
 
 app/backend/processors/pptx_processor.py:  # 481 lines
   imports:
@@ -913,7 +916,7 @@ app/backend/renderers/coordinate_renderer.py:  # 324 lines
   functions:
     - { name: render_to_pdf, lines: 303-324 }
 
-app/backend/renderers/fitz_renderer.py:  # 737 lines
+app/backend/renderers/fitz_renderer.py:  # 816 lines
   imports:
     - { module: __future__, items: [annotations], line: 12 }
     - { module: functools, items: [], line: 14 }
@@ -933,7 +936,7 @@ app/backend/renderers/fitz_renderer.py:  # 737 lines
     - { module: app.backend.utils.font_utils, items: [register_fonts], line: 40 }
   classes:
     - name: PDFGenerator
-      lines: 124-711
+      lines: 124-790
       methods:
         - { name: __init__, lines: 135-152 }
         - { name: missing_translation_count, lines: 155-157 }
@@ -942,16 +945,17 @@ app/backend/renderers/fitz_renderer.py:  # 737 lines
         - { name: generate, lines: 180-217 }
         - { name: _generate_overlay, lines: 219-356 }
         - { name: _get_font_file, lines: 358-390 }
-        - { name: _wrap_text, lines: 392-432 }
-        - { name: _insert_text_in_rect, lines: 434-550 }
-        - { name: _generate_side_by_side, lines: 552-659 }
-        - { name: _create_page_overlay, lines: 661-711 }
+        - { name: _wrap_chars, lines: 392-423 }
+        - { name: _wrap_text, lines: 425-488 }
+        - { name: _insert_text_in_rect, lines: 490-629 }
+        - { name: _generate_side_by_side, lines: 631-738 }
+        - { name: _create_page_overlay, lines: 740-790 }
   functions:
     - { name: _load_font_buffer, lines: 59-71 }  # @functools.lru_cache(maxsize=None)
     - { name: clear_font_cache, lines: 74-79 }
     - { name: _get_lang_code, lines: 82-106 }
     - { name: _ensure_fitz, lines: 109-121 }
-    - { name: generate_translated_pdf, lines: 714-737 }
+    - { name: generate_translated_pdf, lines: 793-816 }
 
 app/backend/renderers/inline_renderer.py:  # 303 lines
   imports:
@@ -1055,7 +1059,7 @@ app/backend/services/doc_chunker.py:  # 387 lines
     - { name: split_document, lines: 157-344 }
     - { name: reassemble_document, lines: 351-387 }
 
-app/backend/services/job_manager.py:  # 675 lines
+app/backend/services/job_manager.py:  # 678 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: atexit, items: [], line: 5 }
@@ -1087,34 +1091,34 @@ app/backend/services/job_manager.py:  # 675 lines
     - name: JudgeResult
       lines: 63-76
     - name: JobRecord
-      lines: 80-110
+      lines: 80-111
     - name: JobLogger
-      lines: 126-182
+      lines: 127-183
       methods:
-        - { name: __init__, lines: 131-134 }
-        - { name: advance_processed_offset, lines: 136-138 }
-        - { name: log, lines: 140-147 }
-        - { name: _parse_progress, lines: 149-182 }
+        - { name: __init__, lines: 132-135 }
+        - { name: advance_processed_offset, lines: 137-139 }
+        - { name: log, lines: 141-148 }
+        - { name: _parse_progress, lines: 150-183 }
     - name: JobManager
-      lines: 185-675
+      lines: 186-678
       methods:
-        - { name: __init__, lines: 186-200 }
-        - { name: _shutdown, lines: 202-206 }
-        - { name: _start_cleanup_thread, lines: 208-220 }
-        - { name: _cleanup_orphaned_dirs, lines: 222-237 }
-        - { name: _cleanup_expired_jobs, lines: 239-253 }
-        - { name: _cleanup_by_capacity, lines: 255-270 }
-        - { name: _remove_job, lines: 272-282 }
-        - { name: create_job, lines: 284-524 }
-        - { name: _archive_outputs, lines: 526-531 }
-        - { name: get_job, lines: 533-534 }
-        - { name: get_quality, lines: 536-541 }
-        - { name: cancel_job, lines: 543-550 }
-        - { name: list_jobs, lines: 552-553 }
-        - { name: apply_judge, lines: 555-657 }
-        - { name: get_stats, lines: 659-675 }
+        - { name: __init__, lines: 187-201 }
+        - { name: _shutdown, lines: 203-207 }
+        - { name: _start_cleanup_thread, lines: 209-221 }
+        - { name: _cleanup_orphaned_dirs, lines: 223-238 }
+        - { name: _cleanup_expired_jobs, lines: 240-254 }
+        - { name: _cleanup_by_capacity, lines: 256-271 }
+        - { name: _remove_job, lines: 273-283 }
+        - { name: create_job, lines: 285-527 }
+        - { name: _archive_outputs, lines: 529-534 }
+        - { name: get_job, lines: 536-537 }
+        - { name: get_quality, lines: 539-544 }
+        - { name: cancel_job, lines: 546-553 }
+        - { name: list_jobs, lines: 555-556 }
+        - { name: apply_judge, lines: 558-660 }
+        - { name: get_stats, lines: 662-678 }
   functions:
-    - { name: _record_job_warning, lines: 113-123 }
+    - { name: _record_job_warning, lines: 114-124 }
 
 app/backend/services/metrics.py:  # 160 lines
   imports:
@@ -1613,7 +1617,7 @@ app/frontend/src/api/layout.js:  # 10 lines
     - { name: async getJson, lines: 3-8 }
     - { name: getLayoutViz, lines: 10-10 }
 
-app/frontend/src/api/system.js:  # 30 lines
+app/frontend/src/api/system.js:  # 43 lines
   imports:
     - { module: './client.js', items: [get, del, post], line: 1 }
   functions:
@@ -1623,7 +1627,8 @@ app/frontend/src/api/system.js:  # 30 lines
     - { name: clearCache, lines: 5-5 }
     - { name: async getProviderHealth, lines: 7-18 }
     - { name: getProviderModels, lines: 20-22 }
-    - { name: testTranslation, lines: 24-30 }
+    - { name: async getProviderLiveModels, lines: 24-35 }
+    - { name: testTranslation, lines: 37-43 }
 
 app/frontend/src/api/terms.js:  # 50 lines
   imports:
@@ -1970,7 +1975,7 @@ app/frontend/src/pages/TermsReviewPage.jsx:  # 123 lines
     - { name: TermCard, lines: 7-56 }
     - { name: TermsReviewPage, lines: 58-123 }
 
-app/frontend/src/pages/TranslatePage.jsx:  # 313 lines
+app/frontend/src/pages/TranslatePage.jsx:  # 371 lines
   imports:
     - { module: react, items: ['default:React', useReducer, useState, useEffect, useCallback], line: 1 }
     - { module: sonner, items: [toast], line: 2 }
@@ -1986,17 +1991,18 @@ app/frontend/src/pages/TranslatePage.jsx:  # 313 lines
     - { module: '../hooks/useLocalStorage.js', items: [useLocalStorage], line: 12 }
     - { module: '../contexts/SettingsContext.jsx', items: [useSettings], line: 13 }
     - { module: '../api/jobs.js', items: [createJob, cancelJob, getJudge], line: 14 }
-    - { module: '../constants/languages.js', items: [ALL_LANGUAGES], line: 15 }
-    - { module: '../constants/defaults.js', items: [DEFAULT_SRC_LANG, DEFAULT_PROFILE, HISTORY_MAX_ENTRIES], line: 16 }
-    - { module: '../components/domain/LayoutViewer.jsx', items: [LayoutViewer], line: 17 }
-    - { module: '../components/domain/JudgePanel.jsx', items: [JudgePanel], line: 18 }
+    - { module: '../api/system.js', items: [getProviderLiveModels], line: 15 }
+    - { module: '../constants/languages.js', items: [ALL_LANGUAGES], line: 16 }
+    - { module: '../constants/defaults.js', items: [DEFAULT_SRC_LANG, DEFAULT_PROFILE, HISTORY_MAX_ENTRIES], line: 17 }
+    - { module: '../components/domain/LayoutViewer.jsx', items: [LayoutViewer], line: 18 }
+    - { module: '../components/domain/JudgePanel.jsx', items: [JudgePanel], line: 19 }
   constants:
-    - { name: STEPS, line: 20 }
-    - { name: ACTIVE_JOB_KEY, line: 42 }
+    - { name: STEPS, line: 21 }
+    - { name: ACTIVE_JOB_KEY, line: 45 }
   functions:
-    - { name: makeInitialState, lines: 44-54 }
-    - { name: reducer, lines: 56-81 }
-    - { name: TranslatePage, lines: 83-313 }
+    - { name: makeInitialState, lines: 47-57 }
+    - { name: reducer, lines: 59-86 }
+    - { name: TranslatePage, lines: 88-371 }
 
 app/frontend/src/pages/TranslatePage.test.jsx:  # 117 lines
   imports:
@@ -2897,7 +2903,7 @@ tests/test_judge_apply.py:  # 215 lines
     - { name: test_apply_judge_fails_soft_on_process_error, lines: 146-170 }
     - { name: test_apply_judge_idempotent_while_applying, lines: 177-215 }
 
-tests/test_layout_detector.py:  # 575 lines
+tests/test_layout_detector.py:  # 647 lines
   imports:
     - { module: __future__, items: [annotations], line: 7 }
     - { module: importlib, items: [], line: 9 }
@@ -2918,66 +2924,72 @@ tests/test_layout_detector.py:  # 575 lines
       lines: 126-152
       methods:
         - { name: test_label_mapping_all_known_labels, lines: 145-152 }
+    - name: TestHeronClassIndexOrderMatchesCanonicalDocLayNet
+      lines: 155-220
+      methods:
+        - { name: test_class_names_list_matches_canonical_order, lines: 191-198 }
+        - { name: test_map_class_index_matches_canonical_element_types, lines: 200-208 }
+        - { name: test_real_body_text_and_table_indices_do_not_become_figure_or_formula, lines: 210-220 }
     - name: TestUnknownLabelDefaultsToText
-      lines: 155-168
+      lines: 223-236
       methods:
-        - { name: test_unknown_label_defaults_to_text, lines: 158-168 }
+        - { name: test_unknown_label_defaults_to_text, lines: 226-236 }
     - name: TestIRElementTypeWrittenFromRegion
-      lines: 175-194
+      lines: 243-266
       methods:
-        - { name: test_ir_element_type_written_from_region, lines: 178-194 }
+        - { name: test_ir_element_type_written_from_region, lines: 246-266 }
     - name: TestIRReadingOrderWrittenFromDetector
-      lines: 197-223
+      lines: 269-295
       methods:
-        - { name: test_ir_reading_order_written_from_detector, lines: 200-223 }
+        - { name: test_ir_reading_order_written_from_detector, lines: 272-295 }
     - name: TestNoExtraFieldsOutsideIR
-      lines: 226-255
+      lines: 298-327
       methods:
-        - { name: test_no_extra_fields_outside_ir, lines: 229-255 }
+        - { name: test_no_extra_fields_outside_ir, lines: 301-327 }
     - name: TestNoNetworkImportsInModule
-      lines: 262-282
+      lines: 334-354
       methods:
-        - { name: test_no_network_imports_in_module, lines: 270-282 }
+        - { name: test_no_network_imports_in_module, lines: 342-354 }
     - name: TestPageImageNotRetainedAfterDetect
-      lines: 285-310
+      lines: 357-382
       methods:
-        - { name: test_page_image_not_retained_after_detect, lines: 288-310 }
+        - { name: test_page_image_not_retained_after_detect, lines: 360-382 }
     - name: TestWeightResolutionEnvVarTakesPriority
-      lines: 317-347
+      lines: 389-419
       methods:
-        - { name: test_weight_resolution_env_var_takes_priority, lines: 320-347 }
+        - { name: test_weight_resolution_env_var_takes_priority, lines: 392-419 }
     - name: TestWeightResolutionFallbackToHF
-      lines: 350-370
+      lines: 422-442
       methods:
-        - { name: test_weight_resolution_fallback_to_hf, lines: 353-370 }
+        - { name: test_weight_resolution_fallback_to_hf, lines: 425-442 }
     - name: TestMissingModelFallsBackToHeuristic
-      lines: 377-403
+      lines: 449-475
       methods:
-        - { name: test_missing_model_falls_back_to_heuristic, lines: 380-403 }
+        - { name: test_missing_model_falls_back_to_heuristic, lines: 452-475 }
     - name: TestOnnxLoadErrorFallsBackToHeuristic
-      lines: 406-428
+      lines: 478-500
       methods:
-        - { name: test_onnx_load_error_falls_back_to_heuristic, lines: 409-428 }
+        - { name: test_onnx_load_error_falls_back_to_heuristic, lines: 481-500 }
     - name: TestOOMInferenceFallsBackToHeuristic
-      lines: 431-450
+      lines: 503-522
       methods:
-        - { name: test_oom_inference_falls_back_to_heuristic, lines: 434-450 }
+        - { name: test_oom_inference_falls_back_to_heuristic, lines: 506-522 }
     - name: TestUnrasterisablePageFallsBackToHeuristic
-      lines: 453-470
+      lines: 525-542
       methods:
-        - { name: test_unrasterisable_page_falls_back_to_heuristic, lines: 456-470 }
+        - { name: test_unrasterisable_page_falls_back_to_heuristic, lines: 528-542 }
     - name: TestUltralyticsNotImported
-      lines: 477-487
+      lines: 549-559
       methods:
-        - { name: test_ultralytics_not_imported, lines: 480-487 }
+        - { name: test_ultralytics_not_imported, lines: 552-559 }
     - name: TestDetectorDisabledByEnvFlagUsesHeuristic
-      lines: 494-517
+      lines: 566-589
       methods:
-        - { name: test_detector_disabled_by_env_flag_uses_heuristic, lines: 497-517 }
+        - { name: test_detector_disabled_by_env_flag_uses_heuristic, lines: 569-589 }
     - name: TestDpiCoordinateBackMapping
-      lines: 524-575
+      lines: 596-647
       methods:
-        - { name: test_element_type_correct_with_pt_params_at_high_dpi, lines: 533-575 }
+        - { name: test_element_type_correct_with_pt_params_at_high_dpi, lines: 605-647 }
   functions:
     - { name: _make_element, lines: 30-47 }
     - { name: _make_pixmap_array, lines: 50-52 }
@@ -3441,7 +3453,7 @@ tests/test_output_mode_processors.py:  # 841 lines
     - { name: test_pptx_smartart_replace_text_not_appended, lines: 765-797 }
     - { name: test_multi_target_output_mode_clamped_to_append, lines: 804-841 }
 
-tests/test_pdf_generator.py:  # 818 lines
+tests/test_pdf_generator.py:  # 964 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: os, items: [], line: 5 }
@@ -3484,21 +3496,27 @@ tests/test_pdf_generator.py:  # 818 lines
         - { name: test_elements_on_second_page_only, lines: 484-506 }
         - { name: test_multiline_text, lines: 508-544 }
         - { name: test_different_target_languages, lines: 546-566 }
+    - name: TestPDFOverlayTextDropRegression
+      lines: 570-712
+      methods:
+        - { name: test_short_bbox_height_still_draws_text_end_to_end, lines: 586-650 }
+        - { name: test_narrow_bbox_uses_word_wrap_not_single_char_stacking, lines: 652-691 }
+        - { name: test_wrap_text_word_boundary_before_char_fallback, lines: 693-712 }
     - name: TestFontBufferCache
-      lines: 569-702
+      lines: 715-848
       methods:
-        - { name: setup_method, lines: 572-574 }
-        - { name: test_first_call_reads_disk_once, lines: 580-589 }
-        - { name: test_second_call_hits_cache_not_disk, lines: 595-607 }
-        - { name: test_distinct_paths_cached_independently, lines: 613-628 }
-        - { name: test_cached_and_uncached_render_output_equivalent, lines: 634-651 }
-        - { name: test_error_path_does_not_cache_bad_buffer, lines: 657-677 }
-        - { name: test_cache_reset_between_tests, lines: 683-702 }
+        - { name: setup_method, lines: 718-720 }
+        - { name: test_first_call_reads_disk_once, lines: 726-735 }
+        - { name: test_second_call_hits_cache_not_disk, lines: 741-753 }
+        - { name: test_distinct_paths_cached_independently, lines: 759-774 }
+        - { name: test_cached_and_uncached_render_output_equivalent, lines: 780-797 }
+        - { name: test_error_path_does_not_cache_bad_buffer, lines: 803-823 }
+        - { name: test_cache_reset_between_tests, lines: 829-848 }
     - name: TestFallbackPath
-      lines: 709-818
+      lines: 855-964
       methods:
-        - { name: test_fallback_path_invoked_when_fitz_import_fails, lines: 716-769 }
-        - { name: test_fallback_path_warning_logged, lines: 771-818 }
+        - { name: test_fallback_path_invoked_when_fitz_import_fails, lines: 862-915 }
+        - { name: test_fallback_path_warning_logged, lines: 917-964 }
   functions:
     - { name: create_test_pdf, lines: 38-59 }
     - { name: create_test_document, lines: 62-107 }
@@ -3568,6 +3586,26 @@ tests/test_pdf_layout_refactor.py:  # 660 lines
   functions:
     - { name: _make_element, lines: 34-52 }
     - { name: _make_doc, lines: 55-66 }
+
+tests/test_pdf_layout_viz_persistence.py:  # 142 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 14 }
+    - { module: json, items: [], line: 16 }
+    - { module: pathlib, items: [Path], line: 17 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 18 }
+    - { module: app.backend.models.translatable_document, items: [BoundingBox, DocumentMetadata, ElementType, PageInfo, TranslatableDocument, TranslatableElement], line: 20 }
+  classes:
+    - name: TestSaveLayoutVizHelper
+      lines: 60-88
+      methods:
+        - { name: test_writes_layout_viz_json, lines: 63-76 }
+        - { name: test_noop_when_layout_viz_empty, lines: 78-88 }
+    - name: TestPdfToPdfPersistsLayoutViz
+      lines: 91-142
+      methods:
+        - { name: test_translate_pdf_to_pdf_writes_layout_viz_json, lines: 99-142 }
+  functions:
+    - { name: _make_doc_with_layout_viz, lines: 30-57 }
 
 tests/test_pdf_parser.py:  # 472 lines
   imports:

@@ -1,7 +1,0 @@
-artifacts:
-  - { type: test-plan-path, pointer: "specs/changes/office-output-mode/test-plan.md" }
-  - { type: tdd-pairs, pointer: "tests/test_output_mode_processors.py → app/backend/processors/docx_processor.py, xlsx_processor.py, pptx_processor.py" }
-  - { type: tdd-pairs, pointer: "tests/test_output_mode_orchestrator.py → app/backend/processors/orchestrator.py" }
-  - { type: tdd-pairs, pointer: "tests/test_output_mode_api.py → app/backend/api/schemas.py, contracts/api/openapi.yml" }
-  - { type: coverage-tiers, pointer: "unit, data-boundary, contract, integration, regression" }
-  - { type: mapping-completeness, pointer: "all 8 ACs covered; AC-8 maps to pre-existing tests; integration rows cover XLSX routing + bilingual-degrade warning" }

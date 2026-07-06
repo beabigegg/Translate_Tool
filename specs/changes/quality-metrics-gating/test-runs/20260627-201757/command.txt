@@ -1,1 +1,0 @@
-pytest .claude/worktrees/quality-metrics-gating/tests/ -x -q --tb=short --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/quality-metrics-gating/test-runs/20260627-201757/junit.xml' -ra

@@ -1,8 +1,0 @@
-artifacts:
-  - { type: plan-written, pointer: "specs/changes/office-output-mode/implementation-plan.md" }
-  - { type: owner-map, pointer: "backend-engineer (all 11 file steps + contracts + tests)" }
-  - { type: scope-summary, pointer: "7 in scope (schemas, orchestrator, 3 processors, 2 contracts, tests); 5 out of scope (extraction, new endpoint/flag, frontend, refactors, libreoffice_helpers)" }
-notes:
-  - "design.md complete (architecture-review-required artifact); proceeded."
-  - "test-plan.md and ci-gates.md are still template scaffolds — flagged under Known Risks; test-strategist must populate test-plan.md."
-  - "CER-001 (libreoffice_helpers.py) left unapproved: XLSX write path uses openpyxl directly (xlsx_processor.py:264-281)."

@@ -34,3 +34,5 @@
 | tatr-parse-outputs | 2026 | 2026-06-27 | specs/archive/2026/tatr-parse-outputs/ |
 | pdf-renderer-fallback-warn | 2026 | 2026-06-27 | specs/archive/2026/pdf-renderer-fallback-warn/ |
 | pdf-layout-refactor | 2026 | 2026-06-27 | specs/archive/2026/pdf-layout-refactor/ |
+| office-output-mode | 2026 | 2026-06-27 | specs/archive/2026/office-output-mode/ |
+| quality-metrics-gating | 2026 | 2026-06-27 | specs/archive/2026/quality-metrics-gating/ |
