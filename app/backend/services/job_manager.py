@@ -467,7 +467,19 @@ class JobManager:
                         job.audit = None
 
                 # p3-llm-judge: run judge loop after QE+audit, before status→completed (D1)
-                if config.JUDGE_ENABLED and mode != "extraction_only" and qe_blocks:
+                # Skip when the translation itself already ran on the DeepSeek cloud
+                # provider — an extra judge pass on already-cloud-translated output is
+                # considered redundant for that provider specifically (other providers,
+                # including panjit, still run the judge pass as usual).
+                _skip_judge_provider = str(winning_provider or "").lower() == "deepseek"
+                if _skip_judge_provider:
+                    log(f"[Judge] skipped: translation provider was '{winning_provider}'")
+                if (
+                    config.JUDGE_ENABLED
+                    and mode != "extraction_only"
+                    and qe_blocks
+                    and not _skip_judge_provider
+                ):
                     job.status_detail = "品質評審中…"
                     try:
                         from app.backend.services.quality_judge import QualityJudge

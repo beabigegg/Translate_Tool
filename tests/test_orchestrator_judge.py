@@ -69,7 +69,7 @@ def _make_minimal_route_group(targets=None):
 # Shared mock fixture: patch heavy dependencies so _run_job completes quickly
 # ---------------------------------------------------------------------------
 
-def _run_job_with_judge_check(ext: str, judge_mock):
+def _run_job_with_judge_check(ext: str, judge_mock, winning_provider=None):
     """
     Run create_job with a minimal fake file of the given extension.
     Returns the JobRecord once the thread completes.
@@ -91,7 +91,7 @@ def _run_job_with_judge_check(ext: str, judge_mock):
             hook = kwargs.get("post_translate_hook")
             if hook:
                 hook([("block:0", "source", "translated")])
-            return (1, 1, False, None, {"extracted": 0, "skipped": 0, "added": 0}, None)
+            return (1, 1, False, None, {"extracted": 0, "skipped": 0, "added": 0}, winning_provider)
 
         with patch("app.backend.services.job_manager.process_files", side_effect=fake_process_files), \
              patch("app.backend.services.job_manager.QE_ENABLED", False), \
@@ -153,6 +153,28 @@ def test_judge_hook_fires_pdf():
     fake_judge.run_judge_loop.return_value = _make_fake_judge_result("test-pdf")
 
     job = _run_job_with_judge_check(".pdf", fake_judge)
+
+    assert job.judge is not None
+    fake_judge.run_judge_loop.assert_called_once()
+
+
+def test_judge_skipped_when_provider_is_deepseek():
+    """judge hook does NOT fire when the translation provider was 'deepseek'."""
+    fake_judge = MagicMock()
+    fake_judge.run_judge_loop.return_value = _make_fake_judge_result("test-deepseek-skip")
+
+    job = _run_job_with_judge_check(".docx", fake_judge, winning_provider="deepseek")
+
+    assert job.judge is None, "judge must be skipped when translation provider is deepseek"
+    fake_judge.run_judge_loop.assert_not_called()
+
+
+def test_judge_still_fires_when_provider_is_panjit():
+    """judge hook still fires for non-deepseek cloud providers (e.g. panjit)."""
+    fake_judge = MagicMock()
+    fake_judge.run_judge_loop.return_value = _make_fake_judge_result("test-panjit-runs")
+
+    job = _run_job_with_judge_check(".docx", fake_judge, winning_provider="panjit")
 
     assert job.judge is not None
     fake_judge.run_judge_loop.assert_called_once()

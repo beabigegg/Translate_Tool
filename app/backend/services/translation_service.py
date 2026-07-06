@@ -85,7 +85,7 @@ def _critique_gate_adopt(src: str, draft: str, revised: str) -> str:
         from app.backend.services.quality_evaluator import load_model, score_blocks
 
         _qe_model = load_model(QE_MODEL_NAME, QE_DEVICE)
-        _scores = score_blocks(_qe_model, [(src, draft), (src, revised)])
+        _scores = score_blocks(_qe_model, [(src, draft), (src, revised)], device=QE_DEVICE)
         if len(_scores) >= 2:
             s_draft, s_revised = _scores[0], _scores[1]
             return revised if s_revised > s_draft else draft

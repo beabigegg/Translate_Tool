@@ -27,7 +27,9 @@ def _make_judge(model_name: str = "gemma3") -> "QualityJudge":  # noqa: F821
 
     judge = QualityJudge.__new__(QualityJudge)
     judge.model = model_name
+    judge._provider = "ollama"
     judge._client = MagicMock()
+    judge._layout_client = judge._client
     return judge
 
 
@@ -323,10 +325,12 @@ def test_judge_client_is_ollama_not_model_router():
         # Build a judge with a mocked client
         judge = QualityJudge.__new__(QualityJudge)
         judge.model = "gemma3"
+        judge._provider = "ollama"
         mock_client = MagicMock()
         mock_client._call_ollama.return_value = _make_client_response("高")
         mock_client._build_no_system_payload.return_value = {}
         judge._client = mock_client
+        judge._layout_client = mock_client
 
         translate_fn = MagicMock(return_value="retranslated")
         judge.run_judge_loop("job-010", _make_blocks(1), translate_fn)

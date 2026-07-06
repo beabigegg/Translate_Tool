@@ -181,8 +181,21 @@ TABLE_RECOGNITION_ENABLED: bool = os.environ.get("TABLE_RECOGNITION_ENABLED", "f
 # JUDGE_ENABLED: set to "true"/"1"/"yes" to activate Gemma judge scoring after each job.
 # Default is disabled (false) so no extra Gemma call is made at startup.
 JUDGE_ENABLED: bool = os.environ.get("JUDGE_ENABLED", "false").lower() in ("1", "true", "yes")
-# JUDGE_MODEL: Ollama model name for the judge pass (D4 — always local Ollama, never model_router).
+# JUDGE_PROVIDER: "ollama" (default, local) or "cloud" (routes the text evaluate()
+# pass through the configured cloud provider, e.g. panjit, via providers.yml).
+# judge_layout() ALWAYS uses a dedicated local Ollama client regardless of this
+# setting — page images must never leave the process (BR-95 / ADR 0008).
+JUDGE_PROVIDER: str = os.environ.get("JUDGE_PROVIDER", "ollama").strip().lower()
+# JUDGE_MODEL: model name for the text evaluate() pass. Ollama model name when
+# JUDGE_PROVIDER="ollama" (D4 default); cloud provider's model name when
+# JUDGE_PROVIDER="cloud" (e.g. "gpt-oss:120b" for panjit — gemma3 is Ollama-only).
 JUDGE_MODEL: str = os.environ.get("JUDGE_MODEL", "gemma3")
+# JUDGE_LAYOUT_MODEL: local Ollama model name dedicated to judge_layout() image
+# scoring. Always local, independent of JUDGE_PROVIDER (BR-95 / ADR 0008).
+JUDGE_LAYOUT_MODEL: str = os.environ.get("JUDGE_LAYOUT_MODEL", "gemma3")
+# JUDGE_CLOUD_PROVIDER_ID: which providers.yml provider id to use when
+# JUDGE_PROVIDER="cloud" (defaults to "panjit").
+JUDGE_CLOUD_PROVIDER_ID: str = os.environ.get("JUDGE_CLOUD_PROVIDER_ID", "panjit")
 # JUDGE_MAX_ITERATIONS: maximum re-translation iterations when score is 中 or 低 (BR-73).
 JUDGE_MAX_ITERATIONS: int = int(os.environ.get("JUDGE_MAX_ITERATIONS", "3"))
 

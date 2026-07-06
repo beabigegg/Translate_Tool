@@ -6,12 +6,13 @@ import atexit
 import gc
 from typing import Callable, Optional
 
+from app.backend.clients.base_llm_client import LLMClient
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.utils.logging_utils import logger
 
 
 def release_resources(
-    client: Optional[OllamaClient] = None,
+    client: Optional[LLMClient] = None,
     log: Callable[[str], None] = lambda s: None,
 ) -> None:
     """Release resources after a job completes.
@@ -25,7 +26,7 @@ def release_resources(
     if client is not None:
         try:
             log(f"[CLEANUP] Unloading model {client.model}")
-            ok, msg = client.unload_model()
+            ok, msg = client.unload()
             if ok:
                 log("[CLEANUP] VRAM released")
                 logger.info("VRAM released: %s", msg)

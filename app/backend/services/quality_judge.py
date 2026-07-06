@@ -54,18 +54,71 @@ Please re-evaluate the revised translation with the above context in mind.
 
 
 class QualityJudge:
-    """LLM-as-judge quality evaluator using a dedicated local Ollama model (D4).
+    """LLM-as-judge quality evaluator (D4).
 
     The judge is intentionally isolated from model_router (D4): it always uses
-    the configured JUDGE_MODEL directly via OllamaClient.
+    an explicitly configured client, never the translation routing chain.
+    Text scoring (evaluate/judge_block/run_judge_loop) may run against either
+    the local Ollama model (JUDGE_PROVIDER="ollama", default) or a configured
+    cloud provider (JUDGE_PROVIDER="cloud"). judge_layout() (image scoring)
+    ALWAYS uses a dedicated local Ollama client regardless of JUDGE_PROVIDER —
+    page images must never leave the process (BR-95 / ADR 0008).
     """
 
     def __init__(self) -> None:
         from app.backend.clients.ollama_client import OllamaClient
-        from app.backend.config import JUDGE_MODEL, OLLAMA_BASE_URL
+        from app.backend.config import (
+            JUDGE_LAYOUT_MODEL,
+            JUDGE_MODEL,
+            JUDGE_PROVIDER,
+            OLLAMA_BASE_URL,
+        )
 
         self.model = JUDGE_MODEL
-        self._client = OllamaClient(base_url=OLLAMA_BASE_URL, model=JUDGE_MODEL)
+        self._provider = JUDGE_PROVIDER
+
+        # judge_layout() always gets its own local-only client (BR-95 / ADR 0008),
+        # independent of which provider self._client below ends up using.
+        self._layout_client = OllamaClient(base_url=OLLAMA_BASE_URL, model=JUDGE_LAYOUT_MODEL)
+
+        if self._provider == "cloud":
+            self._client = self._build_cloud_client()
+        else:
+            self._client = OllamaClient(base_url=OLLAMA_BASE_URL, model=JUDGE_MODEL)
+
+    def _build_cloud_client(self):
+        """Instantiate the cloud client for the text evaluate() pass.
+
+        Reads the target provider's base_url/api_key/tls_verify straight from
+        providers.yml (JUDGE_CLOUD_PROVIDER_ID, default "panjit") — mirrors the
+        instantiation pattern used elsewhere (e.g. term_extractor.py) rather
+        than going through model_router (D4).
+        """
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+        from app.backend.config import JUDGE_CLOUD_PROVIDER_ID, load_providers_config
+
+        cfg = load_providers_config() or {}
+        providers = {p.get("id"): p for p in cfg.get("providers", [])}
+        provider = providers.get(JUDGE_CLOUD_PROVIDER_ID)
+        if not provider or not provider.get("enabled", False):
+            raise RuntimeError(
+                f"JUDGE_PROVIDER=cloud but provider '{JUDGE_CLOUD_PROVIDER_ID}' "
+                "is missing or disabled in providers.yml"
+            )
+        return OpenAICompatibleClient(
+            base_url=provider["base_url"],
+            api_key=provider.get("api_key"),
+            model=self.model,
+            provider_id=f"judge-{JUDGE_CLOUD_PROVIDER_ID}",
+            verify_ssl=provider.get("tls_verify", True),
+        )
+
+    def _complete(self, prompt: str) -> Tuple[bool, str]:
+        """Run a raw completion prompt against the configured text-judge client."""
+        if self._provider == "cloud":
+            return self._client._post_completion(prompt)
+        payload = self._client._build_no_system_payload(prompt)
+        return self._client._call_ollama(payload)
 
     def _parse_score(self, response_text: str) -> Optional[str]:
         """Extract score from judge response (D6).
@@ -162,8 +215,8 @@ class QualityJudge:
                 "5 = excellent (perfect layout, professional quality).\n"
                 "Respond with ONLY the single digit (1, 2, 3, 4, or 5)."
             )
-            payload = self._client._build_no_system_payload(prompt)
-            ok, response = self._client._call_ollama(payload)
+            payload = self._layout_client._build_no_system_payload(prompt)
+            ok, response = self._layout_client._call_ollama(payload)
             if not ok:
                 logger.warning("[Judge] judge_layout(): Gemma call failed")
                 return 0
@@ -200,10 +253,9 @@ class QualityJudge:
                 translation=translated_text,
                 feedback_section=feedback_section,
             )
-            payload = self._client._build_no_system_payload(prompt)
-            ok, response = self._client._call_ollama(payload)
+            ok, response = self._complete(prompt)
             if not ok:
-                raise RuntimeError(f"Ollama judge call failed: {response}")
+                raise RuntimeError(f"Judge call failed: {response}")
             score = self._parse_score(response)
             extracted_feedback = self._parse_feedback(response)
 
