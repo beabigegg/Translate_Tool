@@ -46,6 +46,19 @@ DOCX_ROUTING_WARNING = (
     "use output_format=pdf for layout-faithful output"
 )
 
+
+def render_truncation_warning(count: int, target_lang: str) -> str:
+    """Post-render layout-confirmation warning (BR-38 surfacing).
+
+    Emitted on the PDF-to-PDF path when the fit cascade (step e) or the
+    render overflow guard marked elements ``render_truncated`` during the
+    render for ``target_lang``.
+    """
+    return (
+        f"Layout check ({target_lang}): {count} translated text block(s) were "
+        "truncated to fit the original layout — review the output PDF"
+    )
+
 def _apply_formula_passthrough(elements: list) -> None:
     """Set FORMULA elements as non-translatable with content as pass-through (AC-7, IP-R4).
 
@@ -951,6 +964,12 @@ def _translate_pdf_to_pdf(
                 if tuples:
                     post_translate_hook(tuples)
 
+            # Post-render layout confirmation (BR-38 surfacing): truncation
+            # markers are per-render, so clear leftovers from the previous
+            # language before rendering this one.
+            for e in elements:
+                e.render_truncated = False
+
             # Generate PDF for this language (fitz primary / ReportLab fallback per BR-34)
             _dispatch_render(
                 doc=doc,
@@ -963,6 +982,16 @@ def _translate_pdf_to_pdf(
                 log=log,
                 warnings_callback=warnings_callback,
             )
+
+            truncated_count = sum(1 for e in elements if e.render_truncated)
+            if truncated_count:
+                log(
+                    f"[PDF] Layout check: {truncated_count} block(s) truncated "
+                    f"during {tgt} render"
+                )
+                if warnings_callback:
+                    warnings_callback(render_truncation_warning(truncated_count, tgt))
+
             output_files.append(lang_out_path)
             log(f"[PDF] Generated: {Path(lang_out_path).name}")
 

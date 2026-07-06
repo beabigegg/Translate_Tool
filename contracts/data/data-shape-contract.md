@@ -175,7 +175,7 @@ The following table is normative. The implementation constant in `layout_detecto
 | translated_content | string\|null | yes | null | translated text; null until translation applied |
 | metadata | object | no | {} | arbitrary key-value metadata map |
 | reading_order | integer\|null | yes | null | **Added p2-ir-document-model.** Explicit reading-order index (0-based) assigned by the parser. When present and non-null, takes precedence over positional sort heuristics. Old-format documents lacking this key deserialize with `reading_order=None` and remain valid. `get_elements_in_reading_order()` uses a two-bucket sort: elements with non-null `reading_order` are placed before elements with `reading_order=None`, sorted by their index value; null elements are placed after, sorted by `(page_num, bbox.y0, bbox.x0)`. In practice, all parsers assign `reading_order` to every element, so mixed-population documents do not occur in normal use. |
-| render_truncated | boolean | no | false | **Added p2-text-expansion.** Render-time annotation. Set `True` by the renderer when step (e) of the fit cascade (BR-36) fires (word-boundary truncation with ellipsis). Absent keys in old-format IR deserialize as `False`; backward-compatible. Never set by parsers or the translation layer. Consumers: QA safety net, human-review tooling. See ADR-0004 (`docs/adr/0004-truncation-marker-on-ir.md`). |
+| render_truncated | boolean | no | false | **Added p2-text-expansion.** Render-time annotation. Set `True` by the renderer when step (e) of the fit cascade (BR-36) fires (word-boundary truncation with ellipsis), or when the render-time overflow guard drops lines that no longer fit the bbox (BR-38 no-silent-truncation). Absent keys in old-format IR deserialize as `False`; backward-compatible. Never set by parsers or the translation layer. Consumers: QA safety net, human-review tooling, post-render layout-confirmation job warning (`render_truncation_warning`, PDF-to-PDF path). See ADR-0004 (`docs/adr/0004-truncation-marker-on-ir.md`). |
 
 ### BoundingBox — serialized field shape
 
@@ -261,7 +261,7 @@ Both the fitz primary renderer and the ReportLab fallback renderer MUST consume 
 | `element_type` | Use the wire value to determine rendering treatment (e.g. skip non-translatable regions). An unknown or unrecognized `element_type` string MUST NOT raise; the element MUST be rendered as type `text` (passthrough fallback). |
 | `page_num` | Use to assign the element to the correct output page. |
 | `translated_content` | If non-null, use as the rendered text. If null, use `content` (source text) as the fallback. |
-| `render_truncated` | If the renderer applies word-boundary truncation (cascade step e, BR-36), it MUST set this field to `True` on the element before any further serialization. The renderer MUST NOT set it `True` for any other reason. Parsers and the translation layer MUST NOT set this field. |
+| `render_truncated` | If the renderer applies word-boundary truncation (cascade step e, BR-36), or if the render-time overflow guard drops lines that exceed the bbox bottom limit, it MUST set this field to `True` on the element before any further serialization (BR-38 no-silent-truncation). The renderer MUST NOT set it `True` for any other reason. Parsers and the translation layer MUST NOT set this field. |
 
 #### Malformed IR handling (AC-6)
 

@@ -539,7 +539,12 @@ class PDFGenerator:
 
             for line in wrapped_lines:
                 if y > bottom_limit:
-                    logger.debug(
+                    # BR-38 no-silent-truncation: the guard drops content, so the
+                    # element must carry the truncation marker even though cascade
+                    # step (e) did not fire.
+                    if element is not None:
+                        element.render_truncated = True
+                    logger.warning(
                         "[cascade] render overflow guard fired in bbox "
                         f"({rect.width:.1f}×{rect.height:.1f}); dropping remaining lines"
                     )
