@@ -126,6 +126,13 @@ QE_DEVICE: str = os.environ.get("QE_DEVICE", "cpu")
 # QE_ENABLED=false. Range: [0.0, 1.0]; default 0.5 (model-scale dependent — tune for deployment).
 QE_RESCORE_THRESHOLD: float = float(os.environ.get("QE_RESCORE_THRESHOLD", "0.5"))
 
+# Post-render layout QA (output-side layout-fidelity confirmation)
+# LAYOUT_QA_ENABLED: set to "false"/"0" to skip re-opening rendered PDF output and
+# measuring BIoU / residual source text / truncation rate. Read at RUNTIME by
+# services/layout_qa.layout_qa_enabled() (like LAYOUT_DETECTOR_ENABLED) so tests
+# can monkeypatch os.environ; this constant mirrors the same default for discoverability.
+LAYOUT_QA_ENABLED: bool = os.environ.get("LAYOUT_QA_ENABLED", "true").lower() in ("1", "true", "yes")
+
 # Critique loop configuration (p2-prompt-fewshot-glossary, BR-44)
 CRITIQUE_LOOP_ENABLED: bool = os.environ.get("CRITIQUE_LOOP_ENABLED", "1").lower() in ("1", "true", "yes")
 CRITIQUE_MAX_ITERATIONS: int = int(os.environ.get("CRITIQUE_MAX_ITERATIONS", "3"))

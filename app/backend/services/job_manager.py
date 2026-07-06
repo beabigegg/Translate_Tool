@@ -108,7 +108,23 @@ class JobRecord:
     judge_apply_status: Optional[str] = None  # applying | applied | failed | None
     status_detail: Optional[str] = None  # current stage label shown in UI during "running"
     warnings: Optional[List[str]] = None  # pdf-renderer-fallback-warn: render-quality degradation warnings
+    layout_qa: Optional[List[Dict]] = None  # post-render layout QA results, one dict per output file
     api_key_override: Optional[str] = None  # user-supplied API key (e.g. DeepSeek); never persisted
+
+
+def _record_layout_qa(job: "JobRecord", result: Dict) -> None:
+    """Append a per-output-file layout QA result to job.layout_qa.
+
+    Initialises job.layout_qa to [] when None. Dedup guard on (file,
+    target_lang) — the same callback may fire twice if a doc is retried.
+    """
+    if job.layout_qa is None:
+        job.layout_qa = []
+    key = (result.get("file"), result.get("target_lang"))
+    for existing in job.layout_qa:
+        if (existing.get("file"), existing.get("target_lang")) == key:
+            return
+    job.layout_qa.append(result)
 
 
 def _record_job_warning(job: "JobRecord", message: str) -> None:
@@ -387,6 +403,7 @@ class JobManager:
                         output_mode=output_mode,
                         status_callback=lambda detail: setattr(job, "status_detail", detail),
                         warnings_callback=lambda w: _record_job_warning(job, w),
+                        layout_qa_callback=lambda qa: _record_layout_qa(job, qa),
                     )
                     # process_files returns (processed, total, stopped, last_client,
                     # term_summary[, winning_provider]) — unpack flexibly for forward compat

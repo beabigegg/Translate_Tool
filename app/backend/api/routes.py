@@ -368,6 +368,7 @@ def job_status(job_id: str) -> JobStatus:
         layout_viz_available=layout_viz_available,
         status_detail=getattr(job, "status_detail", None),
         warnings=getattr(job, "warnings", None),
+        layout_qa=getattr(job, "layout_qa", None),
     )
 
 

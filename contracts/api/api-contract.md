@@ -131,6 +131,20 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 |---|---|---|---|---|
 | job_id | string | yes |  |  |
 
+### LayoutQAEntry
+| field | type | required | format | notes |
+|---|---|---|---|---|
+| file | string | yes |  | output file basename |
+| target_lang | string | yes |  | target language of this output file |
+| layout_mode | string | yes |  | overlay or side_by_side |
+| biou | number | no |  | mean best-match bounding-box IoU of source element bboxes vs rendered output text blocks, page-aligned; null in side_by_side mode (pages are recomposed, bbox identity does not apply) |
+| biou_budget | number | yes |  | minimum acceptable BIoU (0.8) |
+| residual_text_blocks | integer | no |  | blocks whose SOURCE text is still readable inside their masked bbox in the output; null unless overlay mode with masking enabled |
+| truncated_blocks | integer | yes |  | elements marked render_truncated during this render (BR-38) |
+| total_blocks | integer | yes |  | translatable elements considered |
+| truncation_ratio | number | yes |  | truncated_blocks / total_blocks; 0.0 when total is 0 |
+| passed | boolean | yes |  | true when every measured check is clean: biou >= budget (when measured), zero residual blocks (when measured), zero truncated blocks |
+
 ### JobStatus
 | field | type | required | format | notes |
 |---|---|---|---|---|
@@ -156,7 +170,8 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 | judge_score | enum(低, 中, 高) | no |  | latest judge score tier; null when judge has not run, is disabled, or is unavailable; for list/summary views; see BR-72 |
 | judge_apply_status | string | no |  | apply operation lifecycle: applying, applied, failed, or null when apply not yet triggered; see BR-76, BR-77 |
 | download_url | string | no |  | URL to download translated zip; set to /api/jobs/{job_id}/download only when status==completed AND output_zip exists on disk; null otherwise |
-| warnings | string[] | no |  | degradation notices; null or empty list when no degradation occurred; populated by PDF processor when fitz falls back to ReportLab; also populated when a format-specific output_mode is requested for an incompatible file type (bilingual on non-DOCX, adjacent/annotation on non-XLSX) — one entry per affected file; also populated with one entry per successfully converted legacy file (.doc/.xls/.ppt via LibreOffice) disclosing lossy-conversion risk — see BR-9, BR-96; type is always string[] or null, never a bare string; additive optional field — backward-compatible; see AC-1, AC-2, AC-3 |
+| warnings | string[] | no |  | degradation notices; null or empty list when no degradation occurred; populated by PDF processor when fitz falls back to ReportLab; also populated when a format-specific output_mode is requested for an incompatible file type (bilingual on non-DOCX, adjacent/annotation on non-XLSX) — one entry per affected file; also populated with one entry per successfully converted legacy file (.doc/.xls/.ppt via LibreOffice) disclosing lossy-conversion risk — see BR-9, BR-96; also populated with a post-render layout-check notice when translated text was truncated to fit the original layout (BR-38 surfacing) — one entry per affected output file/language; type is always string[] or null, never a bare string; additive optional field — backward-compatible; see AC-1, AC-2, AC-3 |
+| layout_qa | LayoutQAEntry[] | no |  | post-render layout QA results, one entry per output file on the PDF-to-PDF path; null when the job produced no PDF output, QA is disabled (LAYOUT_QA_ENABLED=false), or QA failed soft; see LayoutQAEntry schema; additive optional field — backward-compatible |
 
 ### TermStatsResponse
 | field | type | required | format | notes |

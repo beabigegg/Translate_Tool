@@ -79,11 +79,38 @@ orchestrator.process_files (orchestrator.py .pdf 分支)
   無 mock 渲染路徑的全鏈整合測試，證明渲染器標記的元素實例與
   處理器統計的是同一批）。
 
+### 輸出側版面 QA（第二階段，本分支後續 commit）
+
+把「渲染後重新解析輸出、量化驗證版面」接入 runtime：
+
+- **指標升格**：`tests/metrics/{biou, residual_text, truncation_rate}.py` 的實作
+  移至 `app/backend/services/layout_qa.py`（測試路徑保留 re-export shim，
+  `contracts/ci/ci-gate-contract.md` 引用的 pytest 指令不受影響）。
+- **渲染後 QA**：PDF-to-PDF 路徑每個輸出檔渲染完成後，`run_layout_qa` 重新
+  打開輸出 PDF 量測：BIoU（來源元素 bbox vs 輸出文字區塊，逐頁對齊，
+  預算 0.8）、殘留原文（遮罩 bbox 內是否仍可讀到原文——以正規化前綴
+  比對區分譯文與原文）、截斷率。`side_by_side` 模式頁面重組，bbox 同一性
+  指標回報 `null`，僅量測截斷。Fail-soft：QA 失敗只記 log，不影響任務。
+- **浮出鏈**：`layout_qa_callback` 比照 `warnings_callback` 從
+  `job_manager → orchestrator.process_files → translate_pdf →
+  _translate_pdf_to_pdf` 穿線；結果存入 `JobRecord.layout_qa`（以
+  (file, target_lang) 去重），經 `GET /api/jobs/{id}` 的 `layout_qa` 欄位
+  （`LayoutQAEntry[]`）到前端 `TranslationProgress` 完成面板（含
+  通過/需檢視徽章、BIoU、截斷與殘留計數）；`warnings` 清單也一併在
+  完成面板顯示（先前後端有回傳但前端未呈現）。
+- **開關**：`LAYOUT_QA_ENABLED`（預設開，runtime 讀取，比照
+  `LAYOUT_DETECTOR_ENABLED`）；已同步 `contracts/env/` 三個工件
+  （env-contract.md、env.schema.json、.env.example.template）。
+- **契約**：`contracts/api/api-contract.md` 新增 `LayoutQAEntry` schema 與
+  `JobStatus.layout_qa` 欄位；`openapi.yml` 已重新匯出並通過同步檢查。
+- **新測試**：`tests/test_layout_qa.py`（12 項：真實 fitz 輸出量測、殘留
+  原文偵測與譯文不誤報、side_by_side 降級、fail-soft、接線與開關、
+  job record 去重、API 傳遞）。
+
 ## 4. 其餘觀察（未在本次處理，建議後續追蹤）
 
 | 項目 | 位置 | 說明 |
 |---|---|---|
 | `InlineRenderer` 未接線 | `renderers/inline_renderer.py` | 僅由 `renderers/__init__.py` 匯出與測試引用；實際 PDF→DOCX inline 輸出直接用 `python-docx` 建構。屬孤兒程式碼。 |
 | `LayoutReader` 未接線 | `layout_detector.py:591` | runtime 實際用的是 `LayoutDetector._assign_reading_order`；`LayoutReader` 只有測試引用。 |
-| ReportLab 備援不標記截斷 | `coordinate_renderer.py` | 備援路徑經 `render_text_regions` 串接 cascade，但未把 `truncated` 回寫到 IR 元素；備援渲染時版面確認警告不會觸發（主路徑已涵蓋絕大多數情況）。 |
-| 輸出側版面確認 | — | 若要「渲染後重新解析輸出、以 BIoU/殘留文字驗證」的完整輸出側確認，`tests/metrics/` 的實作可直接複用（`BIOU_REGRESSION_BUDGET = 0.8` 已定義），建議另立 change 接入 orchestrator。 |
+| ReportLab 備援不標記截斷 | `coordinate_renderer.py` | 備援路徑經 `render_text_regions` 串接 cascade，但未把 `truncated` 回寫到 IR 元素；備援渲染時截斷警告不會觸發（主路徑已涵蓋絕大多數情況；輸出側 QA 的 BIoU/殘留檢查不受影響）。 |

@@ -302,6 +302,7 @@ def translate_pdf(
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
     block_overrides: Optional[Dict[str, str]] = None,
     warnings_callback: Optional[Callable[[str], None]] = None,
+    layout_qa_callback: Optional[Callable[[dict], None]] = None,
 ) -> bool:
     """Translate a PDF file.
 
@@ -351,6 +352,7 @@ def translate_pdf(
             post_translate_hook=post_translate_hook,
             block_overrides=block_overrides,
             warnings_callback=warnings_callback,
+            layout_qa_callback=layout_qa_callback,
         )
 
     # Try Windows COM conversion first (highest quality)
@@ -798,6 +800,7 @@ def _translate_pdf_to_pdf(
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
     block_overrides: Optional[Dict[str, str]] = None,
     warnings_callback: Optional[Callable[[str], None]] = None,
+    layout_qa_callback: Optional[Callable[[dict], None]] = None,
 ) -> bool:
     """Translate PDF to PDF with layout preservation.
 
@@ -991,6 +994,27 @@ def _translate_pdf_to_pdf(
                 )
                 if warnings_callback:
                     warnings_callback(render_truncation_warning(truncated_count, tgt))
+
+            # Output-side layout QA (fail-soft): re-open the rendered PDF and
+            # measure layout fidelity (BIoU / residual source text / truncation).
+            from app.backend.services.layout_qa import layout_qa_enabled, run_layout_qa
+
+            if layout_qa_enabled():
+                qa_result = run_layout_qa(
+                    doc=doc,
+                    output_path=lang_out_path,
+                    target_lang=tgt,
+                    layout_mode=layout_mode,
+                    draw_mask=should_draw_mask,
+                )
+                if qa_result is not None:
+                    log(
+                        f"[PDF] Layout QA ({tgt}): biou={qa_result['biou']} "
+                        f"truncated={qa_result['truncated_blocks']}/{qa_result['total_blocks']} "
+                        f"passed={qa_result['passed']}"
+                    )
+                    if layout_qa_callback:
+                        layout_qa_callback(qa_result)
 
             output_files.append(lang_out_path)
             log(f"[PDF] Generated: {Path(lang_out_path).name}")

@@ -394,6 +394,7 @@ def process_files(
     block_overrides: Optional[Dict[str, str]] = None,
     status_callback: Optional[Callable[[Optional[str]], None]] = None,
     warnings_callback: Optional[Callable[[str], None]] = None,
+    layout_qa_callback: Optional[Callable[[dict], None]] = None,
 ) -> Tuple[int, int, bool, Optional[OllamaClient], Dict, Optional[str]]:
     """Process files for translation.
 
@@ -879,6 +880,7 @@ def process_files(
                     post_translate_hook=post_translate_hook,
                     block_overrides=block_overrides,
                     warnings_callback=warnings_callback,
+                    layout_qa_callback=layout_qa_callback,
                 )
             else:
                 log(f"[SKIP] Unsupported file: {src.name}")

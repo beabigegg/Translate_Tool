@@ -46,6 +46,7 @@ class JobStatus(BaseModel):
     layout_viz_available: bool = False           # True once layout_viz.json exists (PDF jobs only)
     status_detail: Optional[str] = None         # human-readable current stage during "running"
     warnings: Optional[List[str]] = None        # pdf-renderer-fallback-warn: render-quality degradation warnings
+    layout_qa: Optional[List[Dict[str, Any]]] = None  # post-render layout QA, one entry per output file (PDF-to-PDF only)
 
 
 class TermImportResult(BaseModel):

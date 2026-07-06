@@ -20,6 +20,8 @@ export function TranslationProgress({ status }) {
     quality_score_avg,
     audit_hit_rate,
     status_detail,
+    warnings,
+    layout_qa,
   } = status;
 
   const isComplete = status.status === 'completed';
@@ -76,6 +78,25 @@ export function TranslationProgress({ status }) {
             <div className="result-row">
               <span className="result-label">術語命中率</span>
               <span className="result-value">{(audit_hit_rate * 100).toFixed(1)}%</span>
+            </div>
+          )}
+          {Array.isArray(layout_qa) && layout_qa.length > 0 && layout_qa.map((qa, i) => (
+            <div className="result-row" key={`${qa.file}-${qa.target_lang}-${i}`}>
+              <span className="result-label">版面 QA（{qa.target_lang}）</span>
+              <span className="result-value" style={{ color: qa.passed ? '#22c55e' : '#f59e0b' }}>
+                {qa.passed ? '通過' : '需檢視'}
+                {qa.biou != null && ` ・BIoU ${qa.biou.toFixed(2)}`}
+                {qa.truncated_blocks > 0 && ` ・截斷 ${qa.truncated_blocks}/${qa.total_blocks} 區塊`}
+                {qa.residual_text_blocks > 0 && ` ・殘留原文 ${qa.residual_text_blocks} 區塊`}
+              </span>
+            </div>
+          ))}
+          {Array.isArray(warnings) && warnings.length > 0 && (
+            <div className="result-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+              <span className="result-label">注意事項</span>
+              {warnings.map((w, i) => (
+                <span className="result-value" key={i} style={{ color: '#f59e0b', fontSize: '0.85em' }}>⚠ {w}</span>
+              ))}
             </div>
           )}
         </div>
