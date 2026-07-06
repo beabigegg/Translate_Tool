@@ -348,6 +348,75 @@ def test_qe_scoring_exception_sets_unavailable():
     )
 
 
+def test_cuda_oom_retries_with_smaller_batch_then_succeeds():
+    """A CUDA OOM on device='cuda' must retry with a smaller batch_size instead
+    of immediately failing (previously: any exception, including OOM, was fatal
+    to the whole scoring pass on the first attempt)."""
+    from app.backend.services.quality_evaluator import score_blocks
+
+    mock_model = MagicMock()
+    ok_prediction = MagicMock()
+    ok_prediction.scores = [0.9]
+    mock_model.predict.side_effect = [
+        RuntimeError("CUDA out of memory. Tried to allocate 20.00 MiB."),
+        ok_prediction,
+    ]
+
+    with patch("torch.cuda.empty_cache") as mock_empty_cache:
+        result = score_blocks(mock_model, [("src", "mt")], device="cuda")
+
+    assert result == [0.9]
+    assert mock_model.predict.call_count == 2
+    first_call_batch_size = mock_model.predict.call_args_list[0].kwargs["batch_size"]
+    second_call_batch_size = mock_model.predict.call_args_list[1].kwargs["batch_size"]
+    assert second_call_batch_size < first_call_batch_size
+    mock_empty_cache.assert_called()
+
+
+def test_cuda_oom_exhausts_all_retries_returns_empty():
+    """If every retry batch size still OOMs, score_blocks degrades to [] (BR-56)
+    rather than propagating or looping forever."""
+    from app.backend.services.quality_evaluator import score_blocks
+
+    mock_model = MagicMock()
+    mock_model.predict.side_effect = RuntimeError("CUDA out of memory.")
+
+    with patch("torch.cuda.empty_cache"):
+        result = score_blocks(mock_model, [("src", "mt")], device="cuda")
+
+    assert result == []
+    assert mock_model.predict.call_count == 3  # 8 -> 4 -> 1, all OOM
+
+
+def test_cuda_non_oom_exception_does_not_retry():
+    """A non-OOM RuntimeError must fail immediately (BR-56), not burn through
+    all three OOM retry attempts."""
+    from app.backend.services.quality_evaluator import score_blocks
+
+    mock_model = MagicMock()
+    mock_model.predict.side_effect = RuntimeError("some unrelated model error")
+
+    result = score_blocks(mock_model, [("src", "mt")], device="cuda")
+
+    assert result == []
+    assert mock_model.predict.call_count == 1
+
+
+def test_cpu_device_does_not_use_oom_retry_batch_sizes():
+    """device='cpu' should not engage the CUDA OOM retry ladder at all."""
+    from app.backend.services.quality_evaluator import score_blocks
+
+    mock_model = MagicMock()
+    ok_prediction = MagicMock()
+    ok_prediction.scores = [0.5]
+    mock_model.predict.return_value = ok_prediction
+
+    result = score_blocks(mock_model, [("src", "mt")], device="cpu")
+
+    assert result == [0.5]
+    assert mock_model.predict.call_count == 1
+
+
 def test_qe_invalid_device_falls_back_to_cpu():
     """AC-7 resilience: invalid QE_DEVICE falls back to cpu with WARNING (D-5).
 

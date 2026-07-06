@@ -65,6 +65,12 @@ def load_model(model_name: str, device: str) -> object:
     return model
 
 
+# Batch sizes tried in order on CUDA OOM: full batch first, then halved each
+# retry. torch.cuda.empty_cache() runs between attempts to release whatever
+# fragmented/cached memory PyTorch is holding from the previous attempt.
+_OOM_RETRY_BATCH_SIZES = (8, 4, 1)
+
+
 def score_blocks(
     model: object,
     blocks: List[Tuple[str, str]],
@@ -83,16 +89,37 @@ def score_blocks(
         List of float scores, one per input block.
         On any exception returns ``[]`` (QE failure path → caller maps to
         ``qe_status="unavailable"``).
+
+    On ``cuda``, a CUDA OOM retries with ``torch.cuda.empty_cache()`` and a
+    smaller batch size (8 → 4 → 1) before giving up (BR-56 safe degradation).
     """
     if not blocks:
         return []
-    try:
-        data = [{"src": src, "mt": mt} for src, mt in blocks]
-        gpus = 1 if device == "cuda" else 0
-        prediction = model.predict(data, batch_size=8, gpus=gpus)  # type: ignore[union-attr]
-        # unbabel-comet returns a ModelOutput with .scores list
-        scores: List[float] = prediction.scores
-        return scores
-    except Exception as exc:
-        logger.warning("[QE] score_blocks failed: %s: %s", type(exc).__name__, exc)
-        return []
+    data = [{"src": src, "mt": mt} for src, mt in blocks]
+    gpus = 1 if device == "cuda" else 0
+
+    batch_sizes = _OOM_RETRY_BATCH_SIZES if device == "cuda" else (8,)
+    for attempt, batch_size in enumerate(batch_sizes):
+        try:
+            prediction = model.predict(data, batch_size=batch_size, gpus=gpus)  # type: ignore[union-attr]
+            # unbabel-comet returns a ModelOutput with .scores list
+            scores: List[float] = prediction.scores
+            return scores
+        except Exception as exc:
+            is_oom = isinstance(exc, RuntimeError) and "out of memory" in str(exc).lower()
+            is_last_attempt = attempt == len(batch_sizes) - 1
+            if is_oom and not is_last_attempt:
+                logger.warning(
+                    "[QE] score_blocks CUDA OOM at batch_size=%d; clearing cache and "
+                    "retrying at batch_size=%d",
+                    batch_size, batch_sizes[attempt + 1],
+                )
+                try:
+                    import torch
+                    torch.cuda.empty_cache()
+                except Exception:
+                    pass  # best-effort cache clear; retry proceeds regardless
+                continue
+            logger.warning("[QE] score_blocks failed: %s: %s", type(exc).__name__, exc)
+            return []
+    return []

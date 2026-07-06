@@ -115,6 +115,87 @@ class TestTranslateOnce:
         assert ok is False
 
 
+# ── empty content / reasoning-model truncation ───────────────────────────────
+
+class TestEmptyContentHandling:
+    def test_empty_content_with_finish_reason_length_returns_ok_false(self):
+        """A reasoning model (e.g. gpt-oss) that exhausts max_tokens on hidden
+        reasoning_content before emitting the final content field returns
+        HTTP 200 with an empty content string and finish_reason="length".
+        This must be treated as a failure, not a valid empty translation."""
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        client = OpenAICompatibleClient(
+            base_url="http://fake-host:8080",
+            api_key="test-key",
+            model="gpt-oss:120b",
+        )
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.json.return_value = {
+            "choices": [{
+                "finish_reason": "length",
+                "message": {"content": "", "reasoning_content": "long hidden chain of thought..."},
+            }]
+        }
+        with patch("requests.Session.post", return_value=resp):
+            ok, result = client.translate_once("Hello world", "French", "English")
+
+        assert ok is False
+        assert "length" in result
+
+    def test_nonempty_content_still_returns_ok_true(self):
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        client = OpenAICompatibleClient(
+            base_url="http://fake-host:8080",
+            api_key="test-key",
+            model="gpt-oss:120b",
+        )
+        with patch("requests.Session.post", return_value=_make_chat_response("Bonjour le monde")):
+            ok, result = client.translate_once("Hello world", "French", "English")
+
+        assert ok is True
+        assert "Bonjour" in result
+
+
+# ── max_tokens payload (reasoning-model truncation mitigation) ──────────────
+
+class TestMaxTokensPayload:
+    def test_max_tokens_included_in_completion_payload(self):
+        """Every completion request must include max_tokens so a reasoning
+        model has enough budget to finish reasoning_content AND emit content
+        (see TestEmptyContentHandling for the failure mode this prevents)."""
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        client = OpenAICompatibleClient(
+            base_url="http://fake-host:8080",
+            api_key="test-key",
+            model="gpt-oss:120b",
+        )
+        with patch("requests.Session.post", return_value=_make_chat_response("hi")) as mock_post:
+            client.translate_once("Hello", "French", "English")
+
+        _, kwargs = mock_post.call_args
+        assert "max_tokens" in kwargs["json"]
+        assert kwargs["json"]["max_tokens"] > 0
+
+    def test_max_tokens_override_via_constructor(self):
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        client = OpenAICompatibleClient(
+            base_url="http://fake-host:8080",
+            api_key="test-key",
+            model="gpt-oss:120b",
+            max_tokens=8192,
+        )
+        with patch("requests.Session.post", return_value=_make_chat_response("hi")) as mock_post:
+            client.translate_once("Hello", "French", "English")
+
+        _, kwargs = mock_post.call_args
+        assert kwargs["json"]["max_tokens"] == 8192
+
+
 # ── translate_batch ───────────────────────────────────────────────────────────
 
 class TestTranslateBatch:

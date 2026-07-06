@@ -78,6 +78,15 @@ VRAM_METADATA: Dict[ModelType, Dict[str, object]] = {
 DEFAULT_CONNECT_TIMEOUT_S = 10.0
 DEFAULT_READ_TIMEOUT_S = 360.0
 
+# OPENAI_COMPLETION_MAX_TOKENS: max_tokens sent to every OpenAICompatibleClient
+# completion request (translate + judge). Reasoning models served behind an
+# OpenAI-compatible endpoint (e.g. gpt-oss:120b) emit hidden reasoning_content
+# before the final content field; with no max_tokens the provider's own default
+# cap can be exhausted entirely by reasoning, returning finish_reason="length"
+# with an EMPTY content field. 4096 was verified sufficient against panjit's
+# gpt-oss:120b for judge-length prompts (finish_reason="stop").
+OPENAI_COMPLETION_MAX_TOKENS: int = int(os.environ.get("OPENAI_COMPLETION_MAX_TOKENS", "4096"))
+
 API_ATTEMPTS = 3
 API_BACKOFF_BASE = 1.6
 SENTENCE_MODE = True

@@ -63,13 +63,17 @@ class OpenAICompatibleClient:
         connect_timeout: float = _CONNECT_TIMEOUT_S,
         read_timeout: float = _READ_TIMEOUT_S,
         verify_ssl: bool = True,
+        max_tokens: Optional[int] = None,
     ) -> None:
+        from app.backend.config import OPENAI_COMPLETION_MAX_TOKENS
+
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
         self.provider_id = provider_id
         self._connect_timeout = connect_timeout
         self._read_timeout = read_timeout
+        self._max_tokens = max_tokens if max_tokens is not None else OPENAI_COMPLETION_MAX_TOKENS
         self._session = requests.Session()
         self._session.headers.update({"Content-Type": "application/json"})
         self._session.verify = verify_ssl
@@ -111,6 +115,7 @@ class OpenAICompatibleClient:
             "model": self.model,
             "messages": self._build_messages(user_content),
             "stream": False,
+            "max_tokens": self._max_tokens,
         }
         try:
             resp = self._session.post(
@@ -132,8 +137,19 @@ class OpenAICompatibleClient:
 
         try:
             data = resp.json()
-            content = data["choices"][0]["message"]["content"]
-            return True, content.strip()
+            choice = data["choices"][0]
+            content = choice["message"]["content"].strip()
+            if not content:
+                # Reasoning models (e.g. gpt-oss) can exhaust max_tokens entirely
+                # on hidden reasoning_content before emitting the final content
+                # field, returning finish_reason="length" with empty content.
+                # Treat this as a failure rather than a valid empty response so
+                # callers don't silently score/parse an empty string.
+                finish_reason = choice.get("finish_reason")
+                msg = f"Empty content (finish_reason={finish_reason!r}); likely truncated before final answer"
+                logger.warning("[%s] %s", self.provider_id, msg)
+                return False, msg
+            return True, content
         except (KeyError, IndexError, ValueError) as exc:
             msg = f"Response parse error: {exc}"
             logger.warning("[%s] %s", self.provider_id, msg)
