@@ -186,6 +186,41 @@ class TranslationCache:
         logger.info("Cache cleared: %d entries deleted (model=%s)", deleted, model or "all")
         return deleted
 
+    def purge_empty(self, model: Optional[str] = None) -> int:
+        """Delete cache entries whose translation is empty/blank.
+
+        Repairs cache poisoning from a provider bug where a call was reported
+        as successful (ok=True) but returned empty content — e.g. a reasoning
+        model exhausting its completion budget on hidden reasoning before
+        emitting the final answer (see OPENAI_COMPLETION_MAX_TOKENS). put/
+        put_batch use INSERT OR IGNORE, so a poisoned empty entry is never
+        overwritten by a later good translation and must be purged explicitly
+        before the source text will be retranslated on the next run.
+
+        Args:
+            model: If given, only purge empty entries for that model
+                (matches ``clear()``'s model-scoping semantics).
+
+        Returns:
+            Number of entries deleted.
+        """
+        conn = self._get_conn()
+        empty_clause = "(translation IS NULL OR trim(translation) = '')"
+        if model:
+            cursor = conn.execute(
+                f"DELETE FROM translations WHERE {empty_clause} "
+                "AND (LOWER(model) = ? OR LOWER(model) LIKE ?)",
+                (model.lower(), f"{model.lower()}::%"),
+            )
+        else:
+            cursor = conn.execute(f"DELETE FROM translations WHERE {empty_clause}")
+        conn.commit()
+        deleted = cursor.rowcount
+        if deleted > 0:
+            conn.execute("VACUUM")
+        logger.info("Cache purged empty entries: %d deleted (model=%s)", deleted, model or "all")
+        return deleted
+
     def stats(self) -> Dict:
         """Return cache statistics."""
         conn = self._get_conn()
