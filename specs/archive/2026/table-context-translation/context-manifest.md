@@ -113,5 +113,11 @@ and is automatically applied by `cdd-kit gate` — do not duplicate it here.
   reason: spec-architect and backend-engineer need to read these files to design the serialization/remap/dedup change; context indexes alone do not expose the seam internals.
   status: approved
 
+- request-id: CER-close-1
+  requested_paths:
+    - CLAUDE.md
+  reason: cdd-close Step 3 lesson-promotion needs to check/edit the cdd-kit:learnings managed region for a candidate workflow lesson about verifying archival state
+  status: approved
 ## Approved Expansions
 - CER-001 approved — source files are the primary work surface for this change.
+- CER-close-1 approved — main Claude self-approved per cdd-close skill Step 3 ("main Claude owns the final writes" to CLAUDE.md's learnings region).

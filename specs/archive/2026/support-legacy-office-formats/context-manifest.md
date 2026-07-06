@@ -147,6 +147,12 @@ and is automatically applied by `cdd-kit gate` — do not duplicate it here.
   reason: Checked whether drop-zone copy is i18n-managed; confirmed FileDropZone.jsx uses hardcoded inline copy with no i18n import, so no i18n/ read is needed for this change.
   status: resolved-not-needed
 
+- request-id: CER-close-1
+  requested_paths:
+    - CLAUDE.md
+  reason: cdd-close Step 3 lesson-promotion needs to check/edit the cdd-kit:learnings managed region
+  status: approved
 ## Approved Expansions
 - CER-001: app/frontend/src/components/domain/FileDropZone.jsx — approved, path verified real by main Claude before classification.
+- CER-close-1: approved — main Claude self-approved per cdd-close skill Step 3.
 - tests/test_quality_evaluation.py

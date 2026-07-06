@@ -1,5 +1,5 @@
 change-id: support-legacy-office-formats
-status: in-progress
+status: archived
 tier: 2
 context-governance: v1
 archive-tasks:
@@ -34,8 +34,8 @@ tasks:
   - { id: "5.3", section: Review, title: "Contract review", status: done }
   - { id: "5.4", section: Review, title: "QA review", status: done }
   - { id: "6.1", section: Verification, title: "Local gates", status: done, note: "cdd-kit gate support-legacy-office-formats passed (all validations green)" }
-  - { id: "6.2", section: Verification, title: "PR required gates", status: skipped, note: "not locally verifiable — required gates (contract-and-fast-tests, libreoffice-conversion-gate, etc.) run automatically on CI once this commit is pushed; local gate + full local test suite (1083 passed) already green" }
-  - { id: "6.3", section: Verification, title: "Informational gates", status: skipped, note: "not locally verifiable — informational gates run on CI post-push; none apply new non-deterministic checks per ci-gates.md" }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "PR #12 merged 2026-07-06 with all required checks green, including new libreoffice-conversion-gate (verified: installed real binary, ran 7 tests for real, not a skip)" }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "scheduled-stress-soak and Sourcery review skipped as expected (not PR-scope); no non-deterministic checks flagged" }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "not required at Tier 2 per change-classification.md" }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "two cdd-kit contract CLI/hook gotchas added to CLAUDE.md cdd-kit:learnings; see archive.md" }

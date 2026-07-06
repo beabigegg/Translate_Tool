@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
 visible-dirs: 58
-visible-files: 226
+visible-files: 227
 omitted-dirs: 12
 truncated-dirs: 1
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -44,10 +44,9 @@ Translate_Tool/
 |   \-- workflows/
 |       \-- contract-driven-gates.yml
 |-- .run/
-|   |-- logs/
-|   |   |-- backend.log
-|   |   \-- frontend.log
-|   \-- backend.pid
+|   \-- logs/
+|       |-- backend.log
+|       \-- frontend.log
 |-- app/
 |   |-- backend/
 |   |   |-- api/
@@ -196,7 +195,8 @@ Translate_Tool/
 |   |   |-- 0005-judge-rerender-apply.md
 |   |   |-- 0006-table-markdown-serialization.md
 |   |   |-- 0007-bilingual-docx-dual-column.md
-|   |   \-- 0008-mllm-layout-judge-local-only-image.md
+|   |   |-- 0008-mllm-layout-judge-local-only-image.md
+|   |   \-- 0009-legacy-conversion-disclosure-and-qe-boundary.md
 |   \-- improvement-plan.md
 |-- scripts/
 |   |-- benchmark_full_factorial.py
@@ -235,7 +235,8 @@ Translate_Tool/
 |   |   |   \-- job_quality_available.json
 |   |   |-- README.md
 |   |   |-- response-samples.example.json
-|   |   \-- response-samples.json
+|   |   |-- response-samples.json
+|   |   \-- test_legacy_conversion_disclosure.py
 |   |-- fixtures/
 |   |   |-- golden/
 |   |   |   |-- docx/
@@ -298,6 +299,7 @@ Translate_Tool/
 |   |-- test_judge_apply.py
 |   |-- test_layout_detector.py
 |   |-- test_layout_metrics.py
+|   |-- test_libreoffice_helpers.py
 |   |-- test_llm_client_protocol.py
 |   |-- test_metrics_counters.py
 |   |-- test_metrics_endpoint.py
@@ -312,16 +314,15 @@ Translate_Tool/
 |   |-- test_output_mode_processors.py
 |   |-- test_pdf_generator.py
 |   |-- test_pdf_layout_refactor.py
+|   |-- test_pdf_layout_table_fixes.py
+|   |-- test_pdf_layout_viz_persistence.py
 |   |-- test_pdf_parser.py
 |   |-- test_pdf_render_warnings.py
 |   |-- test_pptx_parser.py
 |   |-- test_provider_fallback.py
 |   |-- test_providers_api.py
 |   |-- test_quality_evaluation.py
-|   |-- test_quality_judge.py
-|   |-- test_renderer_convergence.py
-|   |-- test_sentence_mode_consistency.py
-|   \-- ... (17 more entries truncated; cap=50)
+|   \-- ... (20 more entries truncated; cap=50)
 |-- .env
 |-- .gitignore
 |-- AGENTS.md

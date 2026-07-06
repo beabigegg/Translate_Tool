@@ -1,5 +1,5 @@
 change-id: table-context-translation
-status: in-progress
+status: archived
 tier: 2
 context-governance: v1
 archive-tasks:
@@ -36,8 +36,8 @@ tasks:
   - { id: "5.3", section: Review, title: "Contract review", status: done }
   - { id: "5.4", section: Review, title: "QA review", status: done }
   - { id: "6.1", section: Verification, title: "Local gates", status: done }
-  - { id: "6.2", section: Verification, title: "PR required gates", status: pending }
-  - { id: "6.3", section: Verification, title: "Informational gates", status: pending }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "PR #7 merged 2026-06-27 with all required checks green (contract-and-fast-tests, full-regression, golden-sample-regression, layout-detector-dependency-gate, text-expansion-benchmark, renderer-equivalence)" }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "no non-deterministic checks flagged; scheduled-stress-soak skipped as expected (not PR-triggered)" }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no such gates planned" }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "strengthened existing CLAUDE.md cdd-kit:learnings bullet re: sweeping entire CI workflow for stale archived-change steps; see archive.md" }
