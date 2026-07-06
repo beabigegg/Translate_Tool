@@ -448,7 +448,10 @@ class JobManager:
 
                 # p2-term-audit: audit terminology hits/rejections over qe_blocks (BR-59..BR-61)
                 # Mirrors the QE extraction_only guard so audit only runs on translation jobs.
-                if mode != "extraction_only":
+                # Also skip when term_db is None (enable_term_extraction=False, job_manager.py
+                # line ~349) — audit_terms() has no approved/rejected terms to query in that
+                # case, so there is nothing to audit rather than an error condition.
+                if mode != "extraction_only" and term_db is not None:
                     job.status_detail = "術語審核中…"
                     try:
                         # Collect targets and domain from the route groups used in this job

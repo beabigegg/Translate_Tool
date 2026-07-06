@@ -530,3 +530,51 @@ def test_audit_disabled_when_exception(tmp_path):
             "job_record.audit must be None when audit_terms raises an exception (BR-61)"
         assert job.status != "failed", \
             "Job must NOT fail when audit_terms raises — safe degradation (BR-61)"
+
+
+def test_audit_skipped_when_term_extraction_disabled(tmp_path):
+    """term_db is None when enable_term_extraction=False — audit_terms must not
+    be called at all (rather than being called and raising AttributeError on
+    term_db.get_approved), and job_record.audit stays None without a crash."""
+    from unittest.mock import MagicMock, patch
+
+    with patch("app.backend.services.job_manager.audit_terms") as mock_audit, \
+         patch("app.backend.services.job_manager.process_files",
+               return_value=(1, 1, False, None, {"extracted": 0, "skipped": 0, "added": 0}, None)), \
+         patch("app.backend.services.job_manager.QE_ENABLED", False):
+
+        from app.backend.services.job_manager import JobManager
+        from app.backend.services.model_router import RouteGroup
+
+        jm = JobManager()
+
+        in_dir = tmp_path / "upload3"
+        in_dir.mkdir()
+        fake_file = in_dir / "test.txt"
+        fake_file.write_text("hello")
+
+        route_group = RouteGroup(
+            model="test-model",
+            targets=["vi"],
+            profile_id="general",
+            model_type="general",
+            provider=None,
+        )
+
+        job = jm.create_job(
+            uploaded_files=[fake_file],
+            route_groups=[route_group],
+            src_lang="en",
+            include_headers=False,
+            enable_term_extraction=False,
+        )
+
+        if job.thread:
+            job.thread.join(timeout=10.0)
+
+        assert mock_audit.call_count == 0, (
+            "audit_terms must not be called when term_db is None "
+            "(enable_term_extraction=False)"
+        )
+        assert job.audit is None
+        assert job.status != "failed"
