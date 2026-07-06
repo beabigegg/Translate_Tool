@@ -66,6 +66,138 @@ def _apply_formula_passthrough(elements: list) -> None:
                 elem.translated_content = elem.content
 
 
+def _group_table_elements(elements: list) -> Dict[str, list]:
+    """Group translatable elements by the table they belong to.
+
+    Elements are grouped by ``metadata["table_id"]`` (assigned by the parser's
+    find_tables pass) and must carry a resolved (table_row, table_col) grid
+    position.  Groups with fewer than 2 elements are dropped — a single cell
+    gains no context from whole-table serialization.
+
+    Args:
+        elements: Translatable elements (any subset of a parsed document).
+
+    Returns:
+        Dict mapping table_id -> list of elements in that table.
+    """
+    groups: Dict[str, list] = {}
+    for e in elements:
+        tid = e.metadata.get("table_id")
+        if (
+            tid is not None
+            and e.metadata.get("table_row") is not None
+            and e.metadata.get("table_col") is not None
+        ):
+            groups.setdefault(tid, []).append(e)
+    return {tid: elems for tid, elems in groups.items() if len(elems) >= 2}
+
+
+def _translate_pdf_tables_with_context(
+    table_groups: Dict[str, list],
+    tgt: str,
+    src_lang: Optional[str],
+    client: OllamaClient,
+    stop_flag: Optional[threading.Event] = None,
+    log: Callable[[str], None] = lambda s: None,
+) -> Dict[str, str]:
+    """Translate each detected PDF table with full-table context (one LLM call per table).
+
+    Serializes the table grid via ``table_serializer`` and prompts with
+    ``client._build_table_translate_prompt`` — the same whole-table wire format
+    used by the DOCX/PPTX/XLSX table paths — so every cell is translated with
+    its row/column context instead of in isolation.
+
+    Only cells backed by exactly ONE text element are mapped back (a cell with
+    multiple elements cannot split one cell translation across bboxes); all
+    other cells, and every cell of a table whose whole-table call fails, fall
+    back to the regular flatten batch path.
+
+    Args:
+        table_groups: Output of _group_table_elements.
+        tgt: Target language.
+        src_lang: Source language or None (auto).
+        client: LLM client.
+        stop_flag: Optional cancellation event.
+        log: Progress log callback.
+
+    Returns:
+        Dict mapping source text (stripped) -> translated text for every cell
+        that was successfully translated with table context.
+    """
+    from dataclasses import dataclass
+
+    from app.backend.utils import table_serializer
+
+    @dataclass
+    class _CellProxy:
+        row: int
+        col: int
+        content: str
+        is_numeric: bool = False
+
+    out: Dict[str, str] = {}
+    for tid, elems in table_groups.items():
+        if stop_flag and stop_flag.is_set():
+            break
+
+        by_cell: Dict[tuple, list] = {}
+        for e in elems:
+            key = (e.metadata["table_row"], e.metadata["table_col"])
+            by_cell.setdefault(key, []).append(e)
+
+        num_rows = max(r for r, _ in by_cell) + 1
+        num_cols = max(c for _, c in by_cell) + 1
+        proxy_cells = [
+            _CellProxy(
+                row=r,
+                col=c,
+                content=" ".join(
+                    el.content.strip() for el in by_cell.get((r, c), [])
+                ).strip(),
+            )
+            for r in range(num_rows)
+            for c in range(num_cols)
+        ]
+
+        serialized = table_serializer.serialize(proxy_cells)
+        prompt = client._build_table_translate_prompt(serialized, src_lang or "auto", tgt)
+        grid = None
+        try:
+            ok, response = client.translate_once(prompt, tgt, src_lang)
+            if ok:
+                grid = table_serializer.parse(response, num_rows, num_cols)
+                if grid is None:
+                    logger.warning(
+                        "[PDF] table %s: parse() returned None for target=%s "
+                        "(expected %d×%d); cells fall back to flatten path. "
+                        "Response excerpt: %s",
+                        tid, tgt, num_rows, num_cols,
+                        response[:120] if response else "",
+                    )
+        except Exception as exc:
+            logger.warning(
+                "[PDF] table %s whole-table call failed (target=%s): %s; "
+                "cells fall back to flatten path",
+                tid, tgt, exc,
+            )
+
+        if grid is None:
+            continue
+
+        mapped = 0
+        for (r, c), cell_elems in by_cell.items():
+            if len(cell_elems) != 1:
+                continue  # cannot split one cell translation across element bboxes
+            src_text = cell_elems[0].content.strip()
+            translated = grid[r][c].strip()
+            if src_text and translated:
+                out[src_text] = translated
+                mapped += 1
+        log(f"[PDF] table {tid}: {mapped}/{len(by_cell)} cells translated with table context ({tgt})")
+
+    return out
+
+
 # Lazy import for PyMuPDF parser
 _pymupdf_parser = None
 
@@ -344,8 +476,11 @@ def _translate_pdf_with_pymupdf(
             else:
                 flatten_translatable.append(e)
 
-        # Collect unique texts for batch translation (flatten path only — BR-70)
-        unique_texts = list(set(e.content.strip() for e in flatten_translatable if e.content.strip()))
+        # Collect unique texts for batch translation (flatten path only — BR-70).
+        # dict.fromkeys preserves reading order so the sliding-context prefix in
+        # translate_merged_paragraphs sees the REAL neighboring text (set() gave
+        # arbitrary neighbors), and block_override IDs are stable across runs.
+        unique_texts = list(dict.fromkeys(e.content.strip() for e in flatten_translatable if e.content.strip()))
         log(f"[PDF] Translating {len(unique_texts)} unique texts ({len(structured_table_elems)} structured tables via cell-batch)")
         if pre_translate_hook:
             pre_translate_hook(unique_texts)
@@ -394,20 +529,39 @@ def _translate_pdf_with_pymupdf(
                             unique_texts.append(e.content.strip())
                     structured_table_elems = []
 
+            # Whole-table context groups (find_tables-backed, no ONNX needed):
+            # cells in these groups are translated one-table-per-call so each
+            # cell sees its row/column context.
+            table_groups = _group_table_elements(flatten_translatable)
+            if table_groups:
+                log(f"[PDF] {len(table_groups)} table(s) will be translated with whole-table context")
+
             for tgt in targets:
                 if stop_flag and stop_flag.is_set():
                     log(f"[STOP] PDF stopped before translating to {tgt}")
                     stopped = True
                     break
 
+                table_tmap = (
+                    _translate_pdf_tables_with_context(
+                        table_groups, tgt, src_lang, client, stop_flag=stop_flag, log=log
+                    )
+                    if table_groups
+                    else {}
+                )
+                # Texts already translated with table context skip the flatten batch;
+                # unmapped table cells (multi-element cells, failed tables) stay in it.
+                flatten_texts = [t for t in unique_texts if t not in table_tmap]
+
                 log(f"[PDF] Batch translating to {tgt}...")
                 results = translate_blocks_batch(
-                    unique_texts, tgt, src_lang, client, log=log
+                    flatten_texts, tgt, src_lang, client, log=log
                 )
                 translations_by_target[tgt] = {
                     text: (translated if ok else f"[Translation failed|{tgt}] {text}")
-                    for text, (ok, translated) in zip(unique_texts, results)
+                    for text, (ok, translated) in zip(flatten_texts, results)
                 }
+                translations_by_target[tgt].update(table_tmap)
                 if not (stop_flag and stop_flag.is_set()):
                     from app.backend.utils.translation_verification import verify_and_fill_dict
                     verify_and_fill_dict(translations_by_target[tgt], tgt, client, src_lang, stop_flag=stop_flag, log=log)
@@ -524,8 +678,8 @@ def _translate_pdf_with_pypdf2(
             document_type="PDF document",
         )
 
-        # Collect unique texts for batch translation
-        unique_texts = list(set(text for _, text in page_texts if text))
+        # Collect unique texts for batch translation (page order preserved for context)
+        unique_texts = list(dict.fromkeys(text for _, text in page_texts if text))
         log(f"[PDF] PyPDF2: {total_pages} pages, {len(unique_texts)} unique texts")
         if pre_translate_hook:
             pre_translate_hook(unique_texts)
@@ -676,10 +830,11 @@ def _translate_pdf_to_pdf(
             document_type="PDF document",
         )
 
-        # Collect unique texts for translation
-        # Note: For PDF overlay mode, we translate lines individually to preserve layout
+        # Collect unique texts for translation (reading order preserved so the
+        # sliding-context prefix in translate_merged_paragraphs sees real neighbors)
+        # Note: For PDF overlay mode, we translate blocks individually to preserve layout
         # The translation quality is improved by using paragraph-level granularity in translate_blocks_batch
-        unique_texts = list(set(e.content.strip() for e in translatable))
+        unique_texts = list(dict.fromkeys(e.content.strip() for e in translatable))
         log(f"[PDF] Translating {len(unique_texts)} unique text blocks")
         if pre_translate_hook:
             pre_translate_hook(unique_texts)
@@ -695,6 +850,12 @@ def _translate_pdf_to_pdf(
 
         # p3-llm-judge: block_overrides seam
         _pdf2pdf_stem = os.path.splitext(os.path.basename(in_path))[0]
+
+        # Whole-table context groups (find_tables-backed): cells in these groups
+        # are translated one-table-per-call so each cell sees its row/column context.
+        table_groups = _group_table_elements(translatable)
+        if table_groups:
+            log(f"[PDF] {len(table_groups)} table(s) will be translated with whole-table context")
 
         # Generate PDF for each target language
         if len(targets) > 1:
@@ -729,19 +890,32 @@ def _translate_pdf_to_pdf(
             else:
                 # Translate texts for this language
                 log(f"[PDF] [{tgt_idx + 1}/{len(targets)}] Translating to {tgt}...")
+
+                # Whole-table context translation first; mapped cells skip the
+                # flatten batch, unmapped ones stay in it as fallback.
+                table_tmap = (
+                    _translate_pdf_tables_with_context(
+                        table_groups, tgt, src_lang, client, stop_flag=stop_flag, log=log
+                    )
+                    if table_groups
+                    else {}
+                )
+                flatten_texts = [t for t in unique_texts if t not in table_tmap]
+
                 results = translate_blocks_batch(
-                    unique_texts, tgt, src_lang, client, log=log
+                    flatten_texts, tgt, src_lang, client, log=log
                 )
 
                 # Build text -> translation mapping
                 translations = {}
                 missing_count = 0
-                for text, (ok, translated) in zip(unique_texts, results):
+                for text, (ok, translated) in zip(flatten_texts, results):
                     if ok:
                         translations[text] = translated
                     else:
                         translations[text] = f"[翻譯失敗] {text[:30]}..."
                         missing_count += 1
+                translations.update(table_tmap)
 
                 if missing_count > 0:
                     log(f"[PDF] Warning: {missing_count} texts failed to translate to {tgt}")
