@@ -1,0 +1,10 @@
+change-id: support-legacy-office-formats
+agent: change-classifier
+status: done
+summary: >
+  Classified as Tier 2, medium risk, cross-module. Architecture review required
+  (lossy-conversion disclosure + QE-boundary decision, external LibreOffice
+  dependency data-flow). 11 agents commissioned; design.md required.
+artifacts:
+  - { type: classification, pointer: "specs/changes/support-legacy-office-formats/change-classification.md" }
+next-action: invoke spec-architect for design.md

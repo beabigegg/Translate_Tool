@@ -1,0 +1,18 @@
+change-id: support-legacy-office-formats
+agent: contract-reviewer
+status: done
+summary: >
+  Reviewed and provided exact diffs for api-contract.md (JobCreateRequest.file,
+  JobStatus.warnings, two Endpoint Notes edits), business-rules.md (amended BR-9,
+  new BR-96 + Table X), env-contract.md (new External Binary Dependencies
+  section). Main Claude applied all three via cdd-kit contract schema set (API)
+  and direct edits (business/env, not hook-gated). ci-gate-contract.md draft
+  left for ci-cd-gatekeeper to finalize (Table/gate row recommendation given but
+  not applied). Confirmed pre-existing API-conformance failure
+  (/api/providers/{}/live-models frontend/contract drift) via git stash — not
+  caused by this change, out of scope.
+artifacts:
+  - { type: contract-diffs-applied, pointer: "contracts/api/api-contract.md; contracts/business/business-rules.md; contracts/env/env-contract.md" }
+  - { type: contract-diffs-pending, pointer: "contracts/ci/ci-gate-contract.md — recommendation given, ci-cd-gatekeeper to finalize" }
+  - { type: pre-existing-drift, pointer: "GET /api/providers/{}/live-models frontend-contract mismatch exists on main before this change; out of scope" }
+next-action: invoke ci-cd-gatekeeper and test-strategist

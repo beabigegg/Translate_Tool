@@ -1,0 +1,65 @@
+change-id: support-legacy-office-formats
+agent: backend-engineer
+status: done
+summary: >
+  Implemented IP-1 through IP-7 per implementation-plan.md, TDD failing-first.
+  Added ppt_to_pptx() to libreoffice_helpers.py (mirrors xls_to_xlsx() exactly).
+  Added ".ppt" to SUPPORTED_EXTENSIONS (config.py:245). In orchestrator.py: added
+  .ppt Phase-0 extraction branch (_extract_all_segments, mirrors .doc, uses
+  pptx.Presentation walk matching the .pptx branch), added .ppt main-conversion
+  branch (mirrors .doc minus COM, same translate_pptx kwargs as the existing
+  .pptx call, temp cleanup in finally), added .ppt -> .pptx output-name mapping
+  in _output_name() (IP-5 gap flagged by the plan), and wired the BR-96
+  warnings_callback disclosure verbatim per IP-6's exact snippet, placed right
+  before `processed_count += 1`. All source line-number assumptions in the plan
+  matched current source exactly (no drift). Wrote tests/test_libreoffice_helpers.py
+  (new, 7 tests) and extended tests/test_orchestrator_phase0.py (+6 tests),
+  tests/contract/test_legacy_conversion_disclosure.py (new, 2 tests — added one
+  extra test beyond the required node ID to guard the documented COM-vs-LibreOffice
+  disclosure-string edge case from Known Risks), and tests/test_quality_evaluation.py
+  (+1 test) per the exact node IDs in test-plan.md / implementation-plan.md.
+  All new/extended tests confirmed passing after implementation.
+test-results: >
+  collect: passed (15/15 collected). targeted: passed (15/15). changed-area:
+  passed (all tests in the 4 touched files green, including pre-existing tests
+  in test_orchestrator_phase0.py and test_quality_evaluation.py — untouched and
+  unaffected). contract phase (cdd-kit validate --contracts --env --ci): FAILED,
+  but confirmed via `git stash` comparison against the pre-change main branch
+  that the failure (API-conformance drift: "frontend calls GET
+  /api/providers/{}/live-models which is not in the API contract", plus ~30
+  backend-route/contract-endpoint prefix-mismatch warnings) is byte-for-byte
+  identical on main before this change — pre-existing, unrelated to
+  support-legacy-office-formats, and already flagged by contract-reviewer's
+  agent-log (contracts/* are out of backend-engineer's allowed paths and
+  explicitly marked "already finalized" in implementation-plan.md). Recorded
+  honestly as failed in test-evidence.yml per policy (no waiving performed by
+  this agent); recommend qa-reviewer add a qa-report.md exclusion entry citing
+  this baseline evidence.
+artifacts:
+  - { type: files-changed, pointer: "app/backend/processors/libreoffice_helpers.py (added ppt_to_pptx)" }
+  - { type: files-changed, pointer: "app/backend/config.py:245 (SUPPORTED_EXTENSIONS += .ppt)" }
+  - { type: files-changed, pointer: "app/backend/processors/orchestrator.py (import ppt_to_pptx; _extract_all_segments .ppt branch; process_files .ppt main branch; _output_name .ppt->.pptx; BR-96 warnings_callback wiring)" }
+  - { type: tests-added, pointer: "tests/test_libreoffice_helpers.py (new, 7 tests: is_libreoffice_available true/false, doc_to_docx, xls_to_xlsx, ppt_to_pptx converts + signature/error parity, SUPPORTED_EXTENSIONS)" }
+  - { type: tests-added, pointer: "tests/test_orchestrator_phase0.py::test_ppt_phase0_extraction_branch_converts_via_libreoffice" }
+  - { type: tests-added, pointer: "tests/test_orchestrator_phase0.py::test_xls_phase0_extraction_branch_converts_via_libreoffice" }
+  - { type: tests-added, pointer: "tests/test_orchestrator_phase0.py::test_doc_main_branch_converts_and_routes_to_translate_docx" }
+  - { type: tests-added, pointer: "tests/test_orchestrator_phase0.py::test_ppt_main_branch_routes_through_ppt_to_pptx_to_translate_pptx" }
+  - { type: tests-added, pointer: "tests/test_orchestrator_phase0.py::test_doc_xls_ppt_skip_without_crash_when_libreoffice_unavailable" }
+  - { type: tests-added, pointer: "tests/test_orchestrator_phase0.py::test_conversion_failure_for_one_file_does_not_abort_job_or_other_files" }
+  - { type: tests-added, pointer: "tests/contract/test_legacy_conversion_disclosure.py::test_warnings_has_one_disclosure_entry_per_converted_file_with_exact_format" }
+  - { type: tests-added, pointer: "tests/contract/test_legacy_conversion_disclosure.py::test_no_disclosure_when_doc_converted_via_com_not_libreoffice (extra, guards Known Risks COM gap)" }
+  - { type: tests-added, pointer: "tests/test_quality_evaluation.py::test_qe_scoring_invoked_identically_for_converted_legacy_document" }
+  - { type: test-output, pointer: "changed-area phase: 4 files, all passed (test-runs/20260706-105914/summary.json)" }
+  - { type: test-output, pointer: "contract phase: failed — pre-existing drift, confirmed via git stash vs main baseline, unrelated to this change (test-runs/20260706-105928)" }
+  - { type: contracts-touched, pointer: "none — contracts/* not touched per implementation-plan.md (already finalized by contract-reviewer/ci-cd-gatekeeper)" }
+next-action: qa-reviewer to add qa-report.md exclusion entry for the pre-existing API-conformance drift (baseline evidence above) before gate can go green; no backend-engineer action pending.
+
+addendum-main-claude: >
+  Root-caused and fixed rather than excluded: GET /providers/{provider_id}/live-models
+  existed in routes.py but was never documented in api-contract.md. Added the endpoint
+  row (with /api prefix, matching the literal frontend fetch() call and the sole existing
+  /api/metrics precedent — bare-path rows elsewhere in the table are not matched by the
+  conformance scanner's fetch()-only heuristic) plus an Endpoint Notes entry, re-exported
+  openapi.yml, and re-ran the contract test-evidence phase. contract phase now shows
+  status: passed, final-status: passed in test-evidence.yml. No qa-report.md exclusion
+  needed.

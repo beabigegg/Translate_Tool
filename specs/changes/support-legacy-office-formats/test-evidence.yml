@@ -1,0 +1,53 @@
+change-id: support-legacy-office-formats
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+  - contract
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      python -m pytest --collect-only -q tests/test_libreoffice_helpers.py tests/test_orchestrator_phase0.py
+      tests/contract/test_legacy_conversion_disclosure.py tests/test_quality_evaluation.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/support-legacy-office-formats/test-runs/20260706-105850/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/support-legacy-office-formats/test-runs/20260706-105850/summary.json
+    junit: specs/changes/support-legacy-office-formats/test-runs/20260706-105850/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      python -m pytest tests/test_libreoffice_helpers.py::test_ppt_to_pptx_converts_when_libreoffice_available
+      tests/test_libreoffice_helpers.py::test_ppt_to_pptx_signature_and_error_semantics_match_doc_to_docx
+      tests/test_orchestrator_phase0.py::test_ppt_phase0_extraction_branch_converts_via_libreoffice
+      tests/test_orchestrator_phase0.py::test_ppt_main_branch_routes_through_ppt_to_pptx_to_translate_pptx
+      tests/test_libreoffice_helpers.py::test_supported_extensions_includes_ppt
+      tests/test_libreoffice_helpers.py::test_doc_to_docx_converts_via_subprocess
+      tests/test_libreoffice_helpers.py::test_xls_to_xlsx_converts_via_subprocess
+      tests/test_orchestrator_phase0.py::test_doc_main_branch_converts_and_routes_to_translate_docx
+      tests/test_orchestrator_phase0.py::test_xls_phase0_extraction_branch_converts_via_libreoffice
+      tests/test_libreoffice_helpers.py::test_is_libreoffice_available_true_when_binary_found
+      tests/test_libreoffice_helpers.py::test_is_libreoffice_available_false_when_no_binary_found
+      tests/test_orchestrator_phase0.py::test_doc_xls_ppt_skip_without_crash_when_libreoffice_unavailable
+      tests/test_orchestrator_phase0.py::test_conversion_failure_for_one_file_does_not_abort_job_or_other_files
+      tests/contract/test_legacy_conversion_disclosure.py::test_warnings_has_one_disclosure_entry_per_converted_file_with_exact_format
+      tests/test_quality_evaluation.py::test_qe_scoring_invoked_identically_for_converted_legacy_document -q --maxfail=1
+      --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/support-legacy-office-formats/test-runs/20260706-105904/junit.xml'
+    summary: specs/changes/support-legacy-office-formats/test-runs/20260706-105904/summary.json
+    junit: specs/changes/support-legacy-office-formats/test-runs/20260706-105904/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      python -m pytest tests/contract/test_legacy_conversion_disclosure.py tests/test_libreoffice_helpers.py
+      tests/test_orchestrator_phase0.py tests/test_quality_evaluation.py -q --maxfail=1 --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/support-legacy-office-formats/test-runs/20260706-105914/junit.xml'
+    summary: specs/changes/support-legacy-office-formats/test-runs/20260706-105914/summary.json
+    junit: specs/changes/support-legacy-office-formats/test-runs/20260706-105914/junit.xml
+  - phase: contract
+    status: passed
+    command: cdd-kit validate --contracts --env --ci
+    summary: specs/changes/support-legacy-office-formats/test-runs/20260706-111104/summary.json
+final-status: passed

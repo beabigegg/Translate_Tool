@@ -1,0 +1,5 @@
+artifacts:
+  - { type: adr-written, pointer: "docs/adr/0009-legacy-conversion-disclosure-and-qe-boundary.md" }
+  - { type: affected-areas, pointer: "orchestrator conversion branches, libreoffice_helpers, config SUPPORTED_EXTENSIONS, api/env/business contracts, frontend upload surface" }
+  - { type: decision-summary, pointer: "disclose lossy conversion via existing warnings[] field; no distinct QE threshold (QE=translation adequacy, not layout fidelity)" }
+  - { type: risks-noted, pointer: "0 high, 3 low (CI determinism deferred, COM-fallback parity deferred, conversion fidelity variance)" }

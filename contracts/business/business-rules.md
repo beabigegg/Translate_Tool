@@ -3,8 +3,8 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.21.0
-last-changed: 2026-06-27
+schema-version: 0.22.0
+last-changed: 2026-07-06
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -21,7 +21,7 @@ breaking-change-policy: deprecate-2-minors
 | BR-6 | term-export-format | application-team | `format` must be one of `{json, csv, xlsx}`. `status` filter accepts `approved`, `unverified`, or omitted (all). | — |
 | BR-7 | job-lifecycle | application-team | Job status transitions: `queued` → `running` → `{completed \| stopped \| failed}`. Cancel sets a stop flag; job transitions to `stopped`. | — |
 | BR-8 | job-retention | application-team | In-memory store capped at `MAX_JOBS_IN_MEMORY=100`. Jobs expire after `JOB_TTL_HOURS=24` hours. Cleanup runs every 30 minutes. | — |
-| BR-9 | supported-formats | application-team | Accepted file extensions: `.docx`, `.doc`, `.pptx`, `.xlsx`, `.xls`, `.pdf`. Legacy `.doc`/`.xls` via LibreOffice/COM conversion. | — |
+| BR-9 | supported-formats | application-team | Accepted file extensions: `.docx`, `.doc`, `.pptx`, `.ppt`, `.xlsx`, `.xls`, `.pdf`. Legacy `.doc`/`.xls`/`.ppt` are converted to their modern counterpart (`.docx`/`.xlsx`/`.pptx`) via LibreOffice-headless (with a `win32com` fallback for `.doc` where available) before entering the extraction/translation/rendering pipeline; see BR-96 for lossy-conversion disclosure and graceful-degradation behavior. | tests/test_libreoffice_helpers.py |
 | BR-10 | document-size-limits | application-team | `MAX_SEGMENTS=10_000_000`, `MAX_TEXT_LENGTH=1_000_000_000` — effectively disabled. Size limit breach surfaces as job `status: "failed"` (not an HTTP error). | — |
 | BR-11 | wikidata-import-confidence | application-team | Wikidata lookup imports insert with `confidence=0.9`, `status="unverified"`, strategy `merge`. | — |
 | BR-12 | provider-registry | application-team | `config/providers.yml` is the authoritative provider registry. `model_router.py` reads it at startup via `config.py`. A provider entry has: `id`, `type`, `enabled`, `base_url`, `api_key`, `models`, optional `role`. | — |
@@ -105,6 +105,7 @@ breaking-change-policy: deprecate-2-minors
 | BR-93 | translate-document-parity | application-team | translate_document() MUST delegate per-chunk translation to translate_texts() (not translate_blocks_batch directly) so that term substitution (BR-41), the critique adoption gate (BR-89, BR-90), and the 50-token overlap-as-context (BR-47) are all automatically applied to long-document chunks. Callers must be able to observe these hooks firing via translate_texts mock assertions. | tests/test_translate_document_parity.py |
 | BR-94 | judge-per-block-scoring | application-team | judge_block(src, tgt) → float is the per-block scoring entry point on QualityJudge. It MUST call evaluate(src, tgt) for each block individually (NOT join all blocks into one string). The float return maps 高→1.0, 中→0.5, 低→0.0, unavailable→0.0. _run_judge_loop_impl MUST use per-block evaluate() calls, not a whole-doc join, so block-level feedback is available. See AC-5. | tests/test_quality_judge.py |
 | BR-95 | judge-layout-local-only | application-team | judge_layout(page_image: PIL.Image.Image) → int accepts only in-memory PIL Image objects (never a file path). It scores PDF page layout quality 1–5 via the local Gemma socket (self._client). The method MUST NOT route to any cloud provider. Images MUST be consumed in-memory and never serialised to disk or logged (BR-32 / ADR 0007). JUDGE_ENABLED remains false by default; judge_layout is a reusable method that fires only when the call site is wired (CER-003). | tests/test_quality_judge.py |
+| BR-96 | legacy-format-lossy-conversion | application-team | Legacy `.doc`/`.xls`/`.ppt` uploads are converted to `.docx`/`.xlsx`/`.pptx` via LibreOffice-headless before entering the pipeline (BR-9); no native binary parser exists. When `is_libreoffice_available()` returns false, or conversion of a specific file raises, that file is skipped (logged at `[WARNING]`/`[ERROR]` level with an actionable install message) — the job is NOT transitioned to `status: "failed"` solely for this reason, and other files in the same job continue processing normally. Every successfully converted legacy file adds exactly one entry to `job.warnings` disclosing the lossy-conversion risk, e.g. "`{filename}` converted from a legacy format via LibreOffice; layout fidelity may be lower than a native format." Conversion is purely a pre-pipeline format-normalization step: the converted document flows through the identical layout-detection, translation, rendering, and QE path as a native upload — QE scoring (BR-54 through BR-58) is unchanged and applies no distinct threshold or reinterpretation for converted documents. See ADR-0009. | tests/test_libreoffice_helpers.py, tests/test_orchestrator_phase0.py |
 
 ## Decision Tables
 
@@ -401,6 +402,15 @@ breaking-change-policy: deprecate-2-minors
 | OCR library not installed, `OCR_ENABLED=False` | System starts normally; CI passes; OCR module never imported (BR-87) | tests/test_pdf_layout_refactor.py |
 | OCR library not installed, `OCR_ENABLED=True` | Import error caught; WARNING logged; falls back to near-blank output; job not failed (BR-87) | tests/test_pdf_layout_refactor.py |
 | Font size floor enquiry | `config.MIN_READABLE_FONT_PT` is the sole source of truth; value is 8 pt; no competing constant in any renderer or config file (BR-88) | tests/test_pdf_layout_refactor.py |
+
+### Table X — legacy-format conversion behavior (BR-9, BR-96)
+| condition | behavior | test id |
+|---|---|---|
+| `.doc`/`.xls`/`.ppt` uploaded, LibreOffice available | File converted to `.docx`/`.xlsx`/`.pptx` via LibreOffice-headless; one entry appended to `job.warnings` disclosing the lossy conversion; converted file proceeds through the existing pipeline unchanged | tests/test_libreoffice_helpers.py |
+| `.doc`/`.xls`/`.ppt` uploaded, LibreOffice NOT available (`is_libreoffice_available()` returns false) | File skipped; `[WARNING]`/`[ERROR]` log entry with actionable install message; job NOT transitioned to `status: "failed"` solely for this file; other files in the job continue | tests/test_libreoffice_helpers.py |
+| Conversion subprocess raises for a specific legacy file | Per-file `try/except` catches the exception; `[ERROR]` logged; file skipped; job continues; other files unaffected | tests/test_orchestrator_phase0.py |
+| `.docx`/`.xlsx`/`.pptx`/`.pdf` uploaded (native modern format) | No conversion step invoked; no `warnings` entry added for this reason; behavior unchanged from pre-change | tests/test_orchestrator_phase0.py |
+| Converted legacy document reaches QE scoring | QE runs identically to a native-format document; no distinct threshold or fidelity reinterpretation is applied (BR-54–BR-58 unchanged) | tests/test_quality_evaluation.py |
 
 ## Change Policy
 

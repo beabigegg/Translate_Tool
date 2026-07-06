@@ -1,0 +1,14 @@
+change-id: support-legacy-office-formats
+agent: test-strategist
+status: done
+summary: >
+  Wrote test-plan.md mapping AC-1..AC-8 to concrete test node IDs across
+  tests/test_libreoffice_helpers.py (new), tests/test_orchestrator_phase0.py
+  (extended), tests/contract/test_legacy_conversion_disclosure.py (new), and
+  tests/test_quality_evaluation.py (extended). AC-5/AC-6 correctly deferred to
+  docs/frontend reviewers, not automated tests. Data-boundary and resilience
+  cases assigned to backend-engineer directly (no dedicated test-engineer at
+  Tier 2).
+artifacts:
+  - { type: test-plan, pointer: "specs/changes/support-legacy-office-formats/test-plan.md" }
+next-action: backend-engineer implements per test-plan.md in TDD fashion

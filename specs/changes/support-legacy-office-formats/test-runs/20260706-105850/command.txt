@@ -1,0 +1,1 @@
+python -m pytest --collect-only -q tests/test_libreoffice_helpers.py tests/test_orchestrator_phase0.py tests/contract/test_legacy_conversion_disclosure.py tests/test_quality_evaluation.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/support-legacy-office-formats/test-runs/20260706-105850/junit.xml' --maxfail=1 --tb=short -ra

@@ -1,0 +1,18 @@
+{
+  "change_id": "support-legacy-office-formats",
+  "phase": "contract",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "cdd-kit validate --contracts --env --ci",
+  "duration_ms": 501,
+  "first_failure": {
+    "kind": "contract-drift",
+    "message": "\u001b[31m✗\u001b[0m  One or more validations failed."
+  },
+  "artifacts": {
+    "summary": "specs/changes/support-legacy-office-formats/test-runs/20260706-105928/summary.json",
+    "stdout": "specs/changes/support-legacy-office-formats/test-runs/20260706-105928/stdout.log",
+    "stderr": "specs/changes/support-legacy-office-formats/test-runs/20260706-105928/stderr.log"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

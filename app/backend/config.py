@@ -242,7 +242,7 @@ TERM_EMBEDDING_MODEL: str = os.environ.get("TERM_EMBEDDING_MODEL", "Qwen3-Embedd
 TERM_EMBEDDING_THRESHOLD: float = float(os.environ.get("TERM_EMBEDDING_THRESHOLD", "0.75"))
 TERM_EXTRACTION_MODEL: str = os.environ.get("TERM_EXTRACTION_MODEL", "gemma4:latest")
 
-SUPPORTED_EXTENSIONS = {".docx", ".doc", ".pptx", ".xlsx", ".xls", ".pdf"}
+SUPPORTED_EXTENSIONS = {".docx", ".doc", ".pptx", ".ppt", ".xlsx", ".xls", ".pdf"}
 
 LANG_CODE_MAP = {
     # East Asian

@@ -1,0 +1,15 @@
+change-id: support-legacy-office-formats
+agent: ui-ux-reviewer
+status: done
+decision: approved
+summary: >
+  Reviewed FileDropZone.jsx extension-list copy and disclosure sequencing.
+  Approved with one non-blocking follow-up: the 8-item flat extension list
+  ("支援: .pdf, .docx, .doc, .txt, .pptx, .ppt, .xlsx, .xls") could be grouped
+  by family (Word/PowerPoint/Excel/PDF/TXT) for easier scanning; not required
+  for this Tier 2 whitelist-only change. Confirmed the warnings[]-after-upload
+  disclosure sequencing (per design.md) is acceptable — a pre-upload legacy-
+  format hint would be a nice future improvement but is out of scope here.
+artifacts:
+  - { type: copy-issues, pointer: "1 low — 8-item flat extension list; grouping suggestion is a follow-up, not blocking" }
+next-action: visual-reviewer confirms layout/rendering; no code change required

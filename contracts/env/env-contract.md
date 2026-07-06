@@ -3,8 +3,8 @@ contract: env
 summary: Environment variable inventory, secret handling, and deployment sync policy.
 owner: platform-team
 surface: runtime-config
-schema-version: 0.11.0
-last-changed: 2026-06-27
+schema-version: 0.12.0
+last-changed: 2026-07-06
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -46,6 +46,18 @@ breaking-change-policy: deprecate-2-minors
 | JUDGE_MAX_ITERATIONS | backend | all | no | no | 3 | 3 | application-team | positive integer | no | Maximum re-translation iterations in the judge loop per job. Loop terminates at this count even if score never reaches 高. See BR-73. |
 | PDF_RENDER_DPI | backend | all | no | no | 150 | 150 | platform-team | positive integer | yes | Controls the fitz page rasterise matrix used for layout detection: `fitz.Matrix(dpi/72, dpi/72)`. Default 150 improves classifier quality on high-DPI source documents. Set to 72 to reproduce pre-pdf-layout-refactor rasterisation behaviour. Higher values increase per-page memory and latency; values above 300 are not recommended. See BR-X in design.md (D-6). |
 | OCR_ENABLED | backend | all | no | no | false | false | platform-team | boolean (true/false or 1/0) | yes | When false (default), PDF pages whose `page.get_text()` returns near-empty content produce a WARNING and near-blank IR output. When true, enables the lazy-imported OCR backend (Surya or PaddleOCR) for such pages. The OCR library must be installed separately; the backend starts normally and CI passes without it when `OCR_ENABLED=false`. See BR-87. |
+| LIBREOFFICE_PATH | backend | all | no | no | (empty = auto-detect) | /usr/bin/soffice | platform-team | non-empty string (valid executable path) when set | no | Explicit path to the LibreOffice binary. When empty (default), `is_libreoffice_available()` auto-detects via `PATH` lookup then common per-OS install locations. When set but not executable, falls back to auto-detection with a WARNING logged. See BR-9, BR-96, § External Binary Dependencies. |
+| LIBREOFFICE_TIMEOUT | backend | all | no | no | 120 | 120 | platform-team | positive integer (seconds) | no | Wall-clock timeout for the LibreOffice headless conversion subprocess (`.doc`/`.xls`/`.ppt` → modern format). On timeout, conversion raises and the affected file is skipped (per-file isolation, BR-96); the job continues for other files. See BR-9, BR-96, § External Binary Dependencies. |
+
+## External Binary Dependencies
+
+Beyond environment variables, the backend has one optional external binary dependency.
+
+| binary | scope | required | detection | install (Linux) | install (macOS) | failure behavior |
+|---|---|---:|---|---|---|---|
+| LibreOffice (headless) | backend | no | `is_libreoffice_available()` in `app/backend/processors/libreoffice_helpers.py` | `apt install libreoffice-core` | `brew install --cask libreoffice` | When absent, legacy Office uploads (`.doc`, `.xls`, `.ppt`) are skipped with a `[WARNING]`/`[ERROR]` log entry (actionable install message) rather than a crash or job failure; `.docx`/`.xlsx`/`.pptx`/`.pdf` uploads are entirely unaffected. See BR-9, BR-96. |
+
+LibreOffice is an OS-level binary, not a Python package — it is intentionally NOT declared in `app/backend/environment.yml` or `requirements.txt`, and is not an env var, so the Deployment Sync Policy below (which governs env vars) does not apply to it. The backend starts and serves all modern-format (`.docx`/`.xlsx`/`.pptx`/`.pdf`) uploads normally with LibreOffice entirely absent; only legacy-format uploads are affected by its presence or absence.
 
 ## Public Frontend Env Policy
 

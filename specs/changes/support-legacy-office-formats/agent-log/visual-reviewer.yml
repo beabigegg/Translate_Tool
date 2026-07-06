@@ -1,0 +1,13 @@
+change-id: support-legacy-office-formats
+agent: visual-reviewer
+status: done
+decision: approved
+summary: >
+  Reviewed FileDropZone.jsx for the 8-item extension list rendering (up from 5)
+  and confirmed accept/data-testid wiring unchanged and correct. No defect
+  found. One non-blocking follow-up: verify .text-muted/.dropzone CSS wrap
+  behavior at narrow viewports with the longer list (CSS file out of this
+  agent's read scope; static JSX review only).
+artifacts:
+  - { type: css-check-followup, pointer: "FileDropZone.jsx:26 — verify wrap behavior at narrow viewports with 8-item list (non-blocking)" }
+next-action: none — qa-reviewer for release readiness

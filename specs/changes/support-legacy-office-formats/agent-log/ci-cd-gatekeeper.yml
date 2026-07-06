@@ -1,0 +1,17 @@
+change-id: support-legacy-office-formats
+agent: ci-cd-gatekeeper
+status: done
+summary: >
+  Wrote ci-gates.md (new libreoffice-conversion-gate, Tier 2+, required,
+  skip-not-fail semantics when LibreOffice absent). Finalized and applied
+  contract-reviewer's draft to contracts/ci/ci-gate-contract.md (new gate row
+  + LibreOffice Conversion Gate section). Applied .github/workflows/
+  contract-driven-gates.yml: new job installs libreoffice-core with
+  continue-on-error, then runs tests/test_libreoffice_helpers.py. Decided to
+  add the apt-get install step now rather than defer, so real-binary
+  conversion paths get CI coverage from day one.
+artifacts:
+  - { type: ci-gates, pointer: "specs/changes/support-legacy-office-formats/ci-gates.md" }
+  - { type: contract-updated, pointer: "contracts/ci/ci-gate-contract.md" }
+  - { type: workflow-updated, pointer: ".github/workflows/contract-driven-gates.yml" }
+next-action: implementation-planner synthesizes design + contracts + test-plan + ci-gates into implementation-plan.md

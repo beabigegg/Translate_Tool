@@ -1,4 +1,4 @@
-"""LibreOffice headless conversion helpers for legacy .doc/.xls files."""
+"""LibreOffice headless conversion helpers for legacy .doc/.xls/.ppt files."""
 
 from __future__ import annotations
 
@@ -180,6 +180,21 @@ def xls_to_xlsx(input_path: str, output_path: str) -> None:
     tmp_dir = tempfile.mkdtemp(prefix="lo_xls_")
     try:
         converted = _libreoffice_convert(input_path, "xlsx", tmp_dir)
+        shutil.move(converted, output_path)
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+def ppt_to_pptx(input_path: str, output_path: str) -> None:
+    """Convert .ppt to .pptx via LibreOffice headless.
+
+    Args:
+        input_path: Path to input .ppt file.
+        output_path: Desired path for the output .pptx file.
+    """
+    tmp_dir = tempfile.mkdtemp(prefix="lo_ppt_")
+    try:
+        converted = _libreoffice_convert(input_path, "pptx", tmp_dir)
         shutil.move(converted, output_path)
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)

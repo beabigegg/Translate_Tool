@@ -1,6 +1,6 @@
-# generated: 2026-07-02T10:50:33Z by cdd-kit 3.6.0
-# files: 188, src-lines: 50752, map-lines: 4742, compression: 10.7x
-# sources-digest: ad5da96cb084f0e17b2123f7077c05e0047329062cc3d0375b91a20c76ca0caf
+# generated: 2026-07-06T02:21:39Z by cdd-kit 3.6.0
+# files: 189, src-lines: 51511, map-lines: 4808, compression: 10.7x
+# sources-digest: 9bf4969b34cd75963bf659a478b3e9c5f01e378a72a07f68bf38076b205a8714
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
@@ -574,7 +574,7 @@ app/backend/parsers/ocr_backend.py:  # 70 lines
     - { name: _run_with_surya, lines: 59-64 }
     - { name: _run_with_paddleocr, lines: 67-70 }
 
-app/backend/parsers/pdf_parser.py:  # 706 lines
+app/backend/parsers/pdf_parser.py:  # 959 lines
   imports:
     - { module: __future__, items: [annotations], line: 7 }
     - { module: logging, items: [], line: 9 }
@@ -588,7 +588,7 @@ app/backend/parsers/pdf_parser.py:  # 706 lines
     - { module: app.backend.utils.bbox_utils, items: [is_header_footer_region, normalize_bbox], line: 32 }
   classes:
     - name: PyMuPDFParser
-      lines: 37-693
+      lines: 37-946
       methods:
         - { name: __init__, lines: 48-68 }
         - { name: supported_extensions, lines: 71-73 }
@@ -596,14 +596,18 @@ app/backend/parsers/pdf_parser.py:  # 706 lines
         - { name: _extract_page_elements, lines: 183-300 }
         - { name: _extract_style_info, lines: 302-345 }
         - { name: _color_to_hex, lines: 347-359 }
-        - { name: _detect_and_mark_tables, lines: 361-404 }
-        - { name: _is_inside, lines: 406-414 }
-        - { name: _run_layout_detector, lines: 416-544 }
-        - { name: _run_table_recognizer, lines: 546-636 }
-        - { name: _sort_by_reading_order, lines: 639-659 }
-        - { name: _extract_metadata, lines: 661-693 }
+        - { name: _detect_and_mark_tables, lines: 361-464 }
+        - { name: _spans_multiple_cells, lines: 467-485 }
+        - { name: _split_elements_by_cells, lines: 487-605 }
+        - { name: _build_cell_grid, lines: 608-644 }
+        - { name: _locate_cell, lines: 647-657 }
+        - { name: _is_inside, lines: 659-667 }
+        - { name: _run_layout_detector, lines: 669-797 }
+        - { name: _run_table_recognizer, lines: 799-889 }
+        - { name: _sort_by_reading_order, lines: 892-912 }
+        - { name: _extract_metadata, lines: 914-946 }
   functions:
-    - { name: extract_text_with_bbox, lines: 696-706 }
+    - { name: extract_text_with_bbox, lines: 949-959 }
 
 app/backend/parsers/pptx_parser.py:  # 379 lines
   imports:
@@ -766,7 +770,7 @@ app/backend/processors/orchestrator.py:  # 838 lines
     - { name: _output_name, lines: 314-336 }
     - { name: process_files, lines: 339-838 }
 
-app/backend/processors/pdf_processor.py:  # 940 lines
+app/backend/processors/pdf_processor.py:  # 1114 lines
   imports:
     - { module: __future__, items: [annotations], line: 8 }
     - { module: logging, items: [], line: 10 }
@@ -787,16 +791,18 @@ app/backend/processors/pdf_processor.py:  # 940 lines
     - { name: DOCX_ROUTING_WARNING, line: 44 }
   functions:
     - { name: _apply_formula_passthrough, lines: 49-66 }
-    - { name: _get_pymupdf_parser, lines: 73-87 }
-    - { name: _save_layout_viz, lines: 90-140 }
-    - { name: translate_pdf, lines: 143-272 }
-    - { name: _translate_pdf_with_pymupdf, lines: 275-493 }
-    - { name: _translate_pdf_with_pypdf2, lines: 496-616 }
-    - { name: _translate_pdf_to_pdf, lines: 619-810 }
-    - { name: _run_fitz_render, lines: 817-834 }
-    - { name: _run_reportlab_render, lines: 837-858 }
-    - { name: _dispatch_render, lines: 861-911 }
-    - { name: parse_pdf_to_document, lines: 914-940 }
+    - { name: _group_table_elements, lines: 69-92 }
+    - { name: _translate_pdf_tables_with_context, lines: 95-198 }
+    - { name: _get_pymupdf_parser, lines: 205-219 }
+    - { name: _save_layout_viz, lines: 222-272 }
+    - { name: translate_pdf, lines: 275-404 }
+    - { name: _translate_pdf_with_pymupdf, lines: 407-647 }
+    - { name: _translate_pdf_with_pypdf2, lines: 650-770 }
+    - { name: _translate_pdf_to_pdf, lines: 773-984 }
+    - { name: _run_fitz_render, lines: 991-1008 }
+    - { name: _run_reportlab_render, lines: 1011-1032 }
+    - { name: _dispatch_render, lines: 1035-1085 }
+    - { name: parse_pdf_to_document, lines: 1088-1114 }
 
 app/backend/processors/pptx_processor.py:  # 481 lines
   imports:
@@ -916,7 +922,7 @@ app/backend/renderers/coordinate_renderer.py:  # 324 lines
   functions:
     - { name: render_to_pdf, lines: 303-324 }
 
-app/backend/renderers/fitz_renderer.py:  # 816 lines
+app/backend/renderers/fitz_renderer.py:  # 740 lines
   imports:
     - { module: __future__, items: [annotations], line: 12 }
     - { module: functools, items: [], line: 14 }
@@ -928,34 +934,32 @@ app/backend/renderers/fitz_renderer.py:  # 816 lines
     - { module: typing, items: [TYPE_CHECKING, Callable, Dict, List, Optional], line: 20 }
     - { module: reportlab.lib.colors, items: [white], line: 22 }
     - { module: reportlab.pdfgen.canvas, items: [Canvas], line: 23 }
-    - { module: app.backend.config, items: [FONT_SIZE_CONFIG, LANG_CODE_MAP, PDF_MASK_MARGIN_PT, PDF_SHOW_MISSING_PLACEHOLDER], line: 25 }
-    - { module: app.backend.renderers.base, items: [RenderMode], line: 31 }
-    - { module: app.backend.renderers.bbox_reflow, items: [reflow_document], line: 32 }
-    - { module: app.backend.renderers.text_region_renderer, items: [TextRegion, create_text_regions_from_elements, fit_text_cascade, render_text_region], line: 33 }
+    - { module: app.backend.config, items: [FONT_SIZE_CONFIG, LANG_CODE_MAP, PDF_MASK_MARGIN_PT], line: 25 }
+    - { module: app.backend.renderers.base, items: [RenderMode], line: 30 }
+    - { module: app.backend.renderers.bbox_reflow, items: [reflow_document], line: 31 }
+    - { module: app.backend.renderers.text_region_renderer, items: [TextRegion, _wrap_lines_simple, create_text_regions_from_elements, fit_text_cascade, render_text_region], line: 32 }
     - { module: app.backend.services.metrics, items: [record_font_cache_hit, record_font_cache_miss], line: 39 }
-    - { module: app.backend.utils.font_utils, items: [register_fonts], line: 40 }
+    - { module: app.backend.utils.font_utils, items: [get_font_for_language, register_fonts], line: 40 }
   classes:
     - name: PDFGenerator
-      lines: 124-790
+      lines: 127-714
       methods:
-        - { name: __init__, lines: 135-152 }
-        - { name: missing_translation_count, lines: 155-157 }
-        - { name: missing_translations, lines: 160-162 }
-        - { name: _get_font_config, lines: 164-178 }
-        - { name: generate, lines: 180-217 }
-        - { name: _generate_overlay, lines: 219-356 }
-        - { name: _get_font_file, lines: 358-390 }
-        - { name: _wrap_chars, lines: 392-423 }
-        - { name: _wrap_text, lines: 425-488 }
-        - { name: _insert_text_in_rect, lines: 490-629 }
-        - { name: _generate_side_by_side, lines: 631-738 }
-        - { name: _create_page_overlay, lines: 740-790 }
+        - { name: __init__, lines: 138-158 }
+        - { name: missing_translation_count, lines: 161-163 }
+        - { name: missing_translations, lines: 166-168 }
+        - { name: _get_font_config, lines: 170-184 }
+        - { name: generate, lines: 186-223 }
+        - { name: _generate_overlay, lines: 225-362 }
+        - { name: _get_font_file, lines: 364-405 }
+        - { name: _insert_text_in_rect, lines: 407-552 }
+        - { name: _generate_side_by_side, lines: 554-669 }
+        - { name: _create_page_overlay, lines: 671-714 }
   functions:
-    - { name: _load_font_buffer, lines: 59-71 }  # @functools.lru_cache(maxsize=None)
-    - { name: clear_font_cache, lines: 74-79 }
-    - { name: _get_lang_code, lines: 82-106 }
-    - { name: _ensure_fitz, lines: 109-121 }
-    - { name: generate_translated_pdf, lines: 793-816 }
+    - { name: _load_font_buffer, lines: 62-74 }  # @functools.lru_cache(maxsize=None)
+    - { name: clear_font_cache, lines: 77-82 }
+    - { name: _get_lang_code, lines: 85-109 }
+    - { name: _ensure_fitz, lines: 112-124 }
+    - { name: generate_translated_pdf, lines: 717-740 }
 
 app/backend/renderers/inline_renderer.py:  # 303 lines
   imports:
@@ -991,7 +995,7 @@ app/backend/renderers/pdf_generator.py:  # 28 lines
     - { module: typing, items: [TYPE_CHECKING], line: 13 }
     - { module: app.backend.renderers.fitz_renderer, items: [PDFGenerator, generate_translated_pdf, _ensure_fitz, _load_font_buffer, _get_lang_code, clear_font_cache], line: 16 }
 
-app/backend/renderers/text_region_renderer.py:  # 674 lines
+app/backend/renderers/text_region_renderer.py:  # 722 lines
   imports:
     - { module: __future__, items: [annotations], line: 16 }
     - { module: logging, items: [], line: 18 }
@@ -1006,24 +1010,25 @@ app/backend/renderers/text_region_renderer.py:  # 674 lines
     - name: CascadeDecision
       lines: 47-77
     - name: TextRegion
-      lines: 358-421
+      lines: 399-462
       methods:
-        - { name: width, lines: 372-374 }
-        - { name: height, lines: 377-379 }
-        - { name: center_x, lines: 382-384 }
-        - { name: center_y, lines: 387-389 }
-        - { name: from_bbox, lines: 392-421 }
+        - { name: width, lines: 413-415 }
+        - { name: height, lines: 418-420 }
+        - { name: center_x, lines: 423-425 }
+        - { name: center_y, lines: 428-430 }
+        - { name: from_bbox, lines: 433-462 }
   functions:
     - { name: _text_line_height, lines: 84-86 }
     - { name: _measure_text_block, lines: 89-106 }
-    - { name: _wrap_lines_simple, lines: 109-132 }
-    - { name: _truncate_to_fit, lines: 135-173 }
-    - { name: fit_text_cascade, lines: 180-354 }
-    - { name: calculate_rotation_from_bbox, lines: 424-447 }
-    - { name: render_text_region, lines: 450-562 }
-    - { name: render_text_regions, lines: 565-602 }
-    - { name: create_text_regions_from_elements, lines: 605-645 }
-    - { name: create_text_regions_from_placements, lines: 648-674 }
+    - { name: _split_oversized_token, lines: 109-129 }
+    - { name: _wrap_lines_simple, lines: 132-163 }
+    - { name: _truncate_to_fit, lines: 166-214 }
+    - { name: fit_text_cascade, lines: 221-395 }
+    - { name: calculate_rotation_from_bbox, lines: 465-488 }
+    - { name: render_text_region, lines: 491-603 }
+    - { name: render_text_regions, lines: 606-643 }
+    - { name: create_text_regions_from_elements, lines: 646-693 }
+    - { name: create_text_regions_from_placements, lines: 696-722 }
 
 app/backend/services/__init__.py:  # 0 lines
 
@@ -1411,7 +1416,7 @@ app/backend/utils/exceptions.py:  # 54 lines
   functions:
     - { name: check_document_size_limits, lines: 29-54 }
 
-app/backend/utils/font_utils.py:  # 687 lines
+app/backend/utils/font_utils.py:  # 709 lines
   imports:
     - { module: __future__, items: [annotations], line: 7 }
     - { module: logging, items: [], line: 9 }
@@ -1427,7 +1432,7 @@ app/backend/utils/font_utils.py:  # 687 lines
     - { name: SYSTEM_FONT_PATHS, line: 180 }
     - { name: LANGUAGE_FONT_MAP, line: 196 }
     - { name: CJK_TTC_INDICES, line: 235 }
-    - { name: REQUIRED_FONTS, line: 568 }
+    - { name: REQUIRED_FONTS, line: 590 }
   functions:
     - { name: get_expansion_factor, lines: 46-58 }
     - { name: _get_face_metrics, lines: 69-107 }
@@ -1436,13 +1441,14 @@ app/backend/utils/font_utils.py:  # 687 lines
     - { name: register_fonts, lines: 268-340 }
     - { name: _normalize_lang_code, lines: 343-367 }
     - { name: get_font_for_language, lines: 370-416 }
-    - { name: calculate_text_width, lines: 419-436 }
-    - { name: calculate_text_height, lines: 439-450 }
-    - { name: estimate_font_size_from_bbox, lines: 453-471 }
-    - { name: fit_text_to_bbox, lines: 474-528 }
-    - { name: detect_text_direction, lines: 531-564 }
-    - { name: check_required_fonts, lines: 612-659 }
-    - { name: get_font_check_message, lines: 662-687 }
+    - { name: _is_cjk_char, lines: 419-430 }
+    - { name: calculate_text_width, lines: 433-458 }
+    - { name: calculate_text_height, lines: 461-472 }
+    - { name: estimate_font_size_from_bbox, lines: 475-493 }
+    - { name: fit_text_to_bbox, lines: 496-550 }
+    - { name: detect_text_direction, lines: 553-586 }
+    - { name: check_required_fonts, lines: 634-681 }
+    - { name: get_font_check_message, lines: 684-709 }
 
 app/backend/utils/logging_utils.py:  # 82 lines
   imports:
@@ -3159,7 +3165,7 @@ tests/test_metrics_endpoint.py:  # 156 lines
     - { name: test_existing_translation_behavior_unchanged, lines: 143-148 }
     - { name: test_existing_font_load_behavior_unchanged, lines: 151-156 }
 
-tests/test_model_config_api.py:  # 180 lines
+tests/test_model_config_api.py:  # 182 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: importlib, items: [], line: 5 }
@@ -3181,11 +3187,11 @@ tests/test_model_config_api.py:  # 180 lines
     - { name: client, lines: 58-61 }  # @pytest.fixture
     - { name: _upload_file_obj, lines: 64-65 }
     - { name: test_model_config_endpoint_returns_all_model_types, lines: 68-81 }
-    - { name: test_create_job_rejects_out_of_range_num_ctx, lines: 84-109 }
-    - { name: test_create_job_passes_valid_num_ctx_override, lines: 112-135 }
-    - { name: test_ollama_num_ctx_override_priority, lines: 138-146 }
-    - { name: test_route_info_response_includes_provider_field, lines: 153-165 }
-    - { name: test_route_info_provider_matches_routing_decision, lines: 168-180 }
+    - { name: test_create_job_rejects_out_of_range_num_ctx, lines: 84-110 }
+    - { name: test_create_job_passes_valid_num_ctx_override, lines: 113-137 }
+    - { name: test_ollama_num_ctx_override_priority, lines: 140-148 }
+    - { name: test_route_info_response_includes_provider_field, lines: 155-167 }
+    - { name: test_route_info_provider_matches_routing_decision, lines: 170-182 }
 
 tests/test_model_router.py:  # 521 lines
   imports:
@@ -3453,7 +3459,7 @@ tests/test_output_mode_processors.py:  # 841 lines
     - { name: test_pptx_smartart_replace_text_not_appended, lines: 765-797 }
     - { name: test_multi_target_output_mode_clamped_to_append, lines: 804-841 }
 
-tests/test_pdf_generator.py:  # 964 lines
+tests/test_pdf_generator.py:  # 818 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: os, items: [], line: 5 }
@@ -3496,27 +3502,21 @@ tests/test_pdf_generator.py:  # 964 lines
         - { name: test_elements_on_second_page_only, lines: 484-506 }
         - { name: test_multiline_text, lines: 508-544 }
         - { name: test_different_target_languages, lines: 546-566 }
-    - name: TestPDFOverlayTextDropRegression
-      lines: 570-712
-      methods:
-        - { name: test_short_bbox_height_still_draws_text_end_to_end, lines: 586-650 }
-        - { name: test_narrow_bbox_uses_word_wrap_not_single_char_stacking, lines: 652-691 }
-        - { name: test_wrap_text_word_boundary_before_char_fallback, lines: 693-712 }
     - name: TestFontBufferCache
-      lines: 715-848
+      lines: 569-702
       methods:
-        - { name: setup_method, lines: 718-720 }
-        - { name: test_first_call_reads_disk_once, lines: 726-735 }
-        - { name: test_second_call_hits_cache_not_disk, lines: 741-753 }
-        - { name: test_distinct_paths_cached_independently, lines: 759-774 }
-        - { name: test_cached_and_uncached_render_output_equivalent, lines: 780-797 }
-        - { name: test_error_path_does_not_cache_bad_buffer, lines: 803-823 }
-        - { name: test_cache_reset_between_tests, lines: 829-848 }
+        - { name: setup_method, lines: 572-574 }
+        - { name: test_first_call_reads_disk_once, lines: 580-589 }
+        - { name: test_second_call_hits_cache_not_disk, lines: 595-607 }
+        - { name: test_distinct_paths_cached_independently, lines: 613-628 }
+        - { name: test_cached_and_uncached_render_output_equivalent, lines: 634-651 }
+        - { name: test_error_path_does_not_cache_bad_buffer, lines: 657-677 }
+        - { name: test_cache_reset_between_tests, lines: 683-702 }
     - name: TestFallbackPath
-      lines: 855-964
+      lines: 709-818
       methods:
-        - { name: test_fallback_path_invoked_when_fitz_import_fails, lines: 862-915 }
-        - { name: test_fallback_path_warning_logged, lines: 917-964 }
+        - { name: test_fallback_path_invoked_when_fitz_import_fails, lines: 716-769 }
+        - { name: test_fallback_path_warning_logged, lines: 771-818 }
   functions:
     - { name: create_test_pdf, lines: 38-59 }
     - { name: create_test_document, lines: 62-107 }
@@ -3586,6 +3586,72 @@ tests/test_pdf_layout_refactor.py:  # 660 lines
   functions:
     - { name: _make_element, lines: 34-52 }
     - { name: _make_doc, lines: 55-66 }
+
+tests/test_pdf_layout_table_fixes.py:  # 482 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 19 }
+    - { module: os, items: [], line: 21 }
+    - { module: tempfile, items: [], line: 22 }
+    - { module: unicodedata, items: [], line: 23 }
+    - { module: pytest, items: [], line: 25 }
+  constants:
+    - { name: CJK_PARAGRAPH, line: 38 }
+    - { name: TABLE_DATA, line: 61 }
+    - { name: TABLE_TRANSLATIONS, line: 308 }
+  classes:
+    - name: TestCjkWrap
+      lines: 108-147
+      methods:
+        - { name: test_cjk_paragraph_wraps_to_multiple_lines, lines: 111-120 }
+        - { name: test_no_content_lost_by_wrapping, lines: 122-127 }
+        - { name: test_latin_word_wrap_unchanged, lines: 129-137 }
+        - { name: test_oversized_url_split_instead_of_overflowing, lines: 139-147 }
+    - name: TestCjkTruncate
+      lines: 150-173
+      methods:
+        - { name: test_cjk_truncation_keeps_prefix, lines: 153-163 }
+        - { name: test_latin_truncation_prefers_word_boundary, lines: 165-173 }
+    - name: TestCjkWidthMeasurement
+      lines: 176-185
+      methods:
+        - { name: test_helvetica_fallback_estimates_cjk_at_one_em, lines: 177-185 }
+    - name: TestCascadeRealism
+      lines: 188-217
+      methods:
+        - { name: test_oversized_cjk_shrinks_or_truncates, lines: 189-205 }
+        - { name: test_short_cjk_fits_without_truncation, lines: 207-217 }
+    - name: TestOverlayRendering
+      lines: 226-300
+      methods:
+        - { name: test_long_cjk_translation_fully_rendered, lines: 227-256 }
+        - { name: test_missing_translation_keeps_source_visible, lines: 258-278 }
+        - { name: test_side_by_side_missing_translation_not_blanked, lines: 280-300 }
+    - name: _StubTableClient
+      lines: 315-340
+      methods:
+        - { name: __init__, lines: 320-322 }
+        - { name: _build_table_translate_prompt, lines: 325-326 }
+        - { name: translate_once, lines: 328-340 }
+    - name: TestPdfTableCellSplit
+      lines: 344-375
+      methods:
+        - { name: test_row_blocks_split_into_cells, lines: 347-366 }
+        - { name: test_body_text_not_marked_as_table, lines: 368-375 }
+    - name: TestWholeTableTranslation
+      lines: 379-461
+      methods:
+        - { name: test_one_llm_call_per_table_with_full_grid, lines: 380-408 }
+        - { name: test_failed_table_call_falls_back_to_flatten, lines: 410-433 }
+        - { name: test_end_to_end_pdf_output_uses_table_context, lines: 435-461 }
+    - name: TestOrderPreservingDedupe
+      lines: 469-482
+      methods:
+        - { name: test_pdf_processor_has_no_set_dedupe, lines: 470-482 }
+  functions:
+    - { name: _make_paragraph_pdf, lines: 44-58 }
+    - { name: _make_table_pdf, lines: 68-89 }
+    - { name: _parse, lines: 92-94 }
+    - { name: _heuristic_layout, lines: 98-100 }  # @pytest.fixture(autouse=True)
 
 tests/test_pdf_layout_viz_persistence.py:  # 142 lines
   imports:
