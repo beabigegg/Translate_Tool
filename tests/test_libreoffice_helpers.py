@@ -7,15 +7,24 @@ Covers:
 - AC-4: is_libreoffice_available() true/false branches.
 
 Anti-tautology / determinism (per implementation-plan.md, ci-gates.md):
-- shutil.which and subprocess.run are mocked for every test in this file — the
-  real LibreOffice binary is never required for CI determinism.
+- shutil.which and subprocess.Popen are mocked for every test in this file —
+  the real LibreOffice binary is never required for CI determinism.
 - Conversion tests assert on the ACTUAL converted-file bytes reaching
-  output_path (selection assertion), not merely that subprocess.run was called.
+  output_path (selection assertion), not merely that subprocess.Popen was called.
+
+Process-group timeout fix (fix(libreoffice): kill whole process tree on
+timeout, not just the direct child — see _libreoffice_convert):
+- /usr/bin/soffice forks soffice.bin rather than exec-replacing itself, so
+  subprocess.run(timeout=...)'s default kill only reaped the direct child and
+  left soffice.bin running indefinitely (observed: 10+ hours at 100% CPU on a
+  pathological .doc). _libreoffice_convert now uses subprocess.Popen with
+  start_new_session=True + os.killpg on TimeoutExpired.
 """
 
 from __future__ import annotations
 
 import inspect
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -34,18 +43,25 @@ def _reset_binary_cache():
     lo._DETECTION_DONE = False
 
 
-def _fake_subprocess_run(cmd, capture_output, text, timeout):
-    """Simulate a successful LibreOffice --convert-to invocation.
+class _FakePopen:
+    """Simulate a successful LibreOffice --convert-to invocation via Popen.
 
     Writes a real output file named <input-stem>.<target-format> into --outdir,
     matching what _libreoffice_convert expects to find afterward.
     """
-    outdir = cmd[cmd.index("--outdir") + 1]
-    input_path = cmd[-1]
-    target_format = cmd[cmd.index("--convert-to") + 1]
-    stem = Path(input_path).stem
-    Path(outdir, f"{stem}.{target_format}").write_bytes(b"converted-bytes")
-    return MagicMock(returncode=0, stdout="", stderr="")
+
+    def __init__(self, cmd, stdout=None, stderr=None, text=None, start_new_session=None):
+        self.cmd = cmd
+        self.pid = 99999
+        self.returncode = 0
+        outdir = cmd[cmd.index("--outdir") + 1]
+        input_path = cmd[-1]
+        target_format = cmd[cmd.index("--convert-to") + 1]
+        stem = Path(input_path).stem
+        Path(outdir, f"{stem}.{target_format}").write_bytes(b"converted-bytes")
+
+    def communicate(self, timeout=None):
+        return ("", "")
 
 
 # ---------------------------------------------------------------------------
@@ -85,7 +101,7 @@ def test_doc_to_docx_converts_via_subprocess(tmp_path):
             "shutil.which",
             side_effect=lambda name: "/usr/bin/soffice" if name == "soffice" else None,
         ),
-        patch("subprocess.run", side_effect=_fake_subprocess_run) as mock_run,
+        patch("subprocess.Popen", side_effect=_FakePopen) as mock_run,
     ):
         lo.doc_to_docx(str(input_path), str(output_path))
 
@@ -105,7 +121,7 @@ def test_xls_to_xlsx_converts_via_subprocess(tmp_path):
             "shutil.which",
             side_effect=lambda name: "/usr/bin/soffice" if name == "soffice" else None,
         ),
-        patch("subprocess.run", side_effect=_fake_subprocess_run) as mock_run,
+        patch("subprocess.Popen", side_effect=_FakePopen) as mock_run,
     ):
         lo.xls_to_xlsx(str(input_path), str(output_path))
 
@@ -129,7 +145,7 @@ def test_ppt_to_pptx_converts_when_libreoffice_available(tmp_path):
             "shutil.which",
             side_effect=lambda name: "/usr/bin/soffice" if name == "soffice" else None,
         ),
-        patch("subprocess.run", side_effect=_fake_subprocess_run) as mock_run,
+        patch("subprocess.Popen", side_effect=_FakePopen) as mock_run,
     ):
         lo.ppt_to_pptx(str(input_path), str(output_path))
 
@@ -162,6 +178,74 @@ def test_ppt_to_pptx_signature_and_error_semantics_match_doc_to_docx(tmp_path):
     ):
         with pytest.raises(RuntimeError, match="LibreOffice is not available"):
             lo.ppt_to_pptx(str(input_path), str(output_path))
+
+
+# ---------------------------------------------------------------------------
+# Process-group timeout kill (fix: orphaned soffice.bin ran 10+ hours after
+# subprocess.run(timeout=...) only killed the direct child, not soffice.bin)
+# ---------------------------------------------------------------------------
+
+def test_timeout_kills_whole_process_group_not_just_direct_child(tmp_path):
+    """On TimeoutExpired, the whole process group must be killed via os.killpg
+    (start_new_session=True made proc.pid the group leader), and the call must
+    surface as a RuntimeError rather than letting soffice.bin run forever."""
+    input_path = tmp_path / "in.doc"
+    input_path.write_bytes(b"fake-doc-bytes")
+    output_path = tmp_path / "out.docx"
+
+    fake_proc = MagicMock()
+    fake_proc.pid = 12345
+    fake_proc.communicate.side_effect = [
+        subprocess.TimeoutExpired(cmd="soffice", timeout=120),
+        ("", ""),  # second communicate() call reaps the killed process
+    ]
+
+    with (
+        patch(
+            "shutil.which",
+            side_effect=lambda name: "/usr/bin/soffice" if name == "soffice" else None,
+        ),
+        patch("subprocess.Popen", return_value=fake_proc),
+        patch("os.getpgid", return_value=12345) as mock_getpgid,
+        patch("os.killpg") as mock_killpg,
+    ):
+        with pytest.raises(RuntimeError, match="timed out"):
+            lo.doc_to_docx(str(input_path), str(output_path))
+
+    mock_getpgid.assert_called_once_with(12345)
+    mock_killpg.assert_called_once_with(12345, lo.signal.SIGKILL)
+    assert fake_proc.communicate.call_count == 2, (
+        "communicate() must be called again after killpg to reap the process"
+    )
+
+
+def test_timeout_falls_back_to_proc_kill_when_no_killpg(tmp_path, monkeypatch):
+    """On a platform without os.killpg (e.g. Windows), fall back to proc.kill()
+    instead of raising AttributeError."""
+    input_path = tmp_path / "in.doc"
+    input_path.write_bytes(b"fake-doc-bytes")
+    output_path = tmp_path / "out.docx"
+
+    fake_proc = MagicMock()
+    fake_proc.pid = 12345
+    fake_proc.communicate.side_effect = [
+        subprocess.TimeoutExpired(cmd="soffice", timeout=120),
+        ("", ""),
+    ]
+
+    monkeypatch.delattr(lo.os, "killpg", raising=False)
+
+    with (
+        patch(
+            "shutil.which",
+            side_effect=lambda name: "/usr/bin/soffice" if name == "soffice" else None,
+        ),
+        patch("subprocess.Popen", return_value=fake_proc),
+    ):
+        with pytest.raises(RuntimeError, match="timed out"):
+            lo.doc_to_docx(str(input_path), str(output_path))
+
+    fake_proc.kill.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
