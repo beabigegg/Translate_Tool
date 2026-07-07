@@ -1,5 +1,5 @@
 change-id: qa-judge-provider-consistency
-status: in-progress
+status: archived
 tier: 2
 tier-floor-override: "Backend refactor routing judge QA re-translation to the judge's own provider (BR-98). The tier-floor heuristic matched 'endpoint/route/session' vocab (provider base_url endpoints, model routing) but there is no auth, payments, data-migration, concurrency, or secrets surface: no new config/env var, no API change, no schema change, no client-facing endpoint added. change-classifier confirmed Tier 2."
 context-governance: v1
@@ -38,5 +38,5 @@ tasks:
   - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "Local gate green — same required validations CI runs (validate --contracts, judge test group, full pytest). PR CI to confirm on push; PR# finalized at close." }
   - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full-regression informational on PR; scheduled-stress-soak N/A. No non-deterministic checks flagged." }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "not required at Tier 2 per change-classification.md — no nightly/weekly/manual gate for this backend refactor." }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done, note: "cdd-kit archive → specs/archive/2026/qa-judge-provider-consistency; INDEX.md updated" }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "1 net-0 consolidation: added 'route' to the CLAUDE.md tier-floor false-positive trigger list (evidence: gate 'matched: endpoint, route, session'). No new mock-boundary lesson — already covered. See archive.md." }
