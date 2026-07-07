@@ -3,7 +3,7 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.24.0
+schema-version: 0.24.1
 last-changed: 2026-07-07
 breaking-change-policy: deprecate-2-minors
 ---
@@ -421,6 +421,23 @@ breaking-change-policy: deprecate-2-minors
 | Conversion subprocess raises for a specific legacy file | Per-file `try/except` catches the exception; `[ERROR]` logged; file skipped; job continues; other files unaffected | tests/test_orchestrator_phase0.py |
 | `.docx`/`.xlsx`/`.pptx`/`.pdf` uploaded (native modern format) | No conversion step invoked; no `warnings` entry added for this reason; behavior unchanged from pre-change | tests/test_orchestrator_phase0.py |
 | Converted legacy document reaches QE scoring | QE runs identically to a native-format document; no distinct threshold or fidelity reinterpretation is applied (BR-54–BR-58 unchanged) | tests/test_quality_evaluation.py |
+
+### Table Y — QA/quality-pipeline mechanism relationships (BR-55, BR-56, BR-72 through BR-77, BR-89, BR-90, BR-97 through BR-100)
+
+This table is a cross-reference index only — it does not restate behavior
+already specified in the referenced rules or in Table U; see those rules
+for full behavior and test detail.
+
+| mechanism | scope / when it runs | quality signal | triggers a new re-translation attempt? | rule references |
+|---|---|---|---|---|
+| (1) In-line critique loop | Per-segment, during the initial translation pass | CometKiwi relative comparison of draft vs. one already-generated revision (strictly-greater-than wins; a tie keeps the draft); falls back to a deterministic length/fluency heuristic when QE is unavailable | No — the revision is produced unconditionally as one deterministic extra step per segment; the score only decides which of the two already-produced candidates is kept, it does not request additional translation attempts. Batched per the batch-critique-qe-scoring change. | BR-89, BR-90 |
+| (2) Post-job bulk COMET scoring | Whole-job, once, after all files have been translated | CometKiwi absolute score per block, stored in JobQualityRecord | No — permanently dashboard-only/advisory. Surfaced only via GET /api/jobs/{id}/quality. A previously-proposed post-job score-threshold re-translation bridge from this dashboard score was retired before it shipped; no such bridge exists or is planned. | BR-55, BR-56 |
+| (3) LLM-as-judge | Per-block, after translation completes, before the user confirms/applies the judged output | Absolute 高/中/低 verdict from a separate judge LLM call | Yes — the ONLY mechanism whose quality verdict conditions a new re-translation call. Re-translates on 中 or 低, up to JUDGE_MAX_ITERATIONS. The re-translation call is routed through the judge's own provider, decoupled from whichever provider won main translation (BR-98); the loop is cooperatively cancellable and wall-clock-bounded (BR-99, BR-100). | BR-72 through BR-77, BR-97, BR-98, BR-99, BR-100 |
+
+| condition | behavior | test id |
+|---|---|---|
+| Mechanism (1) already adopted a critique-revised draft for a segment; mechanism (3) later judges that same block and returns 中 or 低 | Mechanism (3) re-translates the block via its own judge-feedback loop, discarding the text mechanism (1) adopted. The two mechanisms hold no shared state and do not reconcile or defer to each other's prior decision on a given segment. This is current, intentional, independently-evolved behavior — not a bug — and remains unchanged by the sibling QA changes that landed alongside this documentation, each of which was scoped to a single mechanism. | tests/test_critique_gate.py, tests/test_quality_judge.py |
+| Mechanism (2)'s post-job score is low for a segment that mechanism (1) or (3) already acted on | No action is taken. Mechanism (2) never reads mechanism (1)/(3) state, never writes to the translation pipeline, and never triggers re-translation (BR-55, BR-56; the former post-job re-translation bridge was retired). | tests/test_quality_evaluation.py |
 
 ## Change Policy
 

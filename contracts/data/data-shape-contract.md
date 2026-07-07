@@ -3,7 +3,7 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.17.0
+schema-version: 0.17.1
 last-changed: 2026-07-07
 breaking-change-policy: deprecate-2-minors
 ---
@@ -490,6 +490,8 @@ Rules:
 **Added in p2-comet-qe.**
 
 QE scores are produced post-translation by the `quality_evaluator.py` service and attached to the job record in the in-memory job store. They are read-only via `GET /api/jobs/{id}/quality`. Scores are not serialized as part of `TranslatableDocument.to_dict()` and are not part of the IR wire schema.
+
+**Advisory / non-gating.** This record captures mechanism (2) of the QA pipeline — a whole-job, post-translation COMET scoring pass. It is informational/dashboard-only and never triggers re-translation or any other pipeline action, regardless of score. It is produced and consumed independently of the in-line critique-loop CometKiwi comparison (BR-89, BR-90) and the LLM-judge verdict (BR-72 through BR-77, BR-97 through BR-100) — see business-rules.md Table Y for how the three QA mechanisms relate. A previously-proposed post-job score-threshold re-translation bridge from this record was retired before it shipped; no such bridge exists or is planned.
 
 ### BlockQualityScore — data shape
 

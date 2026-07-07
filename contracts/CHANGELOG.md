@@ -8,6 +8,15 @@ While a contract is at 0.x (draft), entries here are optional.
 Once a contract reaches 1.0.0, every schema-version bump must have
 a corresponding entry below.
 
+## [business 0.24.1] — 2026-07-07
+Added: Table Y (QA/quality-pipeline mechanism relationships) — cross-reference table documenting how the in-line critique loop (BR-89, BR-90), post-job bulk COMET scoring (BR-55, BR-56, permanently dashboard-only after the former post-job re-translation bridge was retired), and LLM-as-judge (BR-72 through BR-77, BR-97 through BR-100) relate; records that mechanisms (1) and (3) share no state and can disagree by design. No new rule ids; no behavior change. Added in change qa-mechanism-docs.
+
+## [api 0.10.1] — 2026-07-07
+Updated: JobStatus.quality_score_avg note — added advisory/non-gating clarification (informational dashboard value; never triggers re-translation). No schema/type/nullability change. Added in change qa-mechanism-docs.
+
+## [data 0.17.1] — 2026-07-07
+Updated: Quality Evaluation (QE) Score Representation intro — added advisory/non-gating clarification for JobQualityRecord (dashboard-only; never triggers re-translation; cross-reference to business-rules.md Table Y; notes the retired post-job re-translation bridge). No schema change. Added in change qa-mechanism-docs.
+
 ## [api 0.9.0] — 2026-06-27
 Added: `JobStatus.warnings` — optional `string[]` field (null/empty when no degradation; two verbatim values: fitz→ReportLab fallback string and PDF→bilingual DOCX routing string; type always `string[]` or `null`, never a bare string). Updated: `GET /jobs/{job_id}` endpoint note to document `warnings` field semantics. Additive optional field — backward-compatible. Added in change `pdf-renderer-fallback-warn`.
 
