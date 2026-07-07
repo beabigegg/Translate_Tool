@@ -38,3 +38,4 @@
 | quality-metrics-gating | 2026 | 2026-06-27 | specs/archive/2026/quality-metrics-gating/ |
 | table-context-translation | 2026 | 2026-07-06 | specs/archive/2026/table-context-translation/ |
 | support-legacy-office-formats | 2026 | 2026-07-06 | specs/archive/2026/support-legacy-office-formats/ |
+| br92-rescore-resolution | 2026 | 2026-07-07 | specs/archive/2026/br92-rescore-resolution/ |

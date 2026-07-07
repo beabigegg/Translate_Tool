@@ -1,0 +1,1 @@
+pytest tests/test_env_contract.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/br92-rescore-resolution/test-runs/20260707-203337/junit.xml' -q --maxfail=1 --tb=short -ra

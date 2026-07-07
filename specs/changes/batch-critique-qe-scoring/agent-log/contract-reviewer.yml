@@ -1,0 +1,12 @@
+change-id: batch-critique-qe-scoring
+agent: contract-reviewer
+status: approved
+next-action: carry-data-shape-update-into-implementation-plan
+summary: "Approved. BR-89/BR-90 (business-rules.md) document only the decision outcome, not call cardinality, so they are unaffected. env-contract.md, api-contract.md, ci-gate-contract.md, CSS/UI: no change needed. data-shape-contract.md's 'Critique gate usage' row (lines 782-787) documents the CURRENT two-element score_blocks() call shape and will become stale the moment batching ships — this is a scheduled future update, not a gap today (no code changed yet). Ground-truthed all 3 classifier code claims (2-item call, unconditional 3-iteration loop with no early exit, existing 8/4/1 OOM ladder) — all CONFIRMED, no discrepancies. Recommended adding a metrics-counter parity test (critique_loop_invocations / critique_iterations_total, BR-46) to the required test list."
+artifacts:
+  - { type: business-rules-confirmed, pointer: "contracts/business/business-rules.md#BR-89" }
+  - { type: business-rules-confirmed, pointer: "contracts/business/business-rules.md#BR-90" }
+  - { type: scheduled-contract-update, pointer: "contracts/data/data-shape-contract.md:782-787" }
+  - { type: env-contract-confirmed, pointer: "contracts/env/env-contract.md:33-38" }
+  - { type: code-groundtruth, pointer: "app/backend/services/translation_service.py:59-96,322-421" }
+  - { type: code-groundtruth, pointer: "app/backend/services/quality_evaluator.py:68-125" }

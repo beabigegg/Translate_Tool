@@ -1,0 +1,7 @@
+change-id: batch-critique-qe-scoring
+agent: ci-cd-gatekeeper
+status: done
+next-action: none — ci-gates.md ready; workflow edits only needed at implementation time (optional)
+summary: "Wrote ci-gates.md. Existing contract-and-fast-tests / full-regression blanket pytest steps already glob-cover the new/extended test files with zero workflow edits. Recommended (not required) a targeted fast-fail step for the 3 test files at implementation time. No new gate, env, secret, or OpenAPI surface. Merge eligibility: informational-risk this planning pass (no diff to gate yet); forward-looking mergeable policy defined for the eventual implementation PR."
+artifacts:
+  - { type: ci-gates, pointer: "specs/changes/batch-critique-qe-scoring/ci-gates.md" }

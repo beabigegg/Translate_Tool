@@ -1,0 +1,8 @@
+change-id: qa-judge-provider-consistency
+agent: qa-reviewer
+status: done
+next-action: none — planning complete, awaiting user approval to commission backend-engineer
+summary: "approved-with-risk. All 5 planning-artifact consistency checks pass (AC-1..AC-7 coverage, zero test-plan/implementation-plan drift, no scope creep beyond non-goals, no orphan behavior claims, tasks.yml internally consistent). One blocking gap found and fixed in this pass: context-manifest.md omitted tests/test_quality_judge.py, which carries 5 of the unit tests referenced by both test-plan.md and implementation-plan.md — added to Allowed Paths, Required Tests, and the test-strategist/implementation-planner work packets."
+artifacts:
+  - { type: gate-results, pointer: "ac-coverage: pass, plan-test-drift: pass, scope-creep: pass, orphan-claims: pass, tasks-consistency: pass" }
+  - { type: decision, pointer: "approved-with-risk" }

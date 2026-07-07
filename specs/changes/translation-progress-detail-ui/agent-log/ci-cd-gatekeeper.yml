@@ -1,0 +1,8 @@
+change-id: translation-progress-detail-ui
+agent: ci-cd-gatekeeper
+status: done
+next-action: none — ci-gates.md ready; recommended cross-cutting CI-hardening step (validate --versions) is a separate, optionally-later change
+summary: "Wrote ci-gates.md. Confirmed zero workflow edits needed: existing blanket backend pytest step and the frontend npm test (vitest, unscoped) job in expose-output-mode-ui-gate already glob-cover all 5 new test files. openapi export-check already wired and will catch a stale export. DISCOVERED a real repo-wide gap independent of this change: validate_contract_versions.py (cdd-kit validate --versions) is only invoked via the local, untracked .git/hooks/pre-commit script, never in the GitHub Actions workflow itself — bypassable with --no-verify and absent on a fresh CI checkout. Documented as a recommendation, not applied (would have required editing the shared contract-driven-gates.yml, judged out of this planning-only pass's scope). Self-corrected mid-session after making then reverting a live workflow edit that exceeded scope."
+artifacts:
+  - { type: ci-gates, pointer: "specs/changes/translation-progress-detail-ui/ci-gates.md" }
+  - { type: repo-wide-gap-found, pointer: "specs/changes/translation-progress-detail-ui/ci-gates.md#workflow-changes-applied (validate --versions never runs in CI, only local pre-commit)" }

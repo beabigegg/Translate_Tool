@@ -1,0 +1,42 @@
+change-id: batch-critique-qe-scoring
+status: in-progress
+tier: 2
+tier-floor-override: "False-positive keyword match on 'cache'/'session' — this change batches in-memory COMET score_blocks() calls in the critique loop; it does not touch auth, payments, data migration, or any cache/session security surface."
+context-governance: v1
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on: []
+
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done, note: "contract-reviewer: no contract edit needed this planning pass; data-shape-contract.md 'Critique gate usage' row (lines 782-787) is a scheduled future update, see 2.4" }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: skipped, note: "spec-architect/design.md not required — control-flow-only refactor within one seam, no architecture/data-model/module-boundary change (classifier)" }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done, note: "ci-cd-gatekeeper: existing contract-and-fast-tests/full-regression gates already glob-cover new/extended test files; no workflow edit required this pass; optional targeted fast-fail step + change-gate CI line documented for implementation time" }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done, note: "implementation-planner: round-based restructuring plan written (IP-1..IP-6); DEFERRED banner at top per explicit STOP instruction" }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: skipped, note: "no endpoint/schema change (classifier)" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no frontend surface (classifier)" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: skipped, note: "no new env var; CRITIQUE_* defaults unchanged (classifier)" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: pending, note: "contract-reviewer flagged: contracts/data/data-shape-contract.md lines 782-787 'Critique gate usage' row currently documents a two-element score_blocks() call and MUST be rewritten to describe the batched multi-segment call shape in the SAME change that implements batching (with schema-version bump + CHANGELOG entry). Not done this planning pass since no code changed yet; must be in implementation-plan.md Contract Updates." }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: done, note: "contract-reviewer confirmed BR-89/BR-90 describe only the adoption outcome, not call cardinality — no wording change needed; refactor keeps both rules satisfied" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no CI/CD change (classifier)" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: pending, note: "test-plan.md written (AC-3/7/8 mapped); actual test code authored by backend-engineer in TDD fashion during deferred implementation" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: pending, note: "test-plan.md written (AC-1/2/3/4 + metrics-parity mapped to new tests/test_critique_loop_batching.py); test authoring deferred to backend-engineer implementation" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: pending, note: "test-plan.md written (AC-5/6 mapped); e2e-resilience-engineer implementation deferred" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "not applicable to internal service refactor (classifier)" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "micro-benchmark recommended but not required at Tier 2 (classifier); no soak requirement" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: pending, note: "DEFERRED — do not start until user explicitly approves implementation-plan.md in a later session" }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no frontend surface (classifier)" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: skipped, note: "no env/deploy change (classifier)" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: skipped, note: "no CI/CD change required (classifier)" }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI surface (classifier)" }
+  - { id: "5.2", section: Review, title: "Visual review", status: skipped, note: "no UI surface (classifier)" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done, note: "contract-reviewer approved; BR-89/BR-90 confirmed unaffected; one scheduled future update recorded at 2.4" }
+  - { id: "5.4", section: Review, title: "QA review", status: pending, note: "DEFERRED — runs after implementation, not during this planning-only pass" }
+  - { id: "6.1", section: Verification, title: "Local gates", status: pending }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: pending }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: pending }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }

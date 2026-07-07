@@ -532,46 +532,33 @@ def test_per_segment_score_blocks_called_with_src_hyp_pairs():
 
 
 # ---------------------------------------------------------------------------
-# quality-metrics-gating AC-2: below-threshold re-translation routing
+# br92-rescore-resolution: BR-92 / QE_RESCORE_THRESHOLD retired (absence tests)
 # ---------------------------------------------------------------------------
 
-def test_below_threshold_triggers_retranslation():
-    """AC-2: when a segment's score < QE_RESCORE_THRESHOLD it is below threshold.
+def test_qe_rescore_threshold_not_in_config():
+    """br92-rescore-resolution: QE_RESCORE_THRESHOLD is retired from config.py.
 
-    Verifies that the threshold comparison fires correctly when the score list
-    contains a value below 0.5 (the default threshold).
+    The var was inert (no code path consumed it); BR-92 described a post-job
+    rescore behavior that was never implemented. It must no longer be a config
+    attribute.
     """
-    from app.backend.config import QE_RESCORE_THRESHOLD
+    from app.backend import config
 
-    # Simulate scores for 2 segments
-    scores = [0.3, 0.75]
-    threshold = QE_RESCORE_THRESHOLD
-
-    # Segments below threshold
-    below = [i for i, s in enumerate(scores) if s < threshold]
-    above = [i for i, s in enumerate(scores) if s >= threshold]
-
-    assert 0 in below, "Segment 0 with score 0.3 should be below threshold"
-    assert 1 in above, "Segment 1 with score 0.75 should be at/above threshold"
-    assert len(below) == 1, f"Expected 1 below-threshold segment, got {len(below)}"
+    assert not hasattr(config, "QE_RESCORE_THRESHOLD"), (
+        "QE_RESCORE_THRESHOLD must be removed from config.py (BR-92 retired)."
+    )
 
 
-def test_threshold_env_var_parsed_as_float():
-    """AC-2/AC-4: QE_RESCORE_THRESHOLD env var is parsed as a float."""
-    import os
-    from importlib import reload
+def test_br_92_removed_from_business_rules():
+    """br92-rescore-resolution: BR-92 and the 'rescore' claim are gone from business-rules.md."""
+    from pathlib import Path
 
-    os.environ["QE_RESCORE_THRESHOLD"] = "0.65"
-    try:
-        import app.backend.config as cfg
-        reload(cfg)
-        assert isinstance(cfg.QE_RESCORE_THRESHOLD, float), (
-            f"QE_RESCORE_THRESHOLD should be float, got {type(cfg.QE_RESCORE_THRESHOLD)}"
-        )
-        assert abs(cfg.QE_RESCORE_THRESHOLD - 0.65) < 1e-9
-    finally:
-        del os.environ["QE_RESCORE_THRESHOLD"]
-        reload(cfg)
+    br_path = Path(__file__).parent.parent / "contracts" / "business" / "business-rules.md"
+    text = br_path.read_text(encoding="utf-8")
+    assert "BR-92" not in text, "BR-92 row must be deleted from business-rules.md"
+    assert "rescore" not in text.lower(), (
+        "no 'rescore' claim should survive in business-rules.md after BR-92 retirement"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -595,39 +582,6 @@ def test_qe_enabled_config_default_is_true():
         if prev is not None:
             os.environ["QE_ENABLED"] = prev
         reload(cfg)
-
-
-# ---------------------------------------------------------------------------
-# quality-metrics-gating AC-4: QE_RESCORE_THRESHOLD in config + schema
-# ---------------------------------------------------------------------------
-
-def test_rescore_threshold_has_correct_type_and_default():
-    """AC-4: QE_RESCORE_THRESHOLD is a float with default 0.5 in config."""
-    from app.backend import config
-
-    assert hasattr(config, "QE_RESCORE_THRESHOLD"), (
-        "QE_RESCORE_THRESHOLD missing from config.py"
-    )
-    assert isinstance(config.QE_RESCORE_THRESHOLD, float), (
-        f"QE_RESCORE_THRESHOLD must be float, got {type(config.QE_RESCORE_THRESHOLD)}"
-    )
-
-
-def test_rescore_threshold_out_of_range_rejected():
-    """AC-4: invalid QE_RESCORE_THRESHOLD value raises ValueError on float parse."""
-    import os
-
-    os.environ["QE_RESCORE_THRESHOLD"] = "not_a_number"
-    try:
-        from importlib import reload
-        import app.backend.config as cfg
-        with pytest.raises(ValueError):
-            reload(cfg)
-    finally:
-        del os.environ["QE_RESCORE_THRESHOLD"]
-        from importlib import reload
-        import app.backend.config as cfg2
-        reload(cfg2)
 
 
 # ---------------------------------------------------------------------------

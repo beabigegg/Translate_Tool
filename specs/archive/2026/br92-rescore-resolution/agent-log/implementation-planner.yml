@@ -1,0 +1,4 @@
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/br92-rescore-resolution/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer (IP-1..IP-6 contracts/config), test-engineer (IP-7..IP-9 tests+sweep)" }
+  - { type: scope-summary, pointer: "RETIRE only: 6 contract/config edits, 2 test-file edits, 1 repo-wide sweep; no build path, no runtime code" }

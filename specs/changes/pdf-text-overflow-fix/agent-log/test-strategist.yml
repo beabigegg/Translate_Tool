@@ -1,0 +1,43 @@
+change-id: pdf-text-overflow-fix
+agent: test-strategist
+status: done
+next-action: implementation-planner resolves StyleInfo/element-ref plumbing (design.md Open Risks) before AC-3 tests can be finalized; confirm test_renderer_convergence.py path added to any future editor's context-manifest.
+summary: "Mapped AC-1..AC-8 to concrete test files/node IDs across tests/test_text_region_renderer.py, tests/test_coordinate_renderer.py, tests/test_pdf_render_warnings.py, tests/test_pdf_parser.py (new TestTableDetectionStrategyFallback + TestTableCellBboxCorrection classes), and tests/test_pdf_layout_table_fixes.py. Confirmed TestSinglePathEnforcement::test_no_cascade_logic_in_legacy_paths needs no change under amended BR-40 (forbidden-symbol scan never covered text_region_renderer.py itself). Flagged tests/test_renderer_convergence.py::TestLayoutEquivalence as a REQUIRED REWRITE (Test Update Contract entry) per ADR-0012 but did not read it — outside this agent's context-manifest Allowed Paths/Required Tests list. Flagged AC-3 (render_truncated on ReportLab path) as blocked-pending-plumbing-decision, not silently testable as scoped."
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/pdf-text-overflow-fix/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_pdf_parser.py::TestTableDetectionStrategyFallback → app/backend/parsers/pdf_parser.py::_detect_and_mark_tables" }
+  - { type: tdd-pairs, pointer: "tests/test_pdf_parser.py::TestTableCellBboxCorrection::test_1to1_block_to_cell_bbox_corrected_to_cell_extent → app/backend/parsers/pdf_parser.py:444-452" }
+  - { type: tdd-pairs, pointer: "tests/test_text_region_renderer.py::TestRenderTextRegion::test_render_text_region_wraps_via_shared_cascade → app/backend/renderers/text_region_renderer.py::render_text_region" }
+  - { type: coverage-tiers, pointer: "unit, integration, contract, resilience, data-boundary; e2e and visual deferred to implementation session per change-classification" }
+  - { type: mapping-completeness, pointer: "AC-1 through AC-8 all mapped; AC-3 flagged as blocked pending StyleInfo/element-ref plumbing decision (Known Risk, not silently skipped)" }
+
+second-pass-summary: |
+  Amendment pass for AC-9/10/11 (design.md Decisions 4/5/6, contract-reviewer's
+  BR-36-note/BR-100/BR-101). Added 12 new mapping rows to test-plan.md:
+  AC-9 (available_whitespace_below computed in bbox_reflow.py, carried on
+  Placement, fitz reads it instead of literal 0.0) gets 2 unit tests in a new
+  TestAvailableWhitespaceBelow class (tests/test_pdf_layout_refactor.py) plus
+  1 regression-guard unit test in tests/test_pdf_generator.py::TestPDFGenerator
+  pinning the exact fitz_renderer.py:511 call-site change. AC-10 (BR-100
+  bounded row-growth pre-pass) gets contract-reviewer's 5 mapped cases: 4 unit
+  tests in a new TestBoundedRowGrowth class (same file, same-table-only push,
+  budget-cap+truncation+warning fallback, no-metadata skip, metadata["lines"]
+  shift parity) plus 1 contract-tier dual-backend geometry-parity test
+  extending tests/test_renderer_convergence.py::TestLayoutEquivalence (now
+  read directly this pass; no longer inferred). AC-11 (BR-101 disclosure) gets
+  3 unit tests extending tests/test_pdf_render_warnings.py's established
+  _dispatch_render + warnings_callback consumer-binding pattern (one
+  aggregated entry per file / no entry / fitz-vs-ReportLab parity) — the
+  third case is explicitly flagged CONTINGENT on AC-2/AC-3's element-ref
+  threading landing first, mirroring the same dependency already tracked for
+  AC-3 in the first pass. Added a Test Update Contract row for Placement's new
+  field (must default so existing Placement(...) call sites stay green) and
+  three Out-of-Scope bullets (cross-table/cross-page reflow, config-flag
+  mitigation, still-deferred families).
+  TEST-INFRA GAP FLAGGED: no fixture builds a multi-row TABLE_CELL IR with
+  controllable per-cell text length + table_id/table_row/table_col metadata
+  at the direct-construction level (only _make_table_pdf() does, via a real
+  rendered PDF, too heavy for these unit tests) — recommended fix is a small
+  `metadata` param added to test_pdf_layout_refactor.py's existing
+  _make_element/_make_doc helpers before TestBoundedRowGrowth is written;
+  this is not yet done, flagged for whoever picks up AC-10 test authorship.

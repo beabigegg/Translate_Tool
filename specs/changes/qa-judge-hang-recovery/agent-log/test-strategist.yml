@@ -1,0 +1,23 @@
+agent: test-strategist
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/qa-judge-hang-recovery/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_cloud_total_timeout.py (new) -> app/backend/clients/openai_compatible_client.py::_post_completion" }
+  - { type: tdd-pairs, pointer: "tests/test_quality_judge.py (extend) -> app/backend/services/quality_judge.py::_run_judge_loop_impl" }
+  - { type: tdd-pairs, pointer: "tests/test_orchestrator_judge.py (extend) -> app/backend/services/job_manager.py::cancel_job / _run_job judge call-site" }
+  - { type: tdd-pairs, pointer: "tests/test_env_contract.py (extend) -> app/backend/config.py::OPENAI_TOTAL_TIMEOUT_SECONDS" }
+  - { type: coverage-tiers, pointer: "unit, contract, integration, resilience" }
+  - { type: mapping-completeness, pointer: "AC-1..AC-8 all mapped; AC-1/2/8 flagged as needing a new local-dribbling-HTTP-server test fixture not present in the repo today" }
+notes: |
+  Two gaps flagged for the parent/implementation pass:
+  1. Test-infra: no existing mock-server/socket-timing harness in this repo;
+     tests/test_openai_compatible_client.py only mocks requests.Session.post
+     with an instant MagicMock, which cannot represent a dribbling/chunked
+     transfer or a genuinely blocked read. A new fixture (local background
+     HTTP server) is required inside the new tests/test_cloud_total_timeout.py.
+  2. Context-manifest gap: tests/test_quality_judge.py and tests/test_env_contract.py
+     are the established homes for BR-72..77 / env-var tests (per business-rules.md
+     citations) but are not listed in this change's context-manifest.md Allowed
+     Paths for test-strategist. Recommend adding them before implementation-planner
+     / bug-fix-engineer extend them, to avoid re-deriving this mapping.
+  Verified via grep: no existing test asserts an exhaustive judge_status enum
+  list, so the additive "stopped" value needs no Test Update Contract entries.

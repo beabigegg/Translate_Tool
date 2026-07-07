@@ -1,0 +1,16 @@
+{
+  "change_id": "br92-rescore-resolution",
+  "phase": "collect",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest tests/ --collect-only --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/br92-rescore-resolution/test-runs/20260707-203314/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 1384,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/br92-rescore-resolution/test-runs/20260707-203314/summary.json",
+    "stdout": "specs/changes/br92-rescore-resolution/test-runs/20260707-203314/stdout.log",
+    "stderr": "specs/changes/br92-rescore-resolution/test-runs/20260707-203314/stderr.log",
+    "junit": "specs/changes/br92-rescore-resolution/test-runs/20260707-203314/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

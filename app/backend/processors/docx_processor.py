@@ -869,22 +869,79 @@ def translate_docx(
                         if s.text.strip() and 0 <= r < num_rows and 0 <= c < num_cols:
                             final_tmap[(tgt, s.text, c)] = grid[r][c]
                 else:
+                    if stop_flag and stop_flag.is_set():
+                        # Table groups processed after the stop signal fires never reach
+                        # the translate/fallback logic at all: their cells get ZERO
+                        # final_tmap entries (not even a "[Translation failed]" placeholder),
+                        # surfacing downstream as an invisible "[SKIP] No translation" with
+                        # no error trail. Log this explicitly so it isn't mistaken for a
+                        # should_translate() filtering decision.
+                        logger.warning(
+                            "[DOCX] Table group %s: stop_flag set before fallback ran; "
+                            "%d cell(s) will get NO translation for target=%s",
+                            table_id, sum(1 for s in t_segs if s.text.strip()), tgt,
+                        )
                     # Fallback: translate each unique cell text individually (BR-82)
                     uniq_cell_texts = list(dict.fromkeys(
                         s.text for s in t_segs if s.text.strip()
                         and should_translate(s.text, src_for_prompt)
                     ))
-                    if uniq_cell_texts:
-                        fallback_tmap, _, _, _ = translate_texts(
-                            uniq_cell_texts, [tgt], src_lang, client,
-                            max_batch_chars=max_batch_chars,
-                            stop_flag=stop_flag, log=log,
+                    excluded_by_should_translate = [
+                        s.text for s in t_segs
+                        if s.text.strip() and not should_translate(s.text, src_for_prompt)
+                    ]
+                    if excluded_by_should_translate:
+                        logger.info(
+                            "[DOCX] Table group %s: %d cell(s) excluded by should_translate() "
+                            "(target=%s), e.g. %r",
+                            table_id, len(excluded_by_should_translate), tgt,
+                            excluded_by_should_translate[0][:30],
                         )
-                        for (fb_tgt, fb_text), fb_tr in fallback_tmap.items():
+                    if uniq_cell_texts:
+                        # A cell can hold MULTIPLE original paragraphs joined with "\n"
+                        # (_collect_docx_segments' cell_text_parts join) — most commonly
+                        # a merged "layout" cell holding an entire document section.
+                        # Sending the whole blob as ONE translate_once() call risks
+                        # silent truncation: confirmed live against panjit's gpt-oss:120b,
+                        # a 4827-char cell returned only 370 chars with ok=True (no error,
+                        # since the response wasn't EMPTY, just cut short) — over 90% of
+                        # the content vanished with no trace. Splitting on "\n" and
+                        # translating at the SAME per-paragraph granularity as body text
+                        # (reusing translate_texts' batching/context/critique) keeps every
+                        # individual LLM call bounded, then cells are reassembled by
+                        # rejoining their translated lines.
+                        cell_to_lines: Dict[str, List[str]] = {
+                            cell_text: cell_text.split("\n") for cell_text in uniq_cell_texts
+                        }
+                        uniq_lines = list(dict.fromkeys(
+                            line for lines in cell_to_lines.values() for line in lines
+                            if line.strip() and should_translate(line, src_for_prompt)
+                        ))
+                        fallback_tmap: Dict = {}
+                        if uniq_lines:
+                            fallback_tmap, _, _, _ = translate_texts(
+                                uniq_lines, [tgt], src_lang, client,
+                                max_batch_chars=max_batch_chars,
+                                stop_flag=stop_flag, log=log,
+                            )
+                        for cell_text, lines in cell_to_lines.items():
+                            translated_lines = [
+                                fallback_tmap.get((tgt, line), line) for line in lines
+                            ]
+                            reassembled = "\n".join(translated_lines)
                             # Apply to ALL cells with this text across their actual columns
                             for s in t_segs:
-                                if s.text == fb_text:
-                                    final_tmap[(fb_tgt, fb_text, s.col)] = fb_tr
+                                if s.text == cell_text:
+                                    final_tmap[(tgt, cell_text, s.col)] = reassembled
+                        missing_lines = set(uniq_lines) - {line for (_, line) in fallback_tmap}
+                        if missing_lines:
+                            logger.warning(
+                                "[DOCX] Table group %s: %d cell line(s) sent to fallback "
+                                "translate_texts() but missing from its result (target=%s), "
+                                "e.g. %r — those lines fall back to their original untranslated "
+                                "text within the reassembled cell",
+                                table_id, len(missing_lines), tgt, next(iter(missing_lines))[:30],
+                            )
 
     if final_tmap:
         # R1: doc2doc long-doc path always uses append; output_mode="replace" is a follow-up.

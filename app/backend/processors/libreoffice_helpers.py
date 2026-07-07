@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import platform
 import shutil
+import signal
 import subprocess
 import tempfile
 from pathlib import Path
@@ -125,17 +126,42 @@ def _libreoffice_convert(
         ]
         logger.debug("LibreOffice command: %s", " ".join(cmd))
 
-        result = subprocess.run(
+        # /usr/bin/soffice forks the actual soffice.bin worker rather than
+        # exec-replacing itself, so subprocess.run(timeout=...)'s default
+        # kill (direct child only) leaves soffice.bin orphaned and running
+        # indefinitely at 100% CPU on a pathological input (observed: one
+        # instance ran for 10+ hours before being found and killed manually).
+        # start_new_session=True puts the whole tree in its own process
+        # group so a timeout can kill it all via os.killpg.
+        proc = subprocess.Popen(
             cmd,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=timeout,
+            start_new_session=True,
         )
-
-        if result.returncode != 0:
+        try:
+            stdout, stderr = proc.communicate(timeout=timeout)
+            returncode = proc.returncode
+        except subprocess.TimeoutExpired:
+            if hasattr(os, "killpg"):
+                # POSIX: kill the whole process group (start_new_session=True
+                # made proc.pid the group leader), reaching soffice.bin too.
+                try:
+                    os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                except ProcessLookupError:
+                    pass  # process already gone
+            else:
+                proc.kill()  # best effort on non-POSIX platforms
+            proc.communicate()  # reap the zombie
             raise RuntimeError(
-                f"LibreOffice conversion failed (rc={result.returncode}): "
-                f"{result.stderr.strip() or result.stdout.strip()}"
+                f"LibreOffice conversion timed out after {timeout}s and was killed"
+            )
+
+        if returncode != 0:
+            raise RuntimeError(
+                f"LibreOffice conversion failed (rc={returncode}): "
+                f"{stderr.strip() or stdout.strip()}"
             )
 
         # Determine the output filename

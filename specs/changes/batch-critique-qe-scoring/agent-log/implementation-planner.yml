@@ -1,0 +1,8 @@
+change-id: batch-critique-qe-scoring
+agent: implementation-planner
+status: done
+next-action: STOP — awaiting explicit user approval before commissioning backend-engineer in a later session
+summary: "Wrote implementation-plan.md: round-based critique loop restructuring (IP-1..IP-6), timeout/exception-isolation semantics resolved verbatim from contract-reviewer's findings (per-segment timeout stays on the revision call only; batched score_blocks() total failure degrades all pending segments to keep-draft), required data-shape-contract.md row rewrite recorded as IP-5, full AC->test mapping carried from test-plan.md. Deferred banner at top; no code/tests/workflow touched."
+artifacts:
+  - { type: implementation-plan, pointer: "specs/changes/batch-critique-qe-scoring/implementation-plan.md" }
+  - { type: highest-risk, pointer: "specs/changes/batch-critique-qe-scoring/implementation-plan.md#known-risks (segment/index misalignment)" }

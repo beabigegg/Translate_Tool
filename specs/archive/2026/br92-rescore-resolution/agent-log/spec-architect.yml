@@ -1,0 +1,10 @@
+change-id: br92-rescore-resolution
+agent: spec-architect
+status: done
+next-action: user confirms build-vs-retire direction; then implementation-planner
+summary: "design.md presents both directions without picking one. Retire = near-zero cost, no compatibility impact (env var not covered by api-contract deprecate-2-minors, and inert), first BR retirement in repo. Build = medium risk: outputs archived (job_manager.py:412-416) BEFORE QE runs (:418), so a real gate needs re-render/re-archive via BR-77 machinery, and is largely redundant with the existing LLM-judge gate (BR-72-77) which already does score-tier re-translation. Surfaced checklist gap: data-shape-contract.md:787 falsely claims BR-92 wired (CER-002) and is outside Allowed Paths."
+artifacts:
+  - { type: adr-written, pointer: "none (no direction chosen; ADR deferred to implementation-planner once user decides)" }
+  - { type: affected-areas, pointer: "business-rules, env-contract/schema/template, config, data-shape-contract, job_manager QE path, quality tests" }
+  - { type: decision-summary, pointer: "framed retire-vs-build; informational lean = retire (lower risk, build redundant with LLM-judge gate)" }
+  - { type: risks-noted, pointer: "1 high (data-shape-contract.md:787 stale claim, out-of-scope path), 2 medium (build-only: gate precedence, re-render cost)" }

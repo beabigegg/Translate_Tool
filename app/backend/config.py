@@ -130,10 +130,6 @@ CHUNK_OVERLAP_TOKENS: int = int(os.environ.get("CHUNK_OVERLAP_TOKENS", "50"))
 QE_ENABLED: bool = os.environ.get("QE_ENABLED", "true").lower() in ("true", "1")
 QE_MODEL_NAME: str = os.environ.get("QE_MODEL_NAME", "Unbabel/wmt22-cometkiwi-da")
 QE_DEVICE: str = os.environ.get("QE_DEVICE", "cpu")
-# QE_RESCORE_THRESHOLD: segments whose post-job QE score falls below this value are
-# flagged for re-translation in the post-translate hook (AC-2, AC-4). Ignored when
-# QE_ENABLED=false. Range: [0.0, 1.0]; default 0.5 (model-scale dependent — tune for deployment).
-QE_RESCORE_THRESHOLD: float = float(os.environ.get("QE_RESCORE_THRESHOLD", "0.5"))
 
 # Critique loop configuration (p2-prompt-fewshot-glossary, BR-44)
 CRITIQUE_LOOP_ENABLED: bool = os.environ.get("CRITIQUE_LOOP_ENABLED", "1").lower() in ("1", "true", "yes")

@@ -1,0 +1,22 @@
+change-id: batch-critique-qe-scoring
+agent: test-strategist
+status: complete
+next-action: proceed-to-implementation-planning-approval
+summary: >
+  Test plan written mapping AC-1..AC-8 plus the contract-reviewer's recommended
+  metrics-counter parity addition (BR-46) to concrete test families. Core new
+  coverage lives in a new tests/test_critique_loop_batching.py (parity,
+  call-count reduction, cache-skip, per-segment exception/timeout isolation,
+  metrics-counter parity) following the existing
+  tests/test_translate_document_parity.py / tests/test_glossary_enforcement.py
+  pattern. Extends (does not duplicate) tests/test_critique_gate.py (adoption
+  index-mapping) and tests/test_quality_evaluation.py (OOM ladder under a
+  larger batched blocks list; batch_size invariance for AC-8). No API/schema
+  test needed for AC-7 — relies on the existing contract conformance CI gate.
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/batch-critique-qe-scoring/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_critique_loop_batching.py (new) -> app/backend/services/translation_service.py:322-421" }
+  - { type: tdd-pairs, pointer: "tests/test_critique_gate.py (extend) -> app/backend/services/translation_service.py:59-96" }
+  - { type: tdd-pairs, pointer: "tests/test_quality_evaluation.py (extend) -> app/backend/services/quality_evaluator.py:74-125" }
+  - { type: coverage-tiers, pointer: "unit (tier 0), integration (tier 1), resilience (tier 1); stress micro-benchmark noted as tier 3 consideration-only" }
+  - { type: mapping-completeness, pointer: "AC-1..AC-8 all mapped; contract-reviewer's metrics-counter parity (BR-46) addition mapped to test_critique_loop_invocation_and_iteration_counters_match_baseline" }

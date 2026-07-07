@@ -1,0 +1,11 @@
+change-id: translation-progress-detail-ui
+agent: change-classifier
+status: needs-review
+next-action: run-contract-reviewer-then-spec-architect-then-test-strategist-then-ci-cd-gatekeeper-then-implementation-planner-then-stop
+summary: "Tier 2, medium risk, cross-module, lane=feature. Architecture Review Required=yes (additive public API shape + new UI surface + unresolved design question) -> spec-architect writes design.md. Flags real overlap risk with batch-critique-qe-scoring (both touch translation_service.py's critique loop) but confirms it is NOT the same change — recommends sequencing/coordination via CER-002, not scope merge. Filed CER-001 (frontend directory enumeration, project-map.md truncates at max depth) and CER-002 (read sibling change's docs for coordination)."
+artifacts:
+  - { type: tier, pointer: "specs/changes/translation-progress-detail-ui/change-classification.md#tier" }
+  - { type: risk, pointer: "specs/changes/translation-progress-detail-ui/change-classification.md#risk-level" }
+  - { type: acceptance-criteria, pointer: "specs/changes/translation-progress-detail-ui/change-classification.md#inferred-acceptance-criteria" }
+  - { type: context-manifest-draft, pointer: "specs/changes/translation-progress-detail-ui/context-manifest.md" }
+  - { type: overlap-risk, pointer: "specs/changes/batch-critique-qe-scoring/implementation-plan.md" }

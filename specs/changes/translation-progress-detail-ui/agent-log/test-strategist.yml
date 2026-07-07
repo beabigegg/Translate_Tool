@@ -1,0 +1,15 @@
+change-id: translation-progress-detail-ui
+agent: test-strategist
+status: completed
+next-action: implementation-planner turns design.md + test-plan.md into implementation-plan.md
+summary: "AMENDMENT PASS: extended test-plan.md to add AC-9 (judge-phase visibility, new — not in original change-classification.md, flagged to user for classification update) covering design.md's post-incident judge-phase amendment: current_stage='judge' enum value, 3 new optional JobStatus fields (current_segment_judge_tier/attempt/substep), BR-98's phase-3 (judge) ETA term (incl. JUDGE_ENABLED=false/deepseek-provider omission per BR-97), and the additive optional snapshot-callback param on quality_judge.run_judge_loop (null-safe no-op + fail-soft on raise). Renamed tests/test_eta_two_phase_heuristic.py -> tests/test_eta_multi_phase_heuristic.py to track BR-98's rename (eta-multi-phase-pipeline); existing phase-1/phase-2 test cases carry over unchanged, phase-3 cases are additive. Extended tests/test_jobstatus_stage_detail.py, tests/test_job_manager_current_segment.py, and TranslationProgress.test.jsx with judge-specific cases. New file: tests/test_quality_judge_snapshot_callback.py. AC-1..AC-8 rows untouched except the file-rename mechanically applied to AC-5's 4 rows."
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/translation-progress-detail-ui/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_jobstatus_stage_detail.py -> app/backend/api/schemas.py::JobStatus + app/backend/api/routes.py::job_status" }
+  - { type: tdd-pairs, pointer: "tests/test_eta_multi_phase_heuristic.py -> app/backend/api/routes.py (BR-98 ETA calc, incl. phase-3 judge term)" }
+  - { type: tdd-pairs, pointer: "tests/test_job_manager_current_segment.py -> app/backend/services/job_manager.py::JobRecord" }
+  - { type: tdd-pairs, pointer: "tests/test_translation_service_stage_snapshot.py -> app/backend/services/translation_service.py critique loop status_callback" }
+  - { type: tdd-pairs, pointer: "tests/test_quality_judge_snapshot_callback.py -> app/backend/services/quality_judge.py::run_judge_loop" }
+  - { type: tdd-pairs, pointer: "app/frontend/src/components/domain/TranslationProgress.test.jsx -> app/frontend/src/components/domain/TranslationProgress.jsx (StageDetailPanel + judge tier badge)" }
+  - { type: coverage-tiers, pointer: "unit, contract, integration, data-boundary, resilience" }
+  - { type: mapping-completeness, pointer: "AC-1 through AC-9 all mapped to at least one concrete test; AC-9 is a new criterion added this pass for judge-phase visibility, not present in change-classification.md's original Inferred Acceptance Criteria — user must decide whether to add it there" }

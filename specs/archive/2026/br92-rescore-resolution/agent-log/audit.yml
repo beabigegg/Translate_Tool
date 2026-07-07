@@ -1,0 +1,16 @@
+- type: tier-floor-override
+  change-id: br92-rescore-resolution
+  timestamp: '2026-07-07T12:34:15.921Z'
+  declared-tier: 2
+  floor-tier: 0
+  label: critical surface (auth / payments / data migration / concurrency / secrets)
+  matched:
+    - breaking change
+    - endpoint
+    - session
+  reason: >-
+    Retire-only change: deletes phantom BR-92 and the inert QE_RESCORE_THRESHOLD env var. The
+    tier-floor heuristic matched 'breaking change/endpoint/session' vocab in plan prose, but there
+    is no auth, payments, data-migration, concurrency, secrets, or API-endpoint surface. Env-var
+    removal is inert (no runtime consumer) and not a policy-defined breaking change
+    (deprecate-2-minors is API-field-scoped). change-classifier confirmed Tier 2.

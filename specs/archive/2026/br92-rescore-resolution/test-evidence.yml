@@ -1,0 +1,41 @@
+change-id: br92-rescore-resolution
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      pytest tests/ --collect-only
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/br92-rescore-resolution/test-runs/20260707-203314/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/br92-rescore-resolution/test-runs/20260707-203314/summary.json
+    junit: specs/changes/br92-rescore-resolution/test-runs/20260707-203314/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      pytest tests/test_env_contract.py tests/test_quality_evaluation.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/br92-rescore-resolution/test-runs/20260707-203330/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/br92-rescore-resolution/test-runs/20260707-203330/summary.json
+    junit: specs/changes/br92-rescore-resolution/test-runs/20260707-203330/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      pytest tests/test_env_contract.py tests/test_quality_evaluation.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/br92-rescore-resolution/test-runs/20260707-203333/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/br92-rescore-resolution/test-runs/20260707-203333/summary.json
+    junit: specs/changes/br92-rescore-resolution/test-runs/20260707-203333/junit.xml
+  - phase: contract
+    status: passed
+    command: >-
+      pytest tests/test_env_contract.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/br92-rescore-resolution/test-runs/20260707-203337/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/br92-rescore-resolution/test-runs/20260707-203337/summary.json
+    junit: specs/changes/br92-rescore-resolution/test-runs/20260707-203337/junit.xml
+final-status: passed

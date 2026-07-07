@@ -1,0 +1,41 @@
+change-id: qa-judge-hang-recovery
+status: in-progress
+tier: 1
+context-governance: v1
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on:
+  - "qa-judge-provider-consistency"
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done, note: "change-classifier: Tier 1 (high risk, cross-module, live incident), bug-fix lane promoted to business-logic-change; Architecture Review Required=yes" }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done, note: "contract-reviewer: BR-74 can extend in-place for the timeout case (still fits 'any exception' wording); cancellation needs new wording or a new BR since it's not an error condition; JudgeResult.judge_status enum today is only available/disabled/unavailable (data-shape-contract.md:567) — no 4th value yet; if adding one, repo's job-level precedent uses 'stopped' not 'cancelled' (JobStatus.status); new timeout env var should follow CRITIQUE_TIMEOUT_SECONDS naming/shape convention (env-contract.md:35), note env.schema.json has no float-pattern precedent to copy" }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: done, note: "spec-architect (design.md + ADR-0011): two-layer cancellation (wall-clock ceiling as in-flight backstop, closes session to abort blocked read; cooperative stop_flag checks at loop-top/per-block for fast exit); ceiling lives in shared openai_compatible_client.py (all cloud calls, not judge-only), new env OPENAI_TOTAL_TIMEOUT_SECONDS (~480s default); new judge_status='stopped' (4th value, distinct from 'unavailable'), matches JobStatus 'stopped' precedent not invented 'cancelled'. Implies new BR-99 (judge-loop-cancellation) + BR-100 (cloud-LLM total-duration-ceiling)." }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: skipped, note: "no CI/CD contract change (classifier)" }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done, note: "implementation-planner (211 lines): 8 IP-N items — openai_compatible_client.py ceiling+interruptible post, config.py OPENAI_TOTAL_TIMEOUT_SECONDS, base_llm_client.py/ollama_client.py back-compat cancel_event=None, quality_judge.py cancel_event threaded after sibling's snapshot_cb with cooperative checks + 'stopped' degradation path, job_manager.py judge-hook wiring (does not re-touch _skip_judge_provider/cancel_job). Contract edits: BR-99/BR-100 + 2 Table U rows, env var x3 files, judge_status='stopped' additive. Known Risks: hard landing order — qa-judge-provider-consistency FIRST. Designed against sibling's finalized translation_client shape via briefing, no forbidden reads." }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: pending, note: "additive: GET /jobs/{id}/judge gains judge_status='stopped' enum value (api-contract.md:51,323)" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no UI change, existing Cancel button reused (classifier)" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: pending, note: "new OPENAI_TOTAL_TIMEOUT_SECONDS (positive float, ~480s default, application-team, follows CRITIQUE_TIMEOUT_SECONDS naming/shape precedent) in env-contract.md/.env.example.template/env.schema.json" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: pending, note: "JudgeResult.judge_status gains 'stopped' 4th value (data-shape-contract.md:567)" }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: pending, note: "new BR-99 (judge-loop-cancellation) + BR-100 (cloud-LLM total-duration-ceiling), two Table U rows; BR-74 extended for timeout (fits existing wording), cancellation gets distinct 'stopped' semantics; BR-73 cap must survive both paths" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no CI/CD change (classifier)" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done, note: "test-strategist: extends tests/test_quality_judge.py (TestCancelDuringInFlightScoring, TestCancellationDegradation, TestIterationCapUnaffectedByCancellation), tests/test_openai_compatible_client.py, tests/test_env_contract.py (OPENAI_TOTAL_TIMEOUT_SECONDS mirrors CRITIQUE_TIMEOUT_SECONDS precedent)" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: done, note: "test-strategist: extends tests/test_orchestrator_judge.py using its existing real-thread _wait_for_job pattern for AC-6 (backend stays alive, job reaches terminal state)" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: done, note: "test-strategist: NEW tests/test_cloud_total_timeout.py — FLAGGED TEST-INFRA GAP: no existing mock-server/dribbling-response fixture in this repo (test_openai_compatible_client.py only ever mocks instantly-returning MagicMock); a new local background HTTP server fixture sending periodic small chunks past the ceiling must be built from scratch for AC-2/AC-3/AC-8" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "no existing test asserts an exhaustive judge_status enum (confirmed via grep) — additive 'stopped' needs no Test Update Contract entries" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "folded into AC-8's resilience test in test_cloud_total_timeout.py rather than a separate soak suite (test-strategist's call)" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: pending, note: "DEFERRED — do not start until user explicitly approves implementation-plan.md; sequence after qa-judge-provider-consistency lands" }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no FE change (classifier)" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: pending, note: "DEFERRED — new timeout ceiling env var if chosen" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: skipped, note: "no workflow change (classifier)" }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI surface (classifier)" }
+  - { id: "5.2", section: Review, title: "Visual review", status: skipped, note: "no UI surface (classifier)" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done, note: "contract-reviewer: grounding facts delivered for spec-architect's cancelled-vs-unavailable decision; GET /jobs/{id}/judge enum extension confirmed additive/non-breaking; frontend JudgePanel condition is positive-match (fails safe on unknown value) per data-shape-contract.md:628, worth confirming against actual component code during implementation" }
+  - { id: "5.4", section: Review, title: "QA review", status: done, note: "qa-reviewer: approved. All 6 points pass (AC-1..AC-8 coverage, test-plan/IP mapping match, BR-73/timeout-tuple regression safety confirmed preserved, sequencing correctly states qa-judge-provider-consistency must land first, scope containment confirmed (BR-97 skip/main-loop cancellation/critique loop all untouched), tasks.yml consistent). Non-blocking: ci-gates.md left as unfilled stub — populate before implementation PR; tighten loose AC-3-vs-dribbling-fixture wording in test-plan Notes." }
+  - { id: "6.1", section: Verification, title: "Local gates", status: pending }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: pending }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: pending }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
