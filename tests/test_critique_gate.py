@@ -193,3 +193,111 @@ def test_heuristic_accepts_normal_revised_text():
     assert _heuristic_should_adopt(draft, revised), (
         f"Normal revised text should be accepted by heuristic"
     )
+
+
+# ---------------------------------------------------------------------------
+# batch-critique-qe-scoring AC-3: batched round scores map to the correct
+# segment by index (highest-risk detail — an off-by-one silently swaps which
+# segment's revised score is compared against which draft score).
+# ---------------------------------------------------------------------------
+
+def _get_batched_helper():
+    from app.backend.services.translation_service import _batched_critique_adopt
+    return _batched_critique_adopt
+
+
+def test_batched_round_scores_map_to_correct_segment_index():
+    """AC-3: a single score_blocks() call scoring 3 segments' pairs must map
+    each segment's own (draft, revised) scores back by index — not shifted by
+    one — and apply strict-greater-than / tie-keeps-draft per segment.
+
+    blocks layout built by _batched_critique_adopt is
+    [seg0_draft, seg0_revised, seg1_draft, seg1_revised, seg2_draft, seg2_revised]
+    Scores are scripted so each segment has a DIFFERENT, unambiguous outcome:
+      segment 0: revised(0.9) > draft(0.2)  -> adopt revised
+      segment 1: revised(0.5) == draft(0.5) -> tie keeps draft
+      segment 2: revised(0.1) < draft(0.8)  -> keep draft
+    An off-by-one pairing would produce a different combination than this
+    exact expected list.
+    """
+    _batched_critique_adopt = _get_batched_helper()
+
+    pairs = [
+        ("Src A", "Draft A", "Revised A"),
+        ("Src B", "Draft B", "Revised B"),
+        ("Src C", "Draft C", "Revised C"),
+    ]
+    # Flat scores in blocks order: [d0, r0, d1, r1, d2, r2]
+    scripted_scores = [0.2, 0.9, 0.5, 0.5, 0.8, 0.1]
+
+    with patch.object(_qe_mod, "load_model", return_value=MagicMock()), \
+         patch.object(_qe_mod, "score_blocks", return_value=scripted_scores) as mock_sb:
+        result = _batched_critique_adopt(pairs)
+
+    # Exactly one score_blocks() call for the whole batch, not one per segment.
+    assert mock_sb.call_count == 1
+
+    # Verify the flat blocks list passed to score_blocks matches the expected
+    # per-segment (src, draft)/(src, revised) pairing and order.
+    call_blocks = mock_sb.call_args[0][1]
+    assert call_blocks == [
+        ("Src A", "Draft A"), ("Src A", "Revised A"),
+        ("Src B", "Draft B"), ("Src B", "Revised B"),
+        ("Src C", "Draft C"), ("Src C", "Revised C"),
+    ], f"Unexpected blocks pairing/order: {call_blocks!r}"
+
+    assert result == ["Revised A", "Draft B", "Draft C"], (
+        f"Expected per-segment adoption [revised, draft(tie), draft] by exact "
+        f"index mapping; got {result!r}"
+    )
+
+
+def test_batched_adopt_empty_scores_keeps_all_drafts():
+    """AC-3/AC-1 resilience: score_blocks() returning [] (total failure) must
+    degrade every pending segment in the round to 'keep draft' — never crash,
+    never partially adopt."""
+    _batched_critique_adopt = _get_batched_helper()
+
+    pairs = [
+        ("Src A", "Draft A", "Revised A"),
+        ("Src B", "Draft B", "Revised B"),
+    ]
+
+    with patch.object(_qe_mod, "load_model", return_value=MagicMock()), \
+         patch.object(_qe_mod, "score_blocks", return_value=[]):
+        result = _batched_critique_adopt(pairs)
+
+    assert result == ["Draft A", "Draft B"], (
+        f"Expected all drafts kept when score_blocks returns []; got {result!r}"
+    )
+
+
+def test_batched_adopt_qe_unavailable_falls_back_to_heuristic_per_segment():
+    """AC-8: QE model load failure in the batched path must still fall back to
+    the deterministic length-ratio/fluency heuristic per segment, exactly as
+    _critique_gate_adopt's except-path does today."""
+    _batched_critique_adopt = _get_batched_helper()
+
+    pairs = [
+        ("Src A", "Hallo", "Hei"),  # passes heuristic (ratio ok)
+        ("Src B", "A" * 100, "A" * 400),  # fails heuristic (ratio > 3.0)
+    ]
+
+    with patch.object(_qe_mod, "load_model", side_effect=ImportError("no comet")):
+        result = _batched_critique_adopt(pairs)
+
+    assert result[0] == "Hei", "Segment A should adopt revised via heuristic pass"
+    assert result[1] == "A" * 100, "Segment B should keep draft via heuristic reject"
+
+
+def test_batched_adopt_empty_pairs_returns_empty_list_without_calling_score_blocks():
+    """No pending segments this round → no score_blocks() call at all."""
+    _batched_critique_adopt = _get_batched_helper()
+
+    with patch.object(_qe_mod, "load_model") as mock_load, \
+         patch.object(_qe_mod, "score_blocks") as mock_sb:
+        result = _batched_critique_adopt([])
+
+    assert result == []
+    mock_load.assert_not_called()
+    mock_sb.assert_not_called()

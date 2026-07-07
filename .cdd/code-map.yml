@@ -1,6 +1,6 @@
-# generated: 2026-07-07T14:07:13Z by cdd-kit 3.6.0
-# files: 193, src-lines: 53776, map-lines: 4969, compression: 10.8x
-# sources-digest: 16ee41c2162b51961c506dbf06f45fa5c81c91ab7920213fba301764ef2953e0
+# generated: 2026-07-07T15:24:43Z by cdd-kit 3.6.0
+# files: 193, src-lines: 55281, map-lines: 5032, compression: 11.0x
+# sources-digest: 8f168eae251f562f9b0bc56d6ab11d13da87a3377106b7f2bd244b13cc2dd4dc
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
@@ -261,7 +261,7 @@ app/backend/clients/openai_compatible_client.py:  # 422 lines
         - { name: set_runtime_options_override, lines: 417-418 }
         - { name: set_cache_variant, lines: 420-422 }
 
-app/backend/config.py:  # 557 lines
+app/backend/config.py:  # 566 lines
   imports:
     - { module: __future__, items: [annotations], line: 5 }
     - { module: logging, items: [], line: 7 }
@@ -324,67 +324,68 @@ app/backend/config.py:  # 557 lines
     - { name: LAYOUT_DETECTOR_ENABLED, line: 176 }
     - { name: PDF_RENDER_DPI, line: 181 }
     - { name: OCR_ENABLED, line: 186 }
-    - { name: TABLE_RECOGNITION_MODEL_PATH, line: 191 }
-    - { name: TABLE_RECOGNITION_ENABLED, line: 194 }
-    - { name: JUDGE_ENABLED, line: 199 }
-    - { name: JUDGE_PROVIDER, line: 204 }
-    - { name: JUDGE_MODEL, line: 208 }
-    - { name: JUDGE_LAYOUT_MODEL, line: 211 }
-    - { name: JUDGE_CLOUD_PROVIDER_ID, line: 214 }
-    - { name: JUDGE_MAX_ITERATIONS, line: 216 }
-    - { name: LAYOUT_PRESERVATION_MODE, line: 219 }
-    - { name: DEFAULT_FONT_FAMILY, line: 220 }
-    - { name: MIN_READABLE_FONT_PT, line: 221 }
-    - { name: MIN_FONT_SIZE_PT, line: 222 }
-    - { name: MAX_FONT_SIZE_PT, line: 223 }
-    - { name: FONT_SIZE_SHRINK_FACTOR, line: 224 }
-    - { name: PDF_DRAW_MASK, line: 225 }
-    - { name: PDF_MASK_MARGIN_PT, line: 226 }
-    - { name: PDF_SHOW_MISSING_PLACEHOLDER, line: 227 }
-    - { name: FONT_SIZE_CONFIG, line: 231 }
-    - { name: MAX_SEGMENTS, line: 244 }
-    - { name: MAX_TEXT_LENGTH, line: 245 }
-    - { name: MAX_JOBS_IN_MEMORY, line: 248 }
-    - { name: JOB_TTL_HOURS, line: 249 }
-    - { name: CLEANUP_INTERVAL_MINUTES, line: 250 }
-    - { name: HTTP_POOL_CONNECTIONS, line: 253 }
-    - { name: HTTP_POOL_MAXSIZE, line: 254 }
-    - { name: ENV_CONNECT_TIMEOUT, line: 256 }
-    - { name: ENV_READ_TIMEOUT, line: 257 }
-    - { name: LIBREOFFICE_PATH, line: 260 }
-    - { name: LIBREOFFICE_TIMEOUT, line: 261 }
-    - { name: VERIFY_MAX_RETRIES, line: 263 }
-    - { name: TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED, line: 266 }
-    - { name: TERM_INJECT_CONF_THRESHOLD, line: 267 }
-    - { name: TERM_EMBEDDING_MODEL, line: 270 }
-    - { name: TERM_EMBEDDING_THRESHOLD, line: 271 }
-    - { name: TERM_EXTRACTION_MODEL, line: 272 }
-    - { name: SUPPORTED_EXTENSIONS, line: 274 }
-    - { name: LANG_CODE_MAP, line: 276 }
-    - { name: DATA_DIR, line: 348 }
-    - { name: JOBS_DIR, line: 349 }
-    - { name: LOG_DIR, line: 350 }
-    - { name: TRANSLATION_CACHE_ENABLED, line: 351 }
-    - { name: CACHE_DIR, line: 352 }
-    - { name: DEFAULT_HOST, line: 354 }
-    - { name: DEFAULT_PORT, line: 355 }
-    - { name: ALLOWED_ORIGINS, line: 357 }
+    - { name: PDF_TABLE_ROW_GROWTH_ENABLED, line: 195 }
+    - { name: TABLE_RECOGNITION_MODEL_PATH, line: 200 }
+    - { name: TABLE_RECOGNITION_ENABLED, line: 203 }
+    - { name: JUDGE_ENABLED, line: 208 }
+    - { name: JUDGE_PROVIDER, line: 213 }
+    - { name: JUDGE_MODEL, line: 217 }
+    - { name: JUDGE_LAYOUT_MODEL, line: 220 }
+    - { name: JUDGE_CLOUD_PROVIDER_ID, line: 223 }
+    - { name: JUDGE_MAX_ITERATIONS, line: 225 }
+    - { name: LAYOUT_PRESERVATION_MODE, line: 228 }
+    - { name: DEFAULT_FONT_FAMILY, line: 229 }
+    - { name: MIN_READABLE_FONT_PT, line: 230 }
+    - { name: MIN_FONT_SIZE_PT, line: 231 }
+    - { name: MAX_FONT_SIZE_PT, line: 232 }
+    - { name: FONT_SIZE_SHRINK_FACTOR, line: 233 }
+    - { name: PDF_DRAW_MASK, line: 234 }
+    - { name: PDF_MASK_MARGIN_PT, line: 235 }
+    - { name: PDF_SHOW_MISSING_PLACEHOLDER, line: 236 }
+    - { name: FONT_SIZE_CONFIG, line: 240 }
+    - { name: MAX_SEGMENTS, line: 253 }
+    - { name: MAX_TEXT_LENGTH, line: 254 }
+    - { name: MAX_JOBS_IN_MEMORY, line: 257 }
+    - { name: JOB_TTL_HOURS, line: 258 }
+    - { name: CLEANUP_INTERVAL_MINUTES, line: 259 }
+    - { name: HTTP_POOL_CONNECTIONS, line: 262 }
+    - { name: HTTP_POOL_MAXSIZE, line: 263 }
+    - { name: ENV_CONNECT_TIMEOUT, line: 265 }
+    - { name: ENV_READ_TIMEOUT, line: 266 }
+    - { name: LIBREOFFICE_PATH, line: 269 }
+    - { name: LIBREOFFICE_TIMEOUT, line: 270 }
+    - { name: VERIFY_MAX_RETRIES, line: 272 }
+    - { name: TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED, line: 275 }
+    - { name: TERM_INJECT_CONF_THRESHOLD, line: 276 }
+    - { name: TERM_EMBEDDING_MODEL, line: 279 }
+    - { name: TERM_EMBEDDING_THRESHOLD, line: 280 }
+    - { name: TERM_EXTRACTION_MODEL, line: 281 }
+    - { name: SUPPORTED_EXTENSIONS, line: 283 }
+    - { name: LANG_CODE_MAP, line: 285 }
+    - { name: DATA_DIR, line: 357 }
+    - { name: JOBS_DIR, line: 358 }
+    - { name: LOG_DIR, line: 359 }
+    - { name: TRANSLATION_CACHE_ENABLED, line: 360 }
+    - { name: CACHE_DIR, line: 361 }
+    - { name: DEFAULT_HOST, line: 363 }
+    - { name: DEFAULT_PORT, line: 364 }
+    - { name: ALLOWED_ORIGINS, line: 366 }
   classes:
     - name: ModelType
       lines: 18-22
     - name: TimeoutConfig
-      lines: 364-417
+      lines: 373-426
       methods:
-        - { name: set_from_config, lines: 372-374 }
-        - { name: set_timeouts, lines: 376-378 }
-        - { name: clear_runtime_overrides, lines: 380-382 }
-        - { name: connect_timeout, lines: 385-398 }
-        - { name: read_timeout, lines: 401-414 }
-        - { name: get_timeout_tuple, lines: 416-417 }
+        - { name: set_from_config, lines: 381-383 }
+        - { name: set_timeouts, lines: 385-387 }
+        - { name: clear_runtime_overrides, lines: 389-391 }
+        - { name: connect_timeout, lines: 394-407 }
+        - { name: read_timeout, lines: 410-423 }
+        - { name: get_timeout_tuple, lines: 425-426 }
   functions:
-    - { name: _expand_env_vars, lines: 431-458 }
-    - { name: _expand_node, lines: 461-488 }
-    - { name: load_providers_config, lines: 491-557 }
+    - { name: _expand_env_vars, lines: 440-467 }
+    - { name: _expand_node, lines: 470-497 }
+    - { name: load_providers_config, lines: 500-566 }
 
 app/backend/main.py:  # 64 lines
   imports:
@@ -582,7 +583,7 @@ app/backend/parsers/ocr_backend.py:  # 70 lines
     - { name: _run_with_surya, lines: 59-64 }
     - { name: _run_with_paddleocr, lines: 67-70 }
 
-app/backend/parsers/pdf_parser.py:  # 959 lines
+app/backend/parsers/pdf_parser.py:  # 1051 lines
   imports:
     - { module: __future__, items: [annotations], line: 7 }
     - { module: logging, items: [], line: 9 }
@@ -591,12 +592,12 @@ app/backend/parsers/pdf_parser.py:  # 959 lines
     - { module: typing, items: [Any, Dict, List, Optional, Tuple], line: 12 }
     - { module: app.backend.models.translatable_document, items: [BoundingBox, DocumentMetadata, ElementType, PageInfo, StyleInfo, TranslatableDocument, TranslatableElement], line: 19 }
     - { module: os, items: [], line: 28 }
-    - { module: app.backend.config, items: [LAYOUT_DETECTOR_MODEL_PATH, PDF_RENDER_DPI], line: 30 }
+    - { module: app.backend.config, items: [LAYOUT_DETECTOR_MODEL_PATH, MIN_READABLE_FONT_PT, PDF_RENDER_DPI], line: 30 }
     - { module: app.backend.parsers.base, items: [BaseParser], line: 31 }
     - { module: app.backend.utils.bbox_utils, items: [is_header_footer_region, normalize_bbox], line: 32 }
   classes:
     - name: PyMuPDFParser
-      lines: 37-946
+      lines: 37-1038
       methods:
         - { name: __init__, lines: 48-68 }
         - { name: supported_extensions, lines: 71-73 }
@@ -604,18 +605,20 @@ app/backend/parsers/pdf_parser.py:  # 959 lines
         - { name: _extract_page_elements, lines: 183-300 }
         - { name: _extract_style_info, lines: 302-345 }
         - { name: _color_to_hex, lines: 347-359 }
-        - { name: _detect_and_mark_tables, lines: 361-464 }
-        - { name: _spans_multiple_cells, lines: 467-485 }
-        - { name: _split_elements_by_cells, lines: 487-605 }
-        - { name: _build_cell_grid, lines: 608-644 }
-        - { name: _locate_cell, lines: 647-657 }
-        - { name: _is_inside, lines: 659-667 }
-        - { name: _run_layout_detector, lines: 669-797 }
-        - { name: _run_table_recognizer, lines: 799-889 }
-        - { name: _sort_by_reading_order, lines: 892-912 }
-        - { name: _extract_metadata, lines: 914-946 }
+        - { name: _detect_and_mark_tables, lines: 361-487 }
+        - { name: _find_tables_with_fallback, lines: 489-523 }
+        - { name: _table_passes_sanity_gate, lines: 525-556 }
+        - { name: _spans_multiple_cells, lines: 559-577 }
+        - { name: _split_elements_by_cells, lines: 579-697 }
+        - { name: _build_cell_grid, lines: 700-736 }
+        - { name: _locate_cell, lines: 739-749 }
+        - { name: _is_inside, lines: 751-759 }
+        - { name: _run_layout_detector, lines: 761-889 }
+        - { name: _run_table_recognizer, lines: 891-981 }
+        - { name: _sort_by_reading_order, lines: 984-1004 }
+        - { name: _extract_metadata, lines: 1006-1038 }
   functions:
-    - { name: extract_text_with_bbox, lines: 949-959 }
+    - { name: extract_text_with_bbox, lines: 1041-1051 }
 
 app/backend/parsers/pptx_parser.py:  # 379 lines
   imports:
@@ -780,7 +783,7 @@ app/backend/processors/orchestrator.py:  # 909 lines
     - { name: _output_name, lines: 341-367 }
     - { name: process_files, lines: 370-909 }
 
-app/backend/processors/pdf_processor.py:  # 1114 lines
+app/backend/processors/pdf_processor.py:  # 1164 lines
   imports:
     - { module: __future__, items: [annotations], line: 8 }
     - { module: logging, items: [], line: 10 }
@@ -791,28 +794,30 @@ app/backend/processors/pdf_processor.py:  # 1114 lines
     - { module: docx, items: [], line: 16 }
     - { module: PyPDF2, items: [PdfReader], line: 17 }
     - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 19 }
-    - { module: app.backend.config, items: [MAX_SEGMENTS, MAX_TEXT_LENGTH, PDF_DRAW_MASK, PDF_HEADER_FOOTER_MARGIN_PT, PDF_PARSER_ENGINE, PDF_SKIP_HEADER_FOOTER], line: 20 }
-    - { module: app.backend.processors.com_helpers, items: [is_win32com_available, word_convert], line: 28 }
-    - { module: app.backend.processors.docx_processor, items: [translate_docx], line: 29 }
-    - { module: app.backend.utils.exceptions, items: [check_document_size_limits], line: 30 }
-    - { module: app.backend.utils.translation_helpers, items: [translate_blocks_batch], line: 31 }
+    - { module: app.backend.config, items: [MAX_SEGMENTS, MAX_TEXT_LENGTH, PDF_DRAW_MASK, PDF_HEADER_FOOTER_MARGIN_PT, PDF_PARSER_ENGINE, PDF_SKIP_HEADER_FOOTER, PDF_TABLE_ROW_GROWTH_ENABLED], line: 20 }
+    - { module: app.backend.processors.com_helpers, items: [is_win32com_available, word_convert], line: 29 }
+    - { module: app.backend.processors.docx_processor, items: [translate_docx], line: 30 }
+    - { module: app.backend.utils.exceptions, items: [check_document_size_limits], line: 31 }
+    - { module: app.backend.utils.translation_helpers, items: [translate_blocks_batch], line: 32 }
   constants:
-    - { name: FITZ_FALLBACK_WARNING, line: 40 }
-    - { name: DOCX_ROUTING_WARNING, line: 44 }
+    - { name: FITZ_FALLBACK_WARNING, line: 41 }
+    - { name: DOCX_ROUTING_WARNING, line: 45 }
+    - { name: TEXT_TRUNCATION_WARNING_TEMPLATE, line: 53 }
   functions:
-    - { name: _apply_formula_passthrough, lines: 49-66 }
-    - { name: _group_table_elements, lines: 69-92 }
-    - { name: _translate_pdf_tables_with_context, lines: 95-198 }
-    - { name: _get_pymupdf_parser, lines: 205-219 }
-    - { name: _save_layout_viz, lines: 222-272 }
-    - { name: translate_pdf, lines: 275-404 }
-    - { name: _translate_pdf_with_pymupdf, lines: 407-647 }
-    - { name: _translate_pdf_with_pypdf2, lines: 650-770 }
-    - { name: _translate_pdf_to_pdf, lines: 773-984 }
-    - { name: _run_fitz_render, lines: 991-1008 }
-    - { name: _run_reportlab_render, lines: 1011-1032 }
-    - { name: _dispatch_render, lines: 1035-1085 }
-    - { name: parse_pdf_to_document, lines: 1088-1114 }
+    - { name: _apply_formula_passthrough, lines: 58-75 }
+    - { name: _group_table_elements, lines: 78-101 }
+    - { name: _translate_pdf_tables_with_context, lines: 104-207 }
+    - { name: _get_pymupdf_parser, lines: 214-228 }
+    - { name: _save_layout_viz, lines: 231-281 }
+    - { name: translate_pdf, lines: 284-413 }
+    - { name: _translate_pdf_with_pymupdf, lines: 416-656 }
+    - { name: _translate_pdf_with_pypdf2, lines: 659-779 }
+    - { name: _translate_pdf_to_pdf, lines: 782-993 }
+    - { name: _run_fitz_render, lines: 1000-1017 }
+    - { name: _run_reportlab_render, lines: 1020-1041 }
+    - { name: _dispatch_render, lines: 1044-1110 }
+    - { name: _emit_truncation_disclosure_warning, lines: 1113-1135 }
+    - { name: parse_pdf_to_document, lines: 1138-1164 }
 
 app/backend/processors/pptx_processor.py:  # 481 lines
   imports:
@@ -894,19 +899,22 @@ app/backend/renderers/base.py:  # 64 lines
         - { name: output_extension, lines: 58-60 }
         - { name: supports_mode, lines: 62-64 }
 
-app/backend/renderers/bbox_reflow.py:  # 131 lines
+app/backend/renderers/bbox_reflow.py:  # 223 lines
   imports:
     - { module: __future__, items: [annotations], line: 19 }
     - { module: dataclasses, items: [dataclass], line: 21 }
-    - { module: typing, items: [TYPE_CHECKING, List, Optional], line: 22 }
+    - { module: typing, items: [TYPE_CHECKING, Dict, List, Optional], line: 22 }
+    - { module: app.backend.models.translatable_document, items: [ElementType], line: 24 }
   classes:
     - name: Placement
-      lines: 35-50
+      lines: 37-57
   functions:
-    - { name: reflow_element, lines: 53-100 }
-    - { name: reflow_document, lines: 103-131 }
+    - { name: _x_ranges_overlap, lines: 60-62 }
+    - { name: _compute_whitespace_below, lines: 65-113 }
+    - { name: reflow_element, lines: 116-179 }
+    - { name: reflow_document, lines: 182-223 }
 
-app/backend/renderers/coordinate_renderer.py:  # 324 lines
+app/backend/renderers/coordinate_renderer.py:  # 330 lines
   imports:
     - { module: __future__, items: [annotations], line: 7 }
     - { module: logging, items: [], line: 9 }
@@ -921,18 +929,18 @@ app/backend/renderers/coordinate_renderer.py:  # 324 lines
     - { module: app.backend.utils.font_utils, items: [get_font_for_language, register_fonts], line: 25 }
   classes:
     - name: CoordinateRenderer
-      lines: 33-300
+      lines: 33-306
       methods:
         - { name: __init__, lines: 43-58 }
         - { name: supported_modes, lines: 61-63 }
         - { name: output_extension, lines: 66-68 }
         - { name: render, lines: 70-100 }
         - { name: _render_overlay, lines: 102-180 }
-        - { name: _render_side_by_side, lines: 182-300 }
+        - { name: _render_side_by_side, lines: 182-306 }
   functions:
-    - { name: render_to_pdf, lines: 303-324 }
+    - { name: render_to_pdf, lines: 309-330 }
 
-app/backend/renderers/fitz_renderer.py:  # 740 lines
+app/backend/renderers/fitz_renderer.py:  # 750 lines
   imports:
     - { module: __future__, items: [annotations], line: 12 }
     - { module: functools, items: [], line: 14 }
@@ -952,24 +960,24 @@ app/backend/renderers/fitz_renderer.py:  # 740 lines
     - { module: app.backend.utils.font_utils, items: [get_font_for_language, register_fonts], line: 40 }
   classes:
     - name: PDFGenerator
-      lines: 127-714
+      lines: 127-724
       methods:
         - { name: __init__, lines: 138-158 }
         - { name: missing_translation_count, lines: 161-163 }
         - { name: missing_translations, lines: 166-168 }
         - { name: _get_font_config, lines: 170-184 }
         - { name: generate, lines: 186-223 }
-        - { name: _generate_overlay, lines: 225-362 }
-        - { name: _get_font_file, lines: 364-405 }
-        - { name: _insert_text_in_rect, lines: 407-552 }
-        - { name: _generate_side_by_side, lines: 554-669 }
-        - { name: _create_page_overlay, lines: 671-714 }
+        - { name: _generate_overlay, lines: 225-367 }
+        - { name: _get_font_file, lines: 369-410 }
+        - { name: _insert_text_in_rect, lines: 412-562 }
+        - { name: _generate_side_by_side, lines: 564-679 }
+        - { name: _create_page_overlay, lines: 681-724 }
   functions:
     - { name: _load_font_buffer, lines: 62-74 }  # @functools.lru_cache(maxsize=None)
     - { name: clear_font_cache, lines: 77-82 }
     - { name: _get_lang_code, lines: 85-109 }
     - { name: _ensure_fitz, lines: 112-124 }
-    - { name: generate_translated_pdf, lines: 717-740 }
+    - { name: generate_translated_pdf, lines: 727-750 }
 
 app/backend/renderers/inline_renderer.py:  # 303 lines
   imports:
@@ -1005,40 +1013,44 @@ app/backend/renderers/pdf_generator.py:  # 28 lines
     - { module: typing, items: [TYPE_CHECKING], line: 13 }
     - { module: app.backend.renderers.fitz_renderer, items: [PDFGenerator, generate_translated_pdf, _ensure_fitz, _load_font_buffer, _get_lang_code, clear_font_cache], line: 16 }
 
-app/backend/renderers/text_region_renderer.py:  # 722 lines
+app/backend/renderers/text_region_renderer.py:  # 915 lines
   imports:
     - { module: __future__, items: [annotations], line: 16 }
     - { module: logging, items: [], line: 18 }
     - { module: math, items: [], line: 19 }
     - { module: dataclasses, items: [dataclass], line: 20 }
-    - { module: typing, items: [TYPE_CHECKING, List, Optional, Tuple], line: 21 }
+    - { module: typing, items: [TYPE_CHECKING, Any, Dict, List, Optional, Tuple], line: 21 }
     - { module: reportlab.lib.colors, items: [Color, white], line: 23 }
     - { module: reportlab.pdfgen.canvas, items: [Canvas], line: 24 }
-    - { module: app.backend.config, items: [MIN_FONT_SIZE_PT], line: 26 }
-    - { module: app.backend.utils.font_utils, items: [calculate_text_width, detect_text_direction, fit_text_to_bbox, get_font_for_language, register_fonts], line: 27 }
+    - { module: app.backend.config, items: [FONT_SIZE_CONFIG, MIN_FONT_SIZE_PT, PDF_HEADER_FOOTER_MARGIN_PT], line: 26 }
+    - { module: app.backend.models.translatable_document, items: [ElementType], line: 27 }
+    - { module: app.backend.utils.font_utils, items: [calculate_text_width, detect_text_direction, get_font_for_language, register_fonts], line: 28 }
   classes:
     - name: CascadeDecision
-      lines: 47-77
+      lines: 52-82
     - name: TextRegion
-      lines: 399-462
+      lines: 404-477
       methods:
-        - { name: width, lines: 413-415 }
-        - { name: height, lines: 418-420 }
-        - { name: center_x, lines: 423-425 }
-        - { name: center_y, lines: 428-430 }
-        - { name: from_bbox, lines: 433-462 }
+        - { name: width, lines: 420-422 }
+        - { name: height, lines: 425-427 }
+        - { name: center_x, lines: 430-432 }
+        - { name: center_y, lines: 435-437 }
+        - { name: from_bbox, lines: 440-477 }
   functions:
-    - { name: _text_line_height, lines: 84-86 }
-    - { name: _measure_text_block, lines: 89-106 }
-    - { name: _split_oversized_token, lines: 109-129 }
-    - { name: _wrap_lines_simple, lines: 132-163 }
-    - { name: _truncate_to_fit, lines: 166-214 }
-    - { name: fit_text_cascade, lines: 221-395 }
-    - { name: calculate_rotation_from_bbox, lines: 465-488 }
-    - { name: render_text_region, lines: 491-603 }
-    - { name: render_text_regions, lines: 606-643 }
-    - { name: create_text_regions_from_elements, lines: 646-693 }
-    - { name: create_text_regions_from_placements, lines: 696-722 }
+    - { name: _text_line_height, lines: 89-91 }
+    - { name: _measure_text_block, lines: 94-111 }
+    - { name: _split_oversized_token, lines: 114-134 }
+    - { name: _wrap_lines_simple, lines: 137-168 }
+    - { name: _truncate_to_fit, lines: 171-219 }
+    - { name: fit_text_cascade, lines: 226-400 }
+    - { name: calculate_rotation_from_bbox, lines: 480-503 }
+    - { name: render_text_region, lines: 506-656 }
+    - { name: render_text_regions, lines: 659-696 }
+    - { name: create_text_regions_from_elements, lines: 699-748 }
+    - { name: create_text_regions_from_placements, lines: 751-785 }
+    - { name: _shift_cell_down, lines: 793-805 }
+    - { name: _required_row_height, lines: 808-819 }
+    - { name: grow_table_rows, lines: 822-915 }
 
 app/backend/services/__init__.py:  # 0 lines
 
@@ -1327,7 +1339,7 @@ app/backend/services/translation_cache.py:  # 265 lines
     - { name: _make_key, lines: 26-34 }
     - { name: get_cache, lines: 251-265 }
 
-app/backend/services/translation_service.py:  # 774 lines
+app/backend/services/translation_service.py:  # 870 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: logging, items: [], line: 5 }
@@ -1342,12 +1354,13 @@ app/backend/services/translation_service.py:  # 774 lines
   functions:
     - { name: _heuristic_should_adopt, lines: 42-56 }
     - { name: _critique_gate_adopt, lines: 59-96 }
-    - { name: _ensure_opencc_s2t, lines: 103-114 }
-    - { name: _convert_to_traditional, lines: 117-129 }
-    - { name: _is_traditional_chinese_target, lines: 132-135 }
-    - { name: translate_texts, lines: 138-452 }
-    - { name: translate_document, lines: 459-620 }
-    - { name: translate_table_cells, lines: 627-774 }
+    - { name: _batched_critique_adopt, lines: 99-165 }
+    - { name: _ensure_opencc_s2t, lines: 172-183 }
+    - { name: _convert_to_traditional, lines: 186-198 }
+    - { name: _is_traditional_chinese_target, lines: 201-204 }
+    - { name: translate_texts, lines: 207-548 }
+    - { name: translate_document, lines: 555-716 }
+    - { name: translate_table_cells, lines: 723-870 }
 
 app/backend/services/translation_strategy.py:  # 349 lines
   imports:
@@ -2323,7 +2336,7 @@ tests/test_context_window_segments.py:  # 252 lines
     - { name: test_build_context_prefix_uses_available_neighbors_at_last_segment, lines: 216-222 }
     - { name: test_context_constants_are_imported_in_pipeline, lines: 229-252 }
 
-tests/test_coordinate_renderer.py:  # 405 lines
+tests/test_coordinate_renderer.py:  # 564 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: os, items: [], line: 5 }
@@ -2334,7 +2347,7 @@ tests/test_coordinate_renderer.py:  # 405 lines
     - { module: app.backend.models.translatable_document, items: [BoundingBox, DocumentMetadata, ElementType, PageInfo, TranslatableDocument, TranslatableElement], line: 15 }
   classes:
     - name: TestCoordinateRenderer
-      lines: 74-222
+      lines: 74-344
       methods:
         - { name: test_init_default, lines: 77-81 }
         - { name: test_init_custom, lines: 83-90 }
@@ -2346,18 +2359,21 @@ tests/test_coordinate_renderer.py:  # 405 lines
         - { name: test_render_empty_translations, lines: 166-182 }
         - { name: test_render_partial_translations, lines: 184-203 }
         - { name: test_render_with_log_callback, lines: 205-222 }
+        - { name: test_render_side_by_side_mode_wraps_long_text, lines: 224-283 }
+        - { name: test_render_overlay_mode_fallback_wraps_long_text, lines: 285-344 }
     - name: TestRenderToPdf
-      lines: 225-276
+      lines: 347-398
       methods:
-        - { name: test_render_to_pdf_overlay, lines: 228-246 }
-        - { name: test_render_to_pdf_side_by_side, lines: 248-261 }
-        - { name: test_render_to_pdf_invalid_mode, lines: 263-276 }
+        - { name: test_render_to_pdf_overlay, lines: 350-368 }
+        - { name: test_render_to_pdf_side_by_side, lines: 370-383 }
+        - { name: test_render_to_pdf_invalid_mode, lines: 385-398 }
     - name: TestCoordinateRendererEdgeCases
-      lines: 279-405
+      lines: 401-564
       methods:
-        - { name: test_document_without_pages_info, lines: 282-316 }
-        - { name: test_elements_without_bbox, lines: 318-362 }
-        - { name: test_multipage_document, lines: 364-405 }
+        - { name: test_document_without_pages_info, lines: 404-438 }
+        - { name: test_elements_without_bbox, lines: 440-484 }
+        - { name: test_multipage_document, lines: 486-527 }
+        - { name: test_side_by_side_unfittable_text_sets_render_truncated, lines: 529-564 }
   functions:
     - { name: create_test_document, lines: 25-71 }
 
@@ -3574,7 +3590,7 @@ tests/test_output_mode_processors.py:  # 841 lines
     - { name: test_pptx_smartart_replace_text_not_appended, lines: 765-797 }
     - { name: test_multi_target_output_mode_clamped_to_append, lines: 804-841 }
 
-tests/test_pdf_generator.py:  # 818 lines
+tests/test_pdf_generator.py:  # 856 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: os, items: [], line: 5 }
@@ -3591,7 +3607,7 @@ tests/test_pdf_generator.py:  # 818 lines
       methods:
         - { name: test_ensure_fitz_returns_module, lines: 114-118 }
     - name: TestPDFGenerator
-      lines: 122-346
+      lines: 122-384
       methods:
         - { name: test_init_default, lines: 125-129 }
         - { name: test_init_custom, lines: 131-138 }
@@ -3603,40 +3619,41 @@ tests/test_pdf_generator.py:  # 818 lines
         - { name: test_generate_empty_translations, lines: 277-298 }
         - { name: test_generate_partial_translations, lines: 300-324 }
         - { name: test_generate_without_mask, lines: 326-346 }
+        - { name: test_insert_text_in_rect_reads_placement_whitespace_not_literal_zero, lines: 348-384 }
     - name: TestGenerateTranslatedPdf
-      lines: 350-453
+      lines: 388-491
       methods:
-        - { name: test_generate_translated_pdf_overlay, lines: 353-380 }
-        - { name: test_generate_translated_pdf_side_by_side, lines: 382-404 }
-        - { name: test_generate_translated_pdf_invalid_mode, lines: 406-427 }
-        - { name: test_generate_translated_pdf_with_log, lines: 429-453 }
+        - { name: test_generate_translated_pdf_overlay, lines: 391-418 }
+        - { name: test_generate_translated_pdf_side_by_side, lines: 420-442 }
+        - { name: test_generate_translated_pdf_invalid_mode, lines: 444-465 }
+        - { name: test_generate_translated_pdf_with_log, lines: 467-491 }
     - name: TestPDFGeneratorEdgeCases
-      lines: 457-566
+      lines: 495-604
       methods:
-        - { name: test_page_with_no_elements, lines: 460-482 }
-        - { name: test_elements_on_second_page_only, lines: 484-506 }
-        - { name: test_multiline_text, lines: 508-544 }
-        - { name: test_different_target_languages, lines: 546-566 }
+        - { name: test_page_with_no_elements, lines: 498-520 }
+        - { name: test_elements_on_second_page_only, lines: 522-544 }
+        - { name: test_multiline_text, lines: 546-582 }
+        - { name: test_different_target_languages, lines: 584-604 }
     - name: TestFontBufferCache
-      lines: 569-702
+      lines: 607-740
       methods:
-        - { name: setup_method, lines: 572-574 }
-        - { name: test_first_call_reads_disk_once, lines: 580-589 }
-        - { name: test_second_call_hits_cache_not_disk, lines: 595-607 }
-        - { name: test_distinct_paths_cached_independently, lines: 613-628 }
-        - { name: test_cached_and_uncached_render_output_equivalent, lines: 634-651 }
-        - { name: test_error_path_does_not_cache_bad_buffer, lines: 657-677 }
-        - { name: test_cache_reset_between_tests, lines: 683-702 }
+        - { name: setup_method, lines: 610-612 }
+        - { name: test_first_call_reads_disk_once, lines: 618-627 }
+        - { name: test_second_call_hits_cache_not_disk, lines: 633-645 }
+        - { name: test_distinct_paths_cached_independently, lines: 651-666 }
+        - { name: test_cached_and_uncached_render_output_equivalent, lines: 672-689 }
+        - { name: test_error_path_does_not_cache_bad_buffer, lines: 695-715 }
+        - { name: test_cache_reset_between_tests, lines: 721-740 }
     - name: TestFallbackPath
-      lines: 709-818
+      lines: 747-856
       methods:
-        - { name: test_fallback_path_invoked_when_fitz_import_fails, lines: 716-769 }
-        - { name: test_fallback_path_warning_logged, lines: 771-818 }
+        - { name: test_fallback_path_invoked_when_fitz_import_fails, lines: 754-807 }
+        - { name: test_fallback_path_warning_logged, lines: 809-856 }
   functions:
     - { name: create_test_pdf, lines: 38-59 }
     - { name: create_test_document, lines: 62-107 }
 
-tests/test_pdf_layout_refactor.py:  # 660 lines
+tests/test_pdf_layout_refactor.py:  # 815 lines
   imports:
     - { module: __future__, items: [annotations], line: 9 }
     - { module: logging, items: [], line: 11 }
@@ -3648,61 +3665,74 @@ tests/test_pdf_layout_refactor.py:  # 660 lines
     - { module: app.backend.models.translatable_document, items: [BoundingBox, DocumentMetadata, ElementType, PageInfo, StyleInfo, TranslatableDocument, TranslatableElement], line: 19 }
   classes:
     - name: TestBboxWhitening
-      lines: 77-163
+      lines: 82-168
       methods:
-        - { name: _setup_fitz_mocks, lines: 80-98 }
-        - { name: test_bbox_whitening_uses_rect_not_search_for, lines: 100-133 }
-        - { name: test_whitening_non_latin_no_bleed, lines: 135-163 }
+        - { name: _setup_fitz_mocks, lines: 85-103 }
+        - { name: test_bbox_whitening_uses_rect_not_search_for, lines: 105-138 }
+        - { name: test_whitening_non_latin_no_bleed, lines: 140-168 }
     - name: TestParagraphAggregation
-      lines: 170-234
+      lines: 175-239
       methods:
-        - { name: test_paragraph_aggregation_reduces_element_count, lines: 173-209 }
-        - { name: test_aggregated_element_has_lines_metadata, lines: 211-234 }
+        - { name: test_paragraph_aggregation_reduces_element_count, lines: 178-214 }
+        - { name: test_aggregated_element_has_lines_metadata, lines: 216-239 }
     - name: TestIterativeScaleFit
-      lines: 241-291
+      lines: 246-296
       methods:
-        - { name: test_min_readable_font_pt_in_config, lines: 244-250 }
-        - { name: test_scale_fit_stays_above_readable_floor, lines: 252-266 }
-        - { name: test_scale_fit_truncated_only_at_8pt_overflow, lines: 268-277 }
-        - { name: test_iterative_scale_fit_finds_valid_font, lines: 279-291 }
+        - { name: test_min_readable_font_pt_in_config, lines: 249-255 }
+        - { name: test_scale_fit_stays_above_readable_floor, lines: 257-271 }
+        - { name: test_scale_fit_truncated_only_at_8pt_overflow, lines: 273-282 }
+        - { name: test_iterative_scale_fit_finds_valid_font, lines: 284-296 }
     - name: TestSpanStyleFidelity
-      lines: 298-385
+      lines: 303-390
       methods:
-        - { name: test_styleinfo_has_is_underline_field, lines: 301-305 }
-        - { name: test_is_underline_backward_compat_from_dict, lines: 307-319 }
-        - { name: test_is_underline_in_to_dict, lines: 321-326 }
-        - { name: test_is_underline_roundtrip, lines: 328-332 }
-        - { name: test_span_bold_preserved, lines: 334-339 }
-        - { name: test_span_color_preserved, lines: 341-385 }
+        - { name: test_styleinfo_has_is_underline_field, lines: 306-310 }
+        - { name: test_is_underline_backward_compat_from_dict, lines: 312-324 }
+        - { name: test_is_underline_in_to_dict, lines: 326-331 }
+        - { name: test_is_underline_roundtrip, lines: 333-337 }
+        - { name: test_span_bold_preserved, lines: 339-344 }
+        - { name: test_span_color_preserved, lines: 346-390 }
     - name: TestReadingOrderModel
-      lines: 392-445
+      lines: 397-450
       methods:
-        - { name: test_layout_reader_is_importable, lines: 395-398 }
-        - { name: test_reading_order_column_assignment_two_column, lines: 400-428 }
-        - { name: test_reading_order_single_column, lines: 430-445 }
+        - { name: test_layout_reader_is_importable, lines: 400-403 }
+        - { name: test_reading_order_column_assignment_two_column, lines: 405-433 }
+        - { name: test_reading_order_single_column, lines: 435-450 }
     - name: TestDpiUpgrade
-      lines: 452-517
+      lines: 457-522
       methods:
-        - { name: test_pdf_render_dpi_in_config, lines: 455-459 }
-        - { name: test_pdf_render_dpi_matrix_scaling, lines: 461-498 }
-        - { name: test_high_dpi_pixel_dimensions, lines: 500-517 }
+        - { name: test_pdf_render_dpi_in_config, lines: 460-464 }
+        - { name: test_pdf_render_dpi_matrix_scaling, lines: 466-503 }
+        - { name: test_high_dpi_pixel_dimensions, lines: 505-522 }
     - name: TestFormulaAndOcr
-      lines: 524-660
+      lines: 529-665
       methods:
-        - { name: test_formula_pass_through, lines: 527-539 }
-        - { name: test_formula_only_page_no_translation, lines: 541-553 }
-        - { name: test_formula_pass_through_on_heuristic_path, lines: 555-570 }
-        - { name: test_ocr_backend_importable, lines: 572-575 }
-        - { name: test_ocr_absent_no_crash, lines: 577-585 }
-        - { name: test_ocr_absent_produces_warning_not_crash, lines: 587-595 }
-        - { name: test_empty_page_text_triggers_ocr_check, lines: 597-628 }
-        - { name: test_ocr_enabled_in_config, lines: 630-635 }
-        - { name: test_table_recognition_disabled_unaffected, lines: 637-660 }
+        - { name: test_formula_pass_through, lines: 532-544 }
+        - { name: test_formula_only_page_no_translation, lines: 546-558 }
+        - { name: test_formula_pass_through_on_heuristic_path, lines: 560-575 }
+        - { name: test_ocr_backend_importable, lines: 577-580 }
+        - { name: test_ocr_absent_no_crash, lines: 582-590 }
+        - { name: test_ocr_absent_produces_warning_not_crash, lines: 592-600 }
+        - { name: test_empty_page_text_triggers_ocr_check, lines: 602-633 }
+        - { name: test_ocr_enabled_in_config, lines: 635-640 }
+        - { name: test_table_recognition_disabled_unaffected, lines: 642-665 }
+    - name: TestAvailableWhitespaceBelow
+      lines: 673-709
+      methods:
+        - { name: test_reflow_element_computes_nonzero_gap_below_same_column, lines: 676-697 }
+        - { name: test_reflow_document_zero_gap_last_row_or_no_neighbor, lines: 699-709 }
+    - name: TestBoundedRowGrowth
+      lines: 717-815
+      methods:
+        - { name: _table_cell, lines: 721-727 }
+        - { name: test_single_table_row_grows_and_shifts_only_same_table_id_lower_rows, lines: 729-751 }
+        - { name: test_growth_capped_at_table_budget_residual_truncates_and_warns, lines: 753-772 }
+        - { name: test_no_table_id_metadata_skips_growth_unchanged_cascade, lines: 774-790 }
+        - { name: test_metadata_lines_whitening_bboxes_shift_by_identical_delta, lines: 792-815 }
   functions:
-    - { name: _make_element, lines: 34-52 }
-    - { name: _make_doc, lines: 55-66 }
+    - { name: _make_element, lines: 34-57 }
+    - { name: _make_doc, lines: 60-71 }
 
-tests/test_pdf_layout_table_fixes.py:  # 482 lines
+tests/test_pdf_layout_table_fixes.py:  # 576 lines
   imports:
     - { module: __future__, items: [annotations], line: 19 }
     - { module: os, items: [], line: 21 }
@@ -3712,61 +3742,67 @@ tests/test_pdf_layout_table_fixes.py:  # 482 lines
   constants:
     - { name: CJK_PARAGRAPH, line: 38 }
     - { name: TABLE_DATA, line: 61 }
-    - { name: TABLE_TRANSLATIONS, line: 308 }
+    - { name: BORDERLESS_TABLE_DATA, line: 97 }
+    - { name: TABLE_TRANSLATIONS, line: 335 }
   classes:
     - name: TestCjkWrap
-      lines: 108-147
+      lines: 135-174
       methods:
-        - { name: test_cjk_paragraph_wraps_to_multiple_lines, lines: 111-120 }
-        - { name: test_no_content_lost_by_wrapping, lines: 122-127 }
-        - { name: test_latin_word_wrap_unchanged, lines: 129-137 }
-        - { name: test_oversized_url_split_instead_of_overflowing, lines: 139-147 }
+        - { name: test_cjk_paragraph_wraps_to_multiple_lines, lines: 138-147 }
+        - { name: test_no_content_lost_by_wrapping, lines: 149-154 }
+        - { name: test_latin_word_wrap_unchanged, lines: 156-164 }
+        - { name: test_oversized_url_split_instead_of_overflowing, lines: 166-174 }
     - name: TestCjkTruncate
-      lines: 150-173
+      lines: 177-200
       methods:
-        - { name: test_cjk_truncation_keeps_prefix, lines: 153-163 }
-        - { name: test_latin_truncation_prefers_word_boundary, lines: 165-173 }
+        - { name: test_cjk_truncation_keeps_prefix, lines: 180-190 }
+        - { name: test_latin_truncation_prefers_word_boundary, lines: 192-200 }
     - name: TestCjkWidthMeasurement
-      lines: 176-185
+      lines: 203-212
       methods:
-        - { name: test_helvetica_fallback_estimates_cjk_at_one_em, lines: 177-185 }
+        - { name: test_helvetica_fallback_estimates_cjk_at_one_em, lines: 204-212 }
     - name: TestCascadeRealism
-      lines: 188-217
+      lines: 215-244
       methods:
-        - { name: test_oversized_cjk_shrinks_or_truncates, lines: 189-205 }
-        - { name: test_short_cjk_fits_without_truncation, lines: 207-217 }
+        - { name: test_oversized_cjk_shrinks_or_truncates, lines: 216-232 }
+        - { name: test_short_cjk_fits_without_truncation, lines: 234-244 }
     - name: TestOverlayRendering
-      lines: 226-300
+      lines: 253-327
       methods:
-        - { name: test_long_cjk_translation_fully_rendered, lines: 227-256 }
-        - { name: test_missing_translation_keeps_source_visible, lines: 258-278 }
-        - { name: test_side_by_side_missing_translation_not_blanked, lines: 280-300 }
+        - { name: test_long_cjk_translation_fully_rendered, lines: 254-283 }
+        - { name: test_missing_translation_keeps_source_visible, lines: 285-305 }
+        - { name: test_side_by_side_missing_translation_not_blanked, lines: 307-327 }
     - name: _StubTableClient
-      lines: 315-340
+      lines: 342-367
       methods:
-        - { name: __init__, lines: 320-322 }
-        - { name: _build_table_translate_prompt, lines: 325-326 }
-        - { name: translate_once, lines: 328-340 }
+        - { name: __init__, lines: 347-349 }
+        - { name: _build_table_translate_prompt, lines: 352-353 }
+        - { name: translate_once, lines: 355-367 }
     - name: TestPdfTableCellSplit
-      lines: 344-375
+      lines: 371-424
       methods:
-        - { name: test_row_blocks_split_into_cells, lines: 347-366 }
-        - { name: test_body_text_not_marked_as_table, lines: 368-375 }
+        - { name: test_row_blocks_split_into_cells, lines: 374-415 }
+        - { name: test_body_text_not_marked_as_table, lines: 417-424 }
+    - name: TestTableDetectionFallbackIntegration
+      lines: 428-469
+      methods:
+        - { name: test_borderless_table_pdf_recovers_cells, lines: 432-469 }
     - name: TestWholeTableTranslation
-      lines: 379-461
+      lines: 473-555
       methods:
-        - { name: test_one_llm_call_per_table_with_full_grid, lines: 380-408 }
-        - { name: test_failed_table_call_falls_back_to_flatten, lines: 410-433 }
-        - { name: test_end_to_end_pdf_output_uses_table_context, lines: 435-461 }
+        - { name: test_one_llm_call_per_table_with_full_grid, lines: 474-502 }
+        - { name: test_failed_table_call_falls_back_to_flatten, lines: 504-527 }
+        - { name: test_end_to_end_pdf_output_uses_table_context, lines: 529-555 }
     - name: TestOrderPreservingDedupe
-      lines: 469-482
+      lines: 563-576
       methods:
-        - { name: test_pdf_processor_has_no_set_dedupe, lines: 470-482 }
+        - { name: test_pdf_processor_has_no_set_dedupe, lines: 564-576 }
   functions:
     - { name: _make_paragraph_pdf, lines: 44-58 }
     - { name: _make_table_pdf, lines: 68-89 }
     - { name: _parse, lines: 92-94 }
-    - { name: _heuristic_layout, lines: 98-100 }  # @pytest.fixture(autouse=True)
+    - { name: _make_borderless_table_pdf, lines: 104-121 }
+    - { name: _heuristic_layout, lines: 125-127 }  # @pytest.fixture(autouse=True)
 
 tests/test_pdf_layout_viz_persistence.py:  # 142 lines
   imports:
@@ -3788,7 +3824,7 @@ tests/test_pdf_layout_viz_persistence.py:  # 142 lines
   functions:
     - { name: _make_doc_with_layout_viz, lines: 30-57 }
 
-tests/test_pdf_parser.py:  # 472 lines
+tests/test_pdf_parser.py:  # 637 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: tempfile, items: [], line: 5 }
@@ -3820,28 +3856,43 @@ tests/test_pdf_parser.py:  # 472 lines
         - { name: test_is_inside_false, lines: 172-182 }
         - { name: test_is_inside_with_tolerance, lines: 184-195 }
         - { name: test_detect_and_mark_tables_marks_elements, lines: 197-250 }
+    - name: TestTableDetectionStrategyFallback
+      lines: 253-363
+      methods:
+        - { name: _valid_table, lines: 257-264 }
+        - { name: _false_positive_table, lines: 267-275 }
+        - { name: _make_page, lines: 278-295 }
+        - { name: test_strict_empty_lines_strategy_succeeds, lines: 297-307 }
+        - { name: test_strict_and_lines_empty_text_strategy_succeeds, lines: 309-319 }
+        - { name: test_all_strategies_fail_leaves_blocks_unchanged, lines: 321-330 }
+        - { name: test_text_strategy_false_positive_discarded_by_sanity_gate, lines: 332-345 }
+        - { name: test_strict_success_skips_fallback, lines: 347-363 }
+    - name: TestTableCellBboxCorrection
+      lines: 366-415
+      methods:
+        - { name: test_1to1_block_to_cell_bbox_corrected_to_cell_extent, lines: 369-415 }
     - name: TestColorConversion
-      lines: 253-281
+      lines: 418-446
       methods:
-        - { name: test_color_to_hex_black, lines: 256-263 }
-        - { name: test_color_to_hex_white, lines: 265-272 }
-        - { name: test_color_to_hex_red, lines: 274-281 }
+        - { name: test_color_to_hex_black, lines: 421-428 }
+        - { name: test_color_to_hex_white, lines: 430-437 }
+        - { name: test_color_to_hex_red, lines: 439-446 }
     - name: TestReadingOrderField
-      lines: 284-351
+      lines: 449-516
       methods:
-        - { name: test_pdf_path, lines: 288-293 }
-        - { name: parser, lines: 296-302 }
-        - { name: test_reading_order_is_integer_or_none, lines: 304-311 }
-        - { name: test_reading_order_sequential_not_y_bucket, lines: 313-344 }
-        - { name: test_region_element_types_emitted, lines: 346-351 }
+        - { name: test_pdf_path, lines: 453-458 }
+        - { name: parser, lines: 461-467 }
+        - { name: test_reading_order_is_integer_or_none, lines: 469-476 }
+        - { name: test_reading_order_sequential_not_y_bucket, lines: 478-509 }
+        - { name: test_region_element_types_emitted, lines: 511-516 }
     - name: TestLayoutDetectorIntegration
-      lines: 358-472
+      lines: 523-637
       methods:
-        - { name: test_detector_order_replaces_y0_heuristic, lines: 361-403 }
-        - { name: test_parse_invokes_layout_detector_on_native_pdf, lines: 405-445 }
-        - { name: test_detector_failure_parse_still_returns_document, lines: 447-472 }
+        - { name: test_detector_order_replaces_y0_heuristic, lines: 526-568 }
+        - { name: test_parse_invokes_layout_detector_on_native_pdf, lines: 570-610 }
+        - { name: test_detector_failure_parse_still_returns_document, lines: 612-637 }
 
-tests/test_pdf_render_warnings.py:  # 342 lines
+tests/test_pdf_render_warnings.py:  # 570 lines
   imports:
     - { module: __future__, items: [annotations], line: 20 }
     - { module: threading, items: [], line: 22 }
@@ -3852,29 +3903,37 @@ tests/test_pdf_render_warnings.py:  # 342 lines
     - { module: fastapi.testclient, items: [TestClient], line: 28 }
   classes:
     - name: TestFitzFallbackWarning
-      lines: 75-142
+      lines: 75-226
       methods:
         - { name: test_fitz_exception_emits_exact_fallback_warning, lines: 78-109 }
         - { name: test_fitz_mock_targets_consumer_call_site_not_renderer_module, lines: 111-142 }
+        - { name: test_fitz_crash_fallback_still_wraps_long_text, lines: 144-226 }
     - name: TestDocxRoutingWarning
-      lines: 149-191
+      lines: 233-275
       methods:
-        - { name: test_docx_routing_emits_exact_layout_skip_warning, lines: 152-191 }
+        - { name: test_docx_routing_emits_exact_layout_skip_warning, lines: 236-275 }
     - name: TestNoDegradationNoWarning
-      lines: 198-222
+      lines: 282-306
       methods:
-        - { name: test_no_warning_when_fitz_succeeds, lines: 201-222 }
+        - { name: test_no_warning_when_fitz_succeeds, lines: 285-306 }
     - name: TestWarningsSchema
-      lines: 229-282
+      lines: 313-366
       methods:
-        - { name: test_warnings_field_is_list_or_none_not_bare_string, lines: 232-268 }
-        - { name: test_jobstatus_schema_has_warnings_field, lines: 270-282 }
+        - { name: test_warnings_field_is_list_or_none_not_bare_string, lines: 316-352 }
+        - { name: test_jobstatus_schema_has_warnings_field, lines: 354-366 }
     - name: TestWarningsApiPropagation
-      lines: 289-342
+      lines: 373-426
       methods:
-        - { name: test_fitz_fallback_warning_in_api_response, lines: 296-310 }
-        - { name: test_docx_routing_warning_in_api_response, lines: 312-326 }
-        - { name: test_no_warnings_is_null_or_empty_in_api_response, lines: 328-342 }
+        - { name: test_fitz_fallback_warning_in_api_response, lines: 380-394 }
+        - { name: test_docx_routing_warning_in_api_response, lines: 396-410 }
+        - { name: test_no_warnings_is_null_or_empty_in_api_response, lines: 412-426 }
+    - name: TestTruncationDisclosureWarning
+      lines: 433-570
+      methods:
+        - { name: _make_doc, lines: 442-473 }
+        - { name: test_one_aggregated_warning_per_file_regardless_of_truncated_count, lines: 475-498 }
+        - { name: test_no_warning_entry_when_no_truncation, lines: 500-519 }
+        - { name: test_warning_fires_identically_fitz_or_reportlab_truncation_source, lines: 521-570 }
   functions:
     - { name: _make_job, lines: 35-63 }
     - { name: _get_test_client, lines: 66-68 }
@@ -4124,7 +4183,7 @@ tests/test_quality_judge.py:  # 753 lines
     - { name: test_translation_client_cached_built_once, lines: 607-617 }
     - { name: test_translation_client_never_none, lines: 620-643 }
 
-tests/test_renderer_convergence.py:  # 860 lines
+tests/test_renderer_convergence.py:  # 932 lines
   imports:
     - { module: __future__, items: [annotations], line: 12 }
     - { module: io, items: [], line: 14 }
@@ -4137,7 +4196,7 @@ tests/test_renderer_convergence.py:  # 860 lines
     - { module: pytest, items: [], line: 22 }
     - { module: app.backend.models.translatable_document, items: [BoundingBox, DocumentMetadata, ElementType, PageInfo, TranslatableDocument, TranslatableElement], line: 24 }
   constants:
-    - { name: GOLDEN_DIR, line: 658 }
+    - { name: GOLDEN_DIR, line: 730 }
   classes:
     - name: TestIRBboxReflow
       lines: 97-227
@@ -4162,7 +4221,7 @@ tests/test_renderer_convergence.py:  # 860 lines
         - { name: test_no_job_abort_on_fitz_failure, lines: 367-396 }
         - { name: test_double_failure_propagates, lines: 398-428 }
     - name: TestLayoutEquivalence
-      lines: 435-553
+      lines: 435-625
       methods:
         - { name: test_both_paths_call_reflow_document, lines: 442-472 }
         - { name: test_both_paths_same_include_set, lines: 474-488 }
@@ -4170,30 +4229,32 @@ tests/test_renderer_convergence.py:  # 860 lines
         - { name: test_both_paths_same_reading_order_sequence, lines: 507-517 }
         - { name: test_reportlab_path_calls_reflow_document, lines: 519-536 }
         - { name: test_bbox_placement_within_tolerance_fitz_vs_reportlab, lines: 539-553 }
+        - { name: test_reportlab_path_also_calls_shared_fit_text_cascade, lines: 555-587 }
+        - { name: test_row_growth_geometry_identical_fitz_vs_reportlab, lines: 589-625 }
     - name: TestMalformedIRDataBoundary
-      lines: 560-651
+      lines: 632-723
       methods:
-        - { name: test_null_bbox_handled_identically_both_paths, lines: 563-577 }
-        - { name: test_null_reading_order_handled_identically_both_paths, lines: 579-607 }
-        - { name: test_unknown_element_type_handled_identically_both_paths, lines: 609-624 }
-        - { name: test_null_translated_content_handled_identically_both_paths, lines: 626-643 }
-        - { name: test_empty_elements_produces_valid_empty_result, lines: 645-651 }
+        - { name: test_null_bbox_handled_identically_both_paths, lines: 635-649 }
+        - { name: test_null_reading_order_handled_identically_both_paths, lines: 651-679 }
+        - { name: test_unknown_element_type_handled_identically_both_paths, lines: 681-696 }
+        - { name: test_null_translated_content_handled_identically_both_paths, lines: 698-715 }
+        - { name: test_empty_elements_produces_valid_empty_result, lines: 717-723 }
     - name: TestEquivalenceGolden
-      lines: 675-786
+      lines: 747-858
       methods:
-        - { name: test_golden_fitz_snapshot_stable, lines: 686-708 }
-        - { name: test_golden_reportlab_snapshot_stable, lines: 710-731 }
-        - { name: test_fitz_reflow_matches_golden_layout_snapshot, lines: 733-759 }
-        - { name: test_reportlab_reflow_matches_golden_layout_snapshot, lines: 761-786 }
+        - { name: test_golden_fitz_snapshot_stable, lines: 758-780 }
+        - { name: test_golden_reportlab_snapshot_stable, lines: 782-803 }
+        - { name: test_fitz_reflow_matches_golden_layout_snapshot, lines: 805-831 }
+        - { name: test_reportlab_reflow_matches_golden_layout_snapshot, lines: 833-858 }
     - name: TestCascadeWiringLayoutEquivalence
-      lines: 794-860
+      lines: 866-932
       methods:
-        - { name: test_fitz_renderer_imports_fit_text_cascade, lines: 797-805 }
-        - { name: test_insert_text_calls_fit_cascade, lines: 807-860 }
+        - { name: test_fitz_renderer_imports_fit_text_cascade, lines: 869-877 }
+        - { name: test_insert_text_calls_fit_cascade, lines: 879-932 }
   functions:
     - { name: _make_doc, lines: 47-81 }
     - { name: _make_translations, lines: 84-90 }
-    - { name: _placement_to_dict, lines: 661-672 }
+    - { name: _placement_to_dict, lines: 733-744 }
 
 tests/test_sentence_mode_consistency.py:  # 323 lines
   imports:
@@ -4698,7 +4759,7 @@ tests/test_text_expansion_benchmark.py:  # 260 lines
     - { name: _make_style, lines: 48-49 }
     - { name: _generous_bbox, lines: 52-54 }
 
-tests/test_text_region_renderer.py:  # 718 lines
+tests/test_text_region_renderer.py:  # 764 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: io, items: [], line: 5 }
@@ -4728,7 +4789,7 @@ tests/test_text_region_renderer.py:  # 718 lines
         - { name: test_ende_no_overflow, lines: 151-167 }
         - { name: test_enes_no_overflow, lines: 169-179 }
     - name: TestTruncationMarker
-      lines: 182-260
+      lines: 182-284
       methods:
         - { name: test_render_truncated_field_default_false, lines: 185-193 }
         - { name: test_truncation_sets_render_truncated_true, lines: 195-210 }
@@ -4736,53 +4797,55 @@ tests/test_text_region_renderer.py:  # 718 lines
         - { name: test_render_truncated_field_in_to_dict, lines: 221-231 }
         - { name: test_render_truncated_true_survives_roundtrip, lines: 233-245 }
         - { name: test_from_dict_missing_render_truncated_defaults_false, lines: 247-260 }
+        - { name: test_reportlab_path_sets_render_truncated_on_overflow, lines: 262-284 }
     - name: TestSinglePathEnforcement
-      lines: 263-285
+      lines: 287-309
       methods:
-        - { name: test_no_cascade_logic_in_legacy_paths, lines: 266-285 }
+        - { name: test_no_cascade_logic_in_legacy_paths, lines: 290-309 }
     - name: TestTextRegion
-      lines: 288-386
+      lines: 312-410
       methods:
-        - { name: test_text_region_creation, lines: 291-304 }
-        - { name: test_text_region_width, lines: 306-309 }
-        - { name: test_text_region_height, lines: 311-314 }
-        - { name: test_text_region_center_x, lines: 316-319 }
-        - { name: test_text_region_center_y, lines: 321-324 }
-        - { name: test_text_region_rotation, lines: 326-329 }
-        - { name: test_text_region_font_name, lines: 331-338 }
-        - { name: test_text_region_font_size, lines: 340-347 }
-        - { name: test_text_region_text_color, lines: 349-356 }
-        - { name: test_text_region_from_bbox, lines: 358-367 }
-        - { name: test_text_region_from_bbox_with_rotation, lines: 369-374 }
-        - { name: test_text_region_from_bbox_with_font, lines: 376-386 }
+        - { name: test_text_region_creation, lines: 315-328 }
+        - { name: test_text_region_width, lines: 330-333 }
+        - { name: test_text_region_height, lines: 335-338 }
+        - { name: test_text_region_center_x, lines: 340-343 }
+        - { name: test_text_region_center_y, lines: 345-348 }
+        - { name: test_text_region_rotation, lines: 350-353 }
+        - { name: test_text_region_font_name, lines: 355-362 }
+        - { name: test_text_region_font_size, lines: 364-371 }
+        - { name: test_text_region_text_color, lines: 373-380 }
+        - { name: test_text_region_from_bbox, lines: 382-391 }
+        - { name: test_text_region_from_bbox_with_rotation, lines: 393-398 }
+        - { name: test_text_region_from_bbox_with_font, lines: 400-410 }
     - name: TestCalculateRotationFromBbox
-      lines: 389-410
+      lines: 413-434
       methods:
-        - { name: test_normal_box_no_rotation, lines: 392-396 }
-        - { name: test_tall_narrow_box_rotation, lines: 398-403 }
-        - { name: test_short_text_no_rotation, lines: 405-410 }
+        - { name: test_normal_box_no_rotation, lines: 416-420 }
+        - { name: test_tall_narrow_box_rotation, lines: 422-427 }
+        - { name: test_short_text_no_rotation, lines: 429-434 }
     - name: TestRenderTextRegion
-      lines: 413-527
+      lines: 437-573
       methods:
-        - { name: test_render_text_region_basic, lines: 416-434 }
-        - { name: test_render_text_region_with_background, lines: 436-451 }
-        - { name: test_render_text_region_without_background, lines: 453-468 }
-        - { name: test_render_text_region_with_rotation, lines: 470-488 }
-        - { name: test_render_text_region_multiline, lines: 490-507 }
-        - { name: test_render_text_region_cjk, lines: 509-527 }
+        - { name: test_render_text_region_basic, lines: 440-458 }
+        - { name: test_render_text_region_with_background, lines: 460-475 }
+        - { name: test_render_text_region_without_background, lines: 477-492 }
+        - { name: test_render_text_region_with_rotation, lines: 494-512 }
+        - { name: test_render_text_region_multiline, lines: 514-531 }
+        - { name: test_render_text_region_cjk, lines: 533-551 }
+        - { name: test_render_text_region_wraps_via_shared_cascade, lines: 553-573 }
     - name: TestRenderTextRegions
-      lines: 530-566
+      lines: 576-612
       methods:
-        - { name: test_render_multiple_regions, lines: 533-552 }
-        - { name: test_render_empty_regions_list, lines: 554-566 }
+        - { name: test_render_multiple_regions, lines: 579-598 }
+        - { name: test_render_empty_regions_list, lines: 600-612 }
     - name: TestCreateTextRegionsFromElements
-      lines: 569-718
+      lines: 615-764
       methods:
-        - { name: test_create_regions_basic, lines: 572-602 }
-        - { name: test_create_regions_skip_non_translatable, lines: 604-633 }
-        - { name: test_create_regions_skip_no_bbox, lines: 635-664 }
-        - { name: test_create_regions_skip_missing_translation, lines: 666-695 }
-        - { name: test_create_regions_preserves_coordinates, lines: 697-718 }
+        - { name: test_create_regions_basic, lines: 618-648 }
+        - { name: test_create_regions_skip_non_translatable, lines: 650-679 }
+        - { name: test_create_regions_skip_no_bbox, lines: 681-710 }
+        - { name: test_create_regions_skip_missing_translation, lines: 712-741 }
+        - { name: test_create_regions_preserves_coordinates, lines: 743-764 }
 
 tests/test_translatable_document.py:  # 786 lines
   imports:

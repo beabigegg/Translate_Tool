@@ -3,7 +3,7 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.16.0
+schema-version: 0.17.0
 last-changed: 2026-07-07
 breaking-change-policy: deprecate-2-minors
 ---
@@ -800,7 +800,7 @@ is the per-segment scoring surface for the critique adoption gate (BR-89).
 |---|---|
 | Shape | `len(scores) == len(blocks)` always; empty list returned on internal failure (BR-56 safe-degrade) |
 | Score type | `float`; range and scale are model-dependent (see BR-54) |
-| Critique gate usage | Two-element call `[(src, draft), (src, revised)]`; adopt revised iff `scores[1] > scores[0]` (strict); tie keeps draft (BR-89) |
+| Critique gate usage | Round-based batched call (batch-critique-qe-scoring): one `score_blocks()` call per critique round, flat list `[(src_1, draft_1), (src_1, revised_1), (src_2, draft_2), (src_2, revised_2), ...]` covering every segment revised that round (not one call per segment). Segment `i`'s scores live at flat indices `2*i` / `2*i + 1`; adopt `revised_i` iff `scores[2*i + 1] > scores[2*i]` (strict); tie keeps `draft_i` (BR-89, unchanged). Empty `[]` return (total scoring failure) degrades every segment in the round to keep-draft. |
 
 ### Per-block judge score (AC-5)
 

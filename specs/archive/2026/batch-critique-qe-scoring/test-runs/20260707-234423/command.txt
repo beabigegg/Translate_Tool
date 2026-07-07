@@ -1,0 +1,1 @@
+pytest tests/test_critique_gate.py tests/test_quality_evaluation.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/batch-critique-qe-scoring/test-runs/20260707-234423/junit.xml' -q --maxfail=1 --tb=short -ra

@@ -1,0 +1,1 @@
+pytest tests/ --collect-only --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/batch-critique-qe-scoring/test-runs/20260707-234244/junit.xml' -q --maxfail=1 --tb=short -ra

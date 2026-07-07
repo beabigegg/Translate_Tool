@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 contract-count: 9
 missing-summary-count: 0
-inputs-digest: b8f3ed026dbf2aada62187d2a082095e3974bad343c9e306693786ff3f94be83
+inputs-digest: 20e054e25fa43ffd3feeed4e52fe42978ab0d303b8dea25ffd85af4f8cdd99b7
 ---
 
 # Contracts Index
@@ -118,7 +118,7 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: Data Shape Contract
 - owner: application-team
 - surface: data
-- schema-version: 0.16.0
+- schema-version: 0.17.0
 - last-changed: 2026-07-07
 - breaking-change-policy: deprecate-2-minors
 - summary: Data schema, invalid-data handling, and row-level compatibility rules.

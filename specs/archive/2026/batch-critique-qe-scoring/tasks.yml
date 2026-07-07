@@ -1,5 +1,5 @@
 change-id: batch-critique-qe-scoring
-status: in-progress
+status: archived
 tier: 2
 tier-floor-override: "False-positive keyword match on 'cache'/'session' — this change batches in-memory COMET score_blocks() calls in the critique loop; it does not touch auth, payments, data migration, or any cache/session security surface."
 context-governance: v1
@@ -18,25 +18,25 @@ tasks:
   - { id: "2.1", section: "Contract Updates", title: "API contract", status: skipped, note: "no endpoint/schema change (classifier)" }
   - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no frontend surface (classifier)" }
   - { id: "2.3", section: "Contract Updates", title: "Env contract", status: skipped, note: "no new env var; CRITIQUE_* defaults unchanged (classifier)" }
-  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: pending, note: "contract-reviewer flagged: contracts/data/data-shape-contract.md lines 782-787 'Critique gate usage' row currently documents a two-element score_blocks() call and MUST be rewritten to describe the batched multi-segment call shape in the SAME change that implements batching (with schema-version bump + CHANGELOG entry). Not done this planning pass since no code changed yet; must be in implementation-plan.md Contract Updates." }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: done, note: "data-shape-contract.md 'Critique gate usage' row rewritten to batched multi-segment call shape; schema-version 0.16.0→0.17.0 + CHANGELOG entry; validate --versions green" }
   - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: done, note: "contract-reviewer confirmed BR-89/BR-90 describe only the adoption outcome, not call cardinality — no wording change needed; refactor keeps both rules satisfied" }
   - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no CI/CD change (classifier)" }
-  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: pending, note: "test-plan.md written (AC-3/7/8 mapped); actual test code authored by backend-engineer in TDD fashion during deferred implementation" }
-  - { id: "3.2", section: "Tests First", title: "Integration tests", status: pending, note: "test-plan.md written (AC-1/2/3/4 + metrics-parity mapped to new tests/test_critique_loop_batching.py); test authoring deferred to backend-engineer implementation" }
-  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: pending, note: "test-plan.md written (AC-5/6 mapped); e2e-resilience-engineer implementation deferred" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done, note: "test_critique_gate.py extended (+4: index-mapping, degradation, heuristic, empty-pairs); test_quality_evaluation.py extended (+2: OOM ladder on 2N list, batch_size invariance)" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: done, note: "tests/test_critique_loop_batching.py created (8 tests): AC-1 scripted-baseline parity, AC-2 call-count bound, AC-4 cache-skip, metrics-counter parity" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: done, note: "resilience: per-segment exception + timeout isolation (AC-5), batched-[] keep-draft degradation covered in test_critique_loop_batching.py" }
   - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "not applicable to internal service refactor (classifier)" }
   - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "micro-benchmark recommended but not required at Tier 2 (classifier); no soak requirement" }
-  - { id: "4.1", section: Implementation, title: "Backend", status: pending, note: "DEFERRED — do not start until user explicitly approves implementation-plan.md in a later session" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: done, note: "translation_service.py round-based critique loop (391-511) + _batched_critique_adopt (99-165); _critique_gate_adopt/score_blocks unchanged; metrics parity (BR-46). 46 targeted + 179 sweep + full suite green" }
   - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no frontend surface (classifier)" }
   - { id: "4.3", section: Implementation, title: "Env/deploy", status: skipped, note: "no env/deploy change (classifier)" }
   - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: skipped, note: "no CI/CD change required (classifier)" }
   - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI surface (classifier)" }
   - { id: "5.2", section: Review, title: "Visual review", status: skipped, note: "no UI surface (classifier)" }
   - { id: "5.3", section: Review, title: "Contract review", status: done, note: "contract-reviewer approved; BR-89/BR-90 confirmed unaffected; one scheduled future update recorded at 2.4" }
-  - { id: "5.4", section: Review, title: "QA review", status: pending, note: "DEFERRED — runs after implementation, not during this planning-only pass" }
-  - { id: "6.1", section: Verification, title: "Local gates", status: pending }
-  - { id: "6.2", section: Verification, title: "PR required gates", status: pending }
-  - { id: "6.3", section: Verification, title: "Informational gates", status: pending }
-  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: pending }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "5.4", section: Review, title: "QA review", status: done, note: "main-Claude review: verified _batched_critique_adopt index map (blocks interleave draft/revised; scores[2i]/[2i+1]; strict-greater; >=len else keep-draft; heuristic fallback) is correct; behavior-preserved (existing critique/QE tests pass UNCHANGED); index-mapping guarded by scripted-baseline parity + exact-blocks-arg asserts. Full suite green" }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done, note: "cdd-kit gate green; 4 evidence phases (collect/targeted/changed-area/contract) passed in translate-tool env; full suite green" }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "Local gate green — same required validations CI runs. PR CI to confirm on push; PR# finalized at close." }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full-regression informational on PR; no non-deterministic checks flagged" }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gate required per change-classification.md" }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done, note: "cdd-kit archive → specs/archive/2026/batch-critique-qe-scoring; INDEX.md updated" }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: skipped, note: "No new CLAUDE.md cross-change lesson: the orphaned-mock-after-refactor gotcha (CER-002) is an instance of the existing mock-patch/tautological-tests entries; batched call-shape lives in data-shape-contract v0.17.0; BR-89/90/46 unchanged. See archive.md." }

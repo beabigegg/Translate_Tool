@@ -1,0 +1,16 @@
+{
+  "change_id": "batch-critique-qe-scoring",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest tests/test_critique_gate.py tests/test_quality_evaluation.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/batch-critique-qe-scoring/test-runs/20260707-234423/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 3562,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/batch-critique-qe-scoring/test-runs/20260707-234423/summary.json",
+    "stdout": "specs/changes/batch-critique-qe-scoring/test-runs/20260707-234423/stdout.log",
+    "stderr": "specs/changes/batch-critique-qe-scoring/test-runs/20260707-234423/stderr.log",
+    "junit": "specs/changes/batch-critique-qe-scoring/test-runs/20260707-234423/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}
