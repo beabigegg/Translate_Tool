@@ -297,14 +297,17 @@ Translate_Tool/
 |   |-- test_doc_chunker.py
 |   |-- test_docx_parser.py
 |   |-- test_env_contract.py
+|   |-- test_eta_multi_phase_heuristic.py
 |   |-- test_fewshot_glossary.py
 |   |-- test_font_utils.py
 |   |-- test_glossary_enforcement.py
 |   |-- test_golden_regression.py
 |   |-- test_inline_renderer.py
 |   |-- test_ir_pipeline_decoupling.py
+|   |-- test_job_manager_current_segment.py
 |   |-- test_job_record_judge.py
 |   |-- test_jobstatus_download_url.py
+|   |-- test_jobstatus_stage_detail.py
 |   |-- test_judge_api.py
 |   |-- test_judge_apply.py
 |   |-- test_layout_detector.py
@@ -327,10 +330,7 @@ Translate_Tool/
 |   |-- test_pdf_layout_table_fixes.py
 |   |-- test_pdf_layout_viz_persistence.py
 |   |-- test_pdf_parser.py
-|   |-- test_pdf_render_warnings.py
-|   |-- test_pptx_parser.py
-|   |-- test_provider_fallback.py
-|   \-- ... (23 more entries truncated; cap=50)
+|   \-- ... (28 more entries truncated; cap=50)
 |-- .env
 |-- .gitignore
 |-- AGENTS.md

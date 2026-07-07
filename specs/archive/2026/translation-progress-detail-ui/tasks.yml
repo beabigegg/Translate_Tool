@@ -1,5 +1,5 @@
 change-id: translation-progress-detail-ui
-status: in-progress
+status: archived
 tier: 2
 tier-floor-override: "Additive observability change: 8 optional/nullable progress-detail fields on the EXISTING GET /jobs/{id} response + a null-tolerant frontend StageDetailPanel + a multi-phase ETA. The tier-floor matched 'endpoint/session' — 'endpoint' is the existing job-status polling endpoint (no new/changed route; additive fields only), and there is no auth, payments, data-migration, concurrency, or secrets surface. change-classifier set Tier 2."
 context-governance: v1
@@ -38,5 +38,5 @@ tasks:
   - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "Local gate green — same required validations CI runs (validate --contracts, openapi --check, full pytest, npm test via expose-output-mode-ui-gate). PR CI to confirm." }
   - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full-regression informational on PR; no non-deterministic checks flagged" }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gate required per change-classification.md" }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done, note: "cdd-kit archive → specs/archive/2026/translation-progress-detail-ui; INDEX.md updated" }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "1 promote-to-guidance lesson to CLAUDE.md cdd-kit:learnings: additive kwargs on judge/critique seams break test fakes + _make_job mocks (recurred #3/#5/#7) — update them same-change. See archive.md." }
