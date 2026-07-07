@@ -869,11 +869,34 @@ def translate_docx(
                         if s.text.strip() and 0 <= r < num_rows and 0 <= c < num_cols:
                             final_tmap[(tgt, s.text, c)] = grid[r][c]
                 else:
+                    if stop_flag and stop_flag.is_set():
+                        # Table groups processed after the stop signal fires never reach
+                        # the translate/fallback logic at all: their cells get ZERO
+                        # final_tmap entries (not even a "[Translation failed]" placeholder),
+                        # surfacing downstream as an invisible "[SKIP] No translation" with
+                        # no error trail. Log this explicitly so it isn't mistaken for a
+                        # should_translate() filtering decision.
+                        logger.warning(
+                            "[DOCX] Table group %s: stop_flag set before fallback ran; "
+                            "%d cell(s) will get NO translation for target=%s",
+                            table_id, sum(1 for s in t_segs if s.text.strip()), tgt,
+                        )
                     # Fallback: translate each unique cell text individually (BR-82)
                     uniq_cell_texts = list(dict.fromkeys(
                         s.text for s in t_segs if s.text.strip()
                         and should_translate(s.text, src_for_prompt)
                     ))
+                    excluded_by_should_translate = [
+                        s.text for s in t_segs
+                        if s.text.strip() and not should_translate(s.text, src_for_prompt)
+                    ]
+                    if excluded_by_should_translate:
+                        logger.info(
+                            "[DOCX] Table group %s: %d cell(s) excluded by should_translate() "
+                            "(target=%s), e.g. %r",
+                            table_id, len(excluded_by_should_translate), tgt,
+                            excluded_by_should_translate[0][:30],
+                        )
                     if uniq_cell_texts:
                         fallback_tmap, _, _, _ = translate_texts(
                             uniq_cell_texts, [tgt], src_lang, client,
@@ -885,6 +908,15 @@ def translate_docx(
                             for s in t_segs:
                                 if s.text == fb_text:
                                     final_tmap[(fb_tgt, fb_text, s.col)] = fb_tr
+                        missing = set(uniq_cell_texts) - {t for (_, t) in fallback_tmap}
+                        if missing:
+                            logger.warning(
+                                "[DOCX] Table group %s: %d cell text(s) sent to fallback "
+                                "translate_texts() but missing from its result (target=%s), "
+                                "e.g. %r — will show as '[SKIP] No translation' with no "
+                                "further trail",
+                                table_id, len(missing), tgt, next(iter(missing))[:30],
+                            )
 
     if final_tmap:
         # R1: doc2doc long-doc path always uses append; output_mode="replace" is a follow-up.
