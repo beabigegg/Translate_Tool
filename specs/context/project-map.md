@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
 visible-dirs: 59
-visible-files: 230
+visible-files: 234
 omitted-dirs: 12
 truncated-dirs: 1
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -44,10 +44,9 @@ Translate_Tool/
 |   \-- workflows/
 |       \-- contract-driven-gates.yml
 |-- .run/
-|   |-- logs/
-|   |   |-- backend.log
-|   |   \-- frontend.log
-|   \-- backend.pid
+|   \-- logs/
+|       |-- backend.log
+|       \-- frontend.log
 |-- app/
 |   |-- backend/
 |   |   |-- api/
@@ -197,7 +196,12 @@ Translate_Tool/
 |   |   |-- 0006-table-markdown-serialization.md
 |   |   |-- 0007-bilingual-docx-dual-column.md
 |   |   |-- 0008-mllm-layout-judge-local-only-image.md
-|   |   \-- 0009-legacy-conversion-disclosure-and-qe-boundary.md
+|   |   |-- 0009-legacy-conversion-disclosure-and-qe-boundary.md
+|   |   |-- 0010-progress-detail-poll-piggyback.md
+|   |   |-- 0011-cloud-llm-total-timeout-and-cancellable-post.md
+|   |   |-- 0012-shared-fit-cascade-all-pdf-paths.md
+|   |   |-- 0013-bounded-local-table-row-growth-prepass.md
+|   |   \-- 0014-retire-phantom-br-and-inert-env-var.md
 |   |-- TEST_DOC/
 |   |   |-- EN-P-QC1102-D7 量测系统分析(MSA)程序.docx
 |   |   \-- W-RM0901-G6 机器设备保养及维护管理准则.docx

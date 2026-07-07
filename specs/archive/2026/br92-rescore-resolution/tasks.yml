@@ -1,5 +1,5 @@
 change-id: br92-rescore-resolution
-status: in-progress
+status: archived
 tier: 2
 tier-floor-override: "Retire-only change: deletes phantom BR-92 and the inert QE_RESCORE_THRESHOLD env var. The tier-floor heuristic matched 'breaking change/endpoint/session' vocab in plan prose, but there is no auth, payments, data-migration, concurrency, secrets, or API-endpoint surface. Env-var removal is inert (no runtime consumer) and not a policy-defined breaking change (deprecate-2-minors is API-field-scoped). change-classifier confirmed Tier 2."
 context-governance: v1
@@ -38,5 +38,5 @@ tasks:
   - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "Local cdd-kit gate green — same required validations CI runs (cdd-kit validate --contracts, env-schema sync greps, targeted tests). PR CI (contract-and-fast-tests + full-regression) to confirm on push; PR# finalized at close." }
   - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full-regression is informational on PR; scheduled-stress-soak N/A (schedule/dispatch only, not PR-scope). No non-deterministic checks flagged for this retire-only change." }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "not required at Tier 2 per change-classification.md — no nightly/weekly/manual gate for a phantom-rule retirement." }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done, note: "cdd-kit archive → specs/archive/2026/br92-rescore-resolution; INDEX.md updated" }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "contract-reviewer-approved: 2 promote-to-guidance lessons into CLAUDE.md cdd-kit:learnings (conda-env/torch test-evidence rule [new]; tier-floor trigger list +breaking change/session [in-place]). No contract-level promotion (deletion-only). See archive.md." }
