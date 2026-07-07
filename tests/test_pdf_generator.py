@@ -345,6 +345,44 @@ class TestPDFGenerator:
             if os.path.exists(pdf_path):
                 os.unlink(pdf_path)
 
+    def test_insert_text_in_rect_reads_placement_whitespace_not_literal_zero(self):
+        """AC-9 regression guard: fitz_renderer.py's cascade call must read the
+        caller-supplied available_whitespace_below (from the Placement carried
+        through _generate_overlay), not a hardcoded literal 0.0 (BR-36 note)."""
+        from app.backend.renderers.text_region_renderer import CascadeDecision
+
+        gen = PDFGenerator(target_lang="en")
+
+        mock_rect = MagicMock()
+        mock_rect.x0, mock_rect.y0 = 72.0, 72.0
+        mock_rect.x1, mock_rect.y1 = 300.0, 100.0
+        mock_rect.width, mock_rect.height = 228.0, 28.0
+
+        with patch("app.backend.renderers.fitz_renderer.fit_text_cascade") as mock_cascade, \
+             patch("app.backend.renderers.fitz_renderer.fitz") as mock_fitz:
+            mock_fitz.Font.return_value = MagicMock()
+            mock_fitz.TextWriter.return_value = MagicMock()
+            mock_cascade.return_value = CascadeDecision(
+                font_size=10.0,
+                line_spacing=1.15,
+                letter_spacing=0.0,
+                overflow=False,
+                truncated=False,
+                fitted_text="Hello World",
+            )
+
+            gen._insert_text_in_rect(
+                MagicMock(), mock_rect, "Hello World",
+                available_whitespace_below=42.5,
+            )
+
+            assert mock_cascade.called
+            _, kwargs = mock_cascade.call_args
+            assert kwargs.get("available_whitespace_below") == 42.5, (
+                "expected the caller-supplied 42.5 to reach fit_text_cascade; got "
+                f"{kwargs.get('available_whitespace_below')!r} (must not be a literal 0.0)"
+            )
+
 
 @pytest.mark.skipif(not HAS_PYMUPDF, reason="PyMuPDF not installed")
 class TestGenerateTranslatedPdf:

@@ -250,6 +250,171 @@ class TestTableDetection:
         assert elements[1].element_type == ElementType.TEXT
 
 
+class TestTableDetectionStrategyFallback:
+    """BR-101 (AC-4/AC-7): additive, sanity-gated looser-strategy find_tables() fallback."""
+
+    @staticmethod
+    def _valid_table():
+        """A real-looking 2x2 grid: cells wide/tall enough to pass the sanity gate."""
+        class _FakeTable:
+            cells = [
+                (0, 0, 100, 20), (100, 0, 200, 20),
+                (0, 20, 100, 40), (100, 20, 200, 40),
+            ]
+        return _FakeTable()
+
+    @staticmethod
+    def _false_positive_table():
+        """A strategy='text' whitespace-clustering hallucination: rows far
+        shorter than any real table row could be (below MIN_READABLE_FONT_PT)."""
+        class _FakeTable:
+            cells = [
+                (0, 0, 100, 5), (100, 0, 200, 5),
+                (0, 5, 100, 10), (100, 5, 200, 10),
+            ]
+        return _FakeTable()
+
+    @staticmethod
+    def _make_page(strict=None, lines=None, text=None):
+        """A mock fitz.Page whose find_tables() result depends on `strategy=`."""
+        class _Finder:
+            def __init__(self, tables):
+                self.tables = tables
+
+        def _find_tables(strategy=None, **kwargs):
+            if strategy is None:
+                return _Finder(strict or [])
+            if strategy == "lines":
+                return _Finder(lines or [])
+            if strategy == "text":
+                return _Finder(text or [])
+            return _Finder([])
+
+        page = MagicMock()
+        page.find_tables.side_effect = _find_tables
+        return page
+
+    def test_strict_empty_lines_strategy_succeeds(self):
+        """When lines_strict finds nothing, an accepted `lines` result is used."""
+        from app.backend.parsers.pdf_parser import PyMuPDFParser
+
+        parser = PyMuPDFParser.__new__(PyMuPDFParser)
+        valid = self._valid_table()
+        page = self._make_page(lines=[valid])
+
+        result = parser._find_tables_with_fallback(page)
+
+        assert result == [valid]
+
+    def test_strict_and_lines_empty_text_strategy_succeeds(self):
+        """When both lines_strict AND lines find nothing, an accepted `text` result is used."""
+        from app.backend.parsers.pdf_parser import PyMuPDFParser
+
+        parser = PyMuPDFParser.__new__(PyMuPDFParser)
+        valid = self._valid_table()
+        page = self._make_page(text=[valid])
+
+        result = parser._find_tables_with_fallback(page)
+
+        assert result == [valid]
+
+    def test_all_strategies_fail_leaves_blocks_unchanged(self):
+        """When every strategy finds nothing, the fallback returns empty (no marking)."""
+        from app.backend.parsers.pdf_parser import PyMuPDFParser
+
+        parser = PyMuPDFParser.__new__(PyMuPDFParser)
+        page = self._make_page()  # all strategies empty
+
+        result = parser._find_tables_with_fallback(page)
+
+        assert result == []
+
+    def test_text_strategy_false_positive_discarded_by_sanity_gate(self):
+        """A strategy='text' hallucination over ordinary prose is discarded by the sanity gate."""
+        from app.backend.parsers.pdf_parser import PyMuPDFParser
+
+        parser = PyMuPDFParser.__new__(PyMuPDFParser)
+        false_positive = self._false_positive_table()
+        page = self._make_page(text=[false_positive])
+
+        result = parser._find_tables_with_fallback(page)
+
+        assert result == [], (
+            "a false-positive grid with sub-readable-floor row heights must be discarded, "
+            "keeping the page's existing paragraph blocks unchanged"
+        )
+
+    def test_strict_success_skips_fallback(self):
+        """AC-7: a successful strict detection is NEVER overridden, and looser
+        strategies are never even attempted (additive-only, no wasted work)."""
+        from app.backend.parsers.pdf_parser import PyMuPDFParser
+
+        parser = PyMuPDFParser.__new__(PyMuPDFParser)
+        valid = self._valid_table()
+        page = self._make_page(strict=[valid])
+
+        result = parser._find_tables_with_fallback(page)
+
+        assert result == [valid]
+        calls = page.find_tables.call_args_list
+        assert len(calls) == 1, (
+            f"strict success must short-circuit before any fallback strategy call, got {calls!r}"
+        )
+        assert calls[0].kwargs.get("strategy") is None
+
+
+class TestTableCellBboxCorrection:
+    """BR-102 (AC-5): 1:1 block-to-cell bbox corrected to the true cell extent."""
+
+    def test_1to1_block_to_cell_bbox_corrected_to_cell_extent(self):
+        """A single-cell (non-spanning) 1:1 match extends x1/y1 to the cell
+        rect minus the 2.0pt border pad; x0/y0 stay at the tight text origin;
+        the pre-extension tight bbox is preserved in metadata["lines"]."""
+        from app.backend.models.translatable_document import (
+            BoundingBox,
+            ElementType,
+            TranslatableElement,
+        )
+        from app.backend.parsers.pdf_parser import PyMuPDFParser
+
+        parser = PyMuPDFParser.__new__(PyMuPDFParser)
+
+        mock_doc = MagicMock()
+        mock_page = MagicMock()
+        mock_doc.__len__ = lambda self: 1
+        mock_doc.__getitem__ = lambda self, idx: mock_page
+
+        mock_table = MagicMock()
+        mock_table.bbox = (100, 100, 300, 200)
+        mock_table.cells = [(100, 100, 300, 200)]  # single cell = the whole table rect
+
+        mock_table_finder = MagicMock()
+        mock_table_finder.tables = [mock_table]
+        mock_page.find_tables.return_value = mock_table_finder
+
+        elem = TranslatableElement(
+            element_id="cell1",
+            content="Short text",
+            element_type=ElementType.TEXT,
+            page_num=1,
+            bbox=BoundingBox(x0=110, y0=110, x1=150, y1=130),
+        )
+
+        parser._detect_and_mark_tables(mock_doc, [elem])
+
+        assert elem.element_type == ElementType.TABLE_CELL
+        assert elem.metadata.get("table_row") == 0
+        assert elem.metadata.get("table_col") == 0
+        # x0/y0 stay at the tight text origin.
+        assert elem.bbox.x0 == 110
+        assert elem.bbox.y0 == 110
+        # x1/y1 extend to the cell rect minus the 2.0pt border pad.
+        assert elem.bbox.x1 == pytest.approx(300 - 2.0)
+        assert elem.bbox.y1 == pytest.approx(200 - 2.0)
+        # The pre-extension tight bbox is preserved for BR-84 whitening.
+        assert elem.metadata.get("lines") == [(110, 110, 150, 130)]
+
+
 class TestColorConversion:
     """Tests for color conversion utilities."""
 

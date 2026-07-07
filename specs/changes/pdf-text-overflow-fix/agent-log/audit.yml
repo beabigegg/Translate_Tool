@@ -1,0 +1,14 @@
+- type: tier-floor-override
+  change-id: pdf-text-overflow-fix
+  timestamp: '2026-07-07T15:05:35.251Z'
+  declared-tier: 2
+  floor-tier: 0
+  label: critical surface (auth / payments / data migration / concurrency / secrets)
+  matched:
+    - pagination
+    - session
+  reason: >-
+    False-positive keyword match on 'pagination'/'session' — this change fixes PDF
+    text-wrap/table-bbox rendering and adds a bounded row-growth pre-pass; it does not touch auth,
+    payments, data migration, or user sessions. 'Pagination' here refers to PDF page layout, not
+    session pagination.

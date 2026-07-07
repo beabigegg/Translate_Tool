@@ -1,0 +1,1 @@
+pytest tests/test_renderer_convergence.py tests/test_pdf_parser.py::TestTableDetectionStrategyFallback tests/test_pdf_parser.py::TestTableCellBboxCorrection --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/pdf-text-overflow-fix/test-runs/20260707-225506/junit.xml' -q --maxfail=1 --tb=short -ra

@@ -1,0 +1,55 @@
+change-id: pdf-text-overflow-fix
+agent: backend-engineer
+status: done
+next-action: main Claude runs cdd-kit test run for evidence generation and gate
+summary: >
+  Implemented IP-1..IP-15 per implementation-plan.md. Renumbered this change's
+  four new business rules to BR-101 (table-detection-strategy-fallback),
+  BR-102 (table-cell-bbox-extent-correction), BR-103 (bounded-local-table-row-growth),
+  BR-104 (pdf-render-truncation-disclosure) — live business-rules.md highest
+  was BR-100 (qa-judge-hang-recovery) at edit time, confirmed collision-free
+  via grep before and after. BR-40 amended (single shared fit_text_cascade
+  authority across all PDF paths, ADR-0012) and BR-36 clarifying sentence
+  appended (available_whitespace_below revives dead cascade step d) —
+  no renumber needed for those (amendments to existing rules). Single version
+  bump each: business-rules.md 0.23.0->0.24.0, data-shape-contract.md
+  0.15.0->0.16.0, env-contract.md 0.14.0->0.15.0 (PDF_TABLE_ROW_GROWTH_ENABLED,
+  CER-003-approved scope expansion, also added to .env.example.template and
+  env.schema.json per Deployment Sync Policy). One pre-existing false-positive
+  regression was caught and fixed during implementation: the BR-101 sanity
+  gate's original ">2.0pt" floor alone accepted a strategy="text" whitespace
+  hallucination over tests/fixtures/test_multiline.pdf's wrapped paragraph
+  (row heights as low as 5.72pt); added a MIN_READABLE_FONT_PT (8pt) per-cell
+  row-height floor to the gate, restoring
+  TestParagraphAggregation::test_paragraph_aggregation_reduces_element_count
+  to green (confirmed via git-stash bisection that this was a regression I
+  introduced, not pre-existing).
+artifacts:
+  - { type: files-changed, pointer: "app/backend/renderers/text_region_renderer.py (TextRegion style/element fields, render_text_region cascade rewrite, grow_table_rows pre-pass)" }
+  - { type: files-changed, pointer: "app/backend/renderers/bbox_reflow.py (Placement.available_whitespace_below, reflow_element/reflow_document page-grouped gap computation)" }
+  - { type: files-changed, pointer: "app/backend/renderers/fitz_renderer.py:326,343,412-419,521 (available_whitespace_below threaded from Placement to _insert_text_in_rect; _insert_text_in_rect body otherwise untouched)" }
+  - { type: files-changed, pointer: "app/backend/renderers/coordinate_renderer.py:265-277 (_render_side_by_side threads style/element into the manually-built translation TextRegion — see Deviations)" }
+  - { type: files-changed, pointer: "app/backend/parsers/pdf_parser.py (_find_tables_with_fallback, _table_passes_sanity_gate, 1:1 cell bbox extension at the former :444-452 loop)" }
+  - { type: files-changed, pointer: "app/backend/processors/pdf_processor.py (_dispatch_render: grow_table_rows pre-pass call + _emit_truncation_disclosure_warning post-render sweep; TEXT_TRUNCATION_WARNING_TEMPLATE)" }
+  - { type: files-changed, pointer: "app/backend/config.py (PDF_TABLE_ROW_GROWTH_ENABLED, default true)" }
+  - { type: contracts-touched, pointer: "contracts/business/business-rules.md (BR-40 amend, BR-36 note, BR-101/102/103/104 added, 0.23.0->0.24.0)" }
+  - { type: contracts-touched, pointer: "contracts/data/data-shape-contract.md (table_cell bbox-extent invariant note; new PDF default-path metadata-keys section; 0.15.0->0.16.0)" }
+  - { type: contracts-touched, pointer: "contracts/env/env-contract.md, contracts/env/.env.example.template, contracts/env/env.schema.json (PDF_TABLE_ROW_GROWTH_ENABLED; env-contract.md 0.14.0->0.15.0)" }
+  - { type: tests-added, pointer: "tests/test_text_region_renderer.py::TestRenderTextRegion::test_render_text_region_wraps_via_shared_cascade (AC-1)" }
+  - { type: tests-added, pointer: "tests/test_text_region_renderer.py::TestTruncationMarker::test_reportlab_path_sets_render_truncated_on_overflow (AC-3)" }
+  - { type: tests-added, pointer: "tests/test_coordinate_renderer.py::TestCoordinateRenderer::test_render_side_by_side_mode_wraps_long_text (AC-1), ::test_render_overlay_mode_fallback_wraps_long_text (AC-2)" }
+  - { type: tests-added, pointer: "tests/test_coordinate_renderer.py::TestCoordinateRendererEdgeCases::test_side_by_side_unfittable_text_sets_render_truncated (AC-3)" }
+  - { type: tests-added, pointer: "tests/test_pdf_render_warnings.py::TestFitzFallbackWarning::test_fitz_crash_fallback_still_wraps_long_text (AC-2 resilience)" }
+  - { type: tests-added, pointer: "tests/test_pdf_render_warnings.py::TestTruncationDisclosureWarning (3 cases, AC-11/BR-104)" }
+  - { type: tests-added, pointer: "tests/test_pdf_parser.py::TestTableDetectionStrategyFallback (5 cases incl. test_strict_success_skips_fallback AC-7), ::TestTableCellBboxCorrection (AC-5)" }
+  - { type: tests-added, pointer: "tests/test_pdf_layout_table_fixes.py::TestPdfTableCellSplit::test_row_blocks_split_into_cells (EXTENDED with bbox-extent + metadata[lines] regression assertions), ::TestTableDetectionFallbackIntegration::test_borderless_table_pdf_recovers_cells (AC-4)" }
+  - { type: tests-added, pointer: "tests/test_pdf_layout_refactor.py: _make_element/_make_doc metadata param (IP-15 prereq), TestAvailableWhitespaceBelow (2 cases, AC-9), TestBoundedRowGrowth (4 cases, AC-10)" }
+  - { type: tests-added, pointer: "tests/test_pdf_generator.py::TestPDFGenerator::test_insert_text_in_rect_reads_placement_whitespace_not_literal_zero (AC-9 exact-line regression guard)" }
+  - { type: tests-added, pointer: "tests/test_renderer_convergence.py::TestLayoutEquivalence::test_reportlab_path_also_calls_shared_fit_text_cascade (AC-8 shared-call invariant), ::test_row_growth_geometry_identical_fitz_vs_reportlab (AC-10 case 5)" }
+  - { type: test-output, pointer: "conda run -n translate-tool python -m pytest tests/test_text_region_renderer.py tests/test_coordinate_renderer.py tests/test_pdf_parser.py tests/test_pdf_layout_table_fixes.py tests/test_pdf_layout_refactor.py tests/test_pdf_generator.py tests/test_pdf_render_warnings.py tests/test_renderer_convergence.py tests/test_font_utils.py tests/test_inline_renderer.py -q --tb=short => 13 failed, 261 passed, 1 skipped (13 failures confirmed pre-existing via git-stash bisection: identical test names/counts on unmodified main, an onnxruntime/numpy 'cannot load module more than once per process' environment issue in layout_detector.py imports, unrelated to this change)" }
+  - { type: decision, pointer: "cdd-kit validate --contracts => All validations passed (contracts, API semantic, API conformance, response shape, Env semantic 43 vars checked)" }
+deviations:
+  - "IP-4 (coordinate_renderer.py) was specced 'verify-only, add none', but AC-3's test-plan node explicitly targets CoordinateRenderer._render_side_by_side (tests/test_coordinate_renderer.py::TestCoordinateRendererEdgeCases::test_side_by_side_unfittable_text_sets_render_truncated), and that method builds its translation TextRegion manually (not via create_text_regions_from_elements/create_text_regions_from_placements, which is where IP-1 was scoped). Without threading style/element into that manual construction too, render_truncated could never be set on this sub-path, permanently red-lining the test-plan's own AC-3 case. Added `style=element.style, element=element` to that one TextRegion(...) call (coordinate_renderer.py:265-277) — no new cascade logic, just wiring an already-available reference, matching IP-1's stated intent verbatim ('thread element ref... so the cascade gets a faithful starting font AND a truncation-marker target')."
+  - "implementation-plan.md's File-Level Plan table omits tests/test_coordinate_renderer.py entirely, yet test-plan.md (FINALIZED) maps 3 AC-1/AC-2/AC-3 test nodes to that exact file, and it IS listed in context-manifest.md's Allowed Paths/Required Tests. Treated as a plan omission covered by the finalized test-plan.md + manifest, not a scope expansion — extended that file per test-plan.md's node names."
+  - "AC-9's Placement.available_whitespace_below required extending fitz_renderer._insert_text_in_rect's SIGNATURE (new keyword param, default 0.0, backward-compatible) and its one call-site's tuple, beyond the literal single line ~511 value swap called out in the plan — there is no other way to get the real per-Placement gap into that method. The line ~511 change itself is exactly one line (0.0 -> the parameter); the added parameter is pure plumbing to make that line meaningful, not new cascade logic, and _insert_text_in_rect's internal cascade-decision/render logic is otherwise byte-for-byte unchanged."
+  - "Strengthened the BR-101 sanity gate beyond the plan's literal '>2.0pt floor' spec with an additional MIN_READABLE_FONT_PT (8pt) per-cell-height requirement, because the plan's floor alone let strategy=\"text\" hallucinate a table over tests/fixtures/test_multiline.pdf's real wrapped paragraph (row heights down to 5.72pt), regressing an AC-6 must-not-regress test. This satisfies the plan's own AC-7 'never worsens' requirement, which the literal floor alone violated on this fixture."

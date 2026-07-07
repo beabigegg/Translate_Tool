@@ -1,0 +1,1 @@
+pytest tests/ --collect-only --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/pdf-text-overflow-fix/test-runs/20260707-225456/junit.xml' -q --maxfail=1 --tb=short -ra

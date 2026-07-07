@@ -185,6 +185,15 @@ PDF_RENDER_DPI: int = int(os.getenv("PDF_RENDER_DPI", "150"))
 # Set OCR_ENABLED=true to route near-empty pages through ocr_backend.run_ocr().
 OCR_ENABLED: bool = os.getenv("OCR_ENABLED", "false").lower() in ("1", "true", "yes")
 
+# Bounded local table-row-growth pre-pass (pdf-text-overflow-fix, AC-10, BR-103,
+# ADR-0013). Default ON. Set to "0"/"false"/"no" as a production kill-switch for
+# the HIGH-risk overlay-mode background-collision case (a grown row's translated
+# text can cross the original source PDF's table rule lines in overlay mode,
+# since the pre-pass shifts only text/whitening, not the preserved background
+# graphics). Gates ONLY the AC-10 row-growth pre-pass; AC-9/AC-11 and all other
+# fixes in this change stay unconditional.
+PDF_TABLE_ROW_GROWTH_ENABLED: bool = os.getenv("PDF_TABLE_ROW_GROWTH_ENABLED", "true").lower() in ("1", "true", "yes")
+
 # Table recognition configuration (p3-table-structure)
 # TABLE_RECOGNITION_MODEL_PATH: optional explicit path to TATR/TableFormer ONNX weights directory.
 # When unset, falls back to HuggingFace cache / auto-download (D-5, tier 2/3).

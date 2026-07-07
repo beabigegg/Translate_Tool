@@ -18,22 +18,27 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from reportlab.lib.colors import Color, white
 from reportlab.pdfgen.canvas import Canvas
 
-from app.backend.config import MIN_FONT_SIZE_PT
+from app.backend.config import FONT_SIZE_CONFIG, MIN_FONT_SIZE_PT, PDF_HEADER_FOOTER_MARGIN_PT
+from app.backend.models.translatable_document import ElementType
 from app.backend.utils.font_utils import (
     calculate_text_width,
     detect_text_direction,
-    fit_text_to_bbox,
     get_font_for_language,
     register_fonts,
 )
 
 if TYPE_CHECKING:
-    from app.backend.models.translatable_document import BoundingBox, StyleInfo
+    from app.backend.models.translatable_document import (
+        BoundingBox,
+        StyleInfo,
+        TranslatableDocument,
+        TranslatableElement,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -408,6 +413,8 @@ class TextRegion:
     font_name: Optional[str] = None
     font_size: Optional[float] = None
     text_color: Tuple[float, float, float] = (0.0, 0.0, 0.0)  # RGB, 0-1
+    style: Optional["StyleInfo"] = None  # IP-1: source style; cascade starting font (BR-40)
+    element: Optional[Any] = None  # IP-1: source element ref; render_truncated marker target (BR-38)
 
     @property
     def width(self) -> float:
@@ -437,6 +444,8 @@ class TextRegion:
         rotation: float = 0.0,
         font_name: Optional[str] = None,
         font_size: Optional[float] = None,
+        style: Optional["StyleInfo"] = None,
+        element: Optional[Any] = None,
     ) -> "TextRegion":
         """Create a TextRegion from a BoundingBox.
 
@@ -446,6 +455,10 @@ class TextRegion:
             rotation: Rotation angle in degrees.
             font_name: Font to use.
             font_size: Font size in points.
+            style: Source StyleInfo (IP-1); gives the cascade a faithful starting
+                font size instead of the FONT_SIZE_CONFIG fallback.
+            element: Source element reference (IP-1); receives render_truncated
+                when the cascade truncates (BR-38).
 
         Returns:
             TextRegion instance.
@@ -459,6 +472,8 @@ class TextRegion:
             rotation=rotation,
             font_name=font_name,
             font_size=font_size,
+            style=style,
+            element=element,
         )
 
 
@@ -509,22 +524,59 @@ def render_text_region(
     # Ensure fonts are registered
     register_fonts()
 
-    # Get appropriate font
+    # Get appropriate font (measurement/render font is always language-aware,
+    # matching fitz_renderer._insert_text_in_rect — the source font NAME is
+    # never used for measurement, only its size).
     font_name = region.font_name or get_font_for_language(target_lang)
 
-    # Calculate font size if not specified
-    if region.font_size is None:
-        font_size, _ = fit_text_to_bbox(
-            region.text,
-            region.width,
-            region.height,
-            font_name,
-        )
-    else:
-        font_size = region.font_size
+    # --- BR-40 (ADR-0012): fit_text_cascade is the single shared fit/wrap
+    # authority for ALL PDF renderer paths. Mirrors fitz_renderer.py:473-552.
+    from app.backend.models.translatable_document import BoundingBox as _BBox
+    from app.backend.models.translatable_document import StyleInfo as _StyleInfo
 
-    # Ensure minimum font size
-    font_size = max(font_size, MIN_FONT_SIZE_PT)
+    initial_size: Optional[float] = None
+    if region.style is not None and getattr(region.style, "font_size", None):
+        try:
+            candidate = float(region.style.font_size)
+            if candidate > 0:
+                initial_size = candidate
+        except (TypeError, ValueError):
+            pass
+    if initial_size is None:
+        if region.font_size is not None:
+            initial_size = region.font_size
+        else:
+            # No threaded style (e.g. create_text_regions_from_placements — the
+            # Placement type does not carry StyleInfo): degrade to the language
+            # FONT_SIZE_CONFIG max (design.md Open Risk — acceptable, less faithful).
+            initial_size = FONT_SIZE_CONFIG.get("default", {}).get("max", 11)
+
+    cascade_style = _StyleInfo(font_name=font_name, font_size=initial_size)
+    bbox_obj = _BBox(x0=region.x0, y0=region.y0, x1=region.x1, y1=region.y1)
+
+    decision = fit_text_cascade(
+        text=region.text,
+        bbox=bbox_obj,
+        style=cascade_style,
+        available_whitespace_below=0.0,
+    )
+
+    # Mark truncation on the IR element (BR-38) when an element ref was
+    # threaded (IP-1); create_text_regions_from_placements does not carry one,
+    # so that sub-path degrades to log-only (matches the fitz legacy
+    # element=None behavior — a bounded, documented BR-38 gap).
+    if decision.truncated:
+        if region.element is not None:
+            region.element.render_truncated = True
+        logger.debug(
+            f"[cascade] Truncated text in ReportLab bbox ({region.width:.1f}×{region.height:.1f}): "
+            f"'{region.text[:30]}…' -> '{decision.fitted_text[:30]}'"
+            + ("" if region.element is not None else " (no element ref threaded; BR-38 marker not set)")
+        )
+
+    render_text = decision.fitted_text if decision.fitted_text else region.text
+    font_size = max(decision.font_size, MIN_FONT_SIZE_PT)
+    line_spacing = decision.line_spacing
 
     # Convert coordinates (PDF uses bottom-left origin, our system uses top-left)
     # Y coordinate needs to be flipped
@@ -577,9 +629,10 @@ def render_text_region(
     # Handle text direction
     text_dir = detect_text_direction(region.text)
 
-    # Split text into lines
-    lines = region.text.split("\n")
-    line_height = font_size * 1.2
+    # Word-wrap via the SAME shared cascade helper the fitz path draws from
+    # (BR-40, ADR-0012) — no separate wrap pass, no literal "\n"-only split.
+    lines = _wrap_lines_simple(render_text, font_name, font_size, region.width)
+    line_height = font_size * line_spacing
 
     # Calculate starting Y position (center text vertically)
     total_text_height = line_height * len(lines)
@@ -687,6 +740,8 @@ def create_text_regions_from_elements(
             element.bbox,
             translated_text,
             rotation=rotation,
+            style=element.style,
+            element=element,
         )
         regions.append(region)
 
@@ -700,6 +755,14 @@ def create_text_regions_from_placements(placements: list) -> List[TextRegion]:
     decisions from the shared IR-bbox reflow component (bbox_reflow.py).  It
     contains NO IR logic — inclusion/exclusion, reading_order sorting, and
     text-source selection are already resolved by reflow_document.
+
+    NOTE (IP-1 Open Risk): ``Placement`` (bbox_reflow.py) does not carry a
+    source ``StyleInfo`` or an element reference — only element_id/bbox/text/
+    reading_order. So this sub-path cannot thread a starting font or a
+    render_truncated marker target; ``render_text_region`` degrades to the
+    language FONT_SIZE_CONFIG max starting size and a log-only truncation
+    notice on this path (a bounded, documented BR-38 gap — matches the
+    pre-existing fitz legacy ``element=None`` behavior).
 
     Args:
         placements: List of Placement objects from bbox_reflow.reflow_document.
@@ -720,3 +783,133 @@ def create_text_regions_from_placements(placements: list) -> List[TextRegion]:
         )
         regions.append(region)
     return regions
+
+
+# ---------------------------------------------------------------------------
+# grow_table_rows — bounded local row-growth pre-pass (BR-103, ADR-0013, AC-10)
+# ---------------------------------------------------------------------------
+
+
+def _shift_cell_down(cell: "TranslatableElement", dy: float) -> None:
+    """Shift a table-cell element's bbox and metadata['lines'] whitening
+    rects down by ``dy`` (points).  No-op for dy<=0.  Mutates in place.
+    """
+    if dy <= 0 or cell.bbox is None:
+        return
+    cell.bbox.y0 += dy
+    cell.bbox.y1 += dy
+    lines = cell.metadata.get("lines")
+    if lines:
+        cell.metadata["lines"] = [
+            (ln[0], ln[1] + dy, ln[2], ln[3] + dy) for ln in lines
+        ]
+
+
+def _required_row_height(cell: "TranslatableElement") -> float:
+    """Measure the vertical space ``cell``'s (untruncated) text needs at the
+    cascade's settled font size, reusing fit_text_cascade/_wrap_lines_simple
+    (ADR-0012) rather than duplicating fit logic."""
+    text = cell.translated_content if cell.translated_content is not None else cell.content
+    if not text or not str(text).strip() or cell.bbox is None:
+        return 0.0
+    decision = fit_text_cascade(text=text, bbox=cell.bbox, style=cell.style)
+    font_name = (cell.style.font_name if cell.style else None) or "Helvetica"
+    lines = _wrap_lines_simple(text, font_name, decision.font_size, cell.bbox.width)
+    _, required_h = _measure_text_block(lines, font_name, decision.font_size, decision.line_spacing)
+    return required_h
+
+
+def grow_table_rows(document: "TranslatableDocument") -> None:
+    """Bounded local table row-growth pre-pass (BR-103, ADR-0013, AC-10).
+
+    Groups TABLE_CELL elements by ``(page_num, metadata["table_id"])`` then by
+    ``metadata["table_row"]``.  For each row (in ascending row order), measures
+    every cell's required height for its FULL (untruncated) translated text at
+    the cascade's settled font size (``_required_row_height``, reusing the
+    SAME ``fit_text_cascade``/``_wrap_lines_simple`` authority both renderer
+    backends draw from — ADR-0012).  When the row max required height exceeds
+    the row's current height, the row's cells grow (``y1 += delta``) and every
+    LOWER row in the SAME table is shifted down by the cumulative delta — bbox
+    AND ``metadata["lines"]`` whitening rects together (BR-84 parity) — so
+    both PDF backends inherit the identical grown geometry from the one shared
+    IR mutation point (BR-35/BR-40).
+
+    Growth is capped at the table's remaining local page budget: the top of
+    the first non-table element below the table on the same page, else the
+    page bottom margin (``PDF_HEADER_FOOTER_MARGIN_PT``, reused).  A row whose
+    required delta exceeds the remaining budget grows by the budget only; the
+    residual falls through to the normal BR-36 cascade (shrink/truncate) at
+    render time, surfaced by the BR-104 disclosure sweep.  Best-effort, never
+    a new hard fit guarantee (ADR-0013).
+
+    Elements without ``table_id``/``table_row`` metadata (table detection
+    fully failed; no ``cell_grid``) are skipped entirely — those cells keep
+    the existing cascade-only (shrink/truncate) behavior.
+
+    Mutates ``document`` elements in place; returns ``None``.
+    """
+    elements_by_page: Dict[int, list] = {}
+    for elem in document.elements:
+        elements_by_page.setdefault(elem.page_num, []).append(elem)
+
+    for page_num, page_elements in elements_by_page.items():
+        page_info = next((p for p in document.pages if p.page_num == page_num), None)
+        page_height = page_info.height if page_info is not None else None
+
+        # Group TABLE_CELL elements with row/table metadata by table_id -> row.
+        tables: Dict[Any, Dict[Any, list]] = {}
+        for elem in page_elements:
+            if elem.element_type != ElementType.TABLE_CELL or elem.bbox is None:
+                continue
+            table_id = elem.metadata.get("table_id")
+            row = elem.metadata.get("table_row")
+            if table_id is None or row is None:
+                continue  # BR-103 no-metadata skip
+            tables.setdefault(table_id, {}).setdefault(row, []).append(elem)
+
+        for table_id, rows_by_index in tables.items():
+            all_cells = [c for cells in rows_by_index.values() for c in cells]
+            if not all_cells:
+                continue
+            table_bottom = max(c.bbox.y1 for c in all_cells)
+
+            # Table's remaining local page budget (ADR-0013 step 4).
+            below_others = [
+                e for e in page_elements
+                if e.bbox is not None
+                and e.metadata.get("table_id") != table_id
+                and e.bbox.y0 >= table_bottom - 0.01
+            ]
+            if below_others:
+                budget_bottom = min(e.bbox.y0 for e in below_others)
+            elif page_height is not None:
+                budget_bottom = page_height - PDF_HEADER_FOOTER_MARGIN_PT
+            else:
+                budget_bottom = table_bottom  # no page info; no room to grow
+
+            remaining_budget = max(0.0, budget_bottom - table_bottom)
+            cumulative_delta = 0.0
+
+            for row_idx in sorted(rows_by_index.keys()):
+                row_cells = rows_by_index[row_idx]
+
+                # Rows below an already-grown row inherit the cumulative shift
+                # (both bbox and BR-84 whitening rects) before being measured.
+                for cell in row_cells:
+                    _shift_cell_down(cell, cumulative_delta)
+
+                row_top = min(c.bbox.y0 for c in row_cells)
+                row_bottom = max(c.bbox.y1 for c in row_cells)
+                row_height = row_bottom - row_top
+                row_required = max(_required_row_height(c) for c in row_cells)
+
+                delta = row_required - row_height
+                if delta <= 0 or remaining_budget <= 0:
+                    continue
+
+                applied_delta = min(delta, remaining_budget)
+                remaining_budget -= applied_delta
+                cumulative_delta += applied_delta
+
+                for cell in row_cells:
+                    cell.bbox.y1 += applied_delta

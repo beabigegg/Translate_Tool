@@ -221,6 +221,128 @@ class TestCoordinateRenderer:
             if os.path.exists(output_path):
                 os.unlink(output_path)
 
+    def test_render_side_by_side_mode_wraps_long_text(self):
+        """AC-1: side-by-side mode wraps long translated text across
+        multiple lines within its bbox, not a single overflowing line
+        (BR-40 shared cascade — this fallback path inherits wrap via
+        render_text_region with zero per-path cascade duplication)."""
+        try:
+            import fitz
+        except ImportError:
+            pytest.skip("PyMuPDF not installed")
+
+        long_translation = (
+            "This is a considerably long piece of translated text that must "
+            "wrap across multiple lines instead of overflowing horizontally "
+            "past its narrow allotted column width no matter what."
+        )
+        elements = [
+            TranslatableElement(
+                element_id="e1",
+                content="Short",
+                element_type=ElementType.TEXT,
+                page_num=1,
+                bbox=BoundingBox(x0=72, y0=100, x1=220, y1=200),
+                should_translate=True,
+            ),
+        ]
+        pages = [PageInfo(page_num=1, width=612, height=792)]
+        doc = TranslatableDocument(
+            source_path="/test/sample.pdf",
+            source_type="pdf",
+            elements=elements,
+            pages=pages,
+            metadata=DocumentMetadata(page_count=1, has_text_layer=True),
+        )
+        translations = {"Short": long_translation}
+        renderer = CoordinateRenderer(target_lang="en")
+
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+            output_path = f.name
+
+        try:
+            renderer.render(doc, output_path, translations, RenderMode.SIDE_BY_SIDE)
+
+            result_doc = fitz.open(output_path)
+            page_dict = result_doc[0].get_text("dict")
+            original_width = pages[0].width
+            line_ys = {
+                round(line["bbox"][1], 1)
+                for block in page_dict.get("blocks", [])
+                for line in block.get("lines", [])
+                if line["bbox"][0] >= original_width - 5
+            }
+            result_doc.close()
+
+            assert len(line_ys) > 1, (
+                "expected the long translation to wrap across multiple lines in "
+                f"the right (translated) column, got {len(line_ys)} distinct line(s)"
+            )
+        finally:
+            if os.path.exists(output_path):
+                os.unlink(output_path)
+
+    def test_render_overlay_mode_fallback_wraps_long_text(self):
+        """AC-2: overlay-mode fallback (used when fitz crashes, BR-34) wraps
+        long translated text within its bbox identically to the side-by-side
+        path (BR-40 shared cascade)."""
+        try:
+            import fitz
+        except ImportError:
+            pytest.skip("PyMuPDF not installed")
+
+        long_translation = (
+            "This is a considerably long piece of translated text that must "
+            "wrap across multiple lines instead of overflowing horizontally "
+            "past its narrow allotted column width no matter what."
+        )
+        # Overlay mode resolves text via reflow_document()/Placement (which
+        # reads translated_content), not the `translations` dict argument —
+        # so translated_content must be set directly on the element.
+        elements = [
+            TranslatableElement(
+                element_id="e1",
+                content="Short",
+                element_type=ElementType.TEXT,
+                page_num=1,
+                bbox=BoundingBox(x0=72, y0=300, x1=220, y1=400),
+                should_translate=True,
+                translated_content=long_translation,
+            ),
+        ]
+        pages = [PageInfo(page_num=1, width=612, height=792)]
+        doc = TranslatableDocument(
+            source_path="/test/sample.pdf",
+            source_type="pdf",
+            elements=elements,
+            pages=pages,
+            metadata=DocumentMetadata(page_count=1, has_text_layer=True),
+        )
+        translations = {"Short": long_translation}
+        renderer = CoordinateRenderer(target_lang="en")
+
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+            output_path = f.name
+
+        try:
+            renderer.render(doc, output_path, translations, RenderMode.OVERLAY)
+
+            result_doc = fitz.open(output_path)
+            page_dict = result_doc[0].get_text("dict")
+            line_ys = {
+                round(line["bbox"][1], 1)
+                for block in page_dict.get("blocks", [])
+                for line in block.get("lines", [])
+            }
+            result_doc.close()
+
+            assert len(line_ys) > 1, (
+                f"expected the long translation to wrap across multiple lines, got {len(line_ys)}"
+            )
+        finally:
+            if os.path.exists(output_path):
+                os.unlink(output_path)
+
 
 class TestRenderToPdf:
     """Tests for render_to_pdf convenience function."""
@@ -403,3 +525,40 @@ class TestCoordinateRendererEdgeCases:
         finally:
             if os.path.exists(output_path):
                 os.unlink(output_path)
+
+    def test_side_by_side_unfittable_text_sets_render_truncated(self):
+        """AC-3: side-by-side mode sets render_truncated=True on the source
+        element when translated text cannot fit even at floor size (BR-38),
+        via the element ref threaded through the manually-built TextRegion."""
+        elem = TranslatableElement(
+            element_id="e1",
+            content="short",
+            element_type=ElementType.TEXT,
+            page_num=1,
+            bbox=BoundingBox(x0=72, y0=72, x1=77, y1=77),  # 5x5pt — impossibly tiny
+            should_translate=True,
+        )
+        doc = TranslatableDocument(
+            source_path="/test/sample.pdf",
+            source_type="pdf",
+            elements=[elem],
+            pages=[PageInfo(page_num=1, width=612, height=792)],
+            metadata=DocumentMetadata(page_count=1, has_text_layer=True),
+        )
+        very_long = (
+            "This is an extremely long piece of text that cannot possibly "
+            "fit inside a five by five point box no matter what happens."
+        )
+        translations = {"short": very_long}
+        renderer = CoordinateRenderer(target_lang="en")
+
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+            output_path = f.name
+
+        try:
+            renderer.render(doc, output_path, translations, RenderMode.SIDE_BY_SIDE)
+        finally:
+            if os.path.exists(output_path):
+                os.unlink(output_path)
+
+        assert elem.render_truncated is True

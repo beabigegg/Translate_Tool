@@ -3,8 +3,8 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.15.0
-last-changed: 2026-06-27
+schema-version: 0.16.0
+last-changed: 2026-07-07
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -188,6 +188,10 @@ The following table is normative. The implementation constant in `layout_detecto
 
 Coordinate system: top-left origin; x increases right; y increases down. Unit: points (1 pt = 1/72 inch).
 
+#### `table_cell` bbox-extent invariant (pdf-text-overflow-fix, BR-102)
+
+For a `TranslatableElement` with `element_type = table_cell`, `bbox.x1`/`bbox.y1` represent the corrected **cell extent** — the detected table cell's right/bottom edge minus a 2.0pt border padding — not the (often much shorter) tight bbox of the original source text. `bbox.x0`/`bbox.y0` remain at the tight text origin (unmoved). This applies whether the cell element came from the multi-cell split path (`_split_elements_by_cells`) or the 1:1 single-block-to-cell path (`_locate_cell`) — both apply the identical right/bottom extension. The pre-extension tight text bbox is preserved in `metadata["lines"]` (a single-entry list for the 1:1 path; one entry per source line for the split path) so bbox-exact whitening (BR-84) still masks only the original text, not the whole (now-larger) cell. This invariant is unrelated to the ML `TableCell` sub-record (p3-table-structure, see `## Table/Cell IR` below) — that record has no `bbox` field of its own; it is keyed by row/col against its parent `table`-typed element's region.
+
 ### StyleInfo — serialized field shape (font metadata)
 
 | field | type | nullable | default (from_dict) | notes |
@@ -276,6 +280,20 @@ Both render paths MUST handle the following conditions deterministically and ide
 | `elements` list is empty | Produce an empty (but valid) output page; do not raise. |
 
 "Identically" means: for the same input IR, both paths must produce the same element-level decisions (skip vs. render, placement region source, text source) even if the visual output differs due to renderer capabilities.
+
+### PDF default-path table `metadata` keys (pdf-text-overflow-fix, BR-103)
+
+The default (non-ML) PDF table-detection path (`pdf_parser.py::_detect_and_mark_tables`) has always written the following keys into `TranslatableElement.metadata` for `table_cell`-typed elements; they were previously undocumented here. They are now load-bearing for BR-103's row-growth pre-pass join logic (`grow_table_rows`, text_region_renderer.py), so this section makes the existing shape explicit rather than introducing anything new.
+
+| key | type | present when | notes |
+|---|---|---|---|
+| `in_table` | boolean | element is inside a detected table bbox | always `True` when present; the key is simply absent for non-table elements |
+| `table_id` | string | element is inside a detected table bbox | format `"p{page_num}_t{table_counter}"`; unique per detected table per document; groups all cells of one table across BOTH the multi-cell-split path and the 1:1 path |
+| `table_row` | integer\|absent | cell grid position was resolved (`_locate_cell` found a match) | 0-based row index within the table's `cell_grid`; absent (not `None`) when the cell center did not resolve to any grid cell |
+| `table_col` | integer\|absent | cell grid position was resolved | 0-based column index; same resolution rule as `table_row` |
+| `lines` | array of `[x0, y0, x1, y1]` (4-float tuples/lists) | cell bbox was extended past the tight source-text extent (BR-102) OR the element is a paragraph-aggregated multi-line block (BR-84) | The pre-extension/pre-aggregation tight per-line bbox(es), preserved so bbox-exact whitening masks only the original text location, never the (possibly larger, possibly shifted) corrected/grown cell bbox. |
+
+**Post-translation row-shift (BR-103):** when the row-growth pre-pass (`grow_table_rows`) grows an over-full row, every element in a LOWER row of the SAME `table_id` (on the same page) has its `bbox` (`y0`/`y1`) AND every entry in its `metadata["lines"]` shifted down by the identical cumulative delta, upstream of `bbox_reflow.reflow_document` — so both renderer backends observe the same shifted geometry from the one shared IR mutation point (BR-35/BR-40). A row's OWN growth only extends `bbox.y1` (its `y0` and its `metadata["lines"]` entries are untouched, since growth adds empty space below existing content rather than moving it). Elements lacking `table_id`/`table_row` are never shifted or grown (BR-103 no-metadata skip).
 
 ---
 

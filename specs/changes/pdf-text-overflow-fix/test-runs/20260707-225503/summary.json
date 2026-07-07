@@ -1,0 +1,16 @@
+{
+  "change_id": "pdf-text-overflow-fix",
+  "phase": "changed-area",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest tests/test_text_region_renderer.py tests/test_coordinate_renderer.py tests/test_pdf_layout_table_fixes.py tests/test_pdf_generator.py tests/test_pdf_render_warnings.py tests/test_renderer_convergence.py tests/test_font_utils.py tests/test_inline_renderer.py tests/test_pdf_parser.py::TestTableDetectionStrategyFallback tests/test_pdf_parser.py::TestTableCellBboxCorrection tests/test_pdf_layout_refactor.py::TestAvailableWhitespaceBelow tests/test_pdf_layout_refactor.py::TestBoundedRowGrowth --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/pdf-text-overflow-fix/test-runs/20260707-225503/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 2183,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/pdf-text-overflow-fix/test-runs/20260707-225503/summary.json",
+    "stdout": "specs/changes/pdf-text-overflow-fix/test-runs/20260707-225503/stdout.log",
+    "stderr": "specs/changes/pdf-text-overflow-fix/test-runs/20260707-225503/stderr.log",
+    "junit": "specs/changes/pdf-text-overflow-fix/test-runs/20260707-225503/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

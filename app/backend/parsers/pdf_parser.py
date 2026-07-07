@@ -27,7 +27,7 @@ from app.backend.models.translatable_document import (
 )
 import os
 
-from app.backend.config import LAYOUT_DETECTOR_MODEL_PATH, PDF_RENDER_DPI
+from app.backend.config import LAYOUT_DETECTOR_MODEL_PATH, MIN_READABLE_FONT_PT, PDF_RENDER_DPI
 from app.backend.parsers.base import BaseParser
 from app.backend.utils.bbox_utils import is_header_footer_region, normalize_bbox
 
@@ -383,12 +383,13 @@ class PyMuPDFParser(BaseParser):
         for page_num in range(len(doc)):
             page = doc[page_num]
             try:
-                # find_tables() returns a TableFinder object
-                tables = page.find_tables()
-                if not tables or not tables.tables:
+                # find_tables() (default lines_strict strategy) with a
+                # BR-101 additive, sanity-gated looser-strategy fallback.
+                table_list = self._find_tables_with_fallback(page)
+                if not table_list:
                     continue
 
-                for table in tables.tables:
+                for table in table_list:
                     table_bbox = BoundingBox(
                         x0=table.bbox[0],
                         y0=table.bbox[1],
@@ -450,6 +451,28 @@ class PyMuPDFParser(BaseParser):
                         if rc is not None:
                             elem.metadata["table_row"] = rc[0]
                             elem.metadata["table_col"] = rc[1]
+                            # BR-102: correct the 1:1 block-to-cell bbox to the
+                            # true cell extent (right/bottom only — x0/y0 stay
+                            # at the tight text origin), mirroring the same
+                            # extension _split_elements_by_cells already
+                            # applies (:560-574) so translations longer than
+                            # the source text can use the cell's empty space
+                            # instead of being shrunk/truncated in the tight
+                            # source-text bbox. The pre-extension tight bbox is
+                            # preserved in metadata["lines"] (single-entry
+                            # list) for BR-84 bbox-exact whitening.
+                            cell_rect = next(
+                                (rect for ri, ci, rect in cell_grid if (ri, ci) == rc),
+                                None,
+                            )
+                            if cell_rect is not None and elem.bbox is not None:
+                                _pad = 2.0
+                                if "lines" not in elem.metadata:
+                                    elem.metadata["lines"] = [
+                                        (elem.bbox.x0, elem.bbox.y0, elem.bbox.x1, elem.bbox.y1)
+                                    ]
+                                elem.bbox.x1 = max(elem.bbox.x1, cell_rect[2] - _pad)
+                                elem.bbox.y1 = max(elem.bbox.y1, cell_rect[3] - _pad)
 
             except Exception as e:
                 logger.debug(f"Table detection failed on page {page_num + 1}: {e}")
@@ -462,6 +485,75 @@ class PyMuPDFParser(BaseParser):
             for pg in sorted(page_elements.keys()):
                 rebuilt_all.extend(page_elements[pg])
             elements[:] = rebuilt_all
+
+    def _find_tables_with_fallback(self, page: Any) -> List[Any]:
+        """BR-101: additive, sanity-gated looser-strategy find_tables() fallback.
+
+        Tries the default strict strategy (``lines_strict``) first. Only when
+        that finds NOTHING on the page does it retry progressively looser
+        strategies (``lines`` then ``text``), accepting a fallback result only
+        when it passes ``_table_passes_sanity_gate`` (>=2 rows AND >=2 cols,
+        every detected cell rect above the existing >2.0pt floor). A
+        successful strict detection is NEVER overridden by a fallback attempt.
+        A fallback result that fails the gate is discarded — the page's
+        existing paragraph blocks are kept unchanged (additive-only; never
+        worse than before, AC-7).
+
+        Returns:
+            List of accepted ``fitz`` Table objects (possibly empty).
+        """
+        try:
+            tables = page.find_tables()
+        except Exception:
+            tables = None
+        if tables and tables.tables:
+            return list(tables.tables)
+
+        for strategy in ("lines", "text"):
+            try:
+                fallback = page.find_tables(strategy=strategy)
+            except Exception:
+                continue
+            if not fallback or not fallback.tables:
+                continue
+            accepted = [t for t in fallback.tables if self._table_passes_sanity_gate(t)]
+            if accepted:
+                return accepted
+
+        return []
+
+    def _table_passes_sanity_gate(self, table: Any) -> bool:
+        """BR-101 sanity gate for a looser-strategy fallback table.
+
+        Requires >=2 rows AND >=2 columns (a real grid, not a stray line),
+        every detected cell rect wider/taller than the existing >2.0pt floor
+        already used by ``_spans_multiple_cells``, AND every row tall enough
+        to hold one line of legible text (``MIN_READABLE_FONT_PT``). The
+        row-height floor is the deterministic signal that separates a real
+        table from ``strategy="text"`` hallucinating a grid over ordinary
+        wrapped prose: a paragraph's word-wrap "rows" have wildly inconsistent
+        heights, including some far below what any real table row could be
+        (PyMuPDF exposes no confidence score, so structural checks are the
+        only available proxy). Mitigates, but is not guaranteed to eliminate,
+        every possible false positive.
+        """
+        try:
+            cell_grid = self._build_cell_grid(table)
+        except Exception:
+            return False
+        if not cell_grid:
+            return False
+        rows = {ri for ri, _, _ in cell_grid}
+        cols = {ci for _, ci, _ in cell_grid}
+        if len(rows) < 2 or len(cols) < 2:
+            return False
+        for _, _, rect in cell_grid:
+            width, height = rect[2] - rect[0], rect[3] - rect[1]
+            if width <= 2.0 or height <= 2.0:
+                return False
+            if height < MIN_READABLE_FONT_PT:
+                return False
+        return True
 
     @staticmethod
     def _spans_multiple_cells(

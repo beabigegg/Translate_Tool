@@ -39,6 +39,9 @@ def _make_element(
     element_type: ElementType = ElementType.TEXT,
     should_translate: bool = True,
     reading_order: int = 0,
+    metadata: dict = None,
+    translated_content: str = None,
+    style: StyleInfo = None,
 ) -> TranslatableElement:
     return TranslatableElement(
         element_id=eid,
@@ -48,11 +51,13 @@ def _make_element(
         bbox=BoundingBox(x0=x0, y0=y0, x1=x1, y1=y1),
         should_translate=should_translate,
         reading_order=reading_order,
-        metadata={},
+        metadata=dict(metadata) if metadata else {},
+        translated_content=translated_content,
+        style=style,
     )
 
 
-def _make_doc(elements=None, source_path="/fake/test.pdf") -> TranslatableDocument:
+def _make_doc(elements=None, source_path="/fake/test.pdf", pages=None) -> TranslatableDocument:
     if elements is None:
         elements = [
             _make_element("e1", "Hello", 72, 100, 300, 120, reading_order=0),
@@ -61,7 +66,7 @@ def _make_doc(elements=None, source_path="/fake/test.pdf") -> TranslatableDocume
         source_path=source_path,
         source_type="pdf",
         elements=elements,
-        pages=[PageInfo(page_num=1, width=612, height=792)],
+        pages=pages if pages is not None else [PageInfo(page_num=1, width=612, height=792)],
         metadata=DocumentMetadata(page_count=1, has_text_layer=True),
     )
 
@@ -658,3 +663,153 @@ class TestFormulaAndOcr:
             e for e in result.elements if e.metadata.get("table_structure") is not None
         ]
         assert len(table_structured) == 0
+
+
+# ---------------------------------------------------------------------------
+# AC-9  TestAvailableWhitespaceBelow (pdf-text-overflow-fix, BR-36 note)
+# ---------------------------------------------------------------------------
+
+
+class TestAvailableWhitespaceBelow:
+    """AC-9: Placement.available_whitespace_below computed from real sibling geometry."""
+
+    def test_reflow_element_computes_nonzero_gap_below_same_column(self):
+        """TABLE_CELL: gap = distance to the next row's y0 in the SAME table_id/table_col."""
+        from app.backend.renderers.bbox_reflow import reflow_element
+
+        cell_above = _make_element(
+            "c1", "Row0", 50, 100, 150, 130, reading_order=0,
+            element_type=ElementType.TABLE_CELL,
+            metadata={"table_id": "p1_t0", "table_row": 0, "table_col": 0},
+        )
+        cell_below = _make_element(
+            "c2", "Row1", 50, 150, 150, 180, reading_order=1,
+            element_type=ElementType.TABLE_CELL,
+            metadata={"table_id": "p1_t0", "table_row": 1, "table_col": 0},
+        )
+
+        placement = reflow_element(
+            cell_above, page_elements=[cell_above, cell_below], page_height=792,
+        )
+
+        assert placement is not None
+        assert placement.available_whitespace_below == pytest.approx(150 - 130)
+        assert placement.available_whitespace_below > 0
+
+    def test_reflow_document_zero_gap_last_row_or_no_neighbor(self):
+        """No below-neighbor with overlapping x-range -> gap stays 0.0 (default-safe)."""
+        from app.backend.renderers.bbox_reflow import reflow_document
+
+        lone = _make_element("e1", "Solo paragraph", 50, 100, 150, 130, reading_order=0)
+        doc = _make_doc([lone])
+
+        placements = reflow_document(doc)
+
+        assert len(placements) == 1
+        assert placements[0].available_whitespace_below == 0.0
+
+
+# ---------------------------------------------------------------------------
+# AC-10  TestBoundedRowGrowth (pdf-text-overflow-fix, BR-103, ADR-0013)
+# ---------------------------------------------------------------------------
+
+
+class TestBoundedRowGrowth:
+    """AC-10: bounded local table-row-growth pre-pass (grow_table_rows)."""
+
+    @staticmethod
+    def _table_cell(eid, content, x0, y0, x1, y1, table_id, row, col, translated=None):
+        return _make_element(
+            eid, content, x0, y0, x1, y1, reading_order=row * 10 + col,
+            element_type=ElementType.TABLE_CELL,
+            metadata={"table_id": table_id, "table_row": row, "table_col": col},
+            translated_content=translated,
+        )
+
+    def test_single_table_row_grows_and_shifts_only_same_table_id_lower_rows(self):
+        """Case 1: an over-full row grows; only the SAME table's lower row shifts down."""
+        from app.backend.renderers.text_region_renderer import grow_table_rows
+
+        long_text = (
+            "This translated sentence is far too long to fit inside a narrow, "
+            "short table row no matter how much the font shrinks. " * 3
+        )
+        row0 = self._table_cell("c1", "short", 50, 100, 150, 115, "p1_t0", 0, 0, translated=long_text)
+        row1 = self._table_cell("c2", "next row", 50, 115, 150, 130, "p1_t0", 1, 0)
+        doc = _make_doc([row0, row1], pages=[PageInfo(page_num=1, width=612, height=792)])
+
+        row1_y0_before, row1_y1_before = row1.bbox.y0, row1.bbox.y1
+
+        grow_table_rows(doc)
+
+        delta = row0.bbox.y1 - 115
+        assert delta > 0, "row0 must grow to fit its overflowing translated text"
+        assert row0.bbox.y0 == 100, "row growth extends y1 only; y0 must stay fixed"
+        assert row1.bbox.y0 == pytest.approx(row1_y0_before + delta), (
+            "the lower row in the SAME table must shift down by the identical delta"
+        )
+        assert row1.bbox.y1 == pytest.approx(row1_y1_before + delta)
+
+    def test_growth_capped_at_table_budget_residual_truncates_and_warns(self):
+        """Case 2: growth is capped at the table's remaining local page budget."""
+        from app.backend.config import PDF_HEADER_FOOTER_MARGIN_PT
+        from app.backend.renderers.text_region_renderer import grow_table_rows
+
+        long_text = (
+            "Extremely long translated text that will never fit in this tiny cell "
+            "no matter what happens to the font size or the line spacing. " * 5
+        )
+        row0 = self._table_cell("c1", "short", 50, 100, 150, 115, "p1_t0", 0, 0, translated=long_text)
+        # Remaining local budget = page_height - PDF_HEADER_FOOTER_MARGIN_PT - table_bottom(115) = 5.0
+        page_height = 115 + PDF_HEADER_FOOTER_MARGIN_PT + 5.0
+        doc = _make_doc([row0], pages=[PageInfo(page_num=1, width=612, height=page_height)])
+
+        grow_table_rows(doc)
+
+        applied_delta = row0.bbox.y1 - 115
+        assert applied_delta == pytest.approx(5.0), (
+            f"growth must cap at the 5.0pt remaining table budget, got {applied_delta}"
+        )
+
+    def test_no_table_id_metadata_skips_growth_unchanged_cascade(self):
+        """Case 3: no table_id/table_row metadata -> growth entirely skipped."""
+        from app.backend.renderers.text_region_renderer import grow_table_rows
+
+        long_text = "Some long translated text that would otherwise need growth. " * 5
+        elem = _make_element(
+            "e1", "short", 50, 100, 150, 115, reading_order=0,
+            element_type=ElementType.TABLE_CELL,  # TABLE_CELL but no table_id/table_row
+            translated_content=long_text,
+        )
+        doc = _make_doc([elem])
+        before = (elem.bbox.x0, elem.bbox.y0, elem.bbox.x1, elem.bbox.y1)
+
+        grow_table_rows(doc)
+
+        after = (elem.bbox.x0, elem.bbox.y0, elem.bbox.x1, elem.bbox.y1)
+        assert before == after, "missing table_id/table_row metadata must skip growth"
+
+    def test_metadata_lines_whitening_bboxes_shift_by_identical_delta(self):
+        """Case 4: a shifted lower row's metadata['lines'] whitening rects move by the SAME delta as its bbox."""
+        from app.backend.renderers.text_region_renderer import grow_table_rows
+
+        long_text = (
+            "This translated sentence is far too long to fit inside a narrow, "
+            "short table row no matter how much the font shrinks. " * 3
+        )
+        row0 = self._table_cell("c1", "short", 50, 100, 150, 115, "p1_t0", 0, 0, translated=long_text)
+        row1 = self._table_cell("c2", "next row", 50, 115, 150, 130, "p1_t0", 1, 0)
+        row1.metadata["lines"] = [(50, 115, 150, 130)]
+        doc = _make_doc([row0, row1], pages=[PageInfo(page_num=1, width=612, height=792)])
+        row1_y0_before = row1.bbox.y0
+
+        grow_table_rows(doc)
+
+        delta = row0.bbox.y1 - 115
+        assert delta > 0
+        shifted_line = row1.metadata["lines"][0]
+        assert shifted_line[0] == 50 and shifted_line[2] == 150, "x-coordinates must not shift"
+        assert shifted_line[1] == pytest.approx(115 + delta)
+        assert shifted_line[3] == pytest.approx(130 + delta)
+        # The bbox and the lines whitening rect must shift by the IDENTICAL delta.
+        assert (shifted_line[1] - 115) == pytest.approx(row1.bbox.y0 - row1_y0_before)

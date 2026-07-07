@@ -323,7 +323,9 @@ class PDFGenerator:
                     placement.x1,
                     placement.y1,
                 )
-                text_items.append((text_rect, translated_text, element))
+                # AC-9/BR-36 note: carry the Placement's real whitespace-below
+                # (computed once in bbox_reflow.py) through to the cascade call.
+                text_items.append((text_rect, translated_text, element, placement.available_whitespace_below))
 
             # Apply redactions if mask is enabled
             if self.draw_mask and whitening_rects:
@@ -339,8 +341,11 @@ class PDFGenerator:
                 page.apply_redactions(graphics=0)
 
             # Now insert all translated text; pass element so truncation marker (BR-38) can be set
-            for text_rect, translated_text, elem_ref in text_items:
-                self._insert_text_in_rect(page, text_rect, translated_text, element=elem_ref)
+            for text_rect, translated_text, elem_ref, ws_below in text_items:
+                self._insert_text_in_rect(
+                    page, text_rect, translated_text, element=elem_ref,
+                    available_whitespace_below=ws_below,
+                )
 
         # Subset fonts to embed only used glyphs (important for CJK fonts)
         try:
@@ -410,6 +415,7 @@ class PDFGenerator:
         rect,
         text: str,
         element=None,
+        available_whitespace_below: float = 0.0,
     ) -> None:
         """Insert text into a rectangle using the BR-36 fit cascade.
 
@@ -429,6 +435,10 @@ class PDFGenerator:
             text: Text to insert.
             element: Optional TranslatableElement; when provided, receives the
                 render_truncated marker on truncation (BR-38).
+            available_whitespace_below: Real vertical whitespace below this
+                rect (points), computed once in bbox_reflow.py and carried on
+                the Placement for this element (AC-9, BR-36 note). Defaults to
+                0.0 for any call-site that does not have Placement geometry.
         """
         import fitz
 
@@ -508,7 +518,7 @@ class PDFGenerator:
             text=text,
             bbox=bbox_obj,
             style=style,
-            available_whitespace_below=0.0,  # neighbor geometry not exposed by fitz (design Open Risk)
+            available_whitespace_below=available_whitespace_below,  # AC-9: real Placement gap, not a literal 0.0
         )
 
         # Mark truncation on IR element (BR-38, AC-5)
