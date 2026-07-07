@@ -459,3 +459,59 @@ class TestSecretHandling:
         headers = call_kwargs.get("headers", {})
         auth_header = headers.get("Authorization", "")
         assert secret_key in auth_header, "API key must appear in Authorization header"
+
+
+# ── qa-judge-hang-recovery: total-duration ceiling (BR-100) ───────────────────
+
+class TestTotalTimeoutCeilingAdditive:
+    """BR-100: the wall-clock ceiling is ADDITIVE on top of the (connect, read) tuple."""
+
+    def _client(self):
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        return OpenAICompatibleClient(
+            base_url="http://fake-host:8080", api_key="test-key", model="gpt-oss:120b"
+        )
+
+    def test_ceiling_absent_from_per_chunk_timeout_tuple(self):
+        """session.post still gets the (connect, read) tuple; the ceiling is NOT folded into it."""
+        client = self._client()
+        with patch("requests.Session.post", return_value=_make_chat_response("hi")) as mock_post, \
+             patch("app.backend.config.OPENAI_TOTAL_TIMEOUT_SECONDS", 480.0):
+            ok, _out = client._post_completion("x")
+
+        assert ok is True
+        _, kwargs = mock_post.call_args
+        assert kwargs["timeout"] == (client._connect_timeout, client._read_timeout)
+        assert kwargs["timeout"][1] != 480.0, "the 480s ceiling must not become the read timeout"
+
+    def test_wellbehaved_call_still_bounded_by_connect_read_tuple(self):
+        """A normal fast call still passes the explicit 2-tuple (connect, read) to requests."""
+        client = self._client()
+        with patch("requests.Session.post", return_value=_make_chat_response("ok")) as mock_post, \
+             patch("app.backend.config.OPENAI_TOTAL_TIMEOUT_SECONDS", 480.0):
+            client.translate_once("Hello", "French", "English")
+
+        _, kwargs = mock_post.call_args
+        assert isinstance(kwargs["timeout"], tuple) and len(kwargs["timeout"]) == 2
+
+
+class TestTotalTimeoutConfig:
+    """AC-7: OPENAI_TOTAL_TIMEOUT_SECONDS parses to a positive float with default 480."""
+
+    def test_env_var_parses_positive_float_default(self):
+        import os
+        from importlib import reload
+
+        prev = os.environ.pop("OPENAI_TOTAL_TIMEOUT_SECONDS", None)
+        try:
+            import app.backend.config as cfg
+            reload(cfg)
+            assert isinstance(cfg.OPENAI_TOTAL_TIMEOUT_SECONDS, float)
+            assert cfg.OPENAI_TOTAL_TIMEOUT_SECONDS == 480.0
+            assert cfg.OPENAI_TOTAL_TIMEOUT_SECONDS > 0
+        finally:
+            if prev is not None:
+                os.environ["OPENAI_TOTAL_TIMEOUT_SECONDS"] = prev
+            import app.backend.config as cfg2
+            reload(cfg2)

@@ -1,0 +1,43 @@
+change-id: qa-judge-hang-recovery
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: targeted
+    status: passed
+    command: >-
+      pytest tests/test_cloud_total_timeout.py tests/test_quality_judge.py tests/test_openai_compatible_client.py
+      tests/test_env_contract.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/qa-judge-hang-recovery/test-runs/20260707-215052/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/qa-judge-hang-recovery/test-runs/20260707-215052/summary.json
+    junit: specs/changes/qa-judge-hang-recovery/test-runs/20260707-215052/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      pytest tests/test_quality_judge.py tests/test_orchestrator_judge.py tests/test_openai_compatible_client.py
+      tests/test_llm_client_protocol.py tests/test_env_contract.py tests/test_judge_api.py tests/test_judge_apply.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/qa-judge-hang-recovery/test-runs/20260707-214125/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/qa-judge-hang-recovery/test-runs/20260707-214125/summary.json
+    junit: specs/changes/qa-judge-hang-recovery/test-runs/20260707-214125/junit.xml
+  - phase: contract
+    status: passed
+    command: >-
+      pytest tests/test_env_contract.py tests/test_orchestrator_judge.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/qa-judge-hang-recovery/test-runs/20260707-214128/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/qa-judge-hang-recovery/test-runs/20260707-214128/summary.json
+    junit: specs/changes/qa-judge-hang-recovery/test-runs/20260707-214128/junit.xml
+  - phase: collect
+    status: passed
+    command: >-
+      pytest tests/ --collect-only
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/qa-judge-hang-recovery/test-runs/20260707-214159/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/qa-judge-hang-recovery/test-runs/20260707-214159/summary.json
+    junit: specs/changes/qa-judge-hang-recovery/test-runs/20260707-214159/junit.xml
+final-status: passed

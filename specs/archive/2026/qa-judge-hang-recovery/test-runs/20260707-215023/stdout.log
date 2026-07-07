@@ -1,0 +1,13 @@
+F
+=================================== FAILURES ===================================
+_________ test_dribbling_socket_regression_repro_matches_live_incident _________
+tests/test_cloud_total_timeout.py:135: in test_dribbling_socket_regression_repro_matches_live_incident
+    assert ok is False and elapsed < 5.0, (
+E   AssertionError: regression: dribbling response not bounded by the ceiling (8.0s)
+E   assert (False is False and 8.010363610999775 < 5.0)
+------------------------------ Captured log call -------------------------------
+WARNING  app.backend.clients.openai_compatible_client:openai_compatible_client.py:128 [dribble] HTTP request error: ("Connection broken: ConnectionResetError(104, 'Connection reset by peer')", ConnectionResetError(104, 'Connection reset by peer'))
+=========================== short test summary info ============================
+FAILED tests/test_cloud_total_timeout.py::test_dribbling_socket_regression_repro_matches_live_incident
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 8.17s

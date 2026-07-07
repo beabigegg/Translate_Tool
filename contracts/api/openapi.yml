@@ -666,7 +666,7 @@
             }
           }
         ],
-        "x-cdd-errors": "200 (judge_status: available/disabled/unavailable); 404 job not found"
+        "x-cdd-errors": "200 (judge_status: available/disabled/unavailable/stopped); 404 job not found"
       }
     },
     "/jobs/{job_id}/judge/apply": {
@@ -1499,9 +1499,10 @@
             "enum": [
               "available",
               "disabled",
-              "unavailable"
+              "unavailable",
+              "stopped"
             ],
-            "description": ":available — judge ran and results ready; disabled — JUDGE_ENABLED=false; unavailable — Gemma unreachable or exception"
+            "description": ":available — judge ran and results ready; disabled — JUDGE_ENABLED=false; unavailable — Gemma unreachable, ceiling-timeout, or exception; stopped — user cancelled during the judge pass (BR-99)"
           },
           "score": {
             "type": "string",

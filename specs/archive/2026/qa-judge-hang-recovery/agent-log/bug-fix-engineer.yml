@@ -1,0 +1,58 @@
+change-id: qa-judge-hang-recovery
+timestamp: 2026-07-07T21:45:00Z
+agent: bug-fix-engineer
+status: complete
+files-read:
+  - specs/changes/qa-judge-hang-recovery/implementation-plan.md
+  - specs/changes/qa-judge-hang-recovery/design.md
+  - specs/changes/qa-judge-hang-recovery/context-manifest.md
+  - app/backend/clients/openai_compatible_client.py
+  - app/backend/clients/base_llm_client.py
+  - app/backend/clients/ollama_client.py
+  - app/backend/services/quality_judge.py
+  - app/backend/services/job_manager.py
+  - app/backend/config.py
+  - tests/test_quality_judge.py
+  - tests/test_orchestrator_judge.py
+  - tests/test_openai_compatible_client.py
+  - tests/test_llm_client_protocol.py
+  - tests/test_env_contract.py
+artifacts:
+  - { type: symptom, pointer: "A live incident hung a job 30+ min inside a single LLM-judge scoring call; the only recovery was killing the backend process." }
+  - { type: root-cause, pointer: "quality_judge._run_judge_loop_impl never checked job.stop_flag, and openai_compatible_client._post_completion's (connect, read) timeout tuple bounds only the inter-chunk gap, so a provider dribbling keep-alive bytes (each gap < read timeout) blocks forever." }
+  - { type: files-changed, pointer: "openai_compatible_client.py, base_llm_client.py, ollama_client.py, quality_judge.py, job_manager.py, config.py + 5 contract files + 6 test files (1 new)" }
+  - { type: regression-evidence, pointer: "specs/changes/qa-judge-hang-recovery/test-runs/20260707-214120/summary.json (targeted: pass), .../20260707-214125/summary.json (changed-area: pass), .../20260707-214128/summary.json (contract: pass); full suite 1123 pass verified in translate-tool env" }
+  - { type: residual-risk, pointer: "Ceiling default 480s is an unvalidated placeholder (env-tunable); local Ollama mid-read abort is best-effort (between-block observance guaranteed); abandoned daemon post-worker lingers to socket close (ADR-0011, acceptable)." }
+bug-fix:
+  schema-version: 0.1.0
+  symptom: "A cloud LLM-judge call that never returns (provider dribbles keep-alive bytes) hangs the job indefinitely; the judge loop cannot be cancelled via the job's stop_flag, so the only recovery is killing the backend."
+  expected_behavior: "A hung/dribbling cloud judge call is bounded by a wall-clock total-duration ceiling (OPENAI_TOTAL_TIMEOUT_SECONDS) and is cancellable via job.stop_flag; the judge pass degrades to a well-defined JudgeResult (judge_status='stopped' on cancel, 'unavailable' on ceiling-timeout), preserving BR-73 iteration accounting and BR-74 shape, and the backend stays alive."
+  actual_behavior: "_run_judge_loop_impl never inspected stop_flag and the (connect, read) tuple only bounded the inter-chunk gap, so a dribbling response blocked a worker thread forever with no cancellation path."
+  observed_surface: "job stuck in a running state during the judge phase; GET /jobs/{id}/judge never resolves; backend process must be killed."
+  reproduction:
+    status: test-reproduced
+    command: "pytest tests/test_cloud_total_timeout.py::test_dribbling_socket_regression_repro_matches_live_incident"
+    failing_before_fix: true
+    summary: "specs/changes/qa-judge-hang-recovery/test-runs/20260707-215023/summary.json"
+  hypotheses:
+    - { id: H1, candidate: "openai_compatible_client._post_completion transport timeout", reason: "requests (connect, read) tuple bounds only the inter-chunk gap; a dribble never trips the read timeout — the true root cause of the unbounded hang", result: confirmed }
+    - { id: H2, candidate: "quality_judge._run_judge_loop_impl cancellation", reason: "loop never checked job.stop_flag, so even a user cancel could not exit a running judge pass or a blocked in-flight scoring read", result: confirmed }
+    - { id: H3, candidate: "signal/SIGALRM based interrupt", reason: "considered as the abort mechanism; rejected — not thread-safe (judge runs on a worker thread) and non-portable (design D1)", result: rejected }
+  root_cause:
+    pointer: "app/backend/clients/openai_compatible_client.py::_post_completion + app/backend/services/quality_judge.py::_run_judge_loop_impl"
+    summary: "No total-duration ceiling on the cloud transport (only per-chunk timeouts) AND no stop_flag reachability in the judge loop — together they made a dribbling cloud call an unbounded, uncancellable hang."
+  fix:
+    files_changed:
+      - app/backend/clients/openai_compatible_client.py
+      - app/backend/clients/base_llm_client.py
+      - app/backend/clients/ollama_client.py
+      - app/backend/services/quality_judge.py
+      - app/backend/services/job_manager.py
+      - app/backend/config.py
+    summary: "Added _run_bounded_post (daemon worker + wall-clock ceiling OPENAI_TOTAL_TIMEOUT_SECONDS + optional cancel_event; on expiry/cancel closes the session best-effort and raises requests.Timeout so the existing degrade path fires — caller unblocked promptly, abandoned daemon acceptable per ADR-0011). Threaded cancel_event through _post_completion/translate_once, the LLMClient Protocol, OllamaClient (best-effort), and quality_judge _complete/evaluate/run_judge_loop/_run_judge_loop_impl with cooperative stop_flag checks at loop-top, before+after each per-block evaluate, and before each re-translate; a set stop_flag yields judge_status='stopped' (distinct from the 'unavailable' ceiling-timeout degradation). job_manager wires cancel_event=job.stop_flag into run_judge_loop and translation_client.translate_once."
+  regression:
+    status: passed
+    command: "pytest tests/test_quality_judge.py tests/test_orchestrator_judge.py tests/test_openai_compatible_client.py tests/test_llm_client_protocol.py tests/test_env_contract.py tests/test_judge_api.py tests/test_judge_apply.py"
+    summary: "specs/changes/qa-judge-hang-recovery/test-runs/20260707-214125/summary.json"
+  residual_risk: "Ceiling default 480s is an unvalidated placeholder (env-tunable, degrade-not-fail); Ollama mid-read abort is best-effort only; abandoned daemon post-worker lingers to socket close (ADR-0011, acceptable)."
+next-action: "qa-reviewer release-readiness review"

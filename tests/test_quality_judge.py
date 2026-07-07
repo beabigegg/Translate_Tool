@@ -641,3 +641,113 @@ def test_translation_client_never_none():
     assert client is MockOllama.return_value
     _, kwargs = MockOllama.call_args
     assert kwargs["model"] == JUDGE_MODEL
+
+
+# ---------------------------------------------------------------------------
+# qa-judge-hang-recovery (BR-99): judge-loop cancellation → judge_status="stopped"
+# ---------------------------------------------------------------------------
+
+class TestCancelDuringInFlightScoring:
+    """BR-99: a stop_flag set during scoring exits the loop without starting new work."""
+
+    def test_stop_flag_set_mid_evaluate_exits_promptly(self):
+        import threading
+
+        judge = _make_judge()
+        cancel = threading.Event()
+        eval_calls = []
+
+        def fake_eval(src, tgt, feedback="", cancel_event=None):
+            eval_calls.append(src)
+            cancel.set()  # a cancel arrives during this in-flight scoring call
+            return {"judge_status": "available", "score": "中", "feedback": "f"}
+
+        judge.evaluate = fake_eval
+        result = judge.run_judge_loop(
+            "job-cancel", _make_blocks(3), lambda s, f: "x", cancel_event=cancel
+        )
+
+        assert result.judge_status == "stopped"
+        # Cancel fired during block 0's evaluate → blocks 1 and 2 must never be scored.
+        assert len(eval_calls) == 1, (
+            f"loop must not start new per-block work after cancel; scored {eval_calls}"
+        )
+
+
+class TestCancellationDegradation:
+    """BR-99/BR-100: cancel → stopped; ceiling-timeout (no cancel) → unavailable."""
+
+    def test_cancel_mid_loop_yields_judge_status_stopped(self):
+        import threading
+
+        judge = _make_judge()
+        cancel = threading.Event()
+
+        def fake_eval(src, tgt, feedback="", cancel_event=None):
+            cancel.set()
+            return {"judge_status": "available", "score": "中", "feedback": "f"}
+
+        judge.evaluate = fake_eval
+        result = judge.run_judge_loop(
+            "job-stop", _make_blocks(1), lambda s, f: "x", cancel_event=cancel
+        )
+
+        assert result.judge_status == "stopped"
+        assert result.attempts >= 1
+        assert result.model == judge.model  # well-defined BR-74 shape preserved
+
+    def test_ceiling_timeout_yields_judge_status_unavailable_not_stopped(self):
+        import threading
+
+        judge = _make_judge()
+        cancel = threading.Event()  # never set — a ceiling-timeout is NOT a user cancel
+
+        # The ceiling aborting the scoring read degrades evaluate() to unavailable
+        # while stop_flag stays clear.
+        judge.evaluate = lambda *a, **k: {"judge_status": "unavailable", "score": None, "feedback": ""}
+        result = judge.run_judge_loop(
+            "job-timeout", _make_blocks(1), lambda s, f: "x", cancel_event=cancel
+        )
+
+        assert result.judge_status == "unavailable", (
+            "a ceiling-timeout with no cancel is a failure, not a stop"
+        )
+        assert not cancel.is_set()
+
+
+class TestIterationCapUnaffectedByCancellation:
+    """AC-5: BR-73 iteration accounting survives the new cancel plumbing."""
+
+    def test_max_iterations_cap_enforced_when_cancel_event_none(self):
+        judge = _make_judge()
+        # Never reaches 高 → loop must terminate at the cap, not spin forever.
+        judge.evaluate = lambda *a, **k: {"judge_status": "available", "score": "中", "feedback": "f"}
+        with patch("app.backend.config.JUDGE_MAX_ITERATIONS", 3):
+            result = judge.run_judge_loop(
+                "job-cap", _make_blocks(1), lambda s, f: "x", cancel_event=None
+            )
+        assert result.attempts == 3
+
+    def test_attempts_count_not_corrupted_by_mid_loop_cancel(self):
+        import threading
+
+        judge = _make_judge()
+        cancel = threading.Event()
+        state = {"n": 0}
+
+        def fake_eval(src, tgt, feedback="", cancel_event=None):
+            state["n"] += 1
+            if state["n"] == 2:  # cancel arrives during iteration 2's scoring (1 block/iter)
+                cancel.set()
+            return {"judge_status": "available", "score": "中", "feedback": "f"}
+
+        judge.evaluate = fake_eval
+        with patch("app.backend.config.JUDGE_MAX_ITERATIONS", 5):
+            result = judge.run_judge_loop(
+                "job-attempts", _make_blocks(1), lambda s, f: "x", cancel_event=cancel
+            )
+
+        assert result.judge_status == "stopped"
+        assert result.attempts == 2, (
+            f"attempts must reflect the 2 started iterations, got {result.attempts}"
+        )

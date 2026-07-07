@@ -1,0 +1,16 @@
+{
+  "change_id": "qa-judge-hang-recovery",
+  "phase": "changed-area",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest tests/test_quality_judge.py tests/test_orchestrator_judge.py tests/test_openai_compatible_client.py tests/test_llm_client_protocol.py tests/test_env_contract.py tests/test_judge_api.py tests/test_judge_apply.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/qa-judge-hang-recovery/test-runs/20260707-214125/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 1897,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/qa-judge-hang-recovery/test-runs/20260707-214125/summary.json",
+    "stdout": "specs/changes/qa-judge-hang-recovery/test-runs/20260707-214125/stdout.log",
+    "stderr": "specs/changes/qa-judge-hang-recovery/test-runs/20260707-214125/stderr.log",
+    "junit": "specs/changes/qa-judge-hang-recovery/test-runs/20260707-214125/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

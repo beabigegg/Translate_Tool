@@ -48,7 +48,7 @@ breaking-change-policy: deprecate-2-minors
 | GET | /providers/health | none | - | ProviderHealthItem[] | - | tests/test_providers_api.py |
 | GET | /providers/models | none | - | ProviderModelEntry[] | - | tests/test_providers_api.py |
 | POST | /providers/test-translation | none | TestTranslationRequest | TestTranslationResult[] | 400, 422 | tests/test_providers_api.py |
-| GET | /jobs/{job_id}/judge | none | - | JobJudgeResponse | 200 (judge_status: available/disabled/unavailable); 404 job not found | tests/contract/ |
+| GET | /jobs/{job_id}/judge | none | - | JobJudgeResponse | 200 (judge_status: available/disabled/unavailable/stopped); 404 job not found | tests/contract/ |
 | POST | /jobs/{job_id}/judge/apply | none | - | JobJudgeApplyResponse | 202 applying; 404 job not found; 409 preconditions not met | tests/contract/ |
 | GET | /api/providers/{provider_id}/live-models | none | - | - | 400, 403, 404 | tests/test_providers_api.py |
 
@@ -320,7 +320,7 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 | field | type | required | format | notes |
 |---|---|---|---|---|
 | job_id | string | yes |  | :job identifier |
-| judge_status | enum(available,disabled,unavailable) | yes |  | :available — judge ran and results ready; disabled — JUDGE_ENABLED=false; unavailable — Gemma unreachable or exception |
+| judge_status | enum(available,disabled,unavailable,stopped) | yes |  | :available — judge ran and results ready; disabled — JUDGE_ENABLED=false; unavailable — Gemma unreachable, ceiling-timeout, or exception; stopped — user cancelled during the judge pass (BR-99) |
 | score | enum(低,中,高) | no |  | :quality score tier; null unless judge_status=available |
 | source_text | string | no |  | :representative joined source text scored by judge; null unless judge_status=available |
 | translated_text | string | no |  | :final translated text after all judge iterations; display-only joined view (see BR-75); null unless judge_status=available |

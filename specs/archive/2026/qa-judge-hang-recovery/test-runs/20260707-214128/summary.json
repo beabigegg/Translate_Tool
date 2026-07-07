@@ -1,0 +1,16 @@
+{
+  "change_id": "qa-judge-hang-recovery",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest tests/test_env_contract.py tests/test_orchestrator_judge.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/qa-judge-hang-recovery/test-runs/20260707-214128/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 1282,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/qa-judge-hang-recovery/test-runs/20260707-214128/summary.json",
+    "stdout": "specs/changes/qa-judge-hang-recovery/test-runs/20260707-214128/stdout.log",
+    "stderr": "specs/changes/qa-judge-hang-recovery/test-runs/20260707-214128/stderr.log",
+    "junit": "specs/changes/qa-judge-hang-recovery/test-runs/20260707-214128/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

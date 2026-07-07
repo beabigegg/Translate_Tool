@@ -1,0 +1,1 @@
+pytest tests/test_env_contract.py tests/test_orchestrator_judge.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/qa-judge-hang-recovery/test-runs/20260707-214128/junit.xml' -q --maxfail=1 --tb=short -ra

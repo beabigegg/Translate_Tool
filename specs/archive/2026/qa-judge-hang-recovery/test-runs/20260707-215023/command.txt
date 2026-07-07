@@ -1,0 +1,1 @@
+pytest tests/test_cloud_total_timeout.py::test_dribbling_socket_regression_repro_matches_live_incident --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/qa-judge-hang-recovery/test-runs/20260707-215023/junit.xml' -q --maxfail=1 --tb=short -ra

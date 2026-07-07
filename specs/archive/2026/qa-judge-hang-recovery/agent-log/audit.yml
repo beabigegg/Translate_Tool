@@ -1,0 +1,16 @@
+- type: tier-floor-override
+  change-id: qa-judge-hang-recovery
+  timestamp: '2026-07-07T13:47:27.714Z'
+  declared-tier: 1
+  floor-tier: 0
+  label: critical surface (auth / payments / data migration / concurrency / secrets)
+  matched:
+    - session
+  reason: >-
+    Tier 1 live-incident concurrency fix (judge-loop cancellation + cloud total-duration ceiling).
+    The tier-floor matched 'session' — that is requests.Session (HTTP transport close-to-abort), NOT
+    an auth/user session; there is no auth, payments, data-migration, or secrets surface. The
+    genuine threading/concurrency risk is deliberately captured by the Tier-1 classification,
+    ADR-0011 (do-not-revert), and real-socket resilience tests (tests/test_cloud_total_timeout.py),
+    with BR-73/BR-74 invariants asserted. Not escalating to Tier 0 — no critical data/security
+    surface.

@@ -1,0 +1,40 @@
+--- Logging error ---
+Traceback (most recent call last):
+  File "/home/egg/miniforge3/envs/translate-tool/lib/python3.11/logging/__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+ValueError: I/O operation on closed file.
+Call stack:
+  File "/home/egg/Projects/Translate_Tool/app/backend/utils/resource_utils.py", line 57, in full_shutdown_cleanup
+    logger.info("Performing full shutdown cleanup")
+Message: 'Performing full shutdown cleanup'
+Arguments: ()
+--- Logging error ---
+Traceback (most recent call last):
+  File "/home/egg/miniforge3/envs/translate-tool/lib/python3.11/logging/__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+ValueError: I/O operation on closed file.
+Call stack:
+  File "/home/egg/Projects/Translate_Tool/app/backend/utils/resource_utils.py", line 62, in full_shutdown_cleanup
+    logger.info("Closed HTTP session pool")
+Message: 'Closed HTTP session pool'
+Arguments: ()
+--- Logging error ---
+Traceback (most recent call last):
+  File "/home/egg/miniforge3/envs/translate-tool/lib/python3.11/logging/__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+ValueError: I/O operation on closed file.
+Call stack:
+  File "/home/egg/Projects/Translate_Tool/app/backend/utils/resource_utils.py", line 69, in full_shutdown_cleanup
+    logger.info("Final gc collected %s objects", collected)
+Message: 'Final gc collected %s objects'
+Arguments: (0,)
+--- Logging error ---
+Traceback (most recent call last):
+  File "/home/egg/miniforge3/envs/translate-tool/lib/python3.11/logging/__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+ValueError: I/O operation on closed file.
+Call stack:
+  File "/home/egg/Projects/Translate_Tool/app/backend/utils/resource_utils.py", line 73, in full_shutdown_cleanup
+    logger.info("Full shutdown cleanup completed")
+Message: 'Full shutdown cleanup completed'
+Arguments: ()

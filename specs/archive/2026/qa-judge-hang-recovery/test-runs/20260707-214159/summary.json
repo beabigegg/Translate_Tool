@@ -1,0 +1,16 @@
+{
+  "change_id": "qa-judge-hang-recovery",
+  "phase": "collect",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest tests/ --collect-only --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/qa-judge-hang-recovery/test-runs/20260707-214159/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 1236,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/qa-judge-hang-recovery/test-runs/20260707-214159/summary.json",
+    "stdout": "specs/changes/qa-judge-hang-recovery/test-runs/20260707-214159/stdout.log",
+    "stderr": "specs/changes/qa-judge-hang-recovery/test-runs/20260707-214159/stderr.log",
+    "junit": "specs/changes/qa-judge-hang-recovery/test-runs/20260707-214159/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

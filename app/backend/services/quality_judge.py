@@ -146,10 +146,16 @@ class QualityJudge:
 
         return self._translation_client
 
-    def _complete(self, prompt: str) -> Tuple[bool, str]:
-        """Run a raw completion prompt against the configured text-judge client."""
+    def _complete(self, prompt: str, cancel_event=None) -> Tuple[bool, str]:
+        """Run a raw completion prompt against the configured text-judge client.
+
+        cancel_event is forwarded to the cloud client so an in-flight scoring read
+        can be cancelled and is ceiling-bounded (BR-99/BR-100). Local Ollama
+        in-flight abort is best-effort; between-block cancellation is enforced by
+        the judge loop's cooperative checks.
+        """
         if self._provider == "cloud":
-            return self._client._post_completion(prompt)
+            return self._client._post_completion(prompt, cancel_event=cancel_event)
         payload = self._client._build_no_system_payload(prompt)
         return self._client._call_ollama(payload)
 
@@ -265,7 +271,7 @@ class QualityJudge:
             logger.warning("[Judge] judge_layout() exception: %s: %s", type(exc).__name__, exc)
             return 0
 
-    def evaluate(self, source_text: str, translated_text: str, feedback: str = "") -> dict:
+    def evaluate(self, source_text: str, translated_text: str, feedback: str = "", cancel_event=None) -> dict:
         """Score a (source, translation) pair.
 
         Args:
@@ -286,7 +292,7 @@ class QualityJudge:
                 translation=translated_text,
                 feedback_section=feedback_section,
             )
-            ok, response = self._complete(prompt)
+            ok, response = self._complete(prompt, cancel_event=cancel_event)
             if not ok:
                 raise RuntimeError(f"Judge call failed: {response}")
             score = self._parse_score(response)
@@ -313,6 +319,7 @@ class QualityJudge:
         job_id: str,
         blocks: List[Tuple[str, str, str]],
         translate_fn: Callable[[str, str], str],
+        cancel_event=None,
     ) -> "JudgeResult":
         """Run the judge re-translation loop over collected block pairs.
 
@@ -329,7 +336,9 @@ class QualityJudge:
         from app.backend.config import JUDGE_MAX_ITERATIONS
 
         try:
-            return self._run_judge_loop_impl(job_id, blocks, translate_fn, JUDGE_MAX_ITERATIONS)
+            return self._run_judge_loop_impl(
+                job_id, blocks, translate_fn, JUDGE_MAX_ITERATIONS, cancel_event=cancel_event
+            )
         except Exception as exc:
             logger.warning(
                 "judge failed for job_id=%s: %s: %s",
@@ -355,6 +364,7 @@ class QualityJudge:
         blocks: List[Tuple[str, str, str]],
         translate_fn: Callable[[str, str], str],
         max_iterations: int,
+        cancel_event=None,
     ) -> "JudgeResult":
         """Implementation of the judge loop (called within exception boundary)."""
         from app.backend.services.job_manager import JudgeResult
@@ -385,14 +395,50 @@ class QualityJudge:
         # Score-priority map for aggregating per-block scores (lower index = worse quality).
         _score_priority: dict = {"低": 0, "中": 1, "高": 2}
 
+        def _cancelled() -> bool:
+            return cancel_event is not None and cancel_event.is_set()
+
+        def _stopped(attempts_so_far: int) -> "JudgeResult":
+            # Cancellation is not a failure: surface as "stopped" (BR-99), distinct
+            # from "unavailable", preserving whatever partial state we reached.
+            joined_src = "\n\n".join(src for _, src, _ in blocks)
+            joined_tgt = "\n\n".join(current_translations[bid] for bid, _, _ in blocks)
+            return JudgeResult(
+                job_id=job_id,
+                judge_status="stopped",
+                score=final_score,
+                source_text=joined_src,
+                translated_text=joined_tgt,
+                feedback=final_feedback or None,
+                attempts=attempts_so_far,
+                model=self.model,
+                retranslated_blocks=retranslated_blocks,
+            )
+
         for iteration in range(max_iterations):
+            # Cooperative fast-exit at the top of each iteration (BR-99).
+            if _cancelled():
+                return _stopped(attempts)
             attempts += 1
 
-            # Score each block individually (IP-6 — per-block, not whole-doc join).
-            per_block_results = [
-                (bid, self.evaluate(src, current_translations[bid], feedback=current_feedback))
-                for bid, src, _ in blocks
-            ]
+            # Score each block individually (per-block, not whole-doc join).
+            # Check stop_flag before AND after each scoring call: a cancel that
+            # aborts an in-flight read makes evaluate() return "unavailable", so we
+            # must surface a set stop_flag as "stopped" (BR-99), NOT the generic
+            # failure degradation below.
+            per_block_results = []
+            for bid, src, _ in blocks:
+                if _cancelled():
+                    return _stopped(attempts)
+                r = self.evaluate(
+                    src,
+                    current_translations[bid],
+                    feedback=current_feedback,
+                    cancel_event=cancel_event,
+                )
+                if _cancelled():
+                    return _stopped(attempts)
+                per_block_results.append((bid, r))
 
             # Degrade to unavailable if ANY block evaluation failed.
             if any(r.get("judge_status") != "available" for _, r in per_block_results):
@@ -456,6 +502,8 @@ class QualityJudge:
             if iteration < max_iterations - 1:
                 new_translations: Dict[str, str] = {}
                 for bid, src, _ in blocks:
+                    if _cancelled():
+                        return _stopped(attempts)
                     try:
                         new_mt = translate_fn(src, current_feedback)
                         new_translations[bid] = new_mt

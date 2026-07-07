@@ -39,7 +39,11 @@ class TestProtocolDefinition:
 
         sig_translate_once = inspect.signature(LLMClient.translate_once)
         params = list(sig_translate_once.parameters.keys())
-        assert params == ["self", "text", "tgt", "src_lang"], f"translate_once params: {params}"
+        # cancel_event is an additive, back-compatible optional kwarg
+        # (qa-judge-hang-recovery / BR-99) — does not break structural conformance.
+        assert params == ["self", "text", "tgt", "src_lang", "cancel_event"], (
+            f"translate_once params: {params}"
+        )
 
         sig_translate_batch = inspect.signature(LLMClient.translate_batch)
         params = list(sig_translate_batch.parameters.keys())
@@ -175,7 +179,9 @@ class TestBaseModuleStdlibOnly:
         tree = ast.parse(source)
 
         third_party_prefixes = ("requests", "flask", "opencc", "urllib3")
-        allowed_stdlib_modules = {"__future__", "typing"}
+        # threading is stdlib — used only for the optional cancel_event type hint
+        # on translate_once (qa-judge-hang-recovery / BR-99).
+        allowed_stdlib_modules = {"__future__", "typing", "threading"}
 
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):

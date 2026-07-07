@@ -6,6 +6,7 @@ Import only stdlib ``typing`` — no import of ``ollama_client`` (avoids cycle).
 
 from __future__ import annotations
 
+import threading
 from typing import List, Optional, Protocol, Tuple, runtime_checkable
 
 
@@ -19,8 +20,18 @@ class LLMClient(Protocol):
     implement it directly.
     """
 
-    def translate_once(self, text: str, tgt: str, src_lang: Optional[str]) -> Tuple[bool, str]:
+    def translate_once(
+        self,
+        text: str,
+        tgt: str,
+        src_lang: Optional[str],
+        cancel_event: Optional[threading.Event] = None,
+    ) -> Tuple[bool, str]:
         """Translate a single text segment.
+
+        cancel_event (optional): when set, implementations SHOULD abort an
+        in-flight call promptly and degrade (best-effort for local clients).
+        Back-compatible default None keeps structural-subtype conformance.
 
         Returns:
             (ok, translated_text) where ok=False signals a failure.

@@ -1,0 +1,1 @@
+pytest tests/ --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/qa-judge-hang-recovery/test-runs/20260707-214202/junit.xml' -q --maxfail=1 --tb=short -ra
