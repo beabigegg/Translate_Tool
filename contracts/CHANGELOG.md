@@ -11,6 +11,9 @@ a corresponding entry below.
 ## [api 0.9.0] — 2026-06-27
 Added: `JobStatus.warnings` — optional `string[]` field (null/empty when no degradation; two verbatim values: fitz→ReportLab fallback string and PDF→bilingual DOCX routing string; type always `string[]` or `null`, never a bare string). Updated: `GET /jobs/{job_id}` endpoint note to document `warnings` field semantics. Additive optional field — backward-compatible. Added in change `pdf-renderer-fallback-warn`.
 
+## [data 0.17.0] — 2026-07-07
+Updated: `Critique gate usage` row (Quality-Metrics-Gating Extensions) — QE scoring for the critique loop is now issued via ONE round-based batched `score_blocks()` call per iteration round (flat `[(src, draft), (src, revised), ...]` list across every segment revised that round) instead of one two-element call per segment × iteration. Segment `i`'s draft/revised scores are read back at flat indices `2*i` / `2*i + 1`. Adoption rule unchanged (strict-greater-than; tie keeps draft; BR-89). Non-breaking — describes an internal call-shape change only, no IR/persistence schema change. Added in change `batch-critique-qe-scoring`.
+
 ## [data 0.13.0] — 2026-06-27
 Added: `JobStatus / JobRecord — warnings field` optional column subsection — `string[]`, nullable, null/empty when no degradation; two verbatim warning strings (fitz→ReportLab fallback; PDF→bilingual DOCX routing); type always `string[]` or `null`; additive optional field, backward-compatible; cross-reference to `api-contract.md JobStatus` schema. Added in change `pdf-renderer-fallback-warn`.
 

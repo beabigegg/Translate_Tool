@@ -590,6 +590,72 @@ def test_qe_enabled_config_default_is_true():
 # legacy documents.
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# batch-critique-qe-scoring AC-6 / AC-8: score_blocks() with a larger,
+# round-batched 2N-length blocks list (IP-3 verification — no internal edit
+# to score_blocks(), just confirm it still behaves correctly under a longer
+# input list than the pre-refactor 2-item-per-call shape).
+# ---------------------------------------------------------------------------
+
+def test_cuda_oom_ladder_functions_with_larger_batched_blocks_list():
+    """AC-6: the 8/4/1 CUDA OOM retry ladder (+ torch.cuda.empty_cache())
+    still functions correctly when score_blocks() is called with a much
+    larger, round-batched blocks list (e.g. 2*N pairs for N segments in one
+    round), not just the old single-segment 2-item list."""
+    from app.backend.services.quality_evaluator import score_blocks
+
+    # 10 segments' worth of (src, draft)/(src, revised) pairs batched into one
+    # round call -> 20 blocks, mirroring the round-based batching shape.
+    blocks = [(f"src-{i}", f"mt-{i}") for i in range(20)]
+
+    mock_model = MagicMock()
+    ok_prediction = MagicMock()
+    ok_prediction.scores = [0.8] * 20
+    mock_model.predict.side_effect = [
+        RuntimeError("CUDA out of memory. Tried to allocate 20.00 MiB."),
+        RuntimeError("CUDA out of memory. Tried to allocate 20.00 MiB."),
+        ok_prediction,
+    ]
+
+    with patch("torch.cuda.empty_cache") as mock_empty_cache:
+        result = score_blocks(mock_model, blocks, device="cuda")
+
+    assert result == [0.8] * 20, "Expected one score per block, in input order"
+    assert mock_model.predict.call_count == 3, "Expected 8 -> 4 -> 1 ladder (3 attempts)"
+    batch_sizes = [c.kwargs["batch_size"] for c in mock_model.predict.call_args_list]
+    assert batch_sizes == [8, 4, 1], (
+        f"Expected the OOM ladder to try batch_size 8, then 4, then 1 regardless "
+        f"of the 20-block input length; got {batch_sizes}"
+    )
+    assert mock_empty_cache.call_count == 2, (
+        "empty_cache should run between the two OOM retries (not after final success)"
+    )
+
+
+def test_score_blocks_batch_size_param_unaffected_by_input_list_length():
+    """AC-8: the batch_size passed to model.predict() is a fixed constant from
+    _OOM_RETRY_BATCH_SIZES, independent of len(blocks) — confirms COMET's own
+    internal batch_size chunking bounds peak VRAM regardless of how many
+    segments a round batches together."""
+    from app.backend.services.quality_evaluator import score_blocks
+
+    small_blocks = [("s1", "m1"), ("s2", "m2")]
+    large_blocks = [(f"s{i}", f"m{i}") for i in range(50)]
+
+    small_model = _make_mock_model([0.5, 0.5])
+    large_model = _make_mock_model([0.5] * 50)
+
+    score_blocks(small_model, small_blocks, device="cpu")
+    score_blocks(large_model, large_blocks, device="cpu")
+
+    small_batch_size = small_model.predict.call_args.kwargs["batch_size"]
+    large_batch_size = large_model.predict.call_args.kwargs["batch_size"]
+    assert small_batch_size == large_batch_size, (
+        f"batch_size must not scale with input list length; got "
+        f"{small_batch_size} (2 blocks) vs {large_batch_size} (50 blocks)"
+    )
+
+
 def test_qe_scoring_invoked_identically_for_converted_legacy_document(tmp_path):
     """AC-7: the post_translate_hook (QE scoring seam) receives IDENTICAL call
     args for a converted .doc file as for a native .docx file — BR-96/ADR-0009:

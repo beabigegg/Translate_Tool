@@ -1,0 +1,44 @@
+change-id: batch-critique-qe-scoring
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+  - contract
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      pytest tests/ --collect-only
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/batch-critique-qe-scoring/test-runs/20260707-234244/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/batch-critique-qe-scoring/test-runs/20260707-234244/summary.json
+    junit: specs/changes/batch-critique-qe-scoring/test-runs/20260707-234244/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      pytest tests/test_critique_loop_batching.py tests/test_critique_gate.py tests/test_quality_evaluation.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/batch-critique-qe-scoring/test-runs/20260707-234248/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/batch-critique-qe-scoring/test-runs/20260707-234248/summary.json
+    junit: specs/changes/batch-critique-qe-scoring/test-runs/20260707-234248/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      pytest tests/test_critique_loop_batching.py tests/test_critique_gate.py tests/test_quality_evaluation.py
+      tests/test_fewshot_glossary.py tests/test_glossary_enforcement.py tests/test_metrics_counters.py
+      tests/test_translation_strategy.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/batch-critique-qe-scoring/test-runs/20260707-234253/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/batch-critique-qe-scoring/test-runs/20260707-234253/summary.json
+    junit: specs/changes/batch-critique-qe-scoring/test-runs/20260707-234253/junit.xml
+  - phase: contract
+    status: passed
+    command: >-
+      pytest tests/test_critique_gate.py tests/test_quality_evaluation.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/batch-critique-qe-scoring/test-runs/20260707-234423/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/batch-critique-qe-scoring/test-runs/20260707-234423/summary.json
+    junit: specs/changes/batch-critique-qe-scoring/test-runs/20260707-234423/junit.xml
+final-status: passed

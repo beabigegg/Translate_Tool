@@ -280,9 +280,12 @@ class TestCritiqueLoop:
 
         # Bypass the QE adoption gate: this test verifies the critique loop runs and
         # records revised output, NOT which scoring policy wins.  Force-adopt revised.
+        # batch-critique-qe-scoring: adoption is now issued via the round-based
+        # batched helper (_batched_critique_adopt), not the single-pair
+        # _critique_gate_adopt — patch the seam actually used by the loop.
         with patch(
-            "app.backend.services.translation_service._critique_gate_adopt",
-            side_effect=lambda src, draft, revised: revised,
+            "app.backend.services.translation_service._batched_critique_adopt",
+            side_effect=lambda pairs: [revised for (_src, _draft, revised) in pairs],
         ):
             tmap, _, _, _ = translate_texts(
                 texts=["Hello world"],

@@ -96,6 +96,75 @@ def _critique_gate_adopt(src: str, draft: str, revised: str) -> str:
         return revised if _heuristic_should_adopt(draft, revised) else draft
 
 
+def _batched_critique_adopt(pairs: List[Tuple[str, str, str]]) -> List[str]:
+    """Score every (src, draft)/(src, revised) pair in ONE batched ``score_blocks()``
+    call and return the adopted text for each segment, in the same order as
+    ``pairs`` (batch-critique-qe-scoring IP-2).
+
+    This is the round-based counterpart of :func:`_critique_gate_adopt`: instead
+    of loading the QE model and scoring a single segment's 2-item list per call,
+    it loads the model ONCE for the whole round and scores every pending
+    segment's ``(draft, revised)`` pair in one flat ``blocks`` list of length
+    ``2 * len(pairs)``. Segment ``i``'s draft/revised scores live at flat
+    indices ``2*i`` / ``2*i + 1`` — this fixed pairing is the load-bearing
+    index map that must stay exactly in sync with how ``blocks`` is built
+    below (highest risk per implementation-plan.md).
+
+    Adoption rule (BR-89, unchanged): adopt ``revised`` only if its score is
+    **strictly greater** than ``draft``'s; a tie keeps ``draft``.
+
+    Degradation (unchanged semantics, batched scope):
+    - If ``score_blocks`` returns fewer scores than requested (total failure,
+      e.g. a non-OOM exception inside COMET, or the OOM ladder exhausted),
+      every pending segment in the round keeps its draft — matching today's
+      per-segment ``len(_scores) >= 2`` else-keep-draft fallback.
+    - If QE is disabled or the model fails to load, every segment falls back
+      to the deterministic length-ratio/fluency heuristic
+      (:func:`_heuristic_should_adopt`) — the same rule
+      :func:`_critique_gate_adopt` uses in its except-path (AC-8).
+
+    Args:
+        pairs: One ``(src, draft, revised)`` tuple per segment considered this
+            round, in stable order.
+
+    Returns:
+        One adopted text per input tuple, in the same order as ``pairs``.
+    """
+    if not pairs:
+        return []
+    try:
+        from app.backend.config import QE_DEVICE, QE_ENABLED, QE_MODEL_NAME
+
+        if not QE_ENABLED:
+            # QE explicitly disabled — skip model load; fall through to heuristic
+            raise ImportError("QE_ENABLED=False")
+
+        from app.backend.services.quality_evaluator import load_model, score_blocks
+
+        _qe_model = load_model(QE_MODEL_NAME, QE_DEVICE)
+        _blocks: List[Tuple[str, str]] = []
+        for _src, _draft, _revised in pairs:
+            _blocks.append((_src, _draft))
+            _blocks.append((_src, _revised))
+        _scores = score_blocks(_qe_model, _blocks, device=QE_DEVICE)
+        if len(_scores) >= len(_blocks):
+            _adopted: List[str] = []
+            for _i, (_src, _draft, _revised) in enumerate(pairs):
+                _s_draft = _scores[2 * _i]
+                _s_revised = _scores[2 * _i + 1]
+                _adopted.append(_revised if _s_revised > _s_draft else _draft)
+            return _adopted
+        # Batched total-failure degradation: keep every draft this round.
+        return [_draft for (_src, _draft, _revised) in pairs]
+    except Exception:
+        # QE unavailable (ImportError, model load error, etc.) → heuristic
+        # fallback per segment (AC-8), same rule as _critique_gate_adopt.
+        return [
+            _revised if _heuristic_should_adopt(_draft, _revised) else _draft
+            for (_src, _draft, _revised) in pairs
+        ]
+
+
 # Lazy-loaded OpenCC converter for Simplified to Traditional Chinese
 _opencc_s2t = None
 
@@ -320,9 +389,13 @@ def translate_texts(
         log(f"[CACHE] total: {cache_hits} hits, {done - cache_hits} translated")
 
     # ---------------------------------------------------------------------------
-    # Critique loop (p2-prompt-fewshot-glossary, BR-44, Table M)
-    # Runs per translatable unit (segment), ≥1 iteration, bounded by caps.
+    # Critique loop (p2-prompt-fewshot-glossary, BR-44, Table M; round-based
+    # batched QE scoring per batch-critique-qe-scoring — BR-89/BR-90 unchanged).
+    # Runs per translatable unit (segment), ≥1 round, bounded by caps.
     # Degrades to last valid draft on exception/timeout — never fails the job.
+    # Each round revises every still-active pending segment first, then issues
+    # exactly ONE batched score_blocks() call for that round (via
+    # _batched_critique_adopt) instead of one call per (segment, iteration).
     # ---------------------------------------------------------------------------
     _active_terms = terms or []
     if CRITIQUE_LOOP_ENABLED and tmap and not stopped:
@@ -348,29 +421,40 @@ def translate_texts(
             if _critiqued_keys:
                 logger.debug("[CRITIQUE] %d segments already critiqued (cache hit), skipping", len(_critiqued_keys))
 
-        _segments_to_critique = len(tmap) - len(_critiqued_keys)
+        # Pre-filter (unchanged, AC-4): skip failure placeholders and cached
+        # segments before ANY round runs — they never enter a round's batch.
+        _pending_keys: List[Tuple[str, str]] = [
+            _key for _key in list(tmap.keys())
+            if _key not in _critiqued_keys and not tmap[_key].startswith("[Translation failed|")
+        ]
+        _segments_to_critique = len(_pending_keys)
         _critique_done = 0
-        _critique_iter_count = 0
-        for _key in list(tmap.keys()):
-            _tgt, _src_text = _key
-            _current_draft = tmap[_key]
-            # Skip failure placeholders and already-critiqued segments
-            if _current_draft.startswith("[Translation failed|"):
-                continue
-            if _key in _critiqued_keys:
-                continue
-            _critique_done += 1
-            if status_callback is not None and _segments_to_critique > 0:
-                status_callback(f"品質審校中… ({_critique_done}/{_segments_to_critique})")
-            # Run the bounded critique iterations for this segment
-            _segment_iters = 0
-            for _iter in range(max(1, CRITIQUE_MAX_ITERATIONS)):
+        _current_draft: Dict[Tuple[str, str], str] = {_key: tmap[_key] for _key in _pending_keys}
+        _segment_iters: Dict[Tuple[str, str], int] = {_key: 0 for _key in _pending_keys}
+        _segment_active: Dict[Tuple[str, str], bool] = {_key: True for _key in _pending_keys}
+
+        for _round in range(max(1, CRITIQUE_MAX_ITERATIONS)):
+            # Revision phase: generate a revision for every still-active pending
+            # segment, each individually try/except + timeout isolated (AC-5) —
+            # a segment's own failure never touches other segments this round.
+            _round_pairs: List[Tuple[str, str, str]] = []  # (src, draft, revised)
+            _round_keys: List[Tuple[str, str]] = []  # parallel to _round_pairs
+
+            for _key in _pending_keys:
+                if not _segment_active[_key]:
+                    continue
+                _tgt, _src_text = _key
+                if _round == 0:
+                    _critique_done += 1
+                    if status_callback is not None and _segments_to_critique > 0:
+                        status_callback(f"品質審校中… ({_critique_done}/{_segments_to_critique})")
+                _current = _current_draft[_key]
                 _iter_start = time.monotonic()
                 try:
                     _critique_prompt = (
                         f"Review and improve this translation.\n"
                         f"Source: {_src_text}\n"
-                        f"Draft: {_current_draft}\n"
+                        f"Draft: {_current}\n"
                         f"Output ONLY the improved translation:"
                     )
                     _elapsed = time.monotonic() - _iter_start
@@ -379,7 +463,8 @@ def translate_texts(
                             "[CRITIQUE] Timeout budget exhausted before call for segment len=%d",
                             len(_src_text),
                         )
-                        break
+                        _segment_active[_key] = False
+                        continue
                     _ok, _revised = client.translate_once(_critique_prompt, _tgt, src_lang)
                     _call_elapsed = time.monotonic() - _iter_start
                     if _call_elapsed >= CRITIQUE_TIMEOUT_SECONDS:
@@ -388,28 +473,39 @@ def translate_texts(
                             _call_elapsed,
                             len(_src_text),
                         )
-                        break
+                        _segment_active[_key] = False
+                        continue
                     if _ok and _revised and not _revised.startswith("[Translation failed|"):
-                        # AC-7: adopt revision only if QE score is strictly better
-                        # than the current draft; tie or QE unavailable → heuristic
-                        # fallback (AC-8).
-                        _current_draft = _critique_gate_adopt(
-                            _src_text, _current_draft, _revised
-                        )
-                        _segment_iters += 1
+                        _round_pairs.append((_src_text, _current, _revised))
+                        _round_keys.append(_key)
                 except Exception as exc:
                     logger.warning(
                         "[CRITIQUE] Exception during critique iteration %d: %s; keeping last draft",
-                        _iter + 1,
+                        _round + 1,
                         exc,
                     )
-                    break
-            tmap[_key] = _current_draft
-            _critique_iter_count += _segment_iters
+                    _segment_active[_key] = False
+                    continue
+
+            if _round_pairs:
+                # Batched score + adoption phase (AC-1/AC-2/AC-3): ONE
+                # score_blocks() call for every segment revised this round;
+                # adopt per-segment strictly by index — see
+                # _batched_critique_adopt for the index-mapping contract.
+                _adopted = _batched_critique_adopt(_round_pairs)
+                for _adopted_key, _adopted_text in zip(_round_keys, _adopted):
+                    _current_draft[_adopted_key] = _adopted_text
+                    _segment_iters[_adopted_key] += 1
+
+        _critique_iter_count = 0
+        for _key in _pending_keys:
+            tmap[_key] = _current_draft[_key]
+            _critique_iter_count += _segment_iters[_key]
+            _tgt, _src_text = _key
             # Persist the critique-approved result for future runs.
             if cache is not None:
                 try:
-                    cache.put(_src_text, _tgt, src_lang or "auto", _critique_model_key, _current_draft)
+                    cache.put(_src_text, _tgt, src_lang or "auto", _critique_model_key, _current_draft[_key])
                 except Exception:
                     pass  # cache write must never break translation
 

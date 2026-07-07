@@ -23,8 +23,13 @@ and is automatically applied by `cdd-kit gate` — do not duplicate it here.
 - app/backend/services/quality_evaluator.py
 - app/backend/config.py
 - contracts/business/business-rules.md
+- contracts/data/data-shape-contract.md
+- contracts/CHANGELOG.md
 - tests/test_critique_gate.py
 - tests/test_quality_evaluation.py
+- tests/test_critique_loop_batching.py
+- tests/test_fewshot_glossary.py
+- tests/test_glossary_enforcement.py
 
 ## Required Contracts
 - contracts/business/business-rules.md (read-only; verify adoption-rule invariant, no change expected)
@@ -90,6 +95,14 @@ and is automatically applied by `cdd-kit gate` — do not duplicate it here.
     - .github/workflows/contract-driven-gates.yml
   reason: ci-cd-gatekeeper needs to read the existing CI gate contract and workflow file to confirm no new gate is required and existing gates already cover tests/test_critique_gate.py and tests/test_quality_evaluation.py
   status: approved
+- request-id: CER-002
+  requested_paths:
+    - tests/test_fewshot_glossary.py
+    - tests/test_glossary_enforcement.py
+  reason: The round-based refactor routes adoption through the new `_batched_critique_adopt` instead of `_critique_gate_adopt`, orphaning a mock in `tests/test_fewshot_glossary.py::test_revised_draft_recorded_in_tmap` that patched `_critique_gate_adopt` directly (it then ran the real COMET path and flipped its assertion). A one-line mechanical mock retarget to `_batched_critique_adopt` is required to keep the suite green — a refactor-caused, no-production-behavior test fix. `tests/test_glossary_enforcement.py` is the mocking-pattern reference cited by test-plan.md Notes. Approved (main-Claude orchestrator) as in-scope-by-necessity.
+  status: approved
 ## Approved Expansions
 - .github/workflows/contract-driven-gates.yml
 - contracts/ci/ci-gate-contract.md
+- tests/test_fewshot_glossary.py
+- tests/test_glossary_enforcement.py

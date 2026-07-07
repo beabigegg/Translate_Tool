@@ -1,0 +1,76 @@
+change-id: batch-critique-qe-scoring
+agent: backend-engineer
+status: done
+next-action: hand off to qa/e2e-resilience review; run cdd-kit test run for evidence + gate (main Claude)
+summary: >-
+  Implemented IP-1..IP-6. Inverted the critique loop in translation_service.py
+  from per-segment x per-iteration to round-based: each of CRITIQUE_MAX_ITERATIONS
+  rounds revises every still-active pending segment (each individually
+  try/except + timeout isolated), then issues exactly ONE score_blocks() call
+  via the new _batched_critique_adopt() helper, then applies per-segment
+  adoption strictly by pair index (2*i / 2*i+1), carrying the adopted draft
+  into the next round. _critique_gate_adopt (single-pair) is unchanged and
+  still used for its own direct callers/tests; _batched_critique_adopt reuses
+  its exact strict-greater-than/tie-keeps-draft rule and _heuristic_should_adopt
+  for the QE-unavailable fallback, and degrades every pending segment to
+  keep-draft when score_blocks() returns []. Pre-filter (":c" cache skip +
+  failure-placeholder skip), status_callback progress text, and the
+  record_critique_loop_invocation()/record_critique_iteration(total) metrics
+  calls are preserved with identical accounting semantics. quality_evaluator.py
+  was NOT edited (verified only) — score_blocks() returns scores in input
+  order and the 8/4/1 OOM ladder + torch.cuda.empty_cache() still function
+  correctly on a larger (2N) blocks list. Updated
+  contracts/data/data-shape-contract.md "Critique gate usage" row to the
+  batched call shape, bumped schema-version 0.16.0 -> 0.17.0, added a
+  contracts/CHANGELOG.md [data 0.17.0] entry. Found and fixed one real
+  regression outside the file-level plan: tests/test_fewshot_glossary.py
+  ::test_revised_draft_recorded_in_tmap patched the now-bypassed
+  _critique_gate_adopt directly to force-adopt revised text; since the round
+  loop now calls _batched_critique_adopt, that mock was orphaned and the real
+  (unmocked) COMET path ran, flipping the assertion. Fixed by retargeting the
+  patch to _batched_critique_adopt with an equivalent list-returning
+  side_effect (mechanical one-line seam-rename fix, no production-behavior
+  change, only occurrence of this pattern in the whole test suite per grep).
+files-read:
+  - specs/changes/batch-critique-qe-scoring/implementation-plan.md
+  - specs/changes/batch-critique-qe-scoring/test-plan.md
+  - specs/changes/batch-critique-qe-scoring/change-request.md
+  - specs/changes/batch-critique-qe-scoring/change-classification.md
+  - specs/changes/batch-critique-qe-scoring/context-manifest.md
+  - specs/changes/batch-critique-qe-scoring/agent-log/contract-reviewer.yml
+  - specs/changes/batch-critique-qe-scoring/agent-log/implementation-planner.yml
+  - app/backend/services/translation_service.py
+  - app/backend/services/quality_evaluator.py
+  - tests/test_critique_gate.py
+  - tests/test_quality_evaluation.py
+  - contracts/data/data-shape-contract.md
+  - contracts/CHANGELOG.md
+  - tests/test_glossary_enforcement.py (out-of-manifest; read to mirror the test-plan.md-cited translate_texts() mocking pattern, no production-behavior impact)
+  - tests/test_fewshot_glossary.py (out-of-manifest; read + edited to fix a real regression caused by this refactor's internal seam rename — see summary)
+artifacts:
+  - { type: files-changed, pointer: "app/backend/services/translation_service.py:59-165 (_critique_gate_adopt unchanged, new _batched_critique_adopt) and :391-511 (round-based critique loop)" }
+  - { type: files-changed, pointer: "contracts/data/data-shape-contract.md:6 (schema-version 0.17.0), :803 (Critique gate usage row rewritten)" }
+  - { type: files-changed, pointer: "contracts/CHANGELOG.md (new [data 0.17.0] entry)" }
+  - { type: files-changed, pointer: "tests/test_fewshot_glossary.py:283-289 (mock target retargeted to _batched_critique_adopt — regression fix, not scope creep)" }
+  - { type: tests-added, pointer: "tests/test_critique_loop_batching.py::test_batched_loop_matches_per_segment_adoption_parity (AC-1)" }
+  - { type: tests-added, pointer: "tests/test_critique_loop_batching.py::test_score_blocks_call_count_bounded_by_iterations_not_segment_count (AC-2)" }
+  - { type: tests-added, pointer: "tests/test_critique_loop_batching.py::test_tie_score_keeps_draft_in_batched_round (AC-3 integration)" }
+  - { type: tests-added, pointer: "tests/test_critique_loop_batching.py::test_cached_segments_excluded_from_round_batch (AC-4)" }
+  - { type: tests-added, pointer: "tests/test_critique_loop_batching.py::test_segment_exception_in_round_does_not_abort_other_segments (AC-5)" }
+  - { type: tests-added, pointer: "tests/test_critique_loop_batching.py::test_segment_timeout_in_round_does_not_abort_other_segments (AC-5)" }
+  - { type: tests-added, pointer: "tests/test_critique_loop_batching.py::test_critique_config_defaults_unchanged_after_batching (AC-7)" }
+  - { type: tests-added, pointer: "tests/test_critique_loop_batching.py::test_critique_loop_invocation_and_iteration_counters_match_baseline (BR-46)" }
+  - { type: tests-added, pointer: "tests/test_critique_gate.py::test_batched_round_scores_map_to_correct_segment_index (AC-3 unit, index-mapping guard)" }
+  - { type: tests-added, pointer: "tests/test_critique_gate.py::test_batched_adopt_empty_scores_keeps_all_drafts (batched [] degradation)" }
+  - { type: tests-added, pointer: "tests/test_critique_gate.py::test_batched_adopt_qe_unavailable_falls_back_to_heuristic_per_segment (AC-8 heuristic fallback)" }
+  - { type: tests-added, pointer: "tests/test_critique_gate.py::test_batched_adopt_empty_pairs_returns_empty_list_without_calling_score_blocks" }
+  - { type: tests-added, pointer: "tests/test_quality_evaluation.py::test_cuda_oom_ladder_functions_with_larger_batched_blocks_list (AC-6)" }
+  - { type: tests-added, pointer: "tests/test_quality_evaluation.py::test_score_blocks_batch_size_param_unaffected_by_input_list_length (AC-8 VRAM)" }
+  - { type: test-output, pointer: "conda run -n translate-tool python -m pytest tests/test_critique_gate.py tests/test_quality_evaluation.py tests/test_critique_loop_batching.py -q --tb=short -> 46 passed, 1 warning in 1.63s" }
+  - { type: test-output, pointer: "conda run -n translate-tool python -m pytest tests/test_fewshot_glossary.py tests/test_glossary_enforcement.py tests/test_metrics_counters.py tests/test_translation_strategy.py tests/test_sentence_mode_consistency.py tests/test_orchestrator_judge.py tests/test_doc_chunker.py tests/test_critique_gate.py tests/test_quality_evaluation.py tests/test_critique_loop_batching.py -q --tb=short -> 179 passed (regression sweep beyond the assigned 3 files; caught and fixed the test_fewshot_glossary.py mock-seam regression above)" }
+  - { type: test-output, pointer: "cdd-kit validate --contracts -> All validations passed (API semantic/conformance, response-shape, env semantic)" }
+  - { type: test-output, pointer: "cdd-kit validate --versions -> Contract version validation passed" }
+  - { type: contracts-touched, pointer: "contracts/data/data-shape-contract.md#Quality-Metrics-Gating-Extensions (Critique gate usage row); contracts/CHANGELOG.md" }
+known-risks:
+  - "tests/test_fewshot_glossary.py and tests/test_glossary_enforcement.py are outside context-manifest.md Allowed Paths for this change; read/edited only because (a) test-plan.md Notes explicitly cites test_glossary_enforcement.py as the pattern to mirror, and (b) a genuine regression in test_fewshot_glossary.py was discovered via an extra regression sweep beyond the 3 assigned test files and required a mechanical one-line fix (mock target rename, no behavior change). Flagging for main Claude to decide whether a Context Expansion Request / manifest update is warranted retroactively."
+  - "score_blocks() call ordering per round is stable-insertion-order of tmap keys (Python dict preserves insertion order); this is an implicit assumption relied on by the index-mapping guard and is not itself a new contract, just documented behavior of CPython dicts already relied on elsewhere in this file."

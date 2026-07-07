@@ -1,0 +1,13 @@
+- type: tier-floor-override
+  change-id: batch-critique-qe-scoring
+  timestamp: '2026-07-07T15:45:25.217Z'
+  declared-tier: 2
+  floor-tier: 0
+  label: critical surface (auth / payments / data migration / concurrency / secrets)
+  matched:
+    - cache
+    - session
+  reason: >-
+    False-positive keyword match on 'cache'/'session' — this change batches in-memory COMET
+    score_blocks() calls in the critique loop; it does not touch auth, payments, data migration, or
+    any cache/session security surface.
