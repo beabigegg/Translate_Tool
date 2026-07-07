@@ -1,5 +1,5 @@
 change-id: qa-judge-hang-recovery
-status: in-progress
+status: archived
 tier: 1
 tier-floor-override: "Tier 1 live-incident concurrency fix (judge-loop cancellation + cloud total-duration ceiling). The tier-floor matched 'session' — that is requests.Session (HTTP transport close-to-abort), NOT an auth/user session; there is no auth, payments, data-migration, or secrets surface. The genuine threading/concurrency risk is deliberately captured by the Tier-1 classification, ADR-0011 (do-not-revert), and real-socket resilience tests (tests/test_cloud_total_timeout.py), with BR-73/BR-74 invariants asserted. Not escalating to Tier 0 — no critical data/security surface."
 context-governance: v1
@@ -38,5 +38,5 @@ tasks:
   - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "Local gate green — same required validations CI runs (validate --contracts, openapi --check, full pytest). PR CI to confirm on push; PR# finalized at close." }
   - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full-regression informational on PR; scheduled-stress-soak N/A. Resilience covered by tests/test_cloud_total_timeout.py (real dribbling socket)." }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gate required for this change per change-classification.md" }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done, note: "cdd-kit archive → specs/archive/2026/qa-judge-hang-recovery; INDEX.md updated" }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "1 promote-to-guidance lesson to CLAUDE.md cdd-kit:learnings (bug-fix-lane failing-pre-fix-repro recipe). Product behavior stays in ADR-0011 + BR-99/BR-100. See archive.md." }

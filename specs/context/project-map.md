@@ -287,6 +287,7 @@ Translate_Tool/
 |   |-- __init__.py
 |   |-- conftest.py
 |   |-- test_bbox_utils.py
+|   |-- test_cloud_total_timeout.py
 |   |-- test_context_prompt_i18n.py
 |   |-- test_context_window_segments.py
 |   |-- test_coordinate_renderer.py
@@ -329,8 +330,7 @@ Translate_Tool/
 |   |-- test_pptx_parser.py
 |   |-- test_provider_fallback.py
 |   |-- test_providers_api.py
-|   |-- test_quality_evaluation.py
-|   \-- ... (21 more entries truncated; cap=50)
+|   \-- ... (22 more entries truncated; cap=50)
 |-- .env
 |-- .gitignore
 |-- AGENTS.md
