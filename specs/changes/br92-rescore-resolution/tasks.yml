@@ -1,0 +1,41 @@
+change-id: br92-rescore-resolution
+status: in-progress
+tier: 2
+context-governance: v1
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on: []
+
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done, note: "change-classifier: Tier 2, feature lane, Architecture Review Required=yes (build-vs-retire decision)" }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done, note: "contract-reviewer: BR-92 confirmed truly unbridged (checked BR-55/56, BR-89/90, Table P/U); env-contract.md:37-38, .env.example.template:64-72, env.schema.json:116-121 are the full retire-path checklist; no other BR ever formally retired in this repo (no precedent for deletion convention); build path should mirror BR-89/90 critique-gate or BR-72 judge-tier-gate structure for graceful degradation" }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: done, note: "spec-architect: design.md presents both directions without picking. Retire = near-zero cost, no policy-breaking (env-var removal not covered by API deprecate-2-minors policy). Build = must reuse BR-76/77 judge-apply re-render machinery (outputs archived BEFORE QE runs, job_manager.py:412-418), and would be a SECOND COMET-based re-translation gate redundant with the existing LLM-judge gate. Extra finding: data-shape-contract.md:787 also falsely claims BR-92 is wired (CER-001 approved). Spec-architect's honest assessment: retire is more sensible. USER CONFIRMED: RETIRE." }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: skipped, note: "no CI/CD contract change (classifier)" }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done, note: "implementation-planner (retire direction, 159 lines): IP-1..IP-9 — delete BR-92, delete QE_RESCORE_THRESHOLD, scrub env-contract.md:37-38 (rescore substring), delete env.schema.json:116-121, delete .env.example.template lines 68+72, correct data-shape-contract.md:780+787, delete/invert 8 tests, repo-wide zero-reference sweep. Known Risks: no file-region overlap with the other 3 QA changes — lands independently, any order." }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: skipped, note: "no API change (classifier)" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no UI change (classifier)" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: pending, note: "retire path scrubs QE_RESCORE_THRESHOLD from env-contract.md/.env.example.template/env.schema.json; build path updates its documented meaning" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: pending, note: "RECLASSIFIED from skipped: CER-001 (spec-architect) found data-shape-contract.md:780+787 also falsely claim BR-92 is wired — prose-only correction, no shape/schema change, but IP-6 does edit this file. qa-reviewer flagged the original classifier's 'none' as now stale." }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: pending, note: "BR-92 delete (retire) or fix (build)" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no CI/CD change (classifier)" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done, note: "test-strategist (retire direction): delete tests/test_quality_evaluation.py::test_below_threshold_triggers_retranslation (tautological) + 3 sibling tests; invert 4 tests/test_env_contract.py::TestQeDefault presence-tests into absence-tests; found a SECOND stale BR-92 mention at data-shape-contract.md:780 (not just :787); env-contract.md:37's QE_ENABLED row needs its 'rescore' substring scrubbed too, not just row 38" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: skipped, note: "build path only — not applicable, retire confirmed" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: skipped, note: "build path only — not applicable, retire confirmed" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "not required (classifier)" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "not required (classifier)" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: pending, note: "DEFERRED — do not start until user explicitly approves implementation-plan.md" }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no FE change (classifier)" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: pending, note: "DEFERRED — retire path env-contract scrub" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: skipped, note: "no workflow change (classifier)" }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI surface (classifier)" }
+  - { id: "5.2", section: Review, title: "Visual review", status: skipped, note: "no UI surface (classifier)" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done, note: "contract-reviewer: no precedent for BR retirement in this repo (this would be the first); no other bridging logic missed; findings feed spec-architect's design.md" }
+  - { id: "5.4", section: Review, title: "QA review", status: done, note: "qa-reviewer: approved-with-risk. All enumerated retirement locations have IP coverage. BLOCKING FIX NEEDED BEFORE IMPLEMENTATION: IP-9's zero-reference sweep is unsatisfiable as scoped — it doesn't exclude tests/, so the sweep's own new absence-test method names/assertions (which literally contain 'QE_RESCORE_THRESHOLD') will always self-match; must scope sweep to production/contract surfaces only. Also 2 unlisted surviving in-file references (test_env_contract.py:146 docstring, test_quality_evaluation.py:601 comment) need adding to the scrub list. Minor: AC-3 test-execution row mislabeled (points to QE_ENABLED regression guard instead of the deletion itself)." }
+  - { id: "6.1", section: Verification, title: "Local gates", status: pending }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: pending }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: pending }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }

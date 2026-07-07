@@ -3,8 +3,8 @@ artifact: project-map
 generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
-visible-dirs: 58
-visible-files: 227
+visible-dirs: 59
+visible-files: 230
 omitted-dirs: 12
 truncated-dirs: 1
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -44,9 +44,10 @@ Translate_Tool/
 |   \-- workflows/
 |       \-- contract-driven-gates.yml
 |-- .run/
-|   \-- logs/
-|       |-- backend.log
-|       \-- frontend.log
+|   |-- logs/
+|   |   |-- backend.log
+|   |   \-- frontend.log
+|   \-- backend.pid
 |-- app/
 |   |-- backend/
 |   |   |-- api/
@@ -197,6 +198,9 @@ Translate_Tool/
 |   |   |-- 0007-bilingual-docx-dual-column.md
 |   |   |-- 0008-mllm-layout-judge-local-only-image.md
 |   |   \-- 0009-legacy-conversion-disclosure-and-qe-boundary.md
+|   |-- TEST_DOC/
+|   |   |-- EN-P-QC1102-D7 量测系统分析(MSA)程序.docx
+|   |   \-- W-RM0901-G6 机器设备保养及维护管理准则.docx
 |   \-- improvement-plan.md
 |-- scripts/
 |   |-- benchmark_full_factorial.py
@@ -322,7 +326,7 @@ Translate_Tool/
 |   |-- test_provider_fallback.py
 |   |-- test_providers_api.py
 |   |-- test_quality_evaluation.py
-|   \-- ... (20 more entries truncated; cap=50)
+|   \-- ... (21 more entries truncated; cap=50)
 |-- .env
 |-- .gitignore
 |-- AGENTS.md

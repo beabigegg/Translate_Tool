@@ -1,0 +1,11 @@
+change-id: translation-progress-detail-ui
+agent: contract-reviewer
+status: approved
+next-action: spec-architect writes design.md, must resolve 2 open decisions and close 1 pre-existing drift
+summary: "Approved for spec-architect to proceed. api-contract.md's JobStatus schema is authoritative (openapi.yml/json are generated exports); additive optional fields are non-breaking per the repo's own compatibility policy (minor version bump only), with clean precedent (provider, warnings fields). CRITICAL: found PRE-EXISTING drift — status_detail and layout_viz_available are live fields in app/backend/api/schemas.py::JobStatus but are absent from api-contract.md's JobStatus table; since this change directly extends/supersedes status_detail, close this gap in the same contract edit. Two decisions NOT yet resolved by any existing contract, left explicitly for spec-architect: (1) whether the new ETA heuristic becomes a new business-rules.md entry (no BR currently governs ETA/segments_per_second) or stays an implementation detail; (2) whether the new current-segment fields get a data-shape-contract.md entry (precedent: provider/warnings got one for nontrivial nullability semantics, but not every optional field does)."
+artifacts:
+  - { type: contract-authority, pointer: "contracts/api/api-contract.md#JobStatus" }
+  - { type: pre-existing-drift, pointer: "app/backend/api/schemas.py#JobStatus (status_detail, layout_viz_available missing from api-contract.md)" }
+  - { type: compatibility-precedent, pointer: "contracts/data/data-shape-contract.md:31-43 (provider, warnings additive-field precedent)" }
+  - { type: open-decision, pointer: "contracts/business/business-rules.md (no ETA rule exists — new BR vs. implementation detail, spec-architect's call)" }
+  - { type: css-conventions, pointer: "contracts/css/css-contract.md (JudgePanel/JudgeBadge component-rules pattern to follow)" }

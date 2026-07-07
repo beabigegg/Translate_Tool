@@ -1,0 +1,21 @@
+change-id: translation-progress-detail-ui
+agent: spec-architect
+status: complete
+next-action: implementation-planner turns design.md + contract updates into the execution packet; must coordinate ordering with batch-critique-qe-scoring (CER-002)
+summary: "Wrote design.md resolving both open decisions: (1) CURRENT-only single overwritten snapshot (not rolling history) per user's '目前進行到的' wording and hot-path/memory cost; (2) capture by WIDENING the existing status_callback payload (touches only translation_service producer + job_manager consumer lambda; forwarders are payload-agnostic) and surface via the existing 2s poll — no new endpoint, no streaming. Defined 5 additive OPTIONAL JobStatus fields (current_stage, current_segment_source/draft/qe_score/adopted). ETA becomes two-phase heuristic and a new BR-98. Contract edits: api-contract.md JobStatus (5 new fields + close status_detail/layout_viz_available drift + minor bump + regen openapi.*), css-contract.md StageDetailPanel row (JudgePanel precedent), design-tokens.md new --color-stage-* tokens, business-rules.md BR-98, data-shape-contract.md optional-columns entry. Additive-only → trivial rollback. Wrote ADR-0010 for the poll-piggyback/single-snapshot trade-off. Implementation DEFERRED per change-request Constraints."
+artifacts:
+  - { type: adr-written, pointer: "docs/adr/0010-progress-detail-poll-piggyback.md" }
+  - { type: affected-areas, pointer: "job-status API, translation-service critique loop, job_manager JobRecord, quality_judge run_judge_loop, frontend TranslationProgress" }
+  - { type: decision-summary, pointer: "current-only snapshot via widened status_callback payload on existing poll; multi-phase ETA as BR-98" }
+  - { type: risks-noted, pointer: "4 medium (batch-critique-qe-scoring sequencing, callback-payload read-scope, judge scoring-substep callback, observable-not-fixed judge hang), 0 high" }
+
+# --- Amendment (post-planning, pre-implementation): fold judge phase in ---
+amendment:
+  trigger: "Live 30+ min hang inside judge phase (quality_judge.run_judge_loop, JUDGE_ENABLED=true); original design scoped judge OUT of current_stage snapshot + BR-98 ETA, so it would not have helped diagnose the incident."
+  changes:
+    - "current_stage enum gains `judge`; added a decision clarifying 3 distinct mechanisms — qe-score (inline per-segment COMET critique gate), post-job bulk COMET rescore (dashboard-only, NOT a stage), and judge (LLM-as-judge gate) — do not conflate."
+    - "3 new additive OPTIONAL fields: current_segment_judge_tier (enum 高/中/低|null, a DISTINCT field not a numeric|string union on current_segment_qe_score), current_segment_judge_attempt (1-based vs JUDGE_MAX_ITERATIONS), current_segment_judge_substep (scoring|retranslating|null). Judge reuses current_segment_source/draft."
+    - "BR-98 gains phase-3 (judge) ETA term: observed per-block judge rate once started, else coarse N_judge_blocks × JUDGE_MAX_ITERATIONS × translate-cost; omitted (=0) when JUDGE_ENABLED=false OR winning provider is deepseek (BR-97). Total = phase1+phase2+phase3."
+    - "run_judge_loop gets an additive OPTIONAL snapshot callback (default None) so the per-block scoring sub-step (the incident's stuck evaluate() call) is observable."
+    - "ADR-0010 gained an Amendment section reaffirming poll-piggyback/single-snapshot for phase-3 and recording that the cancellation/total-timeout fix is a SEPARATE change (qa-pipeline-consolidation) — this change makes the hang observable, not fixed."
+  out-of-scope: "Judge cancellation check + cloud client total-timeout guard — tracked in qa-pipeline-consolidation, explicitly not touched here."

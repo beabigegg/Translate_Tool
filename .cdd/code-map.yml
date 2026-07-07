@@ -1,6 +1,6 @@
-# generated: 2026-07-06T02:21:39Z by cdd-kit 3.6.0
-# files: 189, src-lines: 51511, map-lines: 4808, compression: 10.7x
-# sources-digest: 9bf4969b34cd75963bf659a478b3e9c5f01e378a72a07f68bf38076b205a8714
+# generated: 2026-07-07T06:07:44Z by cdd-kit 3.6.0
+# files: 192, src-lines: 53072, map-lines: 4899, compression: 10.8x
+# sources-digest: b217ea333140da4e2c8039b24b7f9a845ab7e8aa51ccd35e3e58d881ec276d07
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
@@ -224,7 +224,7 @@ app/backend/clients/ollama_client.py:  # 883 lines
     - { name: _drop_english_preamble, lines: 67-89 }
     - { name: list_ollama_models, lines: 874-883 }
 
-app/backend/clients/openai_compatible_client.py:  # 336 lines
+app/backend/clients/openai_compatible_client.py:  # 352 lines
   imports:
     - { module: __future__, items: [annotations], line: 18 }
     - { module: logging, items: [], line: 20 }
@@ -233,31 +233,31 @@ app/backend/clients/openai_compatible_client.py:  # 336 lines
     - { module: requests, items: [], line: 24 }
   classes:
     - name: OpenAICompatibleClient
-      lines: 42-336
+      lines: 42-352
       methods:
-        - { name: __init__, lines: 57-82 }
-        - { name: cache_model_key, lines: 85-89 }
-        - { name: _timeout, lines: 92-94 }
-        - { name: _chat_completions_url, lines: 96-97 }
-        - { name: _embeddings_url, lines: 99-100 }
-        - { name: _models_url, lines: 102-103 }
-        - { name: _build_messages, lines: 105-106 }
-        - { name: _post_completion, lines: 108-140 }
-        - { name: embed, lines: 142-173 }
-        - { name: _build_table_translate_prompt, lines: 176-196 }
-        - { name: translate_once, lines: 198-214 }
-        - { name: translate_batch, lines: 216-235 }
-        - { name: health, lines: 237-253 }
-        - { name: list_models, lines: 255-264 }
-        - { name: list_live_models, lines: 266-295 }
-        - { name: unload, lines: 297-303 }
-        - { name: health_check, lines: 319-321 }
-        - { name: _is_translation_dedicated, lines: 323-325 }
-        - { name: _is_translategemma_model, lines: 327-329 }
-        - { name: set_runtime_options_override, lines: 331-332 }
-        - { name: set_cache_variant, lines: 334-336 }
+        - { name: __init__, lines: 57-86 }
+        - { name: cache_model_key, lines: 89-93 }
+        - { name: _timeout, lines: 96-98 }
+        - { name: _chat_completions_url, lines: 100-101 }
+        - { name: _embeddings_url, lines: 103-104 }
+        - { name: _models_url, lines: 106-107 }
+        - { name: _build_messages, lines: 109-110 }
+        - { name: _post_completion, lines: 112-156 }
+        - { name: embed, lines: 158-189 }
+        - { name: _build_table_translate_prompt, lines: 192-212 }
+        - { name: translate_once, lines: 214-230 }
+        - { name: translate_batch, lines: 232-251 }
+        - { name: health, lines: 253-269 }
+        - { name: list_models, lines: 271-280 }
+        - { name: list_live_models, lines: 282-311 }
+        - { name: unload, lines: 313-319 }
+        - { name: health_check, lines: 335-337 }
+        - { name: _is_translation_dedicated, lines: 339-341 }
+        - { name: _is_translategemma_model, lines: 343-345 }
+        - { name: set_runtime_options_override, lines: 347-348 }
+        - { name: set_cache_variant, lines: 350-352 }
 
-app/backend/config.py:  # 528 lines
+app/backend/config.py:  # 550 lines
   imports:
     - { module: __future__, items: [annotations], line: 5 }
     - { module: logging, items: [], line: 7 }
@@ -280,103 +280,107 @@ app/backend/config.py:  # 528 lines
     - { name: VRAM_METADATA, line: 61 }
     - { name: DEFAULT_CONNECT_TIMEOUT_S, line: 78 }
     - { name: DEFAULT_READ_TIMEOUT_S, line: 79 }
-    - { name: API_ATTEMPTS, line: 81 }
-    - { name: API_BACKOFF_BASE, line: 82 }
-    - { name: SENTENCE_MODE, line: 83 }
-    - { name: INSERT_FONT_SIZE_PT, line: 84 }
-    - { name: DEFAULT_BATCH_SIZE, line: 86 }
-    - { name: MIN_BATCH_SIZE, line: 87 }
-    - { name: MAX_BATCH_SIZE, line: 88 }
-    - { name: BATCH_SEPARATOR, line: 89 }
-    - { name: MAX_MAX_BATCH_CHARS, line: 92 }
-    - { name: MIN_MAX_BATCH_CHARS, line: 95 }
-    - { name: DEFAULT_MAX_BATCH_CHARS, line: 96 }
-    - { name: TRANSLATION_GRANULARITY, line: 99 }
-    - { name: MAX_PARAGRAPH_CHARS, line: 100 }
-    - { name: MAX_MERGE_SEGMENTS, line: 101 }
-    - { name: CONTEXT_WINDOW_SEGMENTS, line: 104 }
-    - { name: CONTEXT_MAX_CHARS, line: 105 }
-    - { name: CONTEXT_DETECTION_ENABLED, line: 108 }
-    - { name: CONTEXT_SAMPLE_CHARS, line: 109 }
-    - { name: CHUNK_OVERLAP_TOKENS, line: 115 }
-    - { name: QE_ENABLED, line: 121 }
-    - { name: QE_MODEL_NAME, line: 122 }
-    - { name: QE_DEVICE, line: 123 }
-    - { name: QE_RESCORE_THRESHOLD, line: 127 }
-    - { name: CRITIQUE_LOOP_ENABLED, line: 130 }
-    - { name: CRITIQUE_MAX_ITERATIONS, line: 131 }
-    - { name: CRITIQUE_TIMEOUT_SECONDS, line: 132 }
-    - { name: FEWSHOT_INJECTION_ENABLED, line: 137 }
-    - { name: DYNAMIC_SCENARIO_STRATEGY_ENABLED, line: 143 }
-    - { name: QWEN_CONTEXT_FLOW_ENABLED, line: 144 }
-    - { name: SCENARIO_CACHE_VARIANT_ENABLED, line: 145 }
-    - { name: EXCEL_FORMULA_MODE, line: 147 }
-    - { name: MAX_SHAPE_CHARS, line: 148 }
-    - { name: PDF_PARSER_ENGINE, line: 151 }
-    - { name: PDF_SKIP_HEADER_FOOTER, line: 152 }
-    - { name: PDF_HEADER_FOOTER_MARGIN_PT, line: 153 }
-    - { name: LAYOUT_DETECTOR_MODEL_PATH, line: 158 }
-    - { name: LAYOUT_DETECTOR_ENABLED, line: 160 }
-    - { name: PDF_RENDER_DPI, line: 165 }
-    - { name: OCR_ENABLED, line: 170 }
-    - { name: TABLE_RECOGNITION_MODEL_PATH, line: 175 }
-    - { name: TABLE_RECOGNITION_ENABLED, line: 178 }
-    - { name: JUDGE_ENABLED, line: 183 }
-    - { name: JUDGE_MODEL, line: 185 }
-    - { name: JUDGE_MAX_ITERATIONS, line: 187 }
-    - { name: LAYOUT_PRESERVATION_MODE, line: 190 }
-    - { name: DEFAULT_FONT_FAMILY, line: 191 }
-    - { name: MIN_READABLE_FONT_PT, line: 192 }
-    - { name: MIN_FONT_SIZE_PT, line: 193 }
-    - { name: MAX_FONT_SIZE_PT, line: 194 }
-    - { name: FONT_SIZE_SHRINK_FACTOR, line: 195 }
-    - { name: PDF_DRAW_MASK, line: 196 }
-    - { name: PDF_MASK_MARGIN_PT, line: 197 }
-    - { name: PDF_SHOW_MISSING_PLACEHOLDER, line: 198 }
-    - { name: FONT_SIZE_CONFIG, line: 202 }
-    - { name: MAX_SEGMENTS, line: 215 }
-    - { name: MAX_TEXT_LENGTH, line: 216 }
-    - { name: MAX_JOBS_IN_MEMORY, line: 219 }
-    - { name: JOB_TTL_HOURS, line: 220 }
-    - { name: CLEANUP_INTERVAL_MINUTES, line: 221 }
-    - { name: HTTP_POOL_CONNECTIONS, line: 224 }
-    - { name: HTTP_POOL_MAXSIZE, line: 225 }
-    - { name: ENV_CONNECT_TIMEOUT, line: 227 }
-    - { name: ENV_READ_TIMEOUT, line: 228 }
-    - { name: LIBREOFFICE_PATH, line: 231 }
-    - { name: LIBREOFFICE_TIMEOUT, line: 232 }
-    - { name: VERIFY_MAX_RETRIES, line: 234 }
-    - { name: TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED, line: 237 }
-    - { name: TERM_INJECT_CONF_THRESHOLD, line: 238 }
-    - { name: TERM_EMBEDDING_MODEL, line: 241 }
-    - { name: TERM_EMBEDDING_THRESHOLD, line: 242 }
-    - { name: TERM_EXTRACTION_MODEL, line: 243 }
-    - { name: SUPPORTED_EXTENSIONS, line: 245 }
-    - { name: LANG_CODE_MAP, line: 247 }
-    - { name: DATA_DIR, line: 319 }
-    - { name: JOBS_DIR, line: 320 }
-    - { name: LOG_DIR, line: 321 }
-    - { name: TRANSLATION_CACHE_ENABLED, line: 322 }
-    - { name: CACHE_DIR, line: 323 }
-    - { name: DEFAULT_HOST, line: 325 }
-    - { name: DEFAULT_PORT, line: 326 }
-    - { name: ALLOWED_ORIGINS, line: 328 }
+    - { name: OPENAI_COMPLETION_MAX_TOKENS, line: 88 }
+    - { name: API_ATTEMPTS, line: 90 }
+    - { name: API_BACKOFF_BASE, line: 91 }
+    - { name: SENTENCE_MODE, line: 92 }
+    - { name: INSERT_FONT_SIZE_PT, line: 93 }
+    - { name: DEFAULT_BATCH_SIZE, line: 95 }
+    - { name: MIN_BATCH_SIZE, line: 96 }
+    - { name: MAX_BATCH_SIZE, line: 97 }
+    - { name: BATCH_SEPARATOR, line: 98 }
+    - { name: MAX_MAX_BATCH_CHARS, line: 101 }
+    - { name: MIN_MAX_BATCH_CHARS, line: 104 }
+    - { name: DEFAULT_MAX_BATCH_CHARS, line: 105 }
+    - { name: TRANSLATION_GRANULARITY, line: 108 }
+    - { name: MAX_PARAGRAPH_CHARS, line: 109 }
+    - { name: MAX_MERGE_SEGMENTS, line: 110 }
+    - { name: CONTEXT_WINDOW_SEGMENTS, line: 113 }
+    - { name: CONTEXT_MAX_CHARS, line: 114 }
+    - { name: CONTEXT_DETECTION_ENABLED, line: 117 }
+    - { name: CONTEXT_SAMPLE_CHARS, line: 118 }
+    - { name: CHUNK_OVERLAP_TOKENS, line: 124 }
+    - { name: QE_ENABLED, line: 130 }
+    - { name: QE_MODEL_NAME, line: 131 }
+    - { name: QE_DEVICE, line: 132 }
+    - { name: QE_RESCORE_THRESHOLD, line: 136 }
+    - { name: CRITIQUE_LOOP_ENABLED, line: 139 }
+    - { name: CRITIQUE_MAX_ITERATIONS, line: 140 }
+    - { name: CRITIQUE_TIMEOUT_SECONDS, line: 141 }
+    - { name: FEWSHOT_INJECTION_ENABLED, line: 146 }
+    - { name: DYNAMIC_SCENARIO_STRATEGY_ENABLED, line: 152 }
+    - { name: QWEN_CONTEXT_FLOW_ENABLED, line: 153 }
+    - { name: SCENARIO_CACHE_VARIANT_ENABLED, line: 154 }
+    - { name: EXCEL_FORMULA_MODE, line: 156 }
+    - { name: MAX_SHAPE_CHARS, line: 157 }
+    - { name: PDF_PARSER_ENGINE, line: 160 }
+    - { name: PDF_SKIP_HEADER_FOOTER, line: 161 }
+    - { name: PDF_HEADER_FOOTER_MARGIN_PT, line: 162 }
+    - { name: LAYOUT_DETECTOR_MODEL_PATH, line: 167 }
+    - { name: LAYOUT_DETECTOR_ENABLED, line: 169 }
+    - { name: PDF_RENDER_DPI, line: 174 }
+    - { name: OCR_ENABLED, line: 179 }
+    - { name: TABLE_RECOGNITION_MODEL_PATH, line: 184 }
+    - { name: TABLE_RECOGNITION_ENABLED, line: 187 }
+    - { name: JUDGE_ENABLED, line: 192 }
+    - { name: JUDGE_PROVIDER, line: 197 }
+    - { name: JUDGE_MODEL, line: 201 }
+    - { name: JUDGE_LAYOUT_MODEL, line: 204 }
+    - { name: JUDGE_CLOUD_PROVIDER_ID, line: 207 }
+    - { name: JUDGE_MAX_ITERATIONS, line: 209 }
+    - { name: LAYOUT_PRESERVATION_MODE, line: 212 }
+    - { name: DEFAULT_FONT_FAMILY, line: 213 }
+    - { name: MIN_READABLE_FONT_PT, line: 214 }
+    - { name: MIN_FONT_SIZE_PT, line: 215 }
+    - { name: MAX_FONT_SIZE_PT, line: 216 }
+    - { name: FONT_SIZE_SHRINK_FACTOR, line: 217 }
+    - { name: PDF_DRAW_MASK, line: 218 }
+    - { name: PDF_MASK_MARGIN_PT, line: 219 }
+    - { name: PDF_SHOW_MISSING_PLACEHOLDER, line: 220 }
+    - { name: FONT_SIZE_CONFIG, line: 224 }
+    - { name: MAX_SEGMENTS, line: 237 }
+    - { name: MAX_TEXT_LENGTH, line: 238 }
+    - { name: MAX_JOBS_IN_MEMORY, line: 241 }
+    - { name: JOB_TTL_HOURS, line: 242 }
+    - { name: CLEANUP_INTERVAL_MINUTES, line: 243 }
+    - { name: HTTP_POOL_CONNECTIONS, line: 246 }
+    - { name: HTTP_POOL_MAXSIZE, line: 247 }
+    - { name: ENV_CONNECT_TIMEOUT, line: 249 }
+    - { name: ENV_READ_TIMEOUT, line: 250 }
+    - { name: LIBREOFFICE_PATH, line: 253 }
+    - { name: LIBREOFFICE_TIMEOUT, line: 254 }
+    - { name: VERIFY_MAX_RETRIES, line: 256 }
+    - { name: TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED, line: 259 }
+    - { name: TERM_INJECT_CONF_THRESHOLD, line: 260 }
+    - { name: TERM_EMBEDDING_MODEL, line: 263 }
+    - { name: TERM_EMBEDDING_THRESHOLD, line: 264 }
+    - { name: TERM_EXTRACTION_MODEL, line: 265 }
+    - { name: SUPPORTED_EXTENSIONS, line: 267 }
+    - { name: LANG_CODE_MAP, line: 269 }
+    - { name: DATA_DIR, line: 341 }
+    - { name: JOBS_DIR, line: 342 }
+    - { name: LOG_DIR, line: 343 }
+    - { name: TRANSLATION_CACHE_ENABLED, line: 344 }
+    - { name: CACHE_DIR, line: 345 }
+    - { name: DEFAULT_HOST, line: 347 }
+    - { name: DEFAULT_PORT, line: 348 }
+    - { name: ALLOWED_ORIGINS, line: 350 }
   classes:
     - name: ModelType
       lines: 18-22
     - name: TimeoutConfig
-      lines: 335-388
+      lines: 357-410
       methods:
-        - { name: set_from_config, lines: 343-345 }
-        - { name: set_timeouts, lines: 347-349 }
-        - { name: clear_runtime_overrides, lines: 351-353 }
-        - { name: connect_timeout, lines: 356-369 }
-        - { name: read_timeout, lines: 372-385 }
-        - { name: get_timeout_tuple, lines: 387-388 }
+        - { name: set_from_config, lines: 365-367 }
+        - { name: set_timeouts, lines: 369-371 }
+        - { name: clear_runtime_overrides, lines: 373-375 }
+        - { name: connect_timeout, lines: 378-391 }
+        - { name: read_timeout, lines: 394-407 }
+        - { name: get_timeout_tuple, lines: 409-410 }
   functions:
-    - { name: _expand_env_vars, lines: 402-429 }
-    - { name: _expand_node, lines: 432-459 }
-    - { name: load_providers_config, lines: 462-528 }
+    - { name: _expand_env_vars, lines: 424-451 }
+    - { name: _expand_node, lines: 454-481 }
+    - { name: load_providers_config, lines: 484-550 }
 
 app/backend/main.py:  # 64 lines
   imports:
@@ -679,7 +683,7 @@ app/backend/processors/com_helpers.py:  # 145 lines
     - { name: excel_convert, lines: 50-66 }
     - { name: postprocess_docx_shapes_with_word, lines: 69-145 }
 
-app/backend/processors/docx_processor.py:  # 912 lines
+app/backend/processors/docx_processor.py:  # 969 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: os, items: [], line: 5 }
@@ -719,29 +723,31 @@ app/backend/processors/docx_processor.py:  # 912 lines
     - { name: _collect_docx_segments, lines: 229-330 }
     - { name: _insert_docx_translations, lines: 333-630 }
     - { name: _translate_docx_via_doc2doc, lines: 633-696 }
-    - { name: translate_docx, lines: 699-912 }
+    - { name: translate_docx, lines: 699-969 }
 
-app/backend/processors/libreoffice_helpers.py:  # 185 lines
+app/backend/processors/libreoffice_helpers.py:  # 226 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: os, items: [], line: 5 }
     - { module: platform, items: [], line: 6 }
     - { module: shutil, items: [], line: 7 }
-    - { module: subprocess, items: [], line: 8 }
-    - { module: tempfile, items: [], line: 9 }
-    - { module: pathlib, items: [Path], line: 10 }
-    - { module: typing, items: [Optional], line: 11 }
-    - { module: app.backend.config, items: [LIBREOFFICE_PATH, LIBREOFFICE_TIMEOUT], line: 13 }
-    - { module: app.backend.utils.logging_utils, items: [logger], line: 14 }
+    - { module: signal, items: [], line: 8 }
+    - { module: subprocess, items: [], line: 9 }
+    - { module: tempfile, items: [], line: 10 }
+    - { module: pathlib, items: [Path], line: 11 }
+    - { module: typing, items: [Optional], line: 12 }
+    - { module: app.backend.config, items: [LIBREOFFICE_PATH, LIBREOFFICE_TIMEOUT], line: 14 }
+    - { module: app.backend.utils.logging_utils, items: [logger], line: 15 }
   functions:
-    - { name: _find_libreoffice_binary, lines: 24-68 }
-    - { name: is_libreoffice_available, lines: 71-81 }
-    - { name: _get_binary, lines: 84-89 }
-    - { name: _libreoffice_convert, lines: 97-150 }
-    - { name: doc_to_docx, lines: 158-170 }
-    - { name: xls_to_xlsx, lines: 173-185 }
+    - { name: _find_libreoffice_binary, lines: 25-69 }
+    - { name: is_libreoffice_available, lines: 72-82 }
+    - { name: _get_binary, lines: 85-90 }
+    - { name: _libreoffice_convert, lines: 98-176 }
+    - { name: doc_to_docx, lines: 184-196 }
+    - { name: xls_to_xlsx, lines: 199-211 }
+    - { name: ppt_to_pptx, lines: 214-226 }
 
-app/backend/processors/orchestrator.py:  # 838 lines
+app/backend/processors/orchestrator.py:  # 909 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: logging, items: [], line: 5 }
@@ -753,22 +759,22 @@ app/backend/processors/orchestrator.py:  # 838 lines
     - { module: app.backend.config, items: [CONTEXT_DETECTION_ENABLED, CONTEXT_SAMPLE_CHARS, DEFAULT_MAX_BATCH_CHARS, DEFAULT_MODEL, DYNAMIC_SCENARIO_STRATEGY_ENABLED, GENERAL_NUM_CTX, LAYOUT_PRESERVATION_MODE, OLLAMA_BASE_URL, PDF_SKIP_HEADER_FOOTER, QWEN_CONTEXT_FLOW_ENABLED, SCENARIO_CACHE_VARIANT_ENABLED, SUPPORTED_EXTENSIONS, TRANSLATION_NUM_CTX, TimeoutConfig], line: 12 }
     - { module: app.backend.processors.com_helpers, items: [is_win32com_available, word_convert], line: 28 }
     - { module: app.backend.processors.docx_processor, items: [translate_docx], line: 29 }
-    - { module: app.backend.processors.libreoffice_helpers, items: [doc_to_docx, is_libreoffice_available, xls_to_xlsx], line: 30 }
-    - { module: app.backend.processors.pdf_processor, items: [translate_pdf], line: 31 }
-    - { module: app.backend.processors.pptx_processor, items: [translate_pptx], line: 32 }
-    - { module: app.backend.processors.xlsx_processor, items: [translate_xlsx_xls], line: 33 }
-    - { module: app.backend.services.context_prompts, items: [_CONTEXT_DETECTION_PROMPTS, _get_context_detection_prompt], line: 34 }
-    - { module: app.backend.services.translation_strategy, items: [build_strategy, build_terminology_block, detect_translation_scenario, scenario_from_profile], line: 38 }
+    - { module: app.backend.processors.libreoffice_helpers, items: [doc_to_docx, is_libreoffice_available, ppt_to_pptx, xls_to_xlsx], line: 30 }
+    - { module: app.backend.processors.pdf_processor, items: [translate_pdf], line: 36 }
+    - { module: app.backend.processors.pptx_processor, items: [translate_pptx], line: 37 }
+    - { module: app.backend.processors.xlsx_processor, items: [translate_xlsx_xls], line: 38 }
+    - { module: app.backend.services.context_prompts, items: [_CONTEXT_DETECTION_PROMPTS, _get_context_detection_prompt], line: 39 }
+    - { module: app.backend.services.translation_strategy, items: [build_strategy, build_terminology_block, detect_translation_scenario, scenario_from_profile], line: 43 }
   functions:
-    - { name: _cap_terms_by_budget, lines: 48-62 }
-    - { name: _sample_file_text, lines: 65-140 }
-    - { name: _group_into_chunks, lines: 146-165 }
-    - { name: _split_paragraphs_to_sentences, lines: 168-178 }
-    - { name: _extract_spreadsheet_rows, lines: 181-207 }
-    - { name: _extract_all_segments, lines: 210-291 }
-    - { name: _detect_document_context, lines: 294-311 }
-    - { name: _output_name, lines: 314-336 }
-    - { name: process_files, lines: 339-838 }
+    - { name: _cap_terms_by_budget, lines: 53-67 }
+    - { name: _sample_file_text, lines: 70-145 }
+    - { name: _group_into_chunks, lines: 151-170 }
+    - { name: _split_paragraphs_to_sentences, lines: 173-183 }
+    - { name: _extract_spreadsheet_rows, lines: 186-212 }
+    - { name: _extract_all_segments, lines: 215-318 }
+    - { name: _detect_document_context, lines: 321-338 }
+    - { name: _output_name, lines: 341-367 }
+    - { name: process_files, lines: 370-909 }
 
 app/backend/processors/pdf_processor.py:  # 1114 lines
   imports:
@@ -1064,7 +1070,7 @@ app/backend/services/doc_chunker.py:  # 387 lines
     - { name: split_document, lines: 157-344 }
     - { name: reassemble_document, lines: 351-387 }
 
-app/backend/services/job_manager.py:  # 678 lines
+app/backend/services/job_manager.py:  # 693 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: atexit, items: [], line: 5 }
@@ -1105,7 +1111,7 @@ app/backend/services/job_manager.py:  # 678 lines
         - { name: log, lines: 141-148 }
         - { name: _parse_progress, lines: 150-183 }
     - name: JobManager
-      lines: 186-678
+      lines: 186-693
       methods:
         - { name: __init__, lines: 187-201 }
         - { name: _shutdown, lines: 203-207 }
@@ -1114,14 +1120,14 @@ app/backend/services/job_manager.py:  # 678 lines
         - { name: _cleanup_expired_jobs, lines: 240-254 }
         - { name: _cleanup_by_capacity, lines: 256-271 }
         - { name: _remove_job, lines: 273-283 }
-        - { name: create_job, lines: 285-527 }
-        - { name: _archive_outputs, lines: 529-534 }
-        - { name: get_job, lines: 536-537 }
-        - { name: get_quality, lines: 539-544 }
-        - { name: cancel_job, lines: 546-553 }
-        - { name: list_jobs, lines: 555-556 }
-        - { name: apply_judge, lines: 558-660 }
-        - { name: get_stats, lines: 662-678 }
+        - { name: create_job, lines: 285-542 }
+        - { name: _archive_outputs, lines: 544-549 }
+        - { name: get_job, lines: 551-552 }
+        - { name: get_quality, lines: 554-559 }
+        - { name: cancel_job, lines: 561-568 }
+        - { name: list_jobs, lines: 570-571 }
+        - { name: apply_judge, lines: 573-675 }
+        - { name: get_stats, lines: 677-693 }
   functions:
     - { name: _record_job_warning, lines: 114-124 }
 
@@ -1160,16 +1166,16 @@ app/backend/services/model_router.py:  # 244 lines
     - { name: resolve_route_groups, lines: 154-211 }
     - { name: get_route_info, lines: 214-244 }
 
-app/backend/services/quality_evaluator.py:  # 98 lines
+app/backend/services/quality_evaluator.py:  # 125 lines
   imports:
     - { module: __future__, items: [annotations], line: 12 }
     - { module: logging, items: [], line: 14 }
     - { module: typing, items: [Dict, List, Tuple], line: 15 }
   functions:
     - { name: load_model, lines: 25-65 }
-    - { name: score_blocks, lines: 68-98 }
+    - { name: score_blocks, lines: 74-125 }
 
-app/backend/services/quality_judge.py:  # 410 lines
+app/backend/services/quality_judge.py:  # 462 lines
   imports:
     - { module: __future__, items: [annotations], line: 14 }
     - { module: json, items: [], line: 16 }
@@ -1177,16 +1183,18 @@ app/backend/services/quality_judge.py:  # 410 lines
     - { module: typing, items: [Callable, Dict, List, Optional, Tuple], line: 18 }
   classes:
     - name: QualityJudge
-      lines: 56-410
+      lines: 56-462
       methods:
-        - { name: __init__, lines: 63-68 }
-        - { name: _parse_score, lines: 70-100 }
-        - { name: _parse_feedback, lines: 102-114 }
-        - { name: judge_block, lines: 116-131 }
-        - { name: judge_layout, lines: 133-180 }
-        - { name: evaluate, lines: 182-224 }
-        - { name: run_judge_loop, lines: 226-265 }
-        - { name: _run_judge_loop_impl, lines: 267-410 }
+        - { name: __init__, lines: 68-87 }
+        - { name: _build_cloud_client, lines: 89-114 }
+        - { name: _complete, lines: 116-121 }
+        - { name: _parse_score, lines: 123-153 }
+        - { name: _parse_feedback, lines: 155-167 }
+        - { name: judge_block, lines: 169-184 }
+        - { name: judge_layout, lines: 186-233 }
+        - { name: evaluate, lines: 235-276 }
+        - { name: run_judge_loop, lines: 278-317 }
+        - { name: _run_judge_loop_impl, lines: 319-462 }
 
 app/backend/services/term_audit.py:  # 117 lines
   imports:
@@ -1285,7 +1293,7 @@ app/backend/services/term_extractor.py:  # 786 lines
     - { name: run_phase0, lines: 493-517 }
     - { name: run_phase0_multi, lines: 520-786 }
 
-app/backend/services/translation_cache.py:  # 230 lines
+app/backend/services/translation_cache.py:  # 265 lines
   imports:
     - { module: __future__, items: [annotations], line: 7 }
     - { module: hashlib, items: [], line: 9 }
@@ -1299,7 +1307,7 @@ app/backend/services/translation_cache.py:  # 230 lines
     - { module: app.backend.config, items: [CACHE_DIR, TRANSLATION_CACHE_ENABLED], line: 18 }
   classes:
     - name: TranslationCache
-      lines: 37-205
+      lines: 37-240
       methods:
         - { name: __init__, lines: 40-47 }
         - { name: _get_conn, lines: 49-58 }
@@ -1308,10 +1316,11 @@ app/backend/services/translation_cache.py:  # 230 lines
         - { name: put_batch, lines: 128-155 }
         - { name: put, lines: 157-166 }
         - { name: clear, lines: 168-187 }
-        - { name: stats, lines: 189-205 }
+        - { name: purge_empty, lines: 189-222 }
+        - { name: stats, lines: 224-240 }
   functions:
     - { name: _make_key, lines: 26-34 }
-    - { name: get_cache, lines: 216-230 }
+    - { name: get_cache, lines: 251-265 }
 
 app/backend/services/translation_service.py:  # 774 lines
   imports:
@@ -1479,17 +1488,18 @@ app/backend/utils/logging_utils.py:  # 82 lines
   functions:
     - { name: setup_logging, lines: 18-44 }
 
-app/backend/utils/resource_utils.py:  # 76 lines
+app/backend/utils/resource_utils.py:  # 77 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: atexit, items: [], line: 5 }
     - { module: gc, items: [], line: 6 }
     - { module: typing, items: [Callable, Optional], line: 7 }
-    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 9 }
-    - { module: app.backend.utils.logging_utils, items: [logger], line: 10 }
+    - { module: app.backend.clients.base_llm_client, items: [LLMClient], line: 9 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 10 }
+    - { module: app.backend.utils.logging_utils, items: [logger], line: 11 }
   functions:
-    - { name: release_resources, lines: 13-47 }
-    - { name: full_shutdown_cleanup, lines: 50-72 }
+    - { name: release_resources, lines: 14-48 }
+    - { name: full_shutdown_cleanup, lines: 51-73 }
 
 app/backend/utils/table_serializer.py:  # 112 lines
   imports:
@@ -1842,7 +1852,7 @@ app/frontend/src/constants/defaults.js:  # 4 lines
     - { name: DEFAULT_PROFILE, line: 3 }
     - { name: HISTORY_MAX_ENTRIES, line: 4 }
 
-app/frontend/src/constants/fileTypes.js:  # 8 lines
+app/frontend/src/constants/fileTypes.js:  # 11 lines
   constants:
     - { name: ACCEPTED_EXTENSIONS, line: 1 }
     - { name: ACCEPTED_MIME_TYPES, line: 2 }
@@ -2153,6 +2163,16 @@ tests/conftest.py:  # 25 lines
     - { module: site, items: [], line: 8 }
   functions:
     - { name: _preload_cuda_libs, lines: 11-22 }
+
+tests/contract/test_legacy_conversion_disclosure.py:  # 147 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 15 }
+    - { module: pathlib, items: [Path], line: 17 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 18 }
+  functions:
+    - { name: _make_mock_ollama_client, lines: 21-27 }
+    - { name: test_warnings_has_one_disclosure_entry_per_converted_file_with_exact_format, lines: 30-101 }
+    - { name: test_no_disclosure_when_doc_converted_via_com_not_libreoffice, lines: 104-147 }
 
 tests/fixtures/golden/generate_simple_test_pdf.py:  # 25 lines
   imports:
@@ -3065,6 +3085,33 @@ tests/test_layout_metrics.py:  # 292 lines
   functions:
     - { name: _bb, lines: 33-35 }
 
+tests/test_libreoffice_helpers.py:  # 259 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 24 }
+    - { module: inspect, items: [], line: 26 }
+    - { module: subprocess, items: [], line: 27 }
+    - { module: pathlib, items: [Path], line: 28 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 29 }
+    - { module: pytest, items: [], line: 31 }
+    - { module: app.backend.processors, items: [lo], line: 33 }
+  classes:
+    - name: _FakePopen
+      lines: 46-64
+      methods:
+        - { name: __init__, lines: 53-61 }
+        - { name: communicate, lines: 63-64 }
+  functions:
+    - { name: _reset_binary_cache, lines: 37-43 }  # @pytest.fixture(autouse=True)
+    - { name: test_is_libreoffice_available_true_when_binary_found, lines: 71-77 }
+    - { name: test_is_libreoffice_available_false_when_no_binary_found, lines: 80-86 }
+    - { name: test_doc_to_docx_converts_via_subprocess, lines: 93-110 }
+    - { name: test_xls_to_xlsx_converts_via_subprocess, lines: 113-130 }
+    - { name: test_ppt_to_pptx_converts_when_libreoffice_available, lines: 137-154 }
+    - { name: test_ppt_to_pptx_signature_and_error_semantics_match_doc_to_docx, lines: 157-180 }
+    - { name: test_timeout_kills_whole_process_group_not_just_direct_child, lines: 188-219 }
+    - { name: test_timeout_falls_back_to_proc_kill_when_no_killpg, lines: 222-248 }
+    - { name: test_supported_extensions_includes_ppt, lines: 255-259 }
+
 tests/test_llm_client_protocol.py:  # 287 lines
   imports:
     - { module: __future__, items: [annotations], line: 7 }
@@ -3280,7 +3327,7 @@ tests/test_ollama_client_dynamic_strategy.py:  # 50 lines
     - { name: test_cache_model_key_includes_variant_when_set, lines: 24-32 }
     - { name: test_translation_dedicated_payload_uses_system_prompt_when_present, lines: 35-50 }
 
-tests/test_openai_compatible_client.py:  # 380 lines
+tests/test_openai_compatible_client.py:  # 461 lines
   imports:
     - { module: __future__, items: [annotations], line: 7 }
     - { module: json, items: [], line: 9 }
@@ -3301,41 +3348,51 @@ tests/test_openai_compatible_client.py:  # 380 lines
         - { name: test_successful_translation_returns_ok_true, lines: 76-88 }
         - { name: test_http_error_returns_ok_false, lines: 90-101 }
         - { name: test_connection_timeout_returns_ok_false, lines: 103-115 }
+    - name: TestEmptyContentHandling
+      lines: 120-159
+      methods:
+        - { name: test_empty_content_with_finish_reason_length_returns_ok_false, lines: 121-145 }
+        - { name: test_nonempty_content_still_returns_ok_true, lines: 147-159 }
+    - name: TestMaxTokensPayload
+      lines: 164-196
+      methods:
+        - { name: test_max_tokens_included_in_completion_payload, lines: 165-181 }
+        - { name: test_max_tokens_override_via_constructor, lines: 183-196 }
     - name: TestTranslateBatch
-      lines: 120-158
+      lines: 201-239
       methods:
-        - { name: test_batch_calls_translate_once_sequentially, lines: 121-139 }
-        - { name: test_batch_partial_failure_returns_ok_false, lines: 141-158 }
+        - { name: test_batch_calls_translate_once_sequentially, lines: 202-220 }
+        - { name: test_batch_partial_failure_returns_ok_false, lines: 222-239 }
     - name: TestHealth
-      lines: 163-193
+      lines: 244-274
       methods:
-        - { name: test_health_probe_reachable_returns_true, lines: 164-179 }
-        - { name: test_health_probe_unreachable_returns_false, lines: 181-193 }
+        - { name: test_health_probe_reachable_returns_true, lines: 245-260 }
+        - { name: test_health_probe_unreachable_returns_false, lines: 262-274 }
     - name: TestListModels
-      lines: 198-210
+      lines: 279-291
       methods:
-        - { name: test_list_models_returns_list_of_strings, lines: 199-210 }
+        - { name: test_list_models_returns_list_of_strings, lines: 280-291 }
     - name: TestUnload
-      lines: 215-226
+      lines: 296-307
       methods:
-        - { name: test_unload_is_noop_returns_true, lines: 216-226 }
+        - { name: test_unload_is_noop_returns_true, lines: 297-307 }
     - name: TestConfigLoading
-      lines: 231-343
+      lines: 312-424
       methods:
-        - { name: test_providers_yml_env_var_interpolation, lines: 232-262 }
-        - { name: test_missing_providers_yml_falls_back_to_ollama, lines: 264-271 }
-        - { name: test_malformed_providers_yml_falls_back_to_ollama, lines: 273-281 }
-        - { name: test_unresolved_env_var_disables_provider, lines: 283-314 }
-        - { name: test_all_providers_disabled_falls_back_to_ollama, lines: 316-343 }
+        - { name: test_providers_yml_env_var_interpolation, lines: 313-343 }
+        - { name: test_missing_providers_yml_falls_back_to_ollama, lines: 345-352 }
+        - { name: test_malformed_providers_yml_falls_back_to_ollama, lines: 354-362 }
+        - { name: test_unresolved_env_var_disables_provider, lines: 364-395 }
+        - { name: test_all_providers_disabled_falls_back_to_ollama, lines: 397-424 }
     - name: TestSecretHandling
-      lines: 348-380
+      lines: 429-461
       methods:
-        - { name: test_literal_api_key_not_emitted_in_request, lines: 349-380 }
+        - { name: test_literal_api_key_not_emitted_in_request, lines: 430-461 }
   functions:
     - { name: _make_chat_response, lines: 22-29 }
     - { name: _make_http_error_response, lines: 32-36 }
 
-tests/test_orchestrator_judge.py:  # 255 lines
+tests/test_orchestrator_judge.py:  # 277 lines
   imports:
     - { module: __future__, items: [annotations], line: 18 }
     - { module: threading, items: [], line: 20 }
@@ -3354,10 +3411,12 @@ tests/test_orchestrator_judge.py:  # 255 lines
     - { name: test_judge_hook_fires_pptx, lines: 128-136 }
     - { name: test_judge_hook_fires_xlsx, lines: 139-147 }
     - { name: test_judge_hook_fires_pdf, lines: 150-158 }
-    - { name: test_judge_does_not_alter_qe_scoring, lines: 165-212 }
-    - { name: test_critique_loop_unaffected_when_judge_disabled, lines: 219-255 }
+    - { name: test_judge_skipped_when_provider_is_deepseek, lines: 161-169 }
+    - { name: test_judge_still_fires_when_provider_is_panjit, lines: 172-180 }
+    - { name: test_judge_does_not_alter_qe_scoring, lines: 187-234 }
+    - { name: test_critique_loop_unaffected_when_judge_disabled, lines: 241-277 }
 
-tests/test_orchestrator_phase0.py:  # 345 lines
+tests/test_orchestrator_phase0.py:  # 659 lines
   imports:
     - { module: __future__, items: [annotations], line: 27 }
     - { module: threading, items: [], line: 29 }
@@ -3376,6 +3435,13 @@ tests/test_orchestrator_phase0.py:  # 345 lines
     - { name: test_phase0_hook_injects_term_table, lines: 202-250 }
     - { name: test_phase0_hook_uses_panjit_config, lines: 257-297 }
     - { name: test_phase0_hook_skips_panjit_when_disabled, lines: 304-345 }
+    - { name: _make_real_pptx_with_text, lines: 364-372 }
+    - { name: test_ppt_phase0_extraction_branch_converts_via_libreoffice, lines: 375-402 }
+    - { name: test_xls_phase0_extraction_branch_converts_via_libreoffice, lines: 405-435 }
+    - { name: test_doc_main_branch_converts_and_routes_to_translate_docx, lines: 438-487 }
+    - { name: test_ppt_main_branch_routes_through_ppt_to_pptx_to_translate_pptx, lines: 490-545 }
+    - { name: test_doc_xls_ppt_skip_without_crash_when_libreoffice_unavailable, lines: 548-600 }
+    - { name: test_conversion_failure_for_one_file_does_not_abort_job_or_other_files, lines: 603-659 }
 
 tests/test_output_mode_api.py:  # 219 lines
   imports:
@@ -3915,7 +3981,7 @@ tests/test_providers_api.py:  # 697 lines
     - { name: _mock_health_ok, lines: 80-84 }
     - { name: _mock_health_fail, lines: 87-91 }
 
-tests/test_quality_evaluation.py:  # 561 lines
+tests/test_quality_evaluation.py:  # 734 lines
   imports:
     - { module: __future__, items: [annotations], line: 10 }
     - { module: typing, items: [List, Tuple], line: 12 }
@@ -3935,17 +4001,22 @@ tests/test_quality_evaluation.py:  # 561 lines
     - { name: test_qe_disabled_skips_scoring, lines: 288-318 }
     - { name: test_qe_model_load_failure_sets_unavailable, lines: 321-334 }
     - { name: test_qe_scoring_exception_sets_unavailable, lines: 337-348 }
-    - { name: test_qe_invalid_device_falls_back_to_cpu, lines: 351-392 }
-    - { name: test_qe_score_includes_model_name, lines: 399-408 }
-    - { name: test_qe_zero_translatable_elements_produces_empty_scores, lines: 411-423 }
-    - { name: test_per_segment_score_blocks_called_with_src_hyp_pairs, lines: 430-462 }
-    - { name: test_below_threshold_triggers_retranslation, lines: 469-487 }
-    - { name: test_threshold_env_var_parsed_as_float, lines: 490-505 }
-    - { name: test_qe_enabled_config_default_is_true, lines: 512-528 }
-    - { name: test_rescore_threshold_has_correct_type_and_default, lines: 535-544 }
-    - { name: test_rescore_threshold_out_of_range_rejected, lines: 547-561 }
+    - { name: test_cuda_oom_retries_with_smaller_batch_then_succeeds, lines: 351-373 }
+    - { name: test_cuda_oom_exhausts_all_retries_returns_empty, lines: 376-388 }
+    - { name: test_cuda_non_oom_exception_does_not_retry, lines: 391-402 }
+    - { name: test_cpu_device_does_not_use_oom_retry_batch_sizes, lines: 405-417 }
+    - { name: test_qe_invalid_device_falls_back_to_cpu, lines: 420-461 }
+    - { name: test_qe_score_includes_model_name, lines: 468-477 }
+    - { name: test_qe_zero_translatable_elements_produces_empty_scores, lines: 480-492 }
+    - { name: test_per_segment_score_blocks_called_with_src_hyp_pairs, lines: 499-531 }
+    - { name: test_below_threshold_triggers_retranslation, lines: 538-556 }
+    - { name: test_threshold_env_var_parsed_as_float, lines: 559-574 }
+    - { name: test_qe_enabled_config_default_is_true, lines: 581-597 }
+    - { name: test_rescore_threshold_has_correct_type_and_default, lines: 604-613 }
+    - { name: test_rescore_threshold_out_of_range_rejected, lines: 616-630 }
+    - { name: test_qe_scoring_invoked_identically_for_converted_legacy_document, lines: 639-734 }
 
-tests/test_quality_judge.py:  # 512 lines
+tests/test_quality_judge.py:  # 516 lines
   imports:
     - { module: __future__, items: [annotations], line: 11 }
     - { module: json, items: [], line: 13 }
@@ -3953,35 +4024,35 @@ tests/test_quality_judge.py:  # 512 lines
     - { module: unittest.mock, items: [MagicMock, call, patch], line: 15 }
     - { module: pytest, items: [], line: 17 }
   functions:
-    - { name: _make_judge, lines: 24-31 }
-    - { name: _make_client_response, lines: 34-36 }
-    - { name: _make_blocks, lines: 39-41 }
-    - { name: test_score_json_parse_valid, lines: 48-52 }
-    - { name: test_score_raw_scan_fallback, lines: 55-59 }
-    - { name: test_score_no_token_unavailable, lines: 62-66 }
-    - { name: test_score_synonym_not_accepted, lines: 69-75 }
-    - { name: test_score_json_preferred_over_raw, lines: 78-84 }
-    - { name: test_score_中_token, lines: 87-91 }
-    - { name: test_judge_records_result_on_job_record, lines: 98-116 }
-    - { name: test_judge_score_high_terminates_loop, lines: 123-137 }
-    - { name: test_judge_score_mid_triggers_retranslation, lines: 144-158 }
-    - { name: test_judge_score_high_no_retranslation, lines: 165-177 }
-    - { name: test_feedback_fed_back_to_translation_model, lines: 184-207 }
-    - { name: test_judge_iteration_cap_enforced, lines: 214-228 }
-    - { name: test_attempts_field_equals_iteration_count, lines: 231-245 }
-    - { name: test_judge_disabled_flag_skips_judge, lines: 252-280 }
-    - { name: test_judge_exception_degrades_gracefully, lines: 287-297 }
-    - { name: test_judge_parse_failure_degrades_gracefully, lines: 301-311 }
-    - { name: test_judge_client_is_ollama_not_model_router, lines: 318-334 }
-    - { name: test_per_block_judge_calls_evaluate_once_per_block_with_correct_pair_args, lines: 341-370 }
-    - { name: test_per_block_judge_score_array_length_equals_block_count, lines: 373-389 }
-    - { name: test_judge_block_high_score_returns_1_0, lines: 392-398 }
-    - { name: test_judge_block_mid_score_returns_0_5, lines: 401-407 }
-    - { name: test_judge_block_low_score_returns_0_0, lines: 410-416 }
-    - { name: test_judge_block_unavailable_returns_0_0, lines: 419-425 }
-    - { name: test_judge_layout_receives_pil_image_object_not_path, lines: 432-478 }
-    - { name: test_judge_layout_returns_int_score_between_1_and_5, lines: 481-496 }
-    - { name: test_judge_layout_returns_0_on_call_failure, lines: 499-512 }
+    - { name: _make_judge, lines: 24-33 }
+    - { name: _make_client_response, lines: 36-38 }
+    - { name: _make_blocks, lines: 41-43 }
+    - { name: test_score_json_parse_valid, lines: 50-54 }
+    - { name: test_score_raw_scan_fallback, lines: 57-61 }
+    - { name: test_score_no_token_unavailable, lines: 64-68 }
+    - { name: test_score_synonym_not_accepted, lines: 71-77 }
+    - { name: test_score_json_preferred_over_raw, lines: 80-86 }
+    - { name: test_score_中_token, lines: 89-93 }
+    - { name: test_judge_records_result_on_job_record, lines: 100-118 }
+    - { name: test_judge_score_high_terminates_loop, lines: 125-139 }
+    - { name: test_judge_score_mid_triggers_retranslation, lines: 146-160 }
+    - { name: test_judge_score_high_no_retranslation, lines: 167-179 }
+    - { name: test_feedback_fed_back_to_translation_model, lines: 186-209 }
+    - { name: test_judge_iteration_cap_enforced, lines: 216-230 }
+    - { name: test_attempts_field_equals_iteration_count, lines: 233-247 }
+    - { name: test_judge_disabled_flag_skips_judge, lines: 254-282 }
+    - { name: test_judge_exception_degrades_gracefully, lines: 289-299 }
+    - { name: test_judge_parse_failure_degrades_gracefully, lines: 303-313 }
+    - { name: test_judge_client_is_ollama_not_model_router, lines: 320-338 }
+    - { name: test_per_block_judge_calls_evaluate_once_per_block_with_correct_pair_args, lines: 345-374 }
+    - { name: test_per_block_judge_score_array_length_equals_block_count, lines: 377-393 }
+    - { name: test_judge_block_high_score_returns_1_0, lines: 396-402 }
+    - { name: test_judge_block_mid_score_returns_0_5, lines: 405-411 }
+    - { name: test_judge_block_low_score_returns_0_0, lines: 414-420 }
+    - { name: test_judge_block_unavailable_returns_0_0, lines: 423-429 }
+    - { name: test_judge_layout_receives_pil_image_object_not_path, lines: 436-482 }
+    - { name: test_judge_layout_returns_int_score_between_1_and_5, lines: 485-500 }
+    - { name: test_judge_layout_returns_0_on_call_failure, lines: 503-516 }
 
 tests/test_renderer_convergence.py:  # 860 lines
   imports:
@@ -4129,7 +4200,7 @@ tests/test_table_border_protection.py:  # 790 lines
   functions:
     - { name: _make_fitz_rect, lines: 45-54 }
 
-tests/test_table_context_translation.py:  # 691 lines
+tests/test_table_context_translation.py:  # 785 lines
   imports:
     - { module: __future__, items: [annotations], line: 19 }
     - { module: logging, items: [], line: 21 }
@@ -4174,11 +4245,17 @@ tests/test_table_context_translation.py:  # 691 lines
         - { name: test_single_llm_call_per_table_docx, lines: 522-545 }
         - { name: test_single_llm_call_per_table_xlsx, lines: 547-568 }
         - { name: test_single_llm_call_per_table_pptx, lines: 570-591 }
-    - name: TestPerColumnDedupKey
-      lines: 598-691
+    - name: TestMultiParagraphCellSplitting
+      lines: 601-685
       methods:
-        - { name: test_same_text_different_cols_get_separate_translations, lines: 601-647 }
-        - { name: test_non_table_segments_use_col_none_dedup_key, lines: 649-691 }
+        - { name: _make_docx_with_multiline_cell, lines: 602-618 }
+        - { name: test_multiline_cell_forces_grid_parse_failure_and_splits_in_fallback, lines: 620-660 }
+        - { name: test_single_line_cell_unaffected_by_splitting, lines: 662-685 }
+    - name: TestPerColumnDedupKey
+      lines: 692-785
+      methods:
+        - { name: test_same_text_different_cols_get_separate_translations, lines: 695-741 }
+        - { name: test_non_table_segments_use_col_none_dedup_key, lines: 743-785 }
   functions:
     - { name: _make_client_mock, lines: 58-68 }
     - { name: _make_table_cell, lines: 71-79 }
@@ -4354,7 +4431,7 @@ tests/test_term_api.py:  # 198 lines
     - { name: test_terms_import_invalid_strategy, lines: 185-190 }
     - { name: test_terms_import_invalid_file_type, lines: 193-198 }
 
-tests/test_term_audit.py:  # 532 lines
+tests/test_term_audit.py:  # 580 lines
   imports:
     - { module: __future__, items: [annotations], line: 14 }
     - { module: dataclasses, items: [], line: 16 }
@@ -4386,6 +4463,7 @@ tests/test_term_audit.py:  # 532 lines
     - { name: test_no_parallel_report_format, lines: 396-407 }
     - { name: test_audit_wired_at_hook_seam, lines: 415-479 }
     - { name: test_audit_disabled_when_exception, lines: 487-532 }
+    - { name: test_audit_skipped_when_term_extraction_disabled, lines: 535-580 }
 
 tests/test_term_db.py:  # 303 lines
   imports:
@@ -4746,6 +4824,19 @@ tests/test_translate_document_parity.py:  # 248 lines
     - { name: test_translate_document_calls_term_substitution, lines: 81-132 }
     - { name: test_translate_document_calls_critique_loop, lines: 139-165 }
     - { name: test_translate_document_passes_overlap_tokens_as_context, lines: 172-248 }
+
+tests/test_translation_cache.py:  # 79 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 7 }
+    - { module: pytest, items: [], line: 9 }
+    - { module: app.backend.services.translation_cache, items: [TranslationCache], line: 11 }
+  functions:
+    - { name: cache, lines: 15-16 }  # @pytest.fixture
+    - { name: test_purge_empty_deletes_only_blank_translations, lines: 19-28 }
+    - { name: test_purge_empty_treats_whitespace_only_as_blank, lines: 31-36 }
+    - { name: test_purge_empty_scoped_to_model, lines: 39-47 }
+    - { name: test_purge_empty_noop_when_no_blank_entries, lines: 50-57 }
+    - { name: test_purged_entry_is_retranslated_on_next_get_batch_miss, lines: 60-79 }
 
 tests/test_translation_profiles_scenarios.py:  # 31 lines
   imports:

@@ -1,0 +1,10 @@
+change-id: qa-judge-hang-recovery
+agent: spec-architect
+status: done
+next-action: test-strategist writes test-plan.md; implementation-planner turns design+contracts into implementation-plan.md (STOP point)
+summary: "Resolved 3 deferred decisions. D1 cancellation: two-layer — wall-clock ceiling is the in-flight backstop (unblocks a dribbling socket read), and the ceiling's wait primitive also watches cancel_event=job.stop_flag so Cancel aborts a blocked read; stop_flag also checked between per-block calls and iterations for fast-exit. D2 timeout placement: at the shared cloud client (openai_compatible_client._post_completion) for pipeline-wide benefit; additive on top of (connect,read), degrade-not-fail, generous default, env OPENAI_TOTAL_TIMEOUT_SECONDS following CRITIQUE_TIMEOUT_SECONDS shape. D3 status: add 4th enum value 'stopped' (matches JobStatus='stopped', NOT 'cancelled'); ceiling-timeout stays 'unavailable', only user-cancel is 'stopped'; additive/non-breaking, FE fails safe on positive-match of 'available'. ADR 0011 written (transport ceiling + interruptible post — silent reversal reintroduces the incident). Designed against sibling shapes: appends cancel_event AFTER snapshot_cb; consumes qa-judge-provider-consistency's translation_client.translate_once. No forbidden cross-change read attempted."
+artifacts:
+  - { type: adr-written, pointer: "docs/adr/0011-cloud-llm-total-timeout-and-cancellable-post.md" }
+  - { type: affected-areas, pointer: "quality_judge loop, job_manager judge hook, openai_compatible_client transport, ollama_client, config, business/env/data/api contracts" }
+  - { type: decision-summary, pointer: "client-level wall-clock ceiling + cancel-aware interruptible post + new 'stopped' judge_status" }
+  - { type: risks-noted, pointer: "0 high, 3 medium (ceiling default calibration, ollama in-flight parity, worker-thread/session lifecycle)" }

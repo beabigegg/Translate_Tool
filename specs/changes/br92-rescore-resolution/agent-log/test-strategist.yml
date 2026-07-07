@@ -1,0 +1,11 @@
+change-id: br92-rescore-resolution
+agent: test-strategist
+status: done
+next-action: implementation-planner writes implementation-plan.md for the retire direction
+summary: "Wrote test-plan.md for the RETIRE path only (user-confirmed). Grep-verified the live (non-archived) reference surface matches design.md's checklist: config.py:133-136, business-rules.md:104, env-contract.md:37-38, .env.example.template, env.schema.json, plus 8 test functions across tests/test_quality_evaluation.py (4) and tests/test_env_contract.py (4) that assert the var's presence/parsing or are tautological (test_below_threshold_triggers_retranslation). Also found data-shape-contract.md has TWO stale BR-92 mentions, not one: line 780 (intro prose) and line 787 (table cell, the one design.md flagged) — both need correction; recorded as a contract-review item, not a pytest test, per explicit instruction. Plan keeps the 2 unrelated QE_ENABLED/AC-3 tests in test_env_contract.py untouched."
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/br92-rescore-resolution/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_quality_evaluation.py (4 deletions, 2 new negative-presence tests) → app/backend/config.py:133-136 (removal)" }
+  - { type: tdd-pairs, pointer: "tests/test_env_contract.py (4 deletions→4 inverted replacements, 1 new repo-wide sweep) → contracts/env/env-contract.md, env.schema.json, .env.example.template" }
+  - { type: coverage-tiers, pointer: "unit (tier 0), contract (tier 0); no integration/e2e/resilience needed for retire" }
+  - { type: mapping-completeness, pointer: "AC-2, AC-3, AC-4, AC-6 all mapped; AC-1/AC-5/AC-7 out of scope for test-plan (AC-1 is a process gate already satisfied by change-request Open Questions resolution, AC-5 is build-only, AC-7 is a non-goal boundary check with no code touched)" }

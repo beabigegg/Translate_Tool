@@ -1,0 +1,41 @@
+change-id: translation-progress-detail-ui
+status: in-progress
+tier: 2
+context-governance: v1
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on: []
+
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done, note: "contract-reviewer: api-contract.md JobStatus authoritative; additive-optional=non-breaking (minor bump); found pre-existing drift (status_detail/layout_viz_available missing from contract) to close in same edit; 2 open decisions (ETA BR, data-shape entry) deferred to spec-architect" }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: done, note: "spec-architect: design.md + ADR-0010 written; current-only snapshot via widened status_callback payload; ETA -> new BR-98. AMENDED post-planning: live incident showed judge phase (quality_judge.py) was scoped OUT of stage snapshot + BR-98 ETA; spec-architect re-invoked (CER-004), added current_stage=judge, 3 new fields (current_segment_judge_tier/attempt/substep), BR-98 renamed eta-multi-phase-pipeline with phase-3 term; cancellation/timeout fix explicitly deferred to sibling change qa-pipeline-consolidation" }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done, note: "ci-cd-gatekeeper: existing blanket backend pytest + frontend npm test (vitest, unscoped) jobs already glob-cover all new test files with zero workflow edits; openapi export-check already wired; DISCOVERED REPO-WIDE GAP: validate_contract_versions.py/--versions is only enforced via the local untracked pre-commit hook, never in CI — recommended (not applied) adding a cdd-kit validate --versions step to contract-and-fast-tests" }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done, note: "implementation-planner: IP-1..IP-10 execution packet written; DEFERRED banner at top per explicit STOP instruction. AMENDED: IP-11..IP-17 added for judge-phase (AC-9) delta — schemas.py 3 new fields, quality_judge.py additive snapshot_cb, job_manager.py call-site wiring, routes.py phase-3 ETA, frontend reuse of existing StageDetailPanel, contract updates, tests. Plan now 251 lines. Known Risks flags qa-pipeline-consolidation sequencing (both touch quality_judge.py/job_manager.py L472-518) — coordinate, don't couple" }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: pending, note: "design.md: add 5 optional JobStatus fields (current_stage/current_segment_source/draft/qe_score/adopted); close pre-existing status_detail/layout_viz_available drift; minor version bump; regen openapi.yml/json — deferred to implementation" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: pending, note: "design.md: new StageDetailPanel/StageBadge component-rules row (JudgePanel precedent) + new --color-stage-* tokens in design-tokens.md — deferred to implementation" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: skipped, note: "no new env var (classifier)" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: pending, note: "design.md: confirmed yes — add JobStatus optional-columns entry for the 5 new fields, mirroring provider/warnings precedent — deferred to implementation" }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: pending, note: "design.md: confirmed yes — new BR-98 (eta-two-phase-pipeline) — deferred to implementation" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no CI/CD change (classifier)" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: pending, note: "test-plan.md written (AC-1/2/5/6/8 mapped to tests/test_jobstatus_stage_detail.py, tests/test_eta_multi_phase_heuristic.py [renamed from test_eta_two_phase_heuristic.py], tests/test_job_manager_current_segment.py); AMENDED: AC-9 (judge phase) adds tests/test_quality_judge_snapshot_callback.py + extends the above 3 files; test code authored by backend/frontend-engineer during deferred implementation" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: pending, note: "test-plan.md written (AC-1 mapped to tests/test_translation_service_stage_snapshot.py); AMENDED: AC-9 judge-phase snapshot-callback integration case added; test authoring deferred" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: pending, note: "test-plan.md written (AC-7 resilience mapped to TranslationProgress.test.jsx); AMENDED: AC-9 judge tier/attempt/substep render + null-tolerance added; full E2E browser flow explicitly out-of-scope this pass" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: pending, note: "test-plan.md written (AC-7 null-tolerance mapped); AMENDED: AC-9 JUDGE_ENABLED=false/deepseek-skip ETA-omission boundary case added; monkey/fuzz not required (classifier)" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "stress/soak: none (classifier); hot-path overhead covered by a cheap unit assertion under 3.1 instead" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: pending, note: "DEFERRED — do not start until user explicitly approves implementation-plan.md in a later session" }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: pending, note: "DEFERRED — do not start until user explicitly approves implementation-plan.md in a later session" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: skipped, note: "no env/deploy change (classifier)" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: skipped, note: "ci-cd-gatekeeper confirmed: zero workflow edits required for this change's test surface (existing blanket backend + frontend jobs auto-cover). The recommended validate --versions step is a separate repo-wide gap, not required by this change — track as its own follow-up if pursued." }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: pending, note: "DEFERRED — needs actual frontend implementation to review" }
+  - { id: "5.2", section: Review, title: "Visual review", status: pending, note: "DEFERRED — needs actual frontend implementation to review" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done, note: "contract-reviewer approved; grounding sufficient for spec-architect" }
+  - { id: "5.4", section: Review, title: "QA review", status: pending, note: "DEFERRED — runs after implementation, not during this planning-only pass" }
+  - { id: "6.1", section: Verification, title: "Local gates", status: pending }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: pending }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: pending }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }

@@ -1,0 +1,4 @@
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/qa-judge-provider-consistency/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer (quality_judge.py, job_manager.py), contract-reviewer (business-rules.md, env-contract.md), test-strategist/backend-engineer (tests)" }
+  - { type: scope-summary, pointer: "6 in scope, 8 out of scope; 7 IP items; 2 source files + 2 contracts + 2 test files" }

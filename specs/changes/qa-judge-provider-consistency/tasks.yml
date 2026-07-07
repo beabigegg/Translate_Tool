@@ -1,0 +1,41 @@
+change-id: qa-judge-provider-consistency
+status: in-progress
+tier: 2
+context-governance: v1
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on: []
+
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done, note: "change-classifier: Tier 2, feature lane, Architecture Review Required=yes (client/model-role + BR decision)" }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done, note: "contract-reviewer: new BR-98 (judge-retranslation-provider-consistency), appended after BR-97 in Rule Inventory; extends D4's 'judge uses own client, never model_router' precedent + BR-95's per-sub-call dedicated-client pattern; JUDGE_PROVIDER/JUDGE_CLOUD_PROVIDER_ID/JUDGE_MODEL already documented in env-contract.md:45-48, no new env var needed" }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: done, note: "spec-architect: providers.yml has a models: map per provider (translate/long_doc/etc, not one model per provider) — chose distinct translation-role client via QualityJudge.translation_client property, resolving models.translate (falls back to JUDGE_MODEL if absent). Already-panjit case is a true no-op (reproduces today's exact requests). Construction centralized in quality_judge.py (generalized _build_cloud_client()); job_manager.py's _translate_fn becomes a pure consumer, last_client/OllamaClient fallback removed. BR-98 text + Table U row written. BR-97 skip gate confirmed untouched (job_manager.py:477-485). No ADR needed." }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: skipped, note: "no CI/CD contract change (classifier)" }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done, note: "implementation-planner: IP-1..IP-7 written (176 lines). quality_judge.py L89-114 generalize _build_cloud_client(model=None), verified scoring call site unaffected; new cached translation_client property; job_manager.py L493-510 rewrite _translate_fn; OllamaClient/DEFAULT_MODEL imports confirmed still used elsewhere, not removed. Known Risks: must land BEFORE qa-judge-hang-recovery (same region)." }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: skipped, note: "no API change (classifier)" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no UI change (classifier)" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: skipped, note: "review-only, no new config surface (classifier)" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: skipped, note: "no data-shape change (classifier)" }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: pending, note: "new/extended rule near BR-97/BR-72 documenting provider-consistency guarantee" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no CI/CD change (classifier)" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done, note: "test-strategist: extends tests/test_quality_judge.py (translation_client resolution, models.translate/JUDGE_MODEL fallback, no new env var) + contract check for BR-98/Table U. Flagged mock-boundary risk: patch app.backend.clients.openai_compatible_client.OpenAICompatibleClient at definition module, not quality_judge.py" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: done, note: "test-strategist: extends tests/test_orchestrator_judge.py (_translate_fn uses translation_client not last_client, OllamaClient fallback removed); discovered last_client is unconditionally reset to None at end of every route-group loop before judge hook runs (job_manager.py:405-406) — AC-2 no-op case proven via request-param comparison, not full E2E" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: skipped, note: "not applicable (classifier)" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "not applicable (classifier)" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "not applicable (classifier)" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: pending, note: "DEFERRED — do not start until user explicitly approves implementation-plan.md" }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no FE change (classifier)" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: skipped, note: "no env/deploy change (classifier)" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: skipped, note: "no workflow change (classifier)" }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI surface (classifier)" }
+  - { id: "5.2", section: Review, title: "Visual review", status: skipped, note: "no UI surface (classifier)" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done, note: "contract-reviewer: BR-98 numbering/placement confirmed, D4/BR-95 precedent cited, env-contract rows flagged for a (BR-98) cross-reference tightening (JUDGE_PROVIDER line 45, JUDGE_CLOUD_PROVIDER_ID line 48 currently slightly overclaim run_judge_loop's re-translation sub-path)" }
+  - { id: "5.4", section: Review, title: "QA review", status: done, note: "qa-reviewer: approved-with-risk. All 5 consistency checks PASS (AC coverage, test-plan/IP drift=zero, no scope creep, no orphan claims, tasks.yml consistent). One blocking gap found+fixed: context-manifest.md was missing tests/test_quality_judge.py (carries 5 of the unit tests) — added to Allowed Paths/Required Tests/test-strategist+implementation-planner packets." }
+  - { id: "6.1", section: Verification, title: "Local gates", status: pending }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: pending }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: pending }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }

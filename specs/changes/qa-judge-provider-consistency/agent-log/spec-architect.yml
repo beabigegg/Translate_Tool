@@ -1,0 +1,10 @@
+change-id: qa-judge-provider-consistency
+agent: spec-architect
+status: done
+next-action: contract-reviewer finalizes BR-98 text + Table U row; test-strategist writes test-plan.md
+summary: "providers.yml panjit entry carries a models: MAP of named roles (translate/long_doc), so a provider is not tied to one model and _build_cloud_client() already accepts per-call model=. Decided: QA re-translation builds a DISTINCT translation-role client on the SAME judge provider (JUDGE_CLOUD_PROVIDER_ID), selecting provider models.translate (fallback JUDGE_MODEL) — keeps already-panjit case a true no-op since last_client already ran models.translate. Client construction stays in quality_judge.py via a new translation_client property; job_manager _translate_fn just consumes it and drops the last_client/OllamaClient(DEFAULT_MODEL) fallback. BR-97 deepseek-skip gate explicitly untouched. BR-98 gets a Table U row. No new env var, no ADR (extends D4/ADR-0007/0008 boundary)."
+artifacts:
+  - { type: adr-written, pointer: "none (extends D4/ADR-0007/ADR-0008 boundary; captured in BR-98)" }
+  - { type: affected-areas, pointer: "quality_judge, job_manager judge call-site, business-rules BR-98" }
+  - { type: decision-summary, pointer: "distinct translation-role client on judge provider via models.translate, built in quality_judge.translation_client property" }
+  - { type: risks-noted, pointer: "0 high, 2 open (missing models.translate fallback coverage; qa-judge-hang-recovery merge sequencing)" }

@@ -1,0 +1,10 @@
+change-id: batch-critique-qe-scoring
+agent: change-classifier
+status: needs-review
+next-action: run-implementation-planner-then-stop
+summary: "Tier 2, medium risk, lane=feature (perf refactor not bug-fix). No design.md/spec-architect needed — control-flow-only change within one seam. Required agents this pass: implementation-planner, contract-reviewer, test-strategist. backend-engineer/e2e-resilience-engineer/qa-reviewer deferred to a later implementation session per explicit user instruction."
+artifacts:
+  - { type: tier, pointer: "specs/changes/batch-critique-qe-scoring/change-classification.md#tier" }
+  - { type: risk, pointer: "specs/changes/batch-critique-qe-scoring/change-classification.md#risk-level" }
+  - { type: acceptance-criteria, pointer: "specs/changes/batch-critique-qe-scoring/change-classification.md#inferred-acceptance-criteria" }
+  - { type: context-manifest-draft, pointer: "specs/changes/batch-critique-qe-scoring/context-manifest.md" }
