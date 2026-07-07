@@ -898,24 +898,49 @@ def translate_docx(
                             excluded_by_should_translate[0][:30],
                         )
                     if uniq_cell_texts:
-                        fallback_tmap, _, _, _ = translate_texts(
-                            uniq_cell_texts, [tgt], src_lang, client,
-                            max_batch_chars=max_batch_chars,
-                            stop_flag=stop_flag, log=log,
-                        )
-                        for (fb_tgt, fb_text), fb_tr in fallback_tmap.items():
+                        # A cell can hold MULTIPLE original paragraphs joined with "\n"
+                        # (_collect_docx_segments' cell_text_parts join) — most commonly
+                        # a merged "layout" cell holding an entire document section.
+                        # Sending the whole blob as ONE translate_once() call risks
+                        # silent truncation: confirmed live against panjit's gpt-oss:120b,
+                        # a 4827-char cell returned only 370 chars with ok=True (no error,
+                        # since the response wasn't EMPTY, just cut short) — over 90% of
+                        # the content vanished with no trace. Splitting on "\n" and
+                        # translating at the SAME per-paragraph granularity as body text
+                        # (reusing translate_texts' batching/context/critique) keeps every
+                        # individual LLM call bounded, then cells are reassembled by
+                        # rejoining their translated lines.
+                        cell_to_lines: Dict[str, List[str]] = {
+                            cell_text: cell_text.split("\n") for cell_text in uniq_cell_texts
+                        }
+                        uniq_lines = list(dict.fromkeys(
+                            line for lines in cell_to_lines.values() for line in lines
+                            if line.strip() and should_translate(line, src_for_prompt)
+                        ))
+                        fallback_tmap: Dict = {}
+                        if uniq_lines:
+                            fallback_tmap, _, _, _ = translate_texts(
+                                uniq_lines, [tgt], src_lang, client,
+                                max_batch_chars=max_batch_chars,
+                                stop_flag=stop_flag, log=log,
+                            )
+                        for cell_text, lines in cell_to_lines.items():
+                            translated_lines = [
+                                fallback_tmap.get((tgt, line), line) for line in lines
+                            ]
+                            reassembled = "\n".join(translated_lines)
                             # Apply to ALL cells with this text across their actual columns
                             for s in t_segs:
-                                if s.text == fb_text:
-                                    final_tmap[(fb_tgt, fb_text, s.col)] = fb_tr
-                        missing = set(uniq_cell_texts) - {t for (_, t) in fallback_tmap}
-                        if missing:
+                                if s.text == cell_text:
+                                    final_tmap[(tgt, cell_text, s.col)] = reassembled
+                        missing_lines = set(uniq_lines) - {line for (_, line) in fallback_tmap}
+                        if missing_lines:
                             logger.warning(
-                                "[DOCX] Table group %s: %d cell text(s) sent to fallback "
+                                "[DOCX] Table group %s: %d cell line(s) sent to fallback "
                                 "translate_texts() but missing from its result (target=%s), "
-                                "e.g. %r — will show as '[SKIP] No translation' with no "
-                                "further trail",
-                                table_id, len(missing), tgt, next(iter(missing))[:30],
+                                "e.g. %r — those lines fall back to their original untranslated "
+                                "text within the reassembled cell",
+                                table_id, len(missing_lines), tgt, next(iter(missing_lines))[:30],
                             )
 
     if final_tmap:

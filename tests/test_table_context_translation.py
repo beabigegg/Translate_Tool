@@ -592,6 +592,100 @@ class TestOneCallPerTableOffice:
 
 
 # ---------------------------------------------------------------------------
+# Multi-paragraph cell splitting (fix: merged "layout" cell holding an entire
+# document section was sent as ONE atomic translate_once() call and silently
+# truncated -- confirmed live against panjit: a 4827-char cell returned only
+# 370 chars with ok=True, no error surfaced, ~90% of content vanished).
+# ---------------------------------------------------------------------------
+
+class TestMultiParagraphCellSplitting:
+    def _make_docx_with_multiline_cell(self, tmp_path: Path, lines: List[str]) -> Path:
+        """Create a DOCX with a single 1x1 table cell containing multiple
+        paragraphs (joined by "\\n" per _p_text_with_breaks), mimicking a
+        merged layout cell holding several document sections."""
+        import docx as _docx_lib
+
+        doc = _docx_lib.Document()
+        tbl = doc.add_table(rows=1, cols=1)
+        cell = tbl.cell(0, 0)
+        # A fresh cell already has one empty paragraph; reuse it for the
+        # first line, then add_paragraph() for the rest.
+        cell.paragraphs[0].text = lines[0]
+        for line in lines[1:]:
+            cell.add_paragraph(line)
+        p = tmp_path / "multiline_cell.docx"
+        doc.save(str(p))
+        return p
+
+    def test_multiline_cell_forces_grid_parse_failure_and_splits_in_fallback(self, tmp_path):
+        """A multi-paragraph cell's whole-table translate_once response won't
+        parse as a 1x1 grid (it returns one line per source line, not the
+        whole grid), forcing the fallback -- which must translate each line
+        SEPARATELY rather than sending the whole blob as one call."""
+        lines = ["1、目的", "使本公司生產設備維持良好的狀況和工作能力。", "2、範圍"]
+        in_path = self._make_docx_with_multiline_cell(tmp_path, lines)
+        out_path = tmp_path / "out.docx"
+
+        mock_client = _make_client_mock()
+        # Whole-table call returns something table_serializer.parse() can't
+        # reconcile against a 1x1 grid (it's multi-line, not "cellA").
+        mock_client.translate_once.return_value = (True, "not a valid single-cell grid\nextra line")
+
+        translated_lines = {
+            "1、目的": "1. Mục đích",
+            "使本公司生產設備維持良好的狀況和工作能力。": "Duy trì tình trạng tốt.",
+            "2、範圍": "2. Phạm vi",
+        }
+
+        def _fake_translate_texts(texts, targets, src_lang, client, **kwargs):
+            tmap = {(targets[0], t): translated_lines[t] for t in texts}
+            return (tmap, len(texts), 0, False)
+
+        with patch.object(_docx_proc, "translate_texts", side_effect=_fake_translate_texts):
+            _docx_proc.translate_docx(
+                str(in_path), str(out_path),
+                targets=["Vietnamese"], src_lang="Chinese",
+                client=mock_client,
+                include_headers_shapes_via_com=False,
+            )
+
+        d2 = _docx_proc.docx.Document(str(out_path))
+        cell_text = d2.tables[0].cell(0, 0).text
+        for original, translated in translated_lines.items():
+            assert original in cell_text, f"original line {original!r} must be preserved"
+            assert translated in cell_text, (
+                f"line {original!r} must be translated to {translated!r} individually "
+                f"instead of the whole cell being sent as one atomic block; "
+                f"cell_text={cell_text!r}"
+            )
+
+    def test_single_line_cell_unaffected_by_splitting(self, tmp_path):
+        """A normal single-paragraph cell must behave exactly as before --
+        splitting on "\\n" is a no-op when there's only one line."""
+        in_path = self._make_docx_with_multiline_cell(tmp_path, ["Apple"])
+        out_path = tmp_path / "out.docx"
+
+        mock_client = _make_client_mock()
+        mock_client.translate_once.return_value = (True, "not-a-grid")
+
+        with patch.object(
+            _docx_proc, "translate_texts",
+            return_value=({("Vietnamese", "Apple"): "Táo"}, 1, 0, False),
+        ):
+            _docx_proc.translate_docx(
+                str(in_path), str(out_path),
+                targets=["Vietnamese"], src_lang="English",
+                client=mock_client,
+                include_headers_shapes_via_com=False,
+            )
+
+        d2 = _docx_proc.docx.Document(str(out_path))
+        cell_text = d2.tables[0].cell(0, 0).text
+        assert "Apple" in cell_text
+        assert "Táo" in cell_text
+
+
+# ---------------------------------------------------------------------------
 # AC-3: Per-column dedup key
 # ---------------------------------------------------------------------------
 
