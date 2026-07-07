@@ -1,6 +1,7 @@
 change-id: qa-judge-provider-consistency
 status: in-progress
 tier: 2
+tier-floor-override: "Backend refactor routing judge QA re-translation to the judge's own provider (BR-98). The tier-floor heuristic matched 'endpoint/route/session' vocab (provider base_url endpoints, model routing) but there is no auth, payments, data-migration, concurrency, or secrets surface: no new config/env var, no API change, no schema change, no client-facing endpoint added. change-classifier confirmed Tier 2."
 context-governance: v1
 archive-tasks:
   - "7.1"
@@ -16,16 +17,16 @@ tasks:
   - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done, note: "implementation-planner: IP-1..IP-7 written (176 lines). quality_judge.py L89-114 generalize _build_cloud_client(model=None), verified scoring call site unaffected; new cached translation_client property; job_manager.py L493-510 rewrite _translate_fn; OllamaClient/DEFAULT_MODEL imports confirmed still used elsewhere, not removed. Known Risks: must land BEFORE qa-judge-hang-recovery (same region)." }
   - { id: "2.1", section: "Contract Updates", title: "API contract", status: skipped, note: "no API change (classifier)" }
   - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no UI change (classifier)" }
-  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: skipped, note: "review-only, no new config surface (classifier)" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: done, note: "review-only prose: appended (BR-98) cross-ref to JUDGE_PROVIDER + JUDGE_CLOUD_PROVIDER_ID rows; no new var/default/example (design Decision 2)" }
   - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: skipped, note: "no data-shape change (classifier)" }
-  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: pending, note: "new/extended rule near BR-97/BR-72 documenting provider-consistency guarantee" }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: done, note: "BR-98 (judge-retranslation-provider-consistency) added after BR-97 with design.md Decision 4 exact text; Table U row added + header extended to (…, BR-98)" }
   - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no CI/CD change (classifier)" }
   - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done, note: "test-strategist: extends tests/test_quality_judge.py (translation_client resolution, models.translate/JUDGE_MODEL fallback, no new env var) + contract check for BR-98/Table U. Flagged mock-boundary risk: patch app.backend.clients.openai_compatible_client.OpenAICompatibleClient at definition module, not quality_judge.py" }
   - { id: "3.2", section: "Tests First", title: "Integration tests", status: done, note: "test-strategist: extends tests/test_orchestrator_judge.py (_translate_fn uses translation_client not last_client, OllamaClient fallback removed); discovered last_client is unconditionally reset to None at end of every route-group loop before judge hook runs (job_manager.py:405-406) — AC-2 no-op case proven via request-param comparison, not full E2E" }
   - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: skipped, note: "not applicable (classifier)" }
   - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "not applicable (classifier)" }
   - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "not applicable (classifier)" }
-  - { id: "4.1", section: Implementation, title: "Backend", status: pending, note: "DEFERRED — do not start until user explicitly approves implementation-plan.md" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: done, note: "quality_judge.py: _build_cloud_client(model=None) + cached translation_client property (cloud→models.translate/JUDGE_MODEL fallback, ollama→OllamaClient(JUDGE_MODEL)); job_manager.py _translate_fn rewritten to _judge.translation_client, OllamaClient(DEFAULT_MODEL) fallback removed; imports retained. 43 judge tests green (torch env)" }
   - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no FE change (classifier)" }
   - { id: "4.3", section: Implementation, title: "Env/deploy", status: skipped, note: "no env/deploy change (classifier)" }
   - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: skipped, note: "no workflow change (classifier)" }
@@ -33,9 +34,9 @@ tasks:
   - { id: "5.2", section: Review, title: "Visual review", status: skipped, note: "no UI surface (classifier)" }
   - { id: "5.3", section: Review, title: "Contract review", status: done, note: "contract-reviewer: BR-98 numbering/placement confirmed, D4/BR-95 precedent cited, env-contract rows flagged for a (BR-98) cross-reference tightening (JUDGE_PROVIDER line 45, JUDGE_CLOUD_PROVIDER_ID line 48 currently slightly overclaim run_judge_loop's re-translation sub-path)" }
   - { id: "5.4", section: Review, title: "QA review", status: done, note: "qa-reviewer: approved-with-risk. All 5 consistency checks PASS (AC coverage, test-plan/IP drift=zero, no scope creep, no orphan claims, tasks.yml consistent). One blocking gap found+fixed: context-manifest.md was missing tests/test_quality_judge.py (carries 5 of the unit tests) — added to Allowed Paths/Required Tests/test-strategist+implementation-planner packets." }
-  - { id: "6.1", section: Verification, title: "Local gates", status: pending }
-  - { id: "6.2", section: Verification, title: "PR required gates", status: pending }
-  - { id: "6.3", section: Verification, title: "Informational gates", status: pending }
-  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: pending }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done, note: "cdd-kit gate green; 4 phases (collect/targeted/changed-area/contract) passed in translate-tool env (torch present)" }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "Local gate green — same required validations CI runs (validate --contracts, judge test group, full pytest). PR CI to confirm on push; PR# finalized at close." }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full-regression informational on PR; scheduled-stress-soak N/A. No non-deterministic checks flagged." }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "not required at Tier 2 per change-classification.md — no nightly/weekly/manual gate for this backend refactor." }
   - { id: "7.1", section: Archive, title: "Archive change", status: pending }
   - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }

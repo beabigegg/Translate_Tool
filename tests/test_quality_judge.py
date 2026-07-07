@@ -514,3 +514,130 @@ def test_judge_layout_returns_0_on_call_failure():
     img = Image.new("RGB", (4, 4), color=0)
     result = judge.judge_layout(img)
     assert result == 0, f"Expected 0 on call failure, got {result}"
+
+
+# ---------------------------------------------------------------------------
+# qa-judge-provider-consistency (BR-98): translation_client resolution
+# ---------------------------------------------------------------------------
+
+def _fake_providers_cfg(translate_model: str = "gpt-oss:120b", include_translate: bool = True) -> dict:
+    """A providers.yml-shaped config with a single enabled 'panjit' provider."""
+    entry = {
+        "id": "panjit",
+        "enabled": True,
+        "base_url": "https://panjit.example/v1",
+        "api_key": "secret",
+        "tls_verify": True,
+        "models": {"long_doc": "other-model"},
+    }
+    if include_translate:
+        entry["models"]["translate"] = translate_model
+    return {"providers": [entry]}
+
+
+def _make_cloud_judge(model_name: str = "gemma3"):
+    """Build a JUDGE_PROVIDER=cloud judge without running __init__ (no live client)."""
+    from app.backend.services.quality_judge import QualityJudge
+
+    judge = QualityJudge.__new__(QualityJudge)
+    judge.model = model_name
+    judge._provider = "cloud"
+    judge._client = MagicMock()
+    judge._layout_client = MagicMock()
+    judge._translation_client = None
+    return judge
+
+
+def test_translation_client_resolves_cloud_provider_and_translate_model():
+    """AC-1/BR-98: cloud translation_client builds on JUDGE_CLOUD_PROVIDER_ID using models.translate."""
+    judge = _make_cloud_judge(model_name="gemma3")
+    with patch("app.backend.config.load_providers_config", return_value=_fake_providers_cfg("gpt-oss:120b")), \
+         patch("app.backend.config.JUDGE_CLOUD_PROVIDER_ID", "panjit"), \
+         patch("app.backend.clients.openai_compatible_client.OpenAICompatibleClient") as MockClient:
+        client = judge.translation_client
+
+    assert client is MockClient.return_value
+    _, kwargs = MockClient.call_args
+    assert kwargs["base_url"] == "https://panjit.example/v1"
+    assert kwargs["model"] == "gpt-oss:120b", "must use the provider's models.translate role"
+    assert kwargs["provider_id"] == "judge-panjit"
+
+
+def test_translation_client_model_may_differ_from_scoring_client_same_provider():
+    """AC-4/BR-98: translation model (models.translate) may differ from scoring model, same provider."""
+    judge = _make_cloud_judge(model_name="gemma3")  # scoring model == gemma3
+    with patch("app.backend.config.load_providers_config", return_value=_fake_providers_cfg("gpt-oss:120b")), \
+         patch("app.backend.config.JUDGE_CLOUD_PROVIDER_ID", "panjit"), \
+         patch("app.backend.clients.openai_compatible_client.OpenAICompatibleClient") as MockClient:
+        judge.translation_client
+
+    _, kwargs = MockClient.call_args
+    assert kwargs["model"] == "gpt-oss:120b"
+    assert kwargs["model"] != judge.model, "translation model may differ from the scoring model"
+    assert kwargs["base_url"] == "https://panjit.example/v1", "but MUST stay on the same provider"
+
+
+def test_translation_client_falls_back_to_judge_model_when_translate_key_absent():
+    """AC-4/BR-98: provider entry lacking models.translate falls back to JUDGE_MODEL (self.model)."""
+    judge = _make_cloud_judge(model_name="gemma3")
+    with patch("app.backend.config.load_providers_config", return_value=_fake_providers_cfg(include_translate=False)), \
+         patch("app.backend.config.JUDGE_CLOUD_PROVIDER_ID", "panjit"), \
+         patch("app.backend.clients.openai_compatible_client.OpenAICompatibleClient") as MockClient:
+        judge.translation_client
+
+    _, kwargs = MockClient.call_args
+    assert kwargs["model"] == "gemma3", "absent models.translate must fall back to JUDGE_MODEL"
+
+
+def test_translation_client_reuses_existing_config_symbols_only():
+    """AC-3/BR-98: no new config surface — resolution reads only JUDGE_* + providers.yml."""
+    from app.backend import config
+
+    assert not hasattr(config, "JUDGE_TRANSLATION_MODEL"), \
+        "translation_client must not introduce a new env/config symbol"
+
+    judge = _make_cloud_judge()
+    with patch("app.backend.config.load_providers_config", return_value=_fake_providers_cfg()) as mock_cfg, \
+         patch("app.backend.config.JUDGE_CLOUD_PROVIDER_ID", "panjit"), \
+         patch("app.backend.clients.openai_compatible_client.OpenAICompatibleClient"):
+        judge.translation_client
+    assert mock_cfg.called, "the translation model must come from providers.yml, not a new config var"
+
+
+def test_translation_client_cached_built_once():
+    """BR-98: translation_client is built once and cached across accesses."""
+    judge = _make_cloud_judge()
+    with patch("app.backend.config.load_providers_config", return_value=_fake_providers_cfg()), \
+         patch("app.backend.config.JUDGE_CLOUD_PROVIDER_ID", "panjit"), \
+         patch("app.backend.clients.openai_compatible_client.OpenAICompatibleClient") as MockClient:
+        first = judge.translation_client
+        second = judge.translation_client
+
+    assert first is second
+    assert MockClient.call_count == 1, "cloud client must be constructed exactly once (cached)"
+
+
+def test_translation_client_never_none():
+    """AC-7/BR-98: translation_client is never None on either provider branch."""
+    from app.backend.config import JUDGE_MODEL
+
+    # cloud branch
+    cloud_judge = _make_cloud_judge()
+    with patch("app.backend.config.load_providers_config", return_value=_fake_providers_cfg()), \
+         patch("app.backend.config.JUDGE_CLOUD_PROVIDER_ID", "panjit"), \
+         patch("app.backend.clients.openai_compatible_client.OpenAICompatibleClient"):
+        assert cloud_judge.translation_client is not None
+
+    # ollama branch — local OllamaClient(JUDGE_MODEL), same (local) provider as scoring
+    from app.backend.services.quality_judge import QualityJudge
+
+    ollama_judge = QualityJudge.__new__(QualityJudge)
+    ollama_judge.model = JUDGE_MODEL
+    ollama_judge._provider = "ollama"
+    ollama_judge._translation_client = None
+    with patch("app.backend.clients.ollama_client.OllamaClient") as MockOllama:
+        client = ollama_judge.translation_client
+
+    assert client is MockOllama.return_value
+    _, kwargs = MockOllama.call_args
+    assert kwargs["model"] == JUDGE_MODEL

@@ -494,17 +494,15 @@ class JobManager:
                             """Re-translate a single block with judge feedback in prompt."""
                             _judge_retranslate_count[0] += 1
                             job.status_detail = f"品質評審中… (重譯 {_judge_retranslate_count[0]}/{_judge_total})"
-                            # Use the same client that handled the last group; fall back
-                            # to a new OllamaClient if last_client is unavailable.
-                            _cli = last_client
-                            if _cli is None:
-                                _cli = OllamaClient(model=DEFAULT_MODEL)
+                            # Re-translation runs against the judge's OWN provider
+                            # (BR-98) via its translation_client — never last_client /
+                            # model_router's main-translation winner.
                             feedback_prefix = (
                                 f"[Quality feedback]: {feedback}\n\n" if feedback else ""
                             )
                             targets_list = list({t for g in route_groups for t in g.targets})
                             tgt = targets_list[0] if targets_list else "English"
-                            ok, result = _cli.translate_once(
+                            ok, result = _judge.translation_client.translate_once(
                                 f"{feedback_prefix}{src_text}", tgt, src_lang
                             )
                             return result if ok else src_text

@@ -1,0 +1,16 @@
+- type: tier-floor-override
+  change-id: qa-judge-provider-consistency
+  timestamp: '2026-07-07T13:07:39.972Z'
+  declared-tier: 2
+  floor-tier: 0
+  label: critical surface (auth / payments / data migration / concurrency / secrets)
+  matched:
+    - endpoint
+    - route
+    - session
+  reason: >-
+    Backend refactor routing judge QA re-translation to the judge's own provider (BR-98). The
+    tier-floor heuristic matched 'endpoint/route/session' vocab (provider base_url endpoints, model
+    routing) but there is no auth, payments, data-migration, concurrency, or secrets surface: no new
+    config/env var, no API change, no schema change, no client-facing endpoint added.
+    change-classifier confirmed Tier 2.

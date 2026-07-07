@@ -86,7 +86,10 @@ class QualityJudge:
         else:
             self._client = OllamaClient(base_url=OLLAMA_BASE_URL, model=JUDGE_MODEL)
 
-    def _build_cloud_client(self):
+        # Lazily-built QA re-translation client (BR-98), same provider as scoring.
+        self._translation_client = None
+
+    def _build_cloud_client(self, model=None):
         """Instantiate the cloud client for the text evaluate() pass.
 
         Reads the target provider's base_url/api_key/tls_verify straight from
@@ -108,10 +111,40 @@ class QualityJudge:
         return OpenAICompatibleClient(
             base_url=provider["base_url"],
             api_key=provider.get("api_key"),
-            model=self.model,
+            model=model or self.model,
             provider_id=f"judge-{JUDGE_CLOUD_PROVIDER_ID}",
             verify_ssl=provider.get("tls_verify", True),
         )
+
+    @property
+    def translation_client(self):
+        """Client used for QA re-translation, built once and cached (BR-98).
+
+        Re-translation MUST run against the judge's OWN provider — never
+        ``last_client`` / model_router's main-translation winner. For
+        JUDGE_PROVIDER="cloud" this is the JUDGE_CLOUD_PROVIDER_ID provider using
+        its ``models.translate`` role model (falling back to JUDGE_MODEL when that
+        key is absent); for "ollama" it is the local OllamaClient(JUDGE_MODEL).
+        Never returns None.
+        """
+        if getattr(self, "_translation_client", None) is not None:
+            return self._translation_client
+
+        if self._provider == "cloud":
+            from app.backend.config import JUDGE_CLOUD_PROVIDER_ID, load_providers_config
+
+            cfg = load_providers_config() or {}
+            providers = {p.get("id"): p for p in cfg.get("providers", [])}
+            provider = providers.get(JUDGE_CLOUD_PROVIDER_ID) or {}
+            translate_model = (provider.get("models") or {}).get("translate") or self.model
+            self._translation_client = self._build_cloud_client(model=translate_model)
+        else:
+            from app.backend.clients.ollama_client import OllamaClient
+            from app.backend.config import JUDGE_MODEL, OLLAMA_BASE_URL
+
+            self._translation_client = OllamaClient(base_url=OLLAMA_BASE_URL, model=JUDGE_MODEL)
+
+        return self._translation_client
 
     def _complete(self, prompt: str) -> Tuple[bool, str]:
         """Run a raw completion prompt against the configured text-judge client."""

@@ -1,0 +1,16 @@
+{
+  "change_id": "qa-judge-provider-consistency",
+  "phase": "changed-area",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest tests/test_quality_judge.py tests/test_judge_api.py tests/test_orchestrator_judge.py tests/test_judge_apply.py tests/test_job_record_judge.py tests/test_provider_fallback.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/qa-judge-provider-consistency/test-runs/20260707-210626/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 1716,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/qa-judge-provider-consistency/test-runs/20260707-210626/summary.json",
+    "stdout": "specs/changes/qa-judge-provider-consistency/test-runs/20260707-210626/stdout.log",
+    "stderr": "specs/changes/qa-judge-provider-consistency/test-runs/20260707-210626/stderr.log",
+    "junit": "specs/changes/qa-judge-provider-consistency/test-runs/20260707-210626/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}
