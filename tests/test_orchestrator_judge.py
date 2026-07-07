@@ -167,6 +167,8 @@ def test_judge_skipped_when_provider_is_deepseek():
 
     assert job.judge is None, "judge must be skipped when translation provider is deepseek"
     fake_judge.run_judge_loop.assert_not_called()
+    # BR-98: when the judge pass is skipped, the re-translation client is never touched.
+    fake_judge.translation_client.translate_once.assert_not_called()
 
 
 def test_judge_still_fires_when_provider_is_panjit():
@@ -275,3 +277,74 @@ def test_critique_loop_unaffected_when_judge_disabled():
     assert job.judge is None, "job.judge must be None when JUDGE_ENABLED=False"
     # Job must complete normally
     assert job.status == "completed"
+
+
+# ---------------------------------------------------------------------------
+# qa-judge-provider-consistency (BR-98): QA re-translation routes to the
+# judge's OWN provider via translation_client — never last_client / OllamaClient.
+# The shared harness mocks run_judge_loop with a return_value, so _translate_fn
+# is never exercised. These tests give run_judge_loop a side_effect that actually
+# invokes translate_fn, so the real closure body runs (anti-tautology).
+# ---------------------------------------------------------------------------
+
+def _judge_invoking_translate_fn(job_id: str, retranslated: str = "retranslated", captured=None):
+    """Fake judge whose run_judge_loop actually calls the passed translate_fn."""
+    fake_judge = MagicMock()
+    fake_judge.translation_client.translate_once.return_value = (True, retranslated)
+
+    def run_loop(_jid, _blocks, translate_fn):
+        result = translate_fn("source text", "needs improvement")
+        if captured is not None:
+            captured["result"] = result
+        return _make_fake_judge_result(job_id)
+
+    fake_judge.run_judge_loop.side_effect = run_loop
+    return fake_judge
+
+
+def test_translate_fn_uses_judge_translation_client_not_last_client():
+    """AC-1/BR-98: _translate_fn re-translates via _judge.translation_client, not last_client."""
+    captured = {}
+    fake_judge = _judge_invoking_translate_fn("test-br98-uses-tc", captured=captured)
+
+    job = _run_job_with_judge_check(".docx", fake_judge, winning_provider="panjit")
+
+    assert job.judge is not None
+    fake_judge.translation_client.translate_once.assert_called_once()
+    assert captured["result"] == "retranslated", "re-translated text must flow back from translation_client"
+
+
+def test_translate_fn_request_params_unchanged_when_last_client_already_panjit():
+    """AC-2/BR-98: re-translation request (feedback+src, target, src_lang) is preserved; only the client changes."""
+    fake_judge = MagicMock()
+    fake_judge.translation_client.translate_once.return_value = (True, "ok")
+
+    def run_loop(_jid, _blocks, translate_fn):
+        translate_fn("hello", "make it better")
+        return _make_fake_judge_result("test-br98-params")
+
+    fake_judge.run_judge_loop.side_effect = run_loop
+
+    _run_job_with_judge_check(".docx", fake_judge, winning_provider="panjit")
+
+    args, _ = fake_judge.translation_client.translate_once.call_args
+    prompt, tgt, src_lang = args
+    assert prompt == "[Quality feedback]: make it better\n\nhello"
+    assert tgt == "en", "target resolved from route_groups"
+    assert src_lang is None, "src_lang passed through from create_job"
+
+
+def test_translate_fn_no_ollama_default_fallback_when_judge_runs():
+    """AC-7/BR-98: the removed last_client-None → OllamaClient(DEFAULT_MODEL) fallback never fires."""
+    from app.backend.config import DEFAULT_MODEL
+
+    fake_judge = _judge_invoking_translate_fn("test-br98-no-fallback")
+
+    with patch("app.backend.services.job_manager.OllamaClient") as ollama_ctor:
+        job = _run_job_with_judge_check(".docx", fake_judge, winning_provider="panjit")
+
+    assert job.judge is not None
+    fake_judge.translation_client.translate_once.assert_called_once()
+    for c in ollama_ctor.call_args_list:
+        assert DEFAULT_MODEL not in c.args and c.kwargs.get("model") != DEFAULT_MODEL, \
+            "no OllamaClient(DEFAULT_MODEL) may be constructed for judge re-translation"

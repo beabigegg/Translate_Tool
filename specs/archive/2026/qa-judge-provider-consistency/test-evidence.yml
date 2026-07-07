@@ -1,0 +1,42 @@
+change-id: qa-judge-provider-consistency
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      pytest tests/ --collect-only
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/qa-judge-provider-consistency/test-runs/20260707-210620/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/qa-judge-provider-consistency/test-runs/20260707-210620/summary.json
+    junit: specs/changes/qa-judge-provider-consistency/test-runs/20260707-210620/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      pytest tests/test_quality_judge.py tests/test_orchestrator_judge.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/qa-judge-provider-consistency/test-runs/20260707-210623/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/qa-judge-provider-consistency/test-runs/20260707-210623/summary.json
+    junit: specs/changes/qa-judge-provider-consistency/test-runs/20260707-210623/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      pytest tests/test_quality_judge.py tests/test_judge_api.py tests/test_orchestrator_judge.py
+      tests/test_judge_apply.py tests/test_job_record_judge.py tests/test_provider_fallback.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/qa-judge-provider-consistency/test-runs/20260707-210626/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/qa-judge-provider-consistency/test-runs/20260707-210626/summary.json
+    junit: specs/changes/qa-judge-provider-consistency/test-runs/20260707-210626/junit.xml
+  - phase: contract
+    status: passed
+    command: >-
+      pytest tests/test_env_contract.py tests/test_orchestrator_judge.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/qa-judge-provider-consistency/test-runs/20260707-210629/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/qa-judge-provider-consistency/test-runs/20260707-210629/summary.json
+    junit: specs/changes/qa-judge-provider-consistency/test-runs/20260707-210629/junit.xml
+final-status: passed
