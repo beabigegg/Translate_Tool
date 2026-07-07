@@ -1,5 +1,5 @@
 change-id: pdf-text-overflow-fix
-status: in-progress
+status: archived
 tier: 2
 tier-floor-override: "False-positive keyword match on 'pagination'/'session' — this change fixes PDF text-wrap/table-bbox rendering and adds a bounded row-growth pre-pass; it does not touch auth, payments, data migration, or user sessions. 'Pagination' here refers to PDF page layout, not session pagination."
 context-governance: v1
@@ -41,5 +41,5 @@ tasks:
   - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "Local gate green — same required validations CI runs (validate --contracts, full pytest). PR CI to confirm on push; PR# finalized at close." }
   - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full-regression + golden-sample informational on PR; no non-deterministic checks flagged" }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gate required per change-classification.md" }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done, note: "cdd-kit archive → specs/archive/2026/pdf-text-overflow-fix; INDEX.md updated" }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "1 promote-to-guidance lesson to CLAUDE.md cdd-kit:learnings (onnxruntime scoped-subset test-isolation gotcha). BR-101..104 / row-growth behavior stays in contracts + ADR-0013. See archive.md." }

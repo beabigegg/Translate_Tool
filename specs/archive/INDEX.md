@@ -41,3 +41,4 @@
 | br92-rescore-resolution | 2026 | 2026-07-07 | specs/archive/2026/br92-rescore-resolution/ |
 | qa-judge-provider-consistency | 2026 | 2026-07-07 | specs/archive/2026/qa-judge-provider-consistency/ |
 | qa-judge-hang-recovery | 2026 | 2026-07-07 | specs/archive/2026/qa-judge-hang-recovery/ |
+| pdf-text-overflow-fix | 2026 | 2026-07-07 | specs/archive/2026/pdf-text-overflow-fix/ |
