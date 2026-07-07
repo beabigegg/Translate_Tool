@@ -1,5 +1,5 @@
 change-id: qa-mechanism-docs
-status: in-progress
+status: archived
 tier: 4
 tier-floor-override: "Documentation-only contract-prose change (Table Y cross-reference + advisory/non-gating notes). The tier-floor matched 'endpoint/session' vocab — 'endpoint' refers to the existing GET /jobs/{id}/quality dashboard endpoint named in prose, not a new or changed endpoint; there is no auth, payments, data-migration, concurrency, or secrets surface, and no schema/field/type/nullability/behavior change. change-classifier set Tier 4 (docs)."
 test-evidence-not-applicable: "documentation/contract-prose only; no code surface, Required Tests = none (change-classifier)"
@@ -41,5 +41,5 @@ tasks:
   - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "Local gate green — CI validate --contracts + openapi export --check are the required gates for this docs change; PR CI to confirm." }
   - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "no informational gates applicable to a contract-prose-only change" }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gate for a documentation change" }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done, note: "cdd-kit archive → specs/archive/2026/qa-mechanism-docs; INDEX.md updated" }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "1 promote-to-guidance lesson to CLAUDE.md cdd-kit:learnings: documenting a retired rule/symbol can trip a prior change absence-test (BR-92/rescore purge); + bump contract versions from LIVE not the plan number. See archive.md." }
