@@ -285,7 +285,7 @@ class TestCritiqueLoop:
         # _critique_gate_adopt — patch the seam actually used by the loop.
         with patch(
             "app.backend.services.translation_service._batched_critique_adopt",
-            side_effect=lambda pairs: [revised for (_src, _draft, revised) in pairs],
+            side_effect=lambda pairs, on_scored=None: [revised for (_src, _draft, revised) in pairs],
         ):
             tmap, _, _, _ = translate_texts(
                 texts=["Hello world"],

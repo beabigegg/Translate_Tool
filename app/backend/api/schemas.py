@@ -46,6 +46,17 @@ class JobStatus(BaseModel):
     layout_viz_available: bool = False           # True once layout_viz.json exists (PDF jobs only)
     status_detail: Optional[str] = None         # human-readable current stage during "running"
     warnings: Optional[List[str]] = None        # pdf-renderer-fallback-warn: render-quality degradation warnings
+    # translation-progress-detail-ui (BR-105): single overwritten current-segment
+    # snapshot — 5 core fields + 3 judge-phase fields, all optional/nullable (AC-1,
+    # AC-2, AC-7, AC-9). current_stage enum: translate | critique | qe | adopt | judge.
+    current_stage: Optional[str] = None
+    current_segment_source: Optional[str] = None
+    current_segment_draft: Optional[str] = None
+    current_segment_qe_score: Optional[float] = None
+    current_segment_adopted: Optional[bool] = None
+    current_segment_judge_tier: Optional[str] = None      # 高 | 中 | 低; null unless current_stage == judge
+    current_segment_judge_attempt: Optional[int] = None
+    current_segment_judge_substep: Optional[str] = None   # scoring | retranslating
 
 
 class TermImportResult(BaseModel):

@@ -126,6 +126,22 @@
   --color-quality-mid: #ca8a04;
   --color-quality-low: #dc2626;
 
+  /* Progress-detail stage colors (translation-progress-detail-ui) */
+  --color-stage-translate: #64748b;
+  --color-stage-critique: #2563eb;
+  --color-stage-qe: #7c3aed;
+  --color-stage-adopt: #0891b2;
+  --color-stage-judge: #9333ea;
+  --color-stage-judge-high: var(--color-quality-high);
+  --color-stage-judge-mid: var(--color-quality-mid);
+  --color-stage-judge-low: var(--color-quality-low);
+
+  /* Completion-panel quality tier colors (migrated from hardcoded hex, translation-progress-detail-ui) */
+  --color-quality-tier-excellent: #22c55e;
+  --color-quality-tier-good: #84cc16;
+  --color-quality-tier-acceptable: #f59e0b;
+  --color-quality-tier-needs-review: #ef4444;
+
   /* Z-Index Scale */
   --z-dropdown: 1000;
   --z-sticky: 1020;

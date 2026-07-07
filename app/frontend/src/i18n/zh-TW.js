@@ -126,4 +126,13 @@ export default {
   'provider.online': '連線中',
   'provider.offline': '離線',
   'provider.notConfigured': '未設定',
+
+  // Progress stage detail (translation-progress-detail-ui)
+  'stage.translate': '翻譯中',
+  'stage.critique': '審校中',
+  'stage.qe': '品質評分中',
+  'stage.adopt': '採用判定中',
+  'stage.judge': '品質評審中',
+  'stage.substep.scoring': '評分中',
+  'stage.substep.retranslating': '重新翻譯中',
 };

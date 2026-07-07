@@ -1,0 +1,16 @@
+{
+  "change_id": "translation-progress-detail-ui",
+  "phase": "collect",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest tests/ --collect-only --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/translation-progress-detail-ui/test-runs/20260708-012427/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 1174,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/translation-progress-detail-ui/test-runs/20260708-012427/summary.json",
+    "stdout": "specs/changes/translation-progress-detail-ui/test-runs/20260708-012427/stdout.log",
+    "stderr": "specs/changes/translation-progress-detail-ui/test-runs/20260708-012427/stderr.log",
+    "junit": "specs/changes/translation-progress-detail-ui/test-runs/20260708-012427/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

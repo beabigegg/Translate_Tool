@@ -3,8 +3,8 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.17.1
-last-changed: 2026-07-07
+schema-version: 0.17.2
+last-changed: 2026-07-08
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -39,6 +39,20 @@ breaking-change-policy: deprecate-2-minors
 | column | type | nullable | allowed values | fallback | validation |
 |---|---|---:|---|---|---|
 | warnings | string[] | yes | ordered list of renderer degradation strings; verbatim values defined in `contracts/api/api-contract.md > ## Schemas > JobStatus` | null | Set by PDF processor only at rendering time; never supplied by clients. Null or empty list when no degradation occurred. Type is always string[] or null — never a bare string. Additive optional field — backward-compatible. |
+
+### JobStatus / JobRecord — current-segment snapshot fields (added in translation-progress-detail-ui, BR-105)
+| column | type | nullable | allowed values | fallback | validation |
+|---|---|---:|---|---|---|
+| current_stage | string | yes | `translate`, `critique`, `qe`, `adopt`, `judge` | null | Set only by the backend via the widened `status_callback` (translate/critique/qe/adopt) or the judge snapshot hooks (judge); never supplied by clients. Null when job just started, `CRITIQUE_LOOP_ENABLED`/`QE_ENABLED` are both false and judge hasn't started, or mid-transition between stages. |
+| current_segment_source | string | yes | any source-text substring | null | Backend-only; null whenever `current_stage` is null. |
+| current_segment_draft | string | yes | any translated-text substring | null | Backend-only; null whenever `current_stage` is null. |
+| current_segment_qe_score | number | yes | COMET critique-gate score (0–1, model-dependent) | null | Backend-only; null outside the `qe`/`adopt` stages, and null when QE degrades to the heuristic fallback (no numeric score available). |
+| current_segment_adopted | boolean | yes | `true` / `false` | null | Backend-only; null outside the `adopt` stage. |
+| current_segment_judge_tier | enum(高, 中, 低) | yes | 高, 中, 低 | null | Backend-only; null unless `current_stage == judge`. |
+| current_segment_judge_attempt | integer | yes | 1-based attempt/iteration count | null | Backend-only; null unless `current_stage == judge`. |
+| current_segment_judge_substep | string | yes | `scoring`, `retranslating` | null | Backend-only; null unless `current_stage == judge`. |
+
+All 8 fields are set on a SINGLE mutable `JobRecord.current_segment` struct, overwritten in place (never a rolling history/list) each time the backend has a new snapshot to report (ADR-0010). None are ever supplied by clients. Additive optional fields — backward-compatible.
 
 See `contracts/api/api-contract.md > ## Schemas > JobStatus` for the authoritative full field table.
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from app.backend.clients.base_llm_client import LLMClient
 from app.backend.config import (
@@ -96,10 +96,21 @@ def _critique_gate_adopt(src: str, draft: str, revised: str) -> str:
         return revised if _heuristic_should_adopt(draft, revised) else draft
 
 
-def _batched_critique_adopt(pairs: List[Tuple[str, str, str]]) -> List[str]:
+def _batched_critique_adopt(
+    pairs: List[Tuple[str, str, str]],
+    on_scored: Optional[Callable[[int, Optional[float], Optional[float]], None]] = None,
+) -> List[str]:
     """Score every (src, draft)/(src, revised) pair in ONE batched ``score_blocks()``
     call and return the adopted text for each segment, in the same order as
     ``pairs`` (batch-critique-qe-scoring IP-2).
+
+    ``on_scored`` is an additive OPTIONAL observability hook (translation-progress-
+    detail-ui) invoked once per segment as ``on_scored(index, draft_score, revised_score)``
+    — ``None`` scores when QE degrades to the heuristic fallback or the batch fails
+    entirely. Default ``None`` is a complete no-op; this never duplicates the (expensive)
+    QE scoring call itself, it only observes the SAME scores this function already
+    computed. The return value / adoption contract is UNCHANGED (existing callers/tests
+    that only pass ``pairs`` keep working identically).
 
     This is the round-based counterpart of :func:`_critique_gate_adopt`: instead
     of loading the QE model and scoring a single segment's 2-item list per call,
@@ -153,16 +164,33 @@ def _batched_critique_adopt(pairs: List[Tuple[str, str, str]]) -> List[str]:
                 _s_draft = _scores[2 * _i]
                 _s_revised = _scores[2 * _i + 1]
                 _adopted.append(_revised if _s_revised > _s_draft else _draft)
+                if on_scored is not None:
+                    try:
+                        on_scored(_i, _s_draft, _s_revised)
+                    except Exception:
+                        pass  # fail-soft — observability hook must never break critique
             return _adopted
         # Batched total-failure degradation: keep every draft this round.
+        if on_scored is not None:
+            for _i in range(len(pairs)):
+                try:
+                    on_scored(_i, None, None)
+                except Exception:
+                    pass
         return [_draft for (_src, _draft, _revised) in pairs]
     except Exception:
         # QE unavailable (ImportError, model load error, etc.) → heuristic
         # fallback per segment (AC-8), same rule as _critique_gate_adopt.
-        return [
-            _revised if _heuristic_should_adopt(_draft, _revised) else _draft
-            for (_src, _draft, _revised) in pairs
-        ]
+        _adopted = []
+        for _i, (_src, _draft, _revised) in enumerate(pairs):
+            _keep_revised = _heuristic_should_adopt(_draft, _revised)
+            _adopted.append(_revised if _keep_revised else _draft)
+            if on_scored is not None:
+                try:
+                    on_scored(_i, None, None)  # no numeric score in the heuristic fallback
+                except Exception:
+                    pass
+        return _adopted
 
 
 # Lazy-loaded OpenCC converter for Simplified to Traditional Chinese
@@ -213,7 +241,7 @@ def translate_texts(
     stop_flag=None,
     log: Callable[[str], None] = lambda s: None,
     terms: "Optional[List[Term]]" = None,
-    status_callback: Optional[Callable[[Optional[str]], None]] = None,
+    status_callback: Optional[Callable[[Optional[str], Optional[Any]], None]] = None,
     chunk_context: str = "",
 ) -> Tuple[Dict[Tuple[str, str], str], int, int, bool]:
     """Translate texts for all targets with character-based batching.
@@ -228,6 +256,16 @@ def translate_texts(
         log: Progress log callback.
         terms: Optional list of Term objects for glossary enforcement and
                critique loop context (BR-41, BR-44).
+        status_callback: Optional progress hook, called as
+               ``status_callback(message, segment=None)`` (translation-progress-detail-ui,
+               BR-105). ``message`` is the existing human-readable status string
+               (unchanged behavior — e.g. "品質審校中… (n/total)", or ``None`` to clear).
+               ``segment`` is an additive OPTIONAL structured
+               ``job_manager.CurrentSegmentSnapshot`` carrying the current stage
+               ("translate"|"critique"|"qe"|"adopt") and source/draft/score/adopted for
+               the segment currently being processed; ``None`` when no snapshot applies
+               to this call. Existing callers that only branch on the first (string)
+               argument are unaffected.
         chunk_context: Read-only overlap text from the previous chunk (AC-11,
                        IP-9).  When non-empty, used as context prefix for
                        translations in this chunk so overlap is no longer
@@ -432,6 +470,18 @@ def translate_texts(
         _current_draft: Dict[Tuple[str, str], str] = {_key: tmap[_key] for _key in _pending_keys}
         _segment_iters: Dict[Tuple[str, str], int] = {_key: 0 for _key in _pending_keys}
         _segment_active: Dict[Tuple[str, str], bool] = {_key: True for _key in _pending_keys}
+        # translation-progress-detail-ui (BR-105): the status message string is
+        # preserved verbatim across the new stage-snapshot calls below so
+        # job.status_detail keeps showing "品質審校中… (n/total)" throughout the
+        # critique loop instead of flickering — only the structured `segment`
+        # payload changes per stage transition.
+        _last_status_msg: str = "品質審校中…"
+
+        # translation-progress-detail-ui (BR-105): lazy import to avoid a
+        # module-level circular import (mirrors quality_judge.py's own
+        # lazy-import-of-job_manager convention).
+        if status_callback is not None:
+            from app.backend.services.job_manager import CurrentSegmentSnapshot
 
         for _round in range(max(1, CRITIQUE_MAX_ITERATIONS)):
             # Revision phase: generate a revision for every still-active pending
@@ -446,8 +496,20 @@ def translate_texts(
                 _tgt, _src_text = _key
                 if _round == 0:
                     _critique_done += 1
+                    _last_status_msg = f"品質審校中… ({_critique_done}/{_segments_to_critique})"
                     if status_callback is not None and _segments_to_critique > 0:
-                        status_callback(f"品質審校中… ({_critique_done}/{_segments_to_critique})")
+                        # Stage "translate": the freshly machine-translated draft,
+                        # about to enter critique for the first time (AC-1).
+                        status_callback(
+                            _last_status_msg,
+                            CurrentSegmentSnapshot(
+                                stage="translate",
+                                source=_src_text,
+                                draft=_current_draft[_key],
+                                phase_done=_critique_done,
+                                phase_total=_segments_to_critique,
+                            ),
+                        )
                 _current = _current_draft[_key]
                 _iter_start = time.monotonic()
                 try:
@@ -465,6 +527,13 @@ def translate_texts(
                         )
                         _segment_active[_key] = False
                         continue
+                    if status_callback is not None:
+                        # Stage "critique": about to issue the revision LLM call —
+                        # the expensive/slow step this snapshot makes observable.
+                        status_callback(
+                            _last_status_msg,
+                            CurrentSegmentSnapshot(stage="critique", source=_src_text, draft=_current),
+                        )
                     _ok, _revised = client.translate_once(_critique_prompt, _tgt, src_lang)
                     _call_elapsed = time.monotonic() - _iter_start
                     if _call_elapsed >= CRITIQUE_TIMEOUT_SECONDS:
@@ -488,14 +557,47 @@ def translate_texts(
                     continue
 
             if _round_pairs:
+                # Stage "qe": about to batch-score this round's revisions — use
+                # the last collected pair as the representative "current segment"
+                # (AC-1; current-only snapshot, not a per-segment rolling log).
+                if status_callback is not None:
+                    _rep_src, _rep_draft, _rep_revised = _round_pairs[-1]
+                    status_callback(
+                        _last_status_msg,
+                        CurrentSegmentSnapshot(stage="qe", source=_rep_src, draft=_rep_revised),
+                    )
+
                 # Batched score + adoption phase (AC-1/AC-2/AC-3): ONE
                 # score_blocks() call for every segment revised this round;
                 # adopt per-segment strictly by index — see
                 # _batched_critique_adopt for the index-mapping contract.
-                _adopted = _batched_critique_adopt(_round_pairs)
+                _round_scores: Dict[int, Tuple[Optional[float], Optional[float]]] = {}
+
+                def _capture_round_score(_i: int, _s_draft: Optional[float], _s_revised: Optional[float]) -> None:
+                    _round_scores[_i] = (_s_draft, _s_revised)
+
+                _adopted = _batched_critique_adopt(_round_pairs, on_scored=_capture_round_score)
                 for _adopted_key, _adopted_text in zip(_round_keys, _adopted):
                     _current_draft[_adopted_key] = _adopted_text
                     _segment_iters[_adopted_key] += 1
+
+                if status_callback is not None:
+                    # Stage "adopt": the just-decided outcome for the SAME
+                    # representative segment used for the "qe" snapshot above.
+                    _last_idx = len(_round_pairs) - 1
+                    _rep_src, _rep_draft, _rep_revised = _round_pairs[_last_idx]
+                    _rep_adopted_text = _adopted[_last_idx]
+                    _, _rep_revised_score = _round_scores.get(_last_idx, (None, None))
+                    status_callback(
+                        _last_status_msg,
+                        CurrentSegmentSnapshot(
+                            stage="adopt",
+                            source=_rep_src,
+                            draft=_rep_adopted_text,
+                            qe_score=_rep_revised_score,
+                            adopted=(_rep_adopted_text == _rep_revised),
+                        ),
+                    )
 
         _critique_iter_count = 0
         for _key in _pending_keys:

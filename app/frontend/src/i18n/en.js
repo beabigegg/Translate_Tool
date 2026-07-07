@@ -126,4 +126,13 @@ export default {
   'provider.online': 'Online',
   'provider.offline': 'Offline',
   'provider.notConfigured': 'Not configured',
+
+  // Progress stage detail (translation-progress-detail-ui)
+  'stage.translate': 'Translating',
+  'stage.critique': 'Reviewing',
+  'stage.qe': 'Scoring quality',
+  'stage.adopt': 'Deciding adoption',
+  'stage.judge': 'Judging quality',
+  'stage.substep.scoring': 'Scoring',
+  'stage.substep.retranslating': 'Re-translating',
 };
