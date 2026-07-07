@@ -1,0 +1,5 @@
+artifacts:
+  - { type: adr-written, pointer: "docs/adr/0012-shared-fit-cascade-all-pdf-paths.md" }
+  - { type: affected-areas, pointer: "pdf renderer (side-by-side/fallback wrap), pdf parser (table detection + cell bbox), shared bbox_reflow IR, BR-40" }
+  - { type: decision-summary, pointer: "reuse fit_text_cascade on ReportLab path + amend BR-40; additive looser table-detection strategy behind sanity gate; correct 1:1 cell bbox to cell extents" }
+  - { type: risks-noted, pointer: "0 high, 4 medium/open (cascade starting font, render_truncated threading, strategy=text cost, code-map freshness)" }

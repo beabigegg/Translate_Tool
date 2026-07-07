@@ -1,0 +1,5 @@
+artifacts:
+  - { type: adr-written, pointer: "docs/adr/0013-bounded-local-table-row-growth-prepass.md" }
+  - { type: affected-areas, pointer: "pdf renderer (bbox_reflow, fitz_renderer), pdf_processor _dispatch_render, business-rules, data-shape" }
+  - { type: decision-summary, pointer: "AC-9 whitespace in bbox_reflow Placement; AC-10 shared row-growth pre-pass in _dispatch_render (post-translation, measured); AC-11 post-render sweep -> job.warnings via BR-96 plumbing" }
+  - { type: risks-noted, pointer: "1 high (overlay border-crossing), 2 medium (lines-shift coupling, cascade-order deviation)" }

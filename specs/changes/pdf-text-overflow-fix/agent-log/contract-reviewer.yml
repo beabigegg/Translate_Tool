@@ -1,0 +1,47 @@
+change-id: pdf-text-overflow-fix
+agent: contract-reviewer
+status: done
+next-action: implementation-planner turns drafted contract text into execution packet
+summary: "Drafted amended BR-40 text (fitz-exclusivity -> single shared cascade authority across all PDF renderer paths, retires fit_text_to_bbox as a fit authority). Drafted 2 new rules: BR-98 (table-detection-strategy-fallback: lines_strict->lines->text, additive, sanity-gated) and BR-99 (table-cell-bbox-extent-correction: right/bottom-only extension, metadata[lines] preserved for BR-84). Confirmed BR-36/38/85 need no change (already generic); BR-84 correctly stays fitz-only (unrelated PyMuPDF-redaction concern). Drafted new data-shape-contract.md invariant note for table_cell bbox extent, explicitly disambiguated from the unrelated ML TableCell sub-record (p3-table-structure, out of scope). Version bumps: business-rules.md 0.23.0->0.24.0, data-shape-contract.md 0.15.0->0.16.0 (both minor, additive/non-breaking). Approved."
+artifacts:
+  - { type: contracts-reviewed, pointer: "contracts/business/business-rules.md, contracts/data/data-shape-contract.md" }
+  - { type: version-bumps, pointer: "business 0.23.0->0.24.0; data 0.15.0->0.16.0 (both minor, additive)" }
+  - { type: breaking-changes, pointer: "none" }
+  - { type: decision, pointer: "approved" }
+  - { type: cross-change-risk, pointer: "BR-98/BR-99 numbering collides with sibling (not-yet-landed) changes qa-judge-provider-consistency (claims BR-98) and qa-judge-hang-recovery (claims BR-99/BR-100) from an earlier, unrelated session track. Whichever change lands first in business-rules.md claims these numbers; the others must renumber at implementation time. Flagged in tasks.yml." }
+
+second-pass-summary: |
+  Amendment pass for AC-9/10/11 (design.md Decisions 4/5/6, ADR-0013).
+  BR-36 (business-rules.md:51) gets a clarifying sentence appended (no new
+  rule number) confirming available_whitespace_below is computed once in
+  bbox_reflow.py and carried as a Placement field -- revives dead step (d),
+  not new cascade logic. New BR-100 (bounded-local-table-row-growth) --
+  deliberately separate from BR-99 since it's a dynamic post-translation
+  multi-element geometry mutation with its own cap/fallback/ADR, not a
+  static parse-time single-cell fix. New BR-101
+  (pdf-render-truncation-disclosure) -- mirrors BR-96's plumbing
+  (warnings_callback -> _record_job_warning), exactly ONE aggregated entry
+  per file naming affected pages, disclosure-only (never fails job, never
+  alters output). New data-shape-contract.md section needed for previously
+  UNDOCUMENTED default-path metadata keys (table_id/table_row/table_col/
+  in_table/lines) that BR-100's row-growth join logic depends on -- this
+  is a pre-existing doc gap, not introduced by this change, closed now
+  since it's finally load-bearing. Confirmed zero regression to BR-38/84/
+  85/89/90/96/97. Version bumps: business-rules.md 0.23.0->0.24.0 (BR-40
+  amend + BR-36 note + BR-98/99/100/101 all together), data-shape-contract.md
+  0.15.0->0.16.0.
+  OPEN ITEM: if implementation-planner adopts design.md's recommended
+  config-flag mitigation for BR-100 (disable row-growth without full
+  revert, given the HIGH-risk overlay-background-collision issue already
+  flagged), env-contract.md needs a new entry -- not currently in scope
+  per the original classification, which predates Decisions 4-6. Flagged
+  as a CER/scope-decision needed at implementation time, not resolved here.
+  CROSS-CHANGE RISK ESCALATED: BR-100 (new this pass) now collides on the
+  SAME number with qa-judge-hang-recovery's own BR-100 claim -- a third
+  independent change converging on one number. BR-101 currently
+  uncontested but could still collide.
+  Sequencing dependency: BR-101's sweep assumes BR-38 already holds
+  universally on both renderer paths -- true only once BR-40's
+  amendment/AC-2/AC-3 (element-ref threading) is actually implemented.
+  Must sequence BR-40's fix before BR-101 is wired, matching the same
+  dependency pattern already tracked for AC-3 in tasks.yml.

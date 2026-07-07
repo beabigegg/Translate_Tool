@@ -1,0 +1,37 @@
+change-id: pdf-text-overflow-fix
+agent: implementation-planner
+status: done
+next-action: none — planning complete, awaiting user approval to commission backend-engineer
+summary: "Wrote implementation-plan.md (179 lines, IP-1..IP-8) in correct dependency order: IP-1 (thread StyleInfo + element ref through TextRegion/create_text_regions_from_* — must land before IP-3) precedes IP-3 (BR-38 render_truncated wiring on the ReportLab paths); IP-2 cascade reuse in render_text_region; IP-4 fallback-path verify; IP-5 BR-98 detection fallback; IP-6 BR-99 1:1 cell bbox (found _split_elements_by_cells already implements the multi-cell-merge case — only the 1:1 path at pdf_parser.py:444-452 needs the actual code delta, flagged to prevent double-application); IP-7 contract edits; IP-8 BR-40 convergence test update. Known Risks: cross-change BR-98/99 numbering collision (currently free, re-check at edit time), overlay/fitz path zero-change non-regression, table-detection false-positive on aligned-indentation prose needs explicit AC-7 coverage."
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/pdf-text-overflow-fix/implementation-plan.md" }
+  - { type: scope-summary, pointer: "8 IP items: StyleInfo/element-ref plumbing, cascade reuse (side-by-side + fallback), BR-38 wiring, BR-98 detection fallback, BR-99 1:1 bbox correction, contract edits, convergence-test update" }
+  - { type: known-risks, pointer: "BR-98/99 cross-change numbering collision; false-positive table-detection on non-tabular aligned prose; test-plan.md cross-check pending at write time" }
+
+second-pass-summary: |
+  AMENDMENT for AC-9/10/11 (design Decisions 4/5/6, ADR 0013, contract-reviewer
+  + test-strategist second-pass). Extended implementation-plan.md 179 -> 315
+  lines with IP-9..IP-15 in dependency order:
+    IP-9  AC-9 Placement.available_whitespace_below field + bbox_reflow compute
+          + fitz_renderer:511 read-site fix (independent, lands first).
+    IP-10 config flag PDF_TABLE_ROW_GROWTH_ENABLED in config.py (before IP-11/IP-13).
+    IP-11 AC-10 bounded row-growth pre-pass (new fn in text_region_renderer.py,
+          invoked in _dispatch_render; MUST sequence AFTER IP-6/BR-99).
+    IP-12 AC-11 truncation-disclosure sweep in _dispatch_render (HARD dep on IP-1
+          element-ref threading — else fitz-only day one).
+    IP-13 env-contract.md entry (manifest expansion required — not in Allowed Paths).
+    IP-14 contract edits: BR-36 note, BR-100, BR-101, new data-shape metadata-keys
+          section; single 0.24.0/0.16.0 bump folds all rules together.
+    IP-15 test-infra: metadata param on _make_element/_make_doc, then AC-9/10/11 tests.
+  CONFIG-FLAG DECISION: ADOPTED PDF_TABLE_ROW_GROWTH_ENABLED (default true) —
+  HIGH-risk overlay-background collision (background not moved by pre-pass) +
+  row-growth is largest/highest-risk sub-fix; flag is a production kill-switch
+  keeping the other 5 sub-fixes independently revertible; AC-11 warning keeps
+  output safe when off. Requires env-contract.md manifest expansion (IP-13).
+  Known Risks updated: BR-100 now 3-way collision; overlay collision HIGH +
+  flag decision; metadata["lines"] shift coupling; AC-11 fitz-only degradation
+  if IP-12 precedes IP-1; AC-9 page-grouping geometry.
+artifacts-second-pass:
+  - { type: config-flag-decision, pointer: "ADOPTED PDF_TABLE_ROW_GROWTH_ENABLED default=true; env-contract.md entry (IP-13) + manifest expansion required" }
+  - { type: scope-summary, pointer: "7 new IP items IP-9..IP-15; plan 179->315 lines" }
+  - { type: blocked-reason, pointer: "not blocked; env-contract.md scope expansion flagged for implementation session" }
