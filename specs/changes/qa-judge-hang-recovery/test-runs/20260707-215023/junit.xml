@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="8.173" timestamp="2026-07-07T21:50:23.671039+08:00" hostname="EGG"><testcase classname="tests.test_cloud_total_timeout" name="test_dribbling_socket_regression_repro_matches_live_incident" time="8.035"><failure message="AssertionError: regression: dribbling response not bounded by the ceiling (8.0s)&#10;assert (False is False and 8.010363610999775 &lt; 5.0)">tests/test_cloud_total_timeout.py:135: in test_dribbling_socket_regression_repro_matches_live_incident
+    assert ok is False and elapsed &lt; 5.0, (
+E   AssertionError: regression: dribbling response not bounded by the ceiling (8.0s)
+E   assert (False is False and 8.010363610999775 &lt; 5.0)</failure></testcase></testsuite></testsuites>

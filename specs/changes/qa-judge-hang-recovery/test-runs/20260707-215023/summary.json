@@ -1,0 +1,20 @@
+{
+  "change_id": "qa-judge-hang-recovery",
+  "phase": "targeted",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "pytest tests/test_cloud_total_timeout.py::test_dribbling_socket_regression_repro_matches_live_incident --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/qa-judge-hang-recovery/test-runs/20260707-215023/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 8646,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests.test_cloud_total_timeout::test_dribbling_socket_regression_repro_matches_live_incident",
+    "message": "AssertionError: regression: dribbling response not bounded by the ceiling (8.0s)\nassert (False is False and 8.010363610999775 < 5.0)"
+  },
+  "artifacts": {
+    "summary": "specs/changes/qa-judge-hang-recovery/test-runs/20260707-215023/summary.json",
+    "stdout": "specs/changes/qa-judge-hang-recovery/test-runs/20260707-215023/stdout.log",
+    "stderr": "specs/changes/qa-judge-hang-recovery/test-runs/20260707-215023/stderr.log",
+    "junit": "specs/changes/qa-judge-hang-recovery/test-runs/20260707-215023/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

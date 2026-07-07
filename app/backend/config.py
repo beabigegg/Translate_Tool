@@ -87,6 +87,17 @@ DEFAULT_READ_TIMEOUT_S = 360.0
 # gpt-oss:120b for judge-length prompts (finish_reason="stop").
 OPENAI_COMPLETION_MAX_TOKENS: int = int(os.environ.get("OPENAI_COMPLETION_MAX_TOKENS", "4096"))
 
+# OPENAI_TOTAL_TIMEOUT_SECONDS: wall-clock total-duration ceiling on every
+# OpenAICompatibleClient completion (qa-judge-hang-recovery, BR-100). Additive on
+# top of the per-chunk (connect, read) timeout tuple — the read timeout only
+# bounds the inter-chunk gap, so a provider that dribbles keep-alive bytes can
+# otherwise hang forever. On expiry the call degrades (does not crash), matching
+# CRITIQUE_TIMEOUT_SECONDS. Positive float seconds; default 480 is a generous
+# placeholder above the ~420s worst case of a healthy (120 connect + 300 read)
+# call — calibrate for the longest legitimate cloud generation. Set very high to
+# effectively disable the ceiling (rollback).
+OPENAI_TOTAL_TIMEOUT_SECONDS: float = float(os.environ.get("OPENAI_TOTAL_TIMEOUT_SECONDS", "480"))
+
 API_ATTEMPTS = 3
 API_BACKOFF_BASE = 1.6
 SENTENCE_MODE = True

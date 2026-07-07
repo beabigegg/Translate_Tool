@@ -26,6 +26,12 @@ class TestEnvContractDeclared:
     def test_translation_cache_enabled_declared(self):
         assert "TRANSLATION_CACHE_ENABLED" in _contract_text()
 
+    def test_openai_total_timeout_seconds_declared(self):
+        """qa-judge-hang-recovery: OPENAI_TOTAL_TIMEOUT_SECONDS declared in env-contract.md (BR-100)."""
+        assert "OPENAI_TOTAL_TIMEOUT_SECONDS" in _contract_text(), (
+            "OPENAI_TOTAL_TIMEOUT_SECONDS must be declared in env-contract.md"
+        )
+
     def test_layout_detector_model_path_declared(self):
         """AC-5: LAYOUT_DETECTOR_MODEL_PATH must be declared in env-contract.md."""
         text = _contract_text()

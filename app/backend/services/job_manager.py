@@ -63,10 +63,10 @@ class JobQualityRecord:
 class JudgeResult:
     """In-memory judge result attached to a completed job (p3-llm-judge).
 
-    judge_status mirrors the HTTP status enum: available | disabled | unavailable.
+    judge_status mirrors the HTTP status enum: available | disabled | unavailable | stopped.
     """
     job_id: str
-    judge_status: str  # available | disabled | unavailable
+    judge_status: str  # available | disabled | unavailable | stopped
     score: Optional[str] = None           # 高 | 中 | 低; null unless judge_status = available
     source_text: Optional[str] = None     # representative joined source text
     translated_text: Optional[str] = None # display-only joined final translation
@@ -503,11 +503,14 @@ class JobManager:
                             targets_list = list({t for g in route_groups for t in g.targets})
                             tgt = targets_list[0] if targets_list else "English"
                             ok, result = _judge.translation_client.translate_once(
-                                f"{feedback_prefix}{src_text}", tgt, src_lang
+                                f"{feedback_prefix}{src_text}", tgt, src_lang,
+                                cancel_event=job.stop_flag,
                             )
                             return result if ok else src_text
 
-                        job.judge = _judge.run_judge_loop(job_id, qe_blocks, _translate_fn)
+                        job.judge = _judge.run_judge_loop(
+                            job_id, qe_blocks, _translate_fn, cancel_event=job.stop_flag
+                        )
                     except Exception as judge_exc:
                         logger.warning(
                             "[Judge] hook failed job_id=%s: %s: %s",

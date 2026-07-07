@@ -439,7 +439,14 @@ class OllamaClient:
         )
         return self._build_payload(prompt)
 
-    def translate_once(self, text: str, tgt: str, src_lang: Optional[str]) -> Tuple[bool, str]:
+    def translate_once(
+        self, text: str, tgt: str, src_lang: Optional[str], cancel_event=None
+    ) -> Tuple[bool, str]:
+        # Local mid-read abort is best-effort only; honor a set cancel_event at the
+        # call boundary so a re-translate started after stop_flag exits promptly
+        # (qa-judge-hang-recovery; between-block observance).
+        if cancel_event is not None and cancel_event.is_set():
+            return False, "cancelled"
         src_stripped = text.strip()
         # Pre-translation bypass: common CJK "none/N-A" tokens that models over-translate.
         if src_stripped in _SHORT_NA_TOKENS:

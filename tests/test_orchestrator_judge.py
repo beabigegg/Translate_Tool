@@ -292,7 +292,7 @@ def _judge_invoking_translate_fn(job_id: str, retranslated: str = "retranslated"
     fake_judge = MagicMock()
     fake_judge.translation_client.translate_once.return_value = (True, retranslated)
 
-    def run_loop(_jid, _blocks, translate_fn):
+    def run_loop(_jid, _blocks, translate_fn, cancel_event=None):
         result = translate_fn("source text", "needs improvement")
         if captured is not None:
             captured["result"] = result
@@ -319,7 +319,7 @@ def test_translate_fn_request_params_unchanged_when_last_client_already_panjit()
     fake_judge = MagicMock()
     fake_judge.translation_client.translate_once.return_value = (True, "ok")
 
-    def run_loop(_jid, _blocks, translate_fn):
+    def run_loop(_jid, _blocks, translate_fn, cancel_event=None):
         translate_fn("hello", "make it better")
         return _make_fake_judge_result("test-br98-params")
 
@@ -348,3 +348,39 @@ def test_translate_fn_no_ollama_default_fallback_when_judge_runs():
     for c in ollama_ctor.call_args_list:
         assert DEFAULT_MODEL not in c.args and c.kwargs.get("model") != DEFAULT_MODEL, \
             "no OllamaClient(DEFAULT_MODEL) may be constructed for judge re-translation"
+
+
+# ---------------------------------------------------------------------------
+# qa-judge-hang-recovery (BR-99, AC-6): cancel during the judge phase leaves the
+# job in a terminal state with the backend alive.
+# ---------------------------------------------------------------------------
+
+def test_cancel_during_judge_phase_reaches_terminal_state():
+    """AC-6/BR-99: cancel_event (job.stop_flag) is threaded into run_judge_loop; a cancel
+    during the judge pass yields judge_status='stopped' and a terminal job — no crash."""
+    fake_judge = MagicMock()
+    captured = {}
+
+    def run_loop(job_id, blocks, translate_fn, cancel_event=None):
+        captured["cancel_event"] = cancel_event
+        if cancel_event is not None:
+            cancel_event.set()  # simulate the user cancelling during the judge pass
+        return types.SimpleNamespace(
+            job_id=job_id,
+            judge_status="stopped",
+            score=None,
+            source_text=None,
+            translated_text=None,
+            feedback=None,
+            attempts=1,
+            model="gemma3",
+            retranslated_blocks=None,
+        )
+
+    fake_judge.run_judge_loop.side_effect = run_loop
+
+    job = _run_job_with_judge_check(".docx", fake_judge, winning_provider="panjit")
+
+    assert captured["cancel_event"] is not None, "cancel_event (job.stop_flag) must be threaded into run_judge_loop"
+    assert job.status in ("completed", "stopped"), "job must reach a terminal state, backend alive"
+    assert job.judge is not None and job.judge.judge_status == "stopped"

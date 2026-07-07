@@ -18,6 +18,8 @@ Design decisions:
 from __future__ import annotations
 
 import logging
+import threading
+import time
 from typing import List, Optional, Tuple
 
 import urllib3
@@ -109,21 +111,84 @@ class OpenAICompatibleClient:
     def _build_messages(self, user_content: str) -> List[dict]:
         return [{"role": "user", "content": user_content}]
 
-    def _post_completion(self, user_content: str) -> Tuple[bool, str]:
-        """POST to /v1/chat/completions and return (ok, text)."""
+    def _run_bounded_post(self, fn, cancel_event=None):
+        """Run a blocking cloud call on a daemon worker, bounded by a wall-clock
+        total-duration ceiling and an optional cancel_event.
+
+        The ceiling (`OPENAI_TOTAL_TIMEOUT_SECONDS`) is ADDITIVE on top of the
+        per-chunk `(connect, read)` tuple: it bounds TOTAL call duration so a
+        provider that dribbles keep-alive bytes (each gap < read timeout) can no
+        longer hang the caller indefinitely (BR-100). If the ceiling expires OR
+        `cancel_event` is set before the worker returns, the session is closed
+        (best-effort, to hasten aborting the in-flight read) and a
+        `requests.Timeout` is raised so the caller's existing
+        `except RequestException` path degrades cleanly (BR-74/BR-99). The
+        abandoned daemon worker lingering until its own read timeout is acceptable
+        (ADR-0011) — the point is that the CALLER is unblocked promptly.
+        """
+        from app.backend.config import OPENAI_TOTAL_TIMEOUT_SECONDS
+
+        outcome: dict = {}
+
+        def _worker():
+            try:
+                outcome["resp"] = fn()
+            except BaseException as exc:  # noqa: BLE001 — re-raised in caller thread
+                outcome["exc"] = exc
+
+        worker = threading.Thread(
+            target=_worker, name=f"{self.provider_id}-post", daemon=True
+        )
+        worker.start()
+
+        deadline = time.monotonic() + max(0.0, float(OPENAI_TOTAL_TIMEOUT_SECONDS))
+        while True:
+            worker.join(0.25)
+            if not worker.is_alive():
+                break
+            cancelled = cancel_event is not None and cancel_event.is_set()
+            expired = time.monotonic() >= deadline
+            if cancelled or expired:
+                reason = (
+                    "cancelled by stop_flag"
+                    if cancelled
+                    else f"total-duration ceiling {OPENAI_TOTAL_TIMEOUT_SECONDS}s exceeded"
+                )
+                try:
+                    self._session.close()
+                except Exception:  # noqa: BLE001 — best-effort abort
+                    pass
+                logger.warning("[%s] cloud completion aborted: %s", self.provider_id, reason)
+                raise requests.exceptions.Timeout(reason)
+
+        if "exc" in outcome:
+            raise outcome["exc"]
+        return outcome["resp"]
+
+    def _post_completion(self, user_content: str, cancel_event=None) -> Tuple[bool, str]:
+        """POST to /v1/chat/completions and return (ok, text).
+
+        cancel_event (optional threading.Event): when set, an in-flight call is
+        aborted promptly and degraded (BR-99). Every call is additionally bounded
+        by the `OPENAI_TOTAL_TIMEOUT_SECONDS` wall-clock ceiling (BR-100).
+        """
         payload = {
             "model": self.model,
             "messages": self._build_messages(user_content),
             "stream": False,
             "max_tokens": self._max_tokens,
         }
-        try:
-            resp = self._session.post(
+
+        def _do_post():
+            return self._session.post(
                 self._chat_completions_url(),
                 json=payload,
                 headers=self._auth_headers,
                 timeout=self._timeout,
             )
+
+        try:
+            resp = self._run_bounded_post(_do_post, cancel_event)
         except requests.exceptions.RequestException as exc:
             logger.warning(
                 "[%s] HTTP request error: %s", self.provider_id, exc
@@ -211,8 +276,13 @@ class OpenAICompatibleClient:
             f"{serialized_table}"
         )
 
-    def translate_once(self, text: str, tgt: str, src_lang: Optional[str]) -> Tuple[bool, str]:
+    def translate_once(
+        self, text: str, tgt: str, src_lang: Optional[str], cancel_event=None
+    ) -> Tuple[bool, str]:
         """Translate a single text segment via /v1/chat/completions.
+
+        cancel_event (optional threading.Event): forwarded to the bounded post so
+        an in-flight re-translation can be cancelled/ceiling-bounded (BR-99/BR-100).
 
         Returns:
             (ok, translated_text) where ok=False signals a failure.
@@ -222,7 +292,7 @@ class OpenAICompatibleClient:
             f"Translate the following text from {src} to {tgt}. "
             f"Output only the translation, no explanations.\n\n{text}"
         )
-        ok, result = self._post_completion(prompt)
+        ok, result = self._post_completion(prompt, cancel_event=cancel_event)
         logger.info(
             "[%s] translate_once ok=%s tgt=%s len_in=%d len_out=%d",
             self.provider_id, ok, tgt, len(text), len(result),

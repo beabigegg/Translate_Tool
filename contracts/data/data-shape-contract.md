@@ -564,7 +564,7 @@ The LLM judge result is produced post-translation by `quality_judge.py` and atta
 | field | type | nullable | default | notes |
 |---|---|---:|---|---|
 | job_id | string | no | — | matches the parent job |
-| judge_status | enum(available, disabled, unavailable) | no | — | available: judge ran and scores are ready; disabled: JUDGE_ENABLED=false; unavailable: Gemma unreachable or any judge exception caught |
+| judge_status | enum(available, disabled, unavailable, stopped) | no | — | available: judge ran and scores are ready; disabled: JUDGE_ENABLED=false; unavailable: Gemma unreachable, ceiling-timeout, or any judge exception caught; stopped: user cancelled the job during the judge pass (BR-99) |
 | score | enum(低, 中, 高) | yes | null | quality score tier; null unless judge_status = available |
 | source_text | string | yes | null | representative joined source text submitted to the judge; null unless judge_status = available |
 | translated_text | string | yes | null | display-only joined view of the final accepted translation after all judge iterations (see D7 in design.md); NOT the per-block map used by the apply path; null unless judge_status = available |
