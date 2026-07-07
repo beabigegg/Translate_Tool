@@ -292,7 +292,7 @@ def _judge_invoking_translate_fn(job_id: str, retranslated: str = "retranslated"
     fake_judge = MagicMock()
     fake_judge.translation_client.translate_once.return_value = (True, retranslated)
 
-    def run_loop(_jid, _blocks, translate_fn, cancel_event=None):
+    def run_loop(_jid, _blocks, translate_fn, cancel_event=None, snapshot_cb=None):
         result = translate_fn("source text", "needs improvement")
         if captured is not None:
             captured["result"] = result
@@ -319,7 +319,7 @@ def test_translate_fn_request_params_unchanged_when_last_client_already_panjit()
     fake_judge = MagicMock()
     fake_judge.translation_client.translate_once.return_value = (True, "ok")
 
-    def run_loop(_jid, _blocks, translate_fn, cancel_event=None):
+    def run_loop(_jid, _blocks, translate_fn, cancel_event=None, snapshot_cb=None):
         translate_fn("hello", "make it better")
         return _make_fake_judge_result("test-br98-params")
 
@@ -361,7 +361,7 @@ def test_cancel_during_judge_phase_reaches_terminal_state():
     fake_judge = MagicMock()
     captured = {}
 
-    def run_loop(job_id, blocks, translate_fn, cancel_event=None):
+    def run_loop(job_id, blocks, translate_fn, cancel_event=None, snapshot_cb=None):
         captured["cancel_event"] = cancel_event
         if cancel_event is not None:
             cancel_event.set()  # simulate the user cancelling during the judge pass

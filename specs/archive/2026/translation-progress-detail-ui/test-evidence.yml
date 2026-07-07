@@ -1,0 +1,47 @@
+change-id: translation-progress-detail-ui
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+  - contract
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      pytest tests/ --collect-only
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/translation-progress-detail-ui/test-runs/20260708-012427/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/translation-progress-detail-ui/test-runs/20260708-012427/summary.json
+    junit: specs/changes/translation-progress-detail-ui/test-runs/20260708-012427/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      pytest tests/test_jobstatus_stage_detail.py tests/test_eta_multi_phase_heuristic.py
+      tests/test_job_manager_current_segment.py tests/test_quality_judge_snapshot_callback.py
+      tests/test_translation_service_stage_snapshot.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/translation-progress-detail-ui/test-runs/20260708-012430/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/translation-progress-detail-ui/test-runs/20260708-012430/summary.json
+    junit: specs/changes/translation-progress-detail-ui/test-runs/20260708-012430/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      pytest tests/test_jobstatus_stage_detail.py tests/test_eta_multi_phase_heuristic.py
+      tests/test_job_manager_current_segment.py tests/test_quality_judge_snapshot_callback.py
+      tests/test_translation_service_stage_snapshot.py tests/test_orchestrator_judge.py tests/test_quality_judge.py
+      tests/test_critique_gate.py tests/test_jobstatus_download_url.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/translation-progress-detail-ui/test-runs/20260708-012433/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/translation-progress-detail-ui/test-runs/20260708-012433/summary.json
+    junit: specs/changes/translation-progress-detail-ui/test-runs/20260708-012433/junit.xml
+  - phase: contract
+    status: passed
+    command: >-
+      pytest tests/test_jobstatus_stage_detail.py tests/test_eta_multi_phase_heuristic.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/translation-progress-detail-ui/test-runs/20260708-012436/junit.xml'
+      -q --maxfail=1 --tb=short -ra
+    summary: specs/changes/translation-progress-detail-ui/test-runs/20260708-012436/summary.json
+    junit: specs/changes/translation-progress-detail-ui/test-runs/20260708-012436/junit.xml
+final-status: passed

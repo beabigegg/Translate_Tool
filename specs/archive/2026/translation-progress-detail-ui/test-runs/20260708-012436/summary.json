@@ -1,0 +1,16 @@
+{
+  "change_id": "translation-progress-detail-ui",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest tests/test_jobstatus_stage_detail.py tests/test_eta_multi_phase_heuristic.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/translation-progress-detail-ui/test-runs/20260708-012436/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 969,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/translation-progress-detail-ui/test-runs/20260708-012436/summary.json",
+    "stdout": "specs/changes/translation-progress-detail-ui/test-runs/20260708-012436/stdout.log",
+    "stderr": "specs/changes/translation-progress-detail-ui/test-runs/20260708-012436/stderr.log",
+    "junit": "specs/changes/translation-progress-detail-ui/test-runs/20260708-012436/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

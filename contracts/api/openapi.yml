@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "API behavior, compatibility rules, and endpoint contract requirements.",
-    "version": "0.10.1",
+    "version": "0.10.2",
     "description": "- response style: JSON (Pydantic response models); binary endpoints return file streams (FileResponse / StreamingResponse)."
   },
   "paths": {
@@ -930,7 +930,8 @@
             "type": "number"
           },
           "eta_seconds": {
-            "type": "number"
+            "type": "number",
+            "description": "BR-105 (eta-multi-phase-pipeline): sum of translate + critique/QE + judge terms; only computed while status=running and overall_progress>0.01; null otherwise"
           },
           "term_summary": {
             "type": "string",
@@ -971,6 +972,62 @@
               "type": "string"
             },
             "description": "degradation notices; null or empty list when no degradation occurred; populated by PDF processor when fitz falls back to ReportLab; also populated when a format-specific output_mode is requested for an incompatible file type (bilingual on non-DOCX, adjacent/annotation on non-XLSX) — one entry per affected file; also populated with one entry per successfully converted legacy file (.doc/.xls/.ppt via LibreOffice) disclosing lossy-conversion risk — see BR-9, BR-96; type is always string[] or null, never a bare string; additive optional field — backward-compatible; see AC-1, AC-2, AC-3"
+          },
+          "status_detail": {
+            "type": "string",
+            "description": "human-readable current-stage label shown during status=running (e.g. 品質審校中…); null in other states or when no stage detail applies (pre-existing field, previously undocumented drift closed by translation-progress-detail-ui)"
+          },
+          "layout_viz_available": {
+            "type": "boolean",
+            "description": "true once layout_viz.json exists on disk (PDF jobs only); false otherwise (pre-existing field, previously undocumented drift closed by translation-progress-detail-ui)"
+          },
+          "current_stage": {
+            "type": "string",
+            "enum": [
+              "translate",
+              "critique",
+              "qe",
+              "adopt",
+              "judge"
+            ],
+            "description": "BR-105/ADR-0010: current pipeline stage for the single overwritten current-segment snapshot; null when job just started, critique+QE+judge all inactive, or mid-transition (AC-1, AC-2, AC-7, AC-9)"
+          },
+          "current_segment_source": {
+            "type": "string",
+            "description": "source text of the segment/block the current_stage snapshot describes; null whenever current_stage is null"
+          },
+          "current_segment_draft": {
+            "type": "string",
+            "description": "translated/draft text of the segment/block the current_stage snapshot describes; null whenever current_stage is null"
+          },
+          "current_segment_qe_score": {
+            "type": "number",
+            "description": "COMET critique-gate score (0-1) for the segment being qe/adopt-staged; null outside those stages and when QE degrades to the heuristic fallback (no numeric score)"
+          },
+          "current_segment_adopted": {
+            "type": "boolean",
+            "description": "whether the revised candidate was adopted over the draft at the adopt stage; null outside the adopt stage"
+          },
+          "current_segment_judge_tier": {
+            "type": "string",
+            "enum": [
+              "高",
+              "中",
+              "低"
+            ],
+            "description": "most recently known judge score tier while current_stage=judge; null unless current_stage=judge"
+          },
+          "current_segment_judge_attempt": {
+            "type": "integer",
+            "description": "1-based judge attempt/iteration counter; null unless current_stage=judge"
+          },
+          "current_segment_judge_substep": {
+            "type": "string",
+            "enum": [
+              "scoring",
+              "retranslating"
+            ],
+            "description": "judge sub-step (scoring vs retranslating); null unless current_stage=judge"
           }
         },
         "required": [
@@ -981,7 +1038,8 @@
           "output_ready",
           "elapsed_seconds",
           "overall_progress",
-          "segments_per_second"
+          "segments_per_second",
+          "layout_viz_available"
         ]
       },
       "TermStatsResponse": {

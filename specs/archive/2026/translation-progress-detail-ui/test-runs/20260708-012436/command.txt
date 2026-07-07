@@ -1,0 +1,1 @@
+pytest tests/test_jobstatus_stage_detail.py tests/test_eta_multi_phase_heuristic.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/translation-progress-detail-ui/test-runs/20260708-012436/junit.xml' -q --maxfail=1 --tb=short -ra

@@ -8,6 +8,18 @@ While a contract is at 0.x (draft), entries here are optional.
 Once a contract reaches 1.0.0, every schema-version bump must have
 a corresponding entry below.
 
+## [css 0.3.1] — 2026-07-08
+Added: `StageDetailPanel`/`StageBadge` component-rules row (JudgePanel precedent) — single-column panel inside `TranslationProgress.jsx` rendering `current_stage`/current-segment content incl. the judge sub-state (tier badge, attempt counter, scoring/retranslating substep); explicit "renders nothing when no current-segment detail" visibility rule, mirroring `JudgePanel`'s disabled/unavailable rule. Colors via CSS vars only. Added in change `translation-progress-detail-ui`.
+
+## [api 0.10.2] — 2026-07-08
+Added: `JobStatus` — 8 new optional/nullable fields (`current_stage` plus `current_segment_source`, `current_segment_draft`, `current_segment_qe_score`, `current_segment_adopted`, `current_segment_judge_tier`, `current_segment_judge_attempt`, `current_segment_judge_substep`); `current_stage` enum is `translate`/`critique`/`qe`/`adopt`/`judge`. Closed pre-existing drift: `status_detail` and `layout_viz_available` (already live in `app/backend/api/schemas.py`) are now documented in the `JobStatus` schema table. Updated `GET /jobs/{job_id}` endpoint note with the new fields' null-cases. Additive-only — no existing field renamed/removed/retyped. Regenerated `openapi.yml`/`openapi.json`. Added in change `translation-progress-detail-ui`.
+
+## [data 0.17.2] — 2026-07-08
+Added: `JobStatus / JobRecord — current-segment snapshot fields` optional-columns entry — the 8 fields backing the additive current-segment snapshot (translate/critique/qe/adopt/judge), documenting null cases and the single-overwritten-struct (never a list/history) invariant per ADR-0010. Backend-only origin; never supplied by clients. Added in change `translation-progress-detail-ui`.
+
+## [business 0.24.2] — 2026-07-08
+Added: BR-105 (`eta-multi-phase-pipeline`) — `GET /jobs/{job_id}`'s `eta_seconds` is now a 3-term sum (translate / critique+QE / judge), each term using its own observed per-phase rate once that phase has started, else a coarse pre-observed estimate scaled by that phase's max-iterations config; critique+QE term omitted when both are disabled; judge term omitted when `JUDGE_ENABLED=false` or the winning provider is `deepseek` (BR-97 mirror). Replaces the prior single-phase extrapolation internally; `eta_seconds`'s type/nullability is unchanged. Added in change `translation-progress-detail-ui`.
+
 ## [business 0.24.1] — 2026-07-07
 Added: Table Y (QA/quality-pipeline mechanism relationships) — cross-reference table documenting how the in-line critique loop (BR-89, BR-90), post-job bulk COMET scoring (BR-55, BR-56, permanently dashboard-only after the former post-job re-translation bridge was retired), and LLM-as-judge (BR-72 through BR-77, BR-97 through BR-100) relate; records that mechanisms (1) and (3) share no state and can disagree by design. No new rule ids; no behavior change. Added in change qa-mechanism-docs.
 

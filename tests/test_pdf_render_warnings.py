@@ -59,6 +59,15 @@ def _make_job(
     job.judge_apply_status = None
     job.status_detail = None
     job.warnings = warnings
+    # translation-progress-detail-ui: explicit defaults so a bare MagicMock
+    # attribute access doesn't return an auto-mock (fails JobStatus validation).
+    job.current_segment = None
+    job.critique_started_at = None
+    job.critique_done = 0
+    job.critique_total = 0
+    job.judge_started_at = None
+    job.judge_units_done = 0
+    job.judge_units_total = 0
     job.lock = threading.Lock()
     return job
 

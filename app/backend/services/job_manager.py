@@ -77,6 +77,28 @@ class JudgeResult:
 
 
 @dataclass
+class CurrentSegmentSnapshot:
+    """Single overwritten 'current segment' snapshot (translation-progress-detail-ui,
+    ADR-0010). Written in-place onto ``JobRecord.current_segment`` — never appended,
+    never a rolling history (AC-6, AC-8).
+
+    stage: "translate" | "critique" | "qe" | "adopt" | "judge" | None
+    phase_done / phase_total: internal-only ETA bookkeeping for the critique+QE
+        phase (BR-105); NOT surfaced via the JobStatus API response.
+    """
+    stage: Optional[str] = None
+    source: Optional[str] = None
+    draft: Optional[str] = None
+    qe_score: Optional[float] = None
+    adopted: Optional[bool] = None
+    judge_tier: Optional[str] = None       # 高 | 中 | 低; null unless stage == "judge"
+    judge_attempt: Optional[int] = None
+    judge_substep: Optional[str] = None    # "scoring" | "retranslating"
+    phase_done: Optional[int] = None
+    phase_total: Optional[int] = None
+
+
+@dataclass
 class JobRecord:
     job_id: str
     input_dir: Path
@@ -109,6 +131,16 @@ class JobRecord:
     status_detail: Optional[str] = None  # current stage label shown in UI during "running"
     warnings: Optional[List[str]] = None  # pdf-renderer-fallback-warn: render-quality degradation warnings
     api_key_override: Optional[str] = None  # user-supplied API key (e.g. DeepSeek); never persisted
+    # translation-progress-detail-ui (BR-105): single overwritten current-segment snapshot
+    # + per-phase throughput bookkeeping for the multi-phase ETA. Internal-only except
+    # current_segment's fields, which are projected onto JobStatus by the job-status route.
+    current_segment: Optional[CurrentSegmentSnapshot] = None
+    critique_started_at: Optional[float] = None
+    critique_done: int = 0
+    critique_total: int = 0
+    judge_started_at: Optional[float] = None
+    judge_units_done: int = 0
+    judge_units_total: int = 0
 
 
 def _record_job_warning(job: "JobRecord", message: str) -> None:
@@ -348,6 +380,23 @@ class JobManager:
                 # Initialise shared TermDB for Phase 0 (skipped when enable_term_extraction=False)
                 term_db = TermDB() if enable_term_extraction else None
 
+                # translation-progress-detail-ui (BR-105): widened status_callback —
+                # still writes status_detail (unchanged behavior) AND, additively,
+                # overwrites job.current_segment with whatever structured snapshot the
+                # producer (translation_service.translate_texts) passes in (default
+                # None = no snapshot this call, e.g. the final `status_callback(None)`
+                # clears both). Also opportunistically tracks critique-phase throughput
+                # bookkeeping for the multi-phase ETA (IP-2/IP-4).
+                def _status_cb(detail: Optional[str], segment: Optional["CurrentSegmentSnapshot"] = None) -> None:
+                    job.status_detail = detail
+                    job.current_segment = segment
+                    if segment is not None and segment.phase_done is not None:
+                        if job.critique_started_at is None:
+                            job.critique_started_at = time.time()
+                        job.critique_done = segment.phase_done
+                        if segment.phase_total is not None:
+                            job.critique_total = segment.phase_total
+
                 for group in route_groups:
                     if job.stop_flag.is_set():
                         overall_stopped = True
@@ -385,7 +434,7 @@ class JobManager:
                         api_key_override=job.api_key_override,
                         post_translate_hook=qe_blocks.extend,
                         output_mode=output_mode,
-                        status_callback=lambda detail: setattr(job, "status_detail", detail),
+                        status_callback=_status_cb,
                         warnings_callback=lambda w: _record_job_warning(job, w),
                     )
                     # process_files returns (processed, total, stopped, last_client,
@@ -486,14 +535,50 @@ class JobManager:
                     job.status_detail = "品質評審中…"
                     try:
                         from app.backend.services.quality_judge import QualityJudge
+                        from app.backend.config import JUDGE_MAX_ITERATIONS
                         _judge = QualityJudge()
                         _judge_total = len(qe_blocks)
                         _judge_retranslate_count = [0]
+                        # translation-progress-detail-ui (BR-105): judge-phase snapshot +
+                        # ETA bookkeeping. Source/draft lookups are static (built once from
+                        # qe_blocks) — cheap, O(1) per snapshot write (AC-6).
+                        _qe_src_by_id = {bid: src for bid, src, _ in qe_blocks}
+                        _mt_by_src = {src: mt for _, src, mt in qe_blocks}
+                        _current_judge_tier: List[Optional[str]] = [None]
+                        job.judge_units_total = _judge_total * max(JUDGE_MAX_ITERATIONS, 1)
+
+                        def _judge_snapshot_cb(block_id: str, tier: Optional[str], attempt: int, substep: str) -> None:
+                            """Additive scoring-substep hook passed into run_judge_loop (IP-12)."""
+                            if job.judge_started_at is None:
+                                job.judge_started_at = time.time()
+                            if tier is not None:
+                                _current_judge_tier[0] = tier
+                            job.judge_units_done += 1
+                            job.current_segment = CurrentSegmentSnapshot(
+                                stage="judge",
+                                source=_qe_src_by_id.get(block_id),
+                                draft=_mt_by_src.get(_qe_src_by_id.get(block_id)),
+                                judge_tier=_current_judge_tier[0],
+                                judge_attempt=attempt,
+                                judge_substep=substep,
+                            )
 
                         def _translate_fn(src_text: str, feedback: str) -> str:
                             """Re-translate a single block with judge feedback in prompt."""
                             _judge_retranslate_count[0] += 1
                             job.status_detail = f"品質評審中… (重譯 {_judge_retranslate_count[0]}/{_judge_total})"
+                            # translation-progress-detail-ui (BR-105): authoritative
+                            # retranslating-substep snapshot — finer-grained attempt
+                            # counter (total retranslate calls so far) than the judge
+                            # loop's own per-round iteration index.
+                            job.current_segment = CurrentSegmentSnapshot(
+                                stage="judge",
+                                source=src_text,
+                                draft=_mt_by_src.get(src_text),
+                                judge_tier=_current_judge_tier[0],
+                                judge_attempt=_judge_retranslate_count[0],
+                                judge_substep="retranslating",
+                            )
                             # Re-translation runs against the judge's OWN provider
                             # (BR-98) via its translation_client — never last_client /
                             # model_router's main-translation winner.
@@ -509,7 +594,8 @@ class JobManager:
                             return result if ok else src_text
 
                         job.judge = _judge.run_judge_loop(
-                            job_id, qe_blocks, _translate_fn, cancel_event=job.stop_flag
+                            job_id, qe_blocks, _translate_fn, cancel_event=job.stop_flag,
+                            snapshot_cb=_judge_snapshot_cb,
                         )
                     except Exception as judge_exc:
                         logger.warning(

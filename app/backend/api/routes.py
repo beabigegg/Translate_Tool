@@ -53,7 +53,10 @@ from app.backend.services.metrics import get_metrics as _get_metrics_snapshot
 from app.backend.clients.ollama_client import list_ollama_models
 from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
 from app.backend.config import (
+    CRITIQUE_LOOP_ENABLED,
+    CRITIQUE_MAX_ITERATIONS,
     JUDGE_ENABLED,
+    JUDGE_MAX_ITERATIONS,
     ModelType,
     QE_DEVICE,
     QE_ENABLED,
@@ -272,6 +275,64 @@ async def create_job(
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
+def _compute_multi_phase_eta(
+    *,
+    now: float,
+    elapsed: float,
+    segments_done: int,
+    segments_total: int,
+    critique_enabled: bool,
+    qe_enabled: bool,
+    critique_started_at: Optional[float],
+    critique_done: int,
+    critique_total: int,
+    critique_max_iterations: int,
+    judge_enabled: bool,
+    winning_provider: Optional[str],
+    judge_started_at: Optional[float],
+    judge_units_done: int,
+    judge_units_total: int,
+    judge_max_iterations: int,
+) -> float:
+    """BR-105 (eta-multi-phase-pipeline): translate + critique/QE + judge terms.
+
+    Phase 1 (translate) uses the observed segment rate. Phase 2 (critique+QE) and
+    phase 3 (judge) each use their own observed per-phase rate once that phase has
+    started; before a phase starts, its term is a coarse estimate derived from the
+    phase-1 per-segment time scaled by that phase's max-iterations factor. Phase 2
+    is omitted (term=0) when both critique and QE are disabled; phase 3 is omitted
+    when JUDGE_ENABLED=false or the winning provider is "deepseek" (BR-97).
+    """
+    translate_rate = (segments_done / elapsed) if elapsed > 1.0 else 0.0
+    remaining_translate = max(segments_total - segments_done, 0)
+    term1 = (remaining_translate / translate_rate) if translate_rate > 0 else 0.0
+
+    per_segment_time = (elapsed / segments_done) if segments_done > 0 else 0.0
+
+    term2 = 0.0
+    if critique_enabled or qe_enabled:
+        if critique_started_at is not None and critique_done > 0:
+            critique_elapsed = max(now - critique_started_at, 0.001)
+            critique_rate = critique_done / critique_elapsed
+            remaining_critique = max(critique_total - critique_done, 0)
+            term2 = (remaining_critique / critique_rate) if critique_rate > 0 else 0.0
+        else:
+            term2 = segments_total * per_segment_time * max(critique_max_iterations, 1)
+
+    term3 = 0.0
+    _judge_will_run = judge_enabled and str(winning_provider or "").lower() != "deepseek"
+    if _judge_will_run:
+        if judge_started_at is not None and judge_units_done > 0:
+            judge_elapsed = max(now - judge_started_at, 0.001)
+            judge_rate = judge_units_done / judge_elapsed
+            remaining_judge = max(judge_units_total - judge_units_done, 0)
+            term3 = (remaining_judge / judge_rate) if judge_rate > 0 else 0.0
+        else:
+            term3 = segments_total * max(judge_max_iterations, 1) * per_segment_time
+
+    return term1 + term2 + term3
+
+
 @router.get("/jobs/{job_id}", response_model=JobStatus)
 def job_status(job_id: str) -> JobStatus:
     job = job_manager.get_job(job_id)
@@ -297,6 +358,14 @@ def job_status(job_id: str) -> JobStatus:
         job_audit = getattr(job, "audit", None)
         job_judge = getattr(job, "judge", None)
         job_judge_apply_status = getattr(job, "judge_apply_status", None)
+        # translation-progress-detail-ui (BR-105): current-segment snapshot + ETA bookkeeping
+        current_segment = getattr(job, "current_segment", None)
+        critique_started_at = getattr(job, "critique_started_at", None)
+        critique_done_ct = getattr(job, "critique_done", 0)
+        critique_total_ct = getattr(job, "critique_total", 0)
+        judge_started_at = getattr(job, "judge_started_at", None)
+        judge_units_done_ct = getattr(job, "judge_units_done", 0)
+        judge_units_total_ct = getattr(job, "judge_units_total", 0)
 
     output_ready = output_zip is not None and output_zip.exists()
 
@@ -317,7 +386,25 @@ def job_status(job_id: str) -> JobStatus:
     speed = (segments_done / elapsed) if elapsed > 1.0 else 0.0
     eta = None
     if overall_progress > 0.01 and status == "running":
-        eta = elapsed * (1.0 - overall_progress) / overall_progress
+        # BR-105 (eta-multi-phase-pipeline): translate + critique/QE + judge terms.
+        eta = _compute_multi_phase_eta(
+            now=now,
+            elapsed=elapsed,
+            segments_done=segments_done,
+            segments_total=segments_total,
+            critique_enabled=CRITIQUE_LOOP_ENABLED,
+            qe_enabled=QE_ENABLED,
+            critique_started_at=critique_started_at,
+            critique_done=critique_done_ct,
+            critique_total=critique_total_ct,
+            critique_max_iterations=CRITIQUE_MAX_ITERATIONS,
+            judge_enabled=JUDGE_ENABLED,
+            winning_provider=job_provider,
+            judge_started_at=judge_started_at,
+            judge_units_done=judge_units_done_ct,
+            judge_units_total=judge_units_total_ct,
+            judge_max_iterations=JUDGE_MAX_ITERATIONS,
+        )
 
     # Compute quality_score_avg from QE scores
     quality_score_avg: Optional[float] = None
@@ -368,6 +455,15 @@ def job_status(job_id: str) -> JobStatus:
         layout_viz_available=layout_viz_available,
         status_detail=getattr(job, "status_detail", None),
         warnings=getattr(job, "warnings", None),
+        # translation-progress-detail-ui (BR-105): current-segment snapshot (AC-1, AC-2, AC-7, AC-9)
+        current_stage=current_segment.stage if current_segment else None,
+        current_segment_source=current_segment.source if current_segment else None,
+        current_segment_draft=current_segment.draft if current_segment else None,
+        current_segment_qe_score=current_segment.qe_score if current_segment else None,
+        current_segment_adopted=current_segment.adopted if current_segment else None,
+        current_segment_judge_tier=current_segment.judge_tier if current_segment else None,
+        current_segment_judge_attempt=current_segment.judge_attempt if current_segment else None,
+        current_segment_judge_substep=current_segment.judge_substep if current_segment else None,
     )
 
 

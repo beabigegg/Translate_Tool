@@ -1,0 +1,57 @@
+change-id: translation-progress-detail-ui
+agent: backend-engineer
+status: done
+next-action: none — IP-1..IP-17 implemented (backend + frontend, per explicit session task); ready for qa-reviewer / gate evidence collection by main Claude
+summary: >
+  Implemented all 17 IP items. BR renumbered to BR-105 (eta-multi-phase-pipeline) —
+  verified BR-98/99/100/101-104 already live (BR-98 = judge-retranslation-provider-consistency,
+  pre-existing) before choosing 105, collision-free. Backend: JobStatus +8 optional fields
+  (schemas.py); CurrentSegmentSnapshot dataclass + JobRecord.current_segment + critique/judge
+  ETA bookkeeping fields (job_manager.py); widened status_callback (translation_service.py) to
+  (message, segment=None) emitting translate/critique/qe/adopt stage snapshots inside the
+  ROUND-BASED critique loop (batch-critique-qe-scoring's final shape) via an additive
+  _batched_critique_adopt(on_scored=None) hook (no duplicate QE scoring); quality_judge.py
+  run_judge_loop/_run_judge_loop_impl gained additive snapshot_cb=None (fail-soft try/except,
+  fires at scoring + retranslating substeps); job_manager judge call site wires snapshot_cb +
+  widens _translate_fn for the authoritative retranslating-substep write; routes.py
+  _compute_multi_phase_eta() (pure, unit-testable) replaces the single-phase calc. Frontend:
+  StageDetailPanel/StageBadge + JudgeTierBadge added inside TranslationProgress.jsx (no new
+  component file); qualityTier migrated off hardcoded hex to CSS tokens; i18n stage/substep
+  labels added to zh-TW.js/en.js; JUDGE_MAX_ITERATIONS_DISPLAY constant added (no new
+  endpoint/field, per ADR-0010 — informational display fallback only). Contracts: api (33
+  fields via cdd-kit contract schema set, incl. closing status_detail/layout_viz_available
+  drift), css, design-tokens, business-rules (BR-105), data-shape all updated + versioned +
+  CHANGELOGed; openapi.yml/json regenerated, export --check green. Fixed 2 pre-existing test
+  regressions caused by the additive snapshot_cb/on_scored kwargs (test_orchestrator_judge.py's
+  3 fake run_loop signatures, test_fewshot_glossary.py's _batched_critique_adopt lambda) and
+  extended 2 shared MagicMock _make_job()-style helpers (test_jobstatus_download_url.py,
+  test_pdf_render_warnings.py) that would otherwise return auto-mock objects for the new
+  attributes and fail JobStatus pydantic validation.
+artifacts:
+  - { type: files-changed, pointer: "app/backend/api/schemas.py:23-58 (JobStatus +8 fields)" }
+  - { type: files-changed, pointer: "app/backend/services/job_manager.py:79-97 (CurrentSegmentSnapshot), :99-146 (JobRecord fields), :383-402 (_status_cb), :538-597 (judge call site + _judge_snapshot_cb + _translate_fn)" }
+  - { type: files-changed, pointer: "app/backend/services/translation_service.py:99-165 (_batched_critique_adopt on_scored), :244 (status_callback type), :469-600 (4 stage-transition snapshot emissions in the round-based critique loop)" }
+  - { type: files-changed, pointer: "app/backend/services/quality_judge.py:317-360 (run_judge_loop snapshot_cb), :361-370 (_run_judge_loop_impl), :429-442 (scoring substep call), :505-513 (retranslating substep call)" }
+  - { type: files-changed, pointer: "app/backend/api/routes.py:55-64 (config imports), :278-333 (_compute_multi_phase_eta), :358-410 (route wiring), :455-465 (JobStatus response fields)" }
+  - { type: files-changed, pointer: "app/frontend/src/components/domain/TranslationProgress.jsx (StageDetailPanel/StageBadge/JudgeTierBadge, qualityTier token migration)" }
+  - { type: files-changed, pointer: "app/frontend/src/i18n/zh-TW.js, app/frontend/src/i18n/en.js (stage.* + stage.substep.* keys)" }
+  - { type: files-changed, pointer: "app/frontend/src/constants/defaults.js (JUDGE_MAX_ITERATIONS_DISPLAY)" }
+  - { type: files-changed, pointer: "app/frontend/src/styles/tokens.css (--color-stage-*, --color-stage-judge-*, --color-quality-tier-*)" }
+  - { type: files-changed, pointer: "tests/test_orchestrator_judge.py:295,322,364 (fake run_loop signatures accept snapshot_cb — regression fix)" }
+  - { type: files-changed, pointer: "tests/test_fewshot_glossary.py:288 (_batched_critique_adopt lambda accepts on_scored — regression fix)" }
+  - { type: files-changed, pointer: "tests/test_jobstatus_download_url.py:_make_job(), tests/test_pdf_render_warnings.py:_make_job() (added new-field defaults — regression fix)" }
+  - { type: tests-added, pointer: "tests/test_jobstatus_stage_detail.py::TestJobStatusAdditiveFields (8 tests, AC-1/AC-2/AC-7/AC-9)" }
+  - { type: tests-added, pointer: "tests/test_eta_multi_phase_heuristic.py (8 tests, AC-5/AC-9 ETA cases)" }
+  - { type: tests-added, pointer: "tests/test_job_manager_current_segment.py (3 tests, AC-6/AC-8/AC-9 wiring via real _run_job path)" }
+  - { type: tests-added, pointer: "tests/test_quality_judge_snapshot_callback.py (3 tests, AC-9 no-op/invocation-shape/fail-soft-raising)" }
+  - { type: tests-added, pointer: "tests/test_translation_service_stage_snapshot.py::test_status_callback_emits_structured_snapshot_at_each_stage_transition (AC-1 integration, translate_texts() entry point, LLM-client-only mock boundary)" }
+  - { type: tests-added, pointer: "app/frontend/src/components/domain/TranslationProgress.test.jsx (7 tests: AC-3 x2, AC-4, AC-7, AC-9 x2, no-hardcoded-hex static assertion)" }
+  - { type: test-output, pointer: "backend 5 new files: 23 passed, 1 warning (conda run -n translate-tool python -m pytest tests/test_jobstatus_stage_detail.py tests/test_eta_multi_phase_heuristic.py tests/test_job_manager_current_segment.py tests/test_quality_judge_snapshot_callback.py tests/test_translation_service_stage_snapshot.py -q)" }
+  - { type: test-output, pointer: "backend regression sweep (all files importing translation_service/job_manager/quality_judge/routes, ~28 files): 476 passed + 119 passed = 595 passed, 0 failed after the 2 regression fixes" }
+  - { type: test-output, pointer: "frontend: 2 test files passed (10 tests) — cd app/frontend && npm test" }
+  - { type: contracts-touched, pointer: "contracts/api/api-contract.md (JobStatus +8 fields, judge enum, status_detail/layout_viz_available drift closed, 0.10.1->0.10.2), contracts/api/openapi.yml, contracts/api/openapi.json (regenerated, export --check green)" }
+  - { type: contracts-touched, pointer: "contracts/business/business-rules.md (BR-105 eta-multi-phase-pipeline added, 0.24.1->0.24.2)" }
+  - { type: contracts-touched, pointer: "contracts/data/data-shape-contract.md (current-segment snapshot optional-columns entry, 0.17.1->0.17.2)" }
+  - { type: contracts-touched, pointer: "contracts/css/css-contract.md (StageDetailPanel/StageBadge rows + visibility/judge-rendering rules, 0.3.0->0.3.1)" }
+  - { type: contracts-touched, pointer: "contracts/css/design-tokens.md (--color-stage-*, judge-tier, quality-tier tokens; no schema-version field, matches existing convention)" }
+  - { type: contracts-touched, pointer: "contracts/CHANGELOG.md (css 0.3.1, api 0.10.2, data 0.17.2, business 0.24.2 entries added)" }

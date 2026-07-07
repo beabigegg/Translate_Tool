@@ -1,0 +1,16 @@
+{
+  "change_id": "translation-progress-detail-ui",
+  "phase": "changed-area",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest tests/test_jobstatus_stage_detail.py tests/test_eta_multi_phase_heuristic.py tests/test_job_manager_current_segment.py tests/test_quality_judge_snapshot_callback.py tests/test_translation_service_stage_snapshot.py tests/test_orchestrator_judge.py tests/test_quality_judge.py tests/test_critique_gate.py tests/test_jobstatus_download_url.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/translation-progress-detail-ui/test-runs/20260708-012433/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 1863,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/translation-progress-detail-ui/test-runs/20260708-012433/summary.json",
+    "stdout": "specs/changes/translation-progress-detail-ui/test-runs/20260708-012433/stdout.log",
+    "stderr": "specs/changes/translation-progress-detail-ui/test-runs/20260708-012433/stderr.log",
+    "junit": "specs/changes/translation-progress-detail-ui/test-runs/20260708-012433/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

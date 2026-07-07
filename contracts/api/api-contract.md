@@ -3,8 +3,8 @@ contract: api
 summary: API behavior, compatibility rules, and endpoint contract requirements.
 owner: application-team
 surface: api
-schema-version: 0.10.1
-last-changed: 2026-07-07
+schema-version: 0.10.2
+last-changed: 2026-07-08
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -148,7 +148,7 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 | elapsed_seconds | number | yes |  |  |
 | overall_progress | number | yes |  |  |
 | segments_per_second | number | yes |  |  |
-| eta_seconds | number | no |  |  |
+| eta_seconds | number | no |  | BR-105 (eta-multi-phase-pipeline): sum of translate + critique/QE + judge terms; only computed while status=running and overall_progress>0.01; null otherwise |
 | term_summary | string | no |  | per-language/domain term extraction counts as JSON-serialized map; null when mode != extraction_only |
 | provider | string | no |  | provider ID that successfully processed this job (e.g. panjit, deepseek); null if not yet determined |
 | quality_score_avg | number | no |  | average COMET/xCOMET quality score across all blocks; null when QE disabled or job not complete; advisory/non-gating — this value is the mechanism-(2) post-job dashboard score, informational only, and never triggers re-translation or any other pipeline action regardless of how low it is (BR-55, BR-56; see business-rules.md Table Y for how this relates to the in-line critique loop and the LLM-judge mechanisms); see BR-54 |
@@ -157,6 +157,16 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 | judge_apply_status | string | no |  | apply operation lifecycle: applying, applied, failed, or null when apply not yet triggered; see BR-76, BR-77 |
 | download_url | string | no |  | URL to download translated zip; set to /api/jobs/{job_id}/download only when status==completed AND output_zip exists on disk; null otherwise |
 | warnings | string[] | no |  | degradation notices; null or empty list when no degradation occurred; populated by PDF processor when fitz falls back to ReportLab; also populated when a format-specific output_mode is requested for an incompatible file type (bilingual on non-DOCX, adjacent/annotation on non-XLSX) — one entry per affected file; also populated with one entry per successfully converted legacy file (.doc/.xls/.ppt via LibreOffice) disclosing lossy-conversion risk — see BR-9, BR-96; type is always string[] or null, never a bare string; additive optional field — backward-compatible; see AC-1, AC-2, AC-3 |
+| status_detail | string | no |  | human-readable current-stage label shown during status=running (e.g. 品質審校中…); null in other states or when no stage detail applies (pre-existing field, previously undocumented drift closed by translation-progress-detail-ui) |
+| layout_viz_available | boolean | yes |  | true once layout_viz.json exists on disk (PDF jobs only); false otherwise (pre-existing field, previously undocumented drift closed by translation-progress-detail-ui) |
+| current_stage | enum(translate, critique, qe, adopt, judge) | no |  | BR-105/ADR-0010: current pipeline stage for the single overwritten current-segment snapshot; null when job just started, critique+QE+judge all inactive, or mid-transition (AC-1, AC-2, AC-7, AC-9) |
+| current_segment_source | string | no |  | source text of the segment/block the current_stage snapshot describes; null whenever current_stage is null |
+| current_segment_draft | string | no |  | translated/draft text of the segment/block the current_stage snapshot describes; null whenever current_stage is null |
+| current_segment_qe_score | number | no |  | COMET critique-gate score (0-1) for the segment being qe/adopt-staged; null outside those stages and when QE degrades to the heuristic fallback (no numeric score) |
+| current_segment_adopted | boolean | no |  | whether the revised candidate was adopted over the draft at the adopt stage; null outside the adopt stage |
+| current_segment_judge_tier | enum(高, 中, 低) | no |  | most recently known judge score tier while current_stage=judge; null unless current_stage=judge |
+| current_segment_judge_attempt | integer | no |  | 1-based judge attempt/iteration counter; null unless current_stage=judge |
+| current_segment_judge_substep | enum(scoring, retranslating) | no |  | judge sub-step (scoring vs retranslating); null unless current_stage=judge |
 
 ### TermStatsResponse
 | field | type | required | format | notes |
@@ -341,7 +351,7 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 
 **POST /terms/flag-needs-review** — flags a term for human review by transitioning it to `needs_review` status. Terms in `needs_review` are not injected until approved (BR-29). Returns HTTP 200 `{"status": "needs_review"}` on success; HTTP 404 `{"detail": "Term not found"}` when the term does not exist.
 
-**GET /jobs/{job_id}** — `download_url` is set to `/api/jobs/{job_id}/download` only when `status == "completed"` AND the output archive exists on disk; it is `null` in all other states (running, failed, stopped, or completed with missing archive). The download endpoint itself (`GET /jobs/{job_id}/download`) is a separate route and is not changed by this field addition. `warnings` is an optional string array (null or `[]` when no degradation); populated by the PDF processor when rendering quality is reduced, and by the legacy-format conversion step (`.doc`/`.xls`/`.ppt` via LibreOffice, BR-9/BR-96); verbatim strings are defined in the `JobStatus` schema above. Existing consumers that do not read `warnings` are unaffected (AC-3).
+**GET /jobs/{job_id}** — `download_url` is set to `/api/jobs/{job_id}/download` only when `status == "completed"` AND the output archive exists on disk; it is `null` in all other states (running, failed, stopped, or completed with missing archive). The download endpoint itself (`GET /jobs/{job_id}/download`) is a separate route and is not changed by this field addition. `warnings` is an optional string array (null or `[]` when no degradation); populated by the PDF processor when rendering quality is reduced, and by the legacy-format conversion step (`.doc`/`.xls`/`.ppt` via LibreOffice, BR-9/BR-96); verbatim strings are defined in the `JobStatus` schema above. Existing consumers that do not read `warnings` are unaffected (AC-3). `current_stage` + the 7 `current_segment_*` fields (translation-progress-detail-ui, BR-105/ADR-0010) are an additive, single-overwritten "current segment" snapshot — never a rolling history — populated only while a translate/critique/qe/adopt/judge stage is actively producing content; all 8 are null in every other state. Existing consumers that do not read them are unaffected (AC-2).
 
 **GET /providers/health** — returns health status for each configured provider. Each element: `{provider, status, latency_ms}` where `status` is one of `online`, `offline`, `not_configured`. `latency_ms` is omitted when `status` is `not_configured`. PANJIT is always probed; DeepSeek is probed only when a valid key is supplied via the `X-DeepSeek-Api-Key` request header, otherwise returned as `not_configured`. The key is transmitted as a header (not a query parameter) to prevent exposure in server access logs and browser history (BR-65). See BR-63.
 

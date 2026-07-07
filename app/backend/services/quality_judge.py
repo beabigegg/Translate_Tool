@@ -320,6 +320,7 @@ class QualityJudge:
         blocks: List[Tuple[str, str, str]],
         translate_fn: Callable[[str, str], str],
         cancel_event=None,
+        snapshot_cb: Optional[Callable[[str, Optional[str], int, str], None]] = None,
     ) -> "JudgeResult":
         """Run the judge re-translation loop over collected block pairs.
 
@@ -327,6 +328,14 @@ class QualityJudge:
             job_id: Job identifier (for logging).
             blocks: List of (block_id, source_text, translated_text) tuples.
             translate_fn: Callable(source_text, feedback) -> re-translated_text.
+            cancel_event: Optional cooperative-cancellation event (BR-99).
+            snapshot_cb: Optional additive observability hook (translation-progress-detail-ui,
+                BR-105). Called as ``snapshot_cb(block_id, tier, attempt, substep)`` at the
+                per-block scoring sub-step (``substep="scoring"``) and the per-block
+                re-translation sub-step (``substep="retranslating"``); ``tier`` is the most
+                recently known aggregate score (``None`` before any round has completed).
+                Default ``None`` is a complete no-op. Every invocation is fail-soft — a
+                raising callback must never abort the judge loop.
 
         Returns:
             JudgeResult instance (never raises — D5/BR-74).
@@ -337,7 +346,8 @@ class QualityJudge:
 
         try:
             return self._run_judge_loop_impl(
-                job_id, blocks, translate_fn, JUDGE_MAX_ITERATIONS, cancel_event=cancel_event
+                job_id, blocks, translate_fn, JUDGE_MAX_ITERATIONS,
+                cancel_event=cancel_event, snapshot_cb=snapshot_cb,
             )
         except Exception as exc:
             logger.warning(
@@ -365,6 +375,7 @@ class QualityJudge:
         translate_fn: Callable[[str, str], str],
         max_iterations: int,
         cancel_event=None,
+        snapshot_cb: Optional[Callable[[str, Optional[str], int, str], None]] = None,
     ) -> "JudgeResult":
         """Implementation of the judge loop (called within exception boundary)."""
         from app.backend.services.job_manager import JudgeResult
@@ -430,6 +441,11 @@ class QualityJudge:
             for bid, src, _ in blocks:
                 if _cancelled():
                     return _stopped(attempts)
+                if snapshot_cb is not None:
+                    try:
+                        snapshot_cb(bid, final_score, iteration + 1, "scoring")
+                    except Exception:
+                        pass  # fail-soft (translation-progress-detail-ui) — must never break the judge loop
                 r = self.evaluate(
                     src,
                     current_translations[bid],
@@ -504,6 +520,11 @@ class QualityJudge:
                 for bid, src, _ in blocks:
                     if _cancelled():
                         return _stopped(attempts)
+                    if snapshot_cb is not None:
+                        try:
+                            snapshot_cb(bid, final_score, iteration + 1, "retranslating")
+                        except Exception:
+                            pass  # fail-soft (translation-progress-detail-ui) — must never break the judge loop
                     try:
                         new_mt = translate_fn(src, current_feedback)
                         new_translations[bid] = new_mt

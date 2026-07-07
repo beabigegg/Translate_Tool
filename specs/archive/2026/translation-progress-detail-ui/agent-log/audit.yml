@@ -1,0 +1,15 @@
+- type: tier-floor-override
+  change-id: translation-progress-detail-ui
+  timestamp: '2026-07-07T17:26:15.130Z'
+  declared-tier: 2
+  floor-tier: 0
+  label: critical surface (auth / payments / data migration / concurrency / secrets)
+  matched:
+    - endpoint
+    - session
+  reason: >-
+    Additive observability change: 8 optional/nullable progress-detail fields on the EXISTING GET
+    /jobs/{id} response + a null-tolerant frontend StageDetailPanel + a multi-phase ETA. The
+    tier-floor matched 'endpoint/session' — 'endpoint' is the existing job-status polling endpoint
+    (no new/changed route; additive fields only), and there is no auth, payments, data-migration,
+    concurrency, or secrets surface. change-classifier set Tier 2.
