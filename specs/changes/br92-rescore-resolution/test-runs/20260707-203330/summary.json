@@ -1,0 +1,16 @@
+{
+  "change_id": "br92-rescore-resolution",
+  "phase": "targeted",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest tests/test_env_contract.py tests/test_quality_evaluation.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/br92-rescore-resolution/test-runs/20260707-203330/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 2232,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/br92-rescore-resolution/test-runs/20260707-203330/summary.json",
+    "stdout": "specs/changes/br92-rescore-resolution/test-runs/20260707-203330/stdout.log",
+    "stderr": "specs/changes/br92-rescore-resolution/test-runs/20260707-203330/stderr.log",
+    "junit": "specs/changes/br92-rescore-resolution/test-runs/20260707-203330/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

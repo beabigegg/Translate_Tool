@@ -776,15 +776,13 @@ A single job may contain mixed-format files (e.g. DOCX + XLSX). In that case eac
 ### Per-segment QE score list (AC-1, AC-2)
 
 `score_blocks(model, blocks)` returns `List[float]` — one score per `(src, mt)` input pair. This list
-is the per-segment scoring surface for both the critique adoption gate (BR-89) and the
-post-job rescore threshold check (BR-92).
+is the per-segment scoring surface for the critique adoption gate (BR-89).
 
 | aspect | contract |
 |---|---|
 | Shape | `len(scores) == len(blocks)` always; empty list returned on internal failure (BR-56 safe-degrade) |
 | Score type | `float`; range and scale are model-dependent (see BR-54) |
 | Critique gate usage | Two-element call `[(src, draft), (src, revised)]`; adopt revised iff `scores[1] > scores[0]` (strict); tie keeps draft (BR-89) |
-| Post-job threshold usage | Per-segment score compared to `QE_RESCORE_THRESHOLD`; segments below threshold flagged for re-translation (BR-92, AC-2; wired in job_manager.py post-translate hook, CER-002) |
 
 ### Per-block judge score (AC-5)
 
