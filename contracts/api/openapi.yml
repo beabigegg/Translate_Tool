@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "API behavior, compatibility rules, and endpoint contract requirements.",
-    "version": "0.10.0",
+    "version": "0.10.1",
     "description": "- response style: JSON (Pydantic response models); binary endpoints return file streams (FileResponse / StreamingResponse)."
   },
   "paths": {
@@ -942,7 +942,7 @@
           },
           "quality_score_avg": {
             "type": "number",
-            "description": "average COMET/xCOMET quality score across all blocks; null when QE disabled or job not complete; see BR-54"
+            "description": "average COMET/xCOMET quality score across all blocks; null when QE disabled or job not complete; advisory/non-gating — this value is the mechanism-(2) post-job dashboard score, informational only, and never triggers re-translation or any other pipeline action regardless of how low it is (BR-55, BR-56; see business-rules.md Table Y for how this relates to the in-line critique loop and the LLM-judge mechanisms); see BR-54"
           },
           "audit_hit_rate": {
             "type": "number",

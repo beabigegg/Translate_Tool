@@ -1,0 +1,15 @@
+- type: tier-floor-override
+  change-id: qa-mechanism-docs
+  timestamp: '2026-07-07T16:00:37.493Z'
+  declared-tier: 4
+  floor-tier: 0
+  label: critical surface (auth / payments / data migration / concurrency / secrets)
+  matched:
+    - endpoint
+    - session
+  reason: >-
+    Documentation-only contract-prose change (Table Y cross-reference + advisory/non-gating notes).
+    The tier-floor matched 'endpoint/session' vocab — 'endpoint' refers to the existing GET
+    /jobs/{id}/quality dashboard endpoint named in prose, not a new or changed endpoint; there is no
+    auth, payments, data-migration, concurrency, or secrets surface, and no
+    schema/field/type/nullability/behavior change. change-classifier set Tier 4 (docs).

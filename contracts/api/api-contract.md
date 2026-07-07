@@ -3,8 +3,8 @@ contract: api
 summary: API behavior, compatibility rules, and endpoint contract requirements.
 owner: application-team
 surface: api
-schema-version: 0.10.0
-last-changed: 2026-07-06
+schema-version: 0.10.1
+last-changed: 2026-07-07
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -151,7 +151,7 @@ Map/dict fields MUST use type `string` (not `object`) with a notes cell value of
 | eta_seconds | number | no |  |  |
 | term_summary | string | no |  | per-language/domain term extraction counts as JSON-serialized map; null when mode != extraction_only |
 | provider | string | no |  | provider ID that successfully processed this job (e.g. panjit, deepseek); null if not yet determined |
-| quality_score_avg | number | no |  | average COMET/xCOMET quality score across all blocks; null when QE disabled or job not complete; see BR-54 |
+| quality_score_avg | number | no |  | average COMET/xCOMET quality score across all blocks; null when QE disabled or job not complete; advisory/non-gating — this value is the mechanism-(2) post-job dashboard score, informational only, and never triggers re-translation or any other pipeline action regardless of how low it is (BR-55, BR-56; see business-rules.md Table Y for how this relates to the in-line critique loop and the LLM-judge mechanisms); see BR-54 |
 | audit_hit_rate | number | no |  | terminology audit hit rate 0.0-1.0; null when audit did not run or mode==extraction_only; see BR-59 |
 | judge_score | enum(低, 中, 高) | no |  | latest judge score tier; null when judge has not run, is disabled, or is unavailable; for list/summary views; see BR-72 |
 | judge_apply_status | string | no |  | apply operation lifecycle: applying, applied, failed, or null when apply not yet triggered; see BR-76, BR-77 |
