@@ -42,3 +42,4 @@
 | qa-judge-provider-consistency | 2026 | 2026-07-07 | specs/archive/2026/qa-judge-provider-consistency/ |
 | qa-judge-hang-recovery | 2026 | 2026-07-07 | specs/archive/2026/qa-judge-hang-recovery/ |
 | pdf-text-overflow-fix | 2026 | 2026-07-07 | specs/archive/2026/pdf-text-overflow-fix/ |
+| batch-critique-qe-scoring | 2026 | 2026-07-07 | specs/archive/2026/batch-critique-qe-scoring/ |

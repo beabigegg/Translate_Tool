@@ -292,6 +292,7 @@ Translate_Tool/
 |   |-- test_context_window_segments.py
 |   |-- test_coordinate_renderer.py
 |   |-- test_critique_gate.py
+|   |-- test_critique_loop_batching.py
 |   |-- test_dead_references.py
 |   |-- test_doc_chunker.py
 |   |-- test_docx_parser.py
@@ -329,8 +330,7 @@ Translate_Tool/
 |   |-- test_pdf_render_warnings.py
 |   |-- test_pptx_parser.py
 |   |-- test_provider_fallback.py
-|   |-- test_providers_api.py
-|   \-- ... (22 more entries truncated; cap=50)
+|   \-- ... (23 more entries truncated; cap=50)
 |-- .env
 |-- .gitignore
 |-- AGENTS.md

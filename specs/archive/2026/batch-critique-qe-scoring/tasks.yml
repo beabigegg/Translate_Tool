@@ -1,5 +1,5 @@
 change-id: batch-critique-qe-scoring
-status: in-progress
+status: archived
 tier: 2
 tier-floor-override: "False-positive keyword match on 'cache'/'session' — this change batches in-memory COMET score_blocks() calls in the critique loop; it does not touch auth, payments, data migration, or any cache/session security surface."
 context-governance: v1
@@ -38,5 +38,5 @@ tasks:
   - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "Local gate green — same required validations CI runs. PR CI to confirm on push; PR# finalized at close." }
   - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full-regression informational on PR; no non-deterministic checks flagged" }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gate required per change-classification.md" }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done, note: "cdd-kit archive → specs/archive/2026/batch-critique-qe-scoring; INDEX.md updated" }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: skipped, note: "No new CLAUDE.md cross-change lesson: the orphaned-mock-after-refactor gotcha (CER-002) is an instance of the existing mock-patch/tautological-tests entries; batched call-shape lives in data-shape-contract v0.17.0; BR-89/90/46 unchanged. See archive.md." }
