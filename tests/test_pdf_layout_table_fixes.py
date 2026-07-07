@@ -94,6 +94,33 @@ def _parse(path: str):
     return PyMuPDFParser().parse(path)
 
 
+BORDERLESS_TABLE_DATA = [
+    ["Item", "Value", "Note"],
+    ["Weight", "Value", "Note"],
+    ["Height", "Value", "Note"],
+]
+
+
+def _make_borderless_table_pdf() -> str:
+    """One-page PDF with a 3×3 grid of aligned text and NO ruling lines at
+    all (fully borderless) — BR-101/AC-4: must be recovered via the looser-
+    strategy find_tables() fallback (strategy='text'), since the default
+    lines_strict strategy finds nothing without any drawn lines."""
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+    x0, y0, w, h = 50, 100, 150, 30
+    for r in range(3):
+        for c in range(3):
+            page.insert_text(
+                (x0 + c * w + 5, y0 + r * h + 20), BORDERLESS_TABLE_DATA[r][c], fontsize=11,
+            )
+    fd, path = tempfile.mkstemp(suffix=".pdf")
+    os.close(fd)
+    doc.save(path)
+    doc.close()
+    return path
+
+
 @pytest.fixture(autouse=True)
 def _heuristic_layout(monkeypatch):
     """Force the heuristic layout path (no ONNX download in CI)."""
@@ -350,18 +377,40 @@ class TestPdfTableCellSplit:
             doc = _parse(src)
             cells = [e for e in doc.elements if e.metadata.get("table_id")]
             by_pos = {
-                (e.metadata["table_row"], e.metadata["table_col"]): e.content
+                (e.metadata["table_row"], e.metadata["table_col"]): e
                 for e in cells
                 if e.metadata.get("table_row") is not None
             }
+            x0, y0, w, h = 50, 100, 150, 30
+            _pad = 2.0
             # Selection assertions: WHICH text landed in WHICH cell
             for r in range(3):
                 for c in range(3):
-                    assert by_pos.get((r, c)) == TABLE_DATA[r][c], (
+                    elem = by_pos.get((r, c))
+                    assert elem is not None and elem.content == TABLE_DATA[r][c], (
                         f"cell ({r},{c}) expected {TABLE_DATA[r][c]!r}, "
-                        f"got {by_pos.get((r, c))!r} — fitz row-merged blocks "
+                        f"got {(elem.content if elem else None)!r} — fitz row-merged blocks "
                         "must be split into per-cell elements"
                     )
+                    # BR-102 bbox-extent invariant regression guard (already
+                    # applied by _split_elements_by_cells — NOT re-touched by
+                    # this change): x1/y1 extend to the cell rect minus the
+                    # 2.0pt border pad; x0/y0 stay at the tight text origin;
+                    # metadata["lines"] preserves the pre-extension tight bbox.
+                    cell_x1 = x0 + (c + 1) * w
+                    cell_y1 = y0 + (r + 1) * h
+                    assert elem.bbox.x1 == pytest.approx(cell_x1 - _pad), (
+                        f"cell ({r},{c}) bbox.x1 must extend to the cell right edge minus pad"
+                    )
+                    assert elem.bbox.y1 == pytest.approx(cell_y1 - _pad), (
+                        f"cell ({r},{c}) bbox.y1 must extend to the cell bottom edge minus pad"
+                    )
+                    lines = elem.metadata.get("lines")
+                    assert lines, f"cell ({r},{c}) must carry metadata['lines'] for BR-84 whitening"
+                    assert lines[0][0] == pytest.approx(elem.bbox.x0), "x0 must be unchanged by extension"
+                    assert lines[0][1] == pytest.approx(elem.bbox.y0), "y0 must be unchanged by extension"
+                    assert lines[0][2] <= elem.bbox.x1, "extension only grows x1, never shrinks it"
+                    assert lines[0][3] <= elem.bbox.y1, "extension only grows y1, never shrinks it"
         finally:
             os.unlink(src)
 
@@ -371,6 +420,51 @@ class TestPdfTableCellSplit:
             doc = _parse(src)
             body = [e for e in doc.elements if "Inspection Report" in e.content]
             assert body and body[0].metadata.get("table_id") is None
+        finally:
+            os.unlink(src)
+
+
+@pytest.mark.skipif(not HAS_PYMUPDF, reason="PyMuPDF not installed")
+class TestTableDetectionFallbackIntegration:
+    """AC-4 integration (BR-101): a real borderless-table PDF (no drawn ruling
+    lines at all) is recovered via the looser-strategy find_tables() fallback."""
+
+    def test_borderless_table_pdf_recovers_cells(self):
+        src = _make_borderless_table_pdf()
+        try:
+            doc = _parse(src)
+            cells = [e for e in doc.elements if e.metadata.get("table_id")]
+            assert cells, (
+                "the borderless 3x3 grid must be recovered via the BR-101 "
+                "looser-strategy fallback — lines_strict alone finds nothing"
+            )
+
+            # Group by whatever row label the fallback grid assigned (PyMuPDF's
+            # whitespace clustering need not label rows 0/1/2 exactly) — what
+            # matters is that content is correctly grouped into 3 distinct rows
+            # of 3 cells each, with no per-cell bbox spanning multiple columns.
+            rows: dict = {}
+            for e in cells:
+                rows.setdefault(e.metadata.get("table_row"), []).append(e)
+
+            assert len(rows) == 3, f"expected 3 distinct recovered rows, got {len(rows)}"
+            expected_row_sets = [set(row) for row in BORDERLESS_TABLE_DATA]
+            actual_row_sets = [
+                {e.content for e in row_elems} for row_elems in rows.values()
+            ]
+            for expected in expected_row_sets:
+                assert expected in actual_row_sets, (
+                    f"expected row content {expected} not found among recovered "
+                    f"rows {actual_row_sets}"
+                )
+
+            # Bug B symptom check: no per-cell bbox spans multiple original
+            # columns (single column width is 150pt; a merged row would be ~450pt).
+            for e in cells:
+                assert e.bbox.x1 - e.bbox.x0 <= 200, (
+                    f"cell {e.element_id!r} bbox spans multiple columns "
+                    f"({e.bbox.x1 - e.bbox.x0:.1f}pt wide) — Bug B not fixed"
+                )
         finally:
             os.unlink(src)
 

@@ -259,6 +259,30 @@ class TestTruncationMarker:
         elem = TranslatableElement.from_dict(d)
         assert elem.render_truncated is False
 
+    def test_reportlab_path_sets_render_truncated_on_overflow(self):
+        """AC-3 (pdf-text-overflow-fix): unfittable text sets render_truncated=True
+        on the threaded IR element via the ReportLab draw path (BR-38), now that
+        IP-1 threads an element ref through TextRegion."""
+        mock_canvas = MagicMock()
+        elem = TranslatableElement(
+            element_id="e1",
+            content="short",
+            element_type=ElementType.TEXT,
+            page_num=1,
+            bbox=BoundingBox(x0=0, y0=0, x1=5, y1=5),
+        )
+        very_long = (
+            "This is an extremely long piece of text that cannot possibly "
+            "fit inside a five by five point box no matter what happens."
+        )
+        region = TextRegion(text=very_long, x0=0, y0=0, x1=5, y1=5, element=elem)
+
+        render_text_region(mock_canvas, region, target_lang="en", page_height=10)
+
+        assert elem.render_truncated is True, (
+            "unfittable text via a threaded element ref must set render_truncated=True"
+        )
+
 
 class TestSinglePathEnforcement:
     """AC-6: cascade helper must not be imported in legacy renderer paths (BR-40)."""
@@ -525,6 +549,28 @@ class TestRenderTextRegion:
 
         canvas.save()
         assert buffer.tell() > 0
+
+    def test_render_text_region_wraps_via_shared_cascade(self):
+        """AC-1: long translated text in a narrow bbox produces MULTIPLE
+        wrapped lines via the shared fit_text_cascade -- no single-line
+        horizontal overflow (BR-40 amendment, ADR-0012)."""
+        mock_canvas = MagicMock()
+        long_text = (
+            "This is a considerably long piece of translated text that cannot "
+            "possibly fit on a single line inside a narrow text region box."
+        )
+        region = TextRegion(text=long_text, x0=72, y0=700, x1=220, y1=760)
+
+        render_text_region(mock_canvas, region, target_lang="en", page_height=792)
+
+        draw_calls = mock_canvas.drawString.call_args_list
+        assert len(draw_calls) > 1, (
+            f"expected multiple wrapped lines for long text in a narrow bbox, got {len(draw_calls)}"
+        )
+        drawn_lines = [call.args[2] for call in draw_calls]
+        assert all(line != long_text for line in drawn_lines), (
+            "each drawn line must be a wrapped fragment, not the whole unwrapped string"
+        )
 
 
 class TestRenderTextRegions:

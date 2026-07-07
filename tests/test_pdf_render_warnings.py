@@ -141,6 +141,90 @@ class TestFitzFallbackWarning:
             "seam may be missing or wired to the wrong location."
         )
 
+    def test_fitz_crash_fallback_still_wraps_long_text(self):
+        """AC-2 (resilience, BR-34): when the fitz path raises, the REAL
+        ReportLab fallback that _dispatch_render invokes must still WRAP
+        long translated text within its bbox — not just log a warning while
+        silently overflowing/truncating (BR-40 shared cascade)."""
+        try:
+            import fitz
+        except ImportError:
+            pytest.skip("PyMuPDF not installed")
+
+        import os
+        import tempfile
+
+        from app.backend.models.translatable_document import (
+            BoundingBox,
+            DocumentMetadata,
+            ElementType,
+            PageInfo,
+            TranslatableDocument,
+            TranslatableElement,
+        )
+        from app.backend.renderers.base import RenderMode
+        import app.backend.processors.pdf_processor as _mod
+
+        long_translation = (
+            "This is a considerably long piece of translated text that must "
+            "wrap across multiple lines instead of overflowing horizontally "
+            "past its narrow allotted column width no matter what."
+        )
+        elem = TranslatableElement(
+            element_id="e1",
+            content="Short",
+            element_type=ElementType.TEXT,
+            page_num=1,
+            bbox=BoundingBox(x0=72, y0=300, x1=220, y1=400),
+            should_translate=True,
+            translated_content=long_translation,
+        )
+        doc = TranslatableDocument(
+            source_path="/test/sample.pdf",
+            source_type="pdf",
+            elements=[elem],
+            pages=[PageInfo(page_num=1, width=612, height=792)],
+            metadata=DocumentMetadata(page_count=1, has_text_layer=True),
+        )
+
+        fd, out_path = tempfile.mkstemp(suffix=".pdf")
+        os.close(fd)
+        captured = []
+        try:
+            with patch(
+                "app.backend.processors.pdf_processor._run_fitz_render",
+                side_effect=RuntimeError("forced fitz crash"),
+            ):
+                _mod._dispatch_render(
+                    doc=doc,
+                    translations={},
+                    output_path=out_path,
+                    target_lang="en",
+                    mode=RenderMode.OVERLAY,
+                    draw_mask=True,
+                    doc_id="crash-wrap-test.pdf",
+                    warnings_callback=captured.append,
+                )
+
+            assert captured == [_mod.FITZ_FALLBACK_WARNING]
+
+            result_doc = fitz.open(out_path)
+            page_dict = result_doc[0].get_text("dict")
+            line_ys = {
+                round(line["bbox"][1], 1)
+                for block in page_dict.get("blocks", [])
+                for line in block.get("lines", [])
+            }
+            result_doc.close()
+
+            assert len(line_ys) > 1, (
+                "the ReportLab fallback must wrap the long translation across "
+                f"multiple lines, got {len(line_ys)} distinct line(s)"
+            )
+        finally:
+            if os.path.exists(out_path):
+                os.unlink(out_path)
+
 
 # ---------------------------------------------------------------------------
 # TestDocxRoutingWarning (AC-2)
@@ -339,4 +423,148 @@ class TestWarningsApiPropagation:
         warnings_val = data.get("warnings")
         assert warnings_val is None or warnings_val == [], (
             f"Expected null/empty warnings when no degradation, got {warnings_val!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# TestTruncationDisclosureWarning (AC-11, BR-104)
+# ---------------------------------------------------------------------------
+
+class TestTruncationDisclosureWarning:
+    """AC-11/BR-104: post-render sweep emits exactly one aggregated
+    job.warnings entry per file when any element has render_truncated=True.
+
+    Entry point: _dispatch_render directly (not translate_pdf), matching the
+    file's established anti-tautology convention.
+    """
+
+    @staticmethod
+    def _make_doc(pages_with_truncation):
+        from app.backend.models.translatable_document import (
+            BoundingBox,
+            DocumentMetadata,
+            ElementType,
+            PageInfo,
+            TranslatableDocument,
+            TranslatableElement,
+        )
+
+        elements = []
+        seen_pages = []
+        for i, (page_num, truncated) in enumerate(pages_with_truncation):
+            elem = TranslatableElement(
+                element_id=f"e{i}",
+                content="text",
+                element_type=ElementType.TEXT,
+                page_num=page_num,
+                bbox=BoundingBox(x0=0, y0=0, x1=100, y1=20),
+            )
+            elem.render_truncated = truncated
+            elements.append(elem)
+            if page_num not in seen_pages:
+                seen_pages.append(page_num)
+        pages = [PageInfo(page_num=p, width=612, height=792) for p in seen_pages]
+        return TranslatableDocument(
+            source_path="/fake.pdf",
+            source_type="pdf",
+            elements=elements,
+            pages=pages,
+            metadata=DocumentMetadata(page_count=len(pages), has_text_layer=True),
+        )
+
+    def test_one_aggregated_warning_per_file_regardless_of_truncated_count(self):
+        """Case 1: 3 truncated elements across 2 pages -> exactly ONE aggregated entry."""
+        import app.backend.processors.pdf_processor as _mod
+
+        doc = self._make_doc([(1, True), (1, True), (2, True)])
+        captured = []
+
+        with patch.object(_mod, "_run_fitz_render"):
+            _mod._dispatch_render(
+                doc=doc,
+                translations={},
+                output_path="/tmp/trunc_disclosure_test.pdf",
+                target_lang="en",
+                mode=None,
+                draw_mask=False,
+                doc_id="trunc-multi.pdf",
+                warnings_callback=captured.append,
+            )
+
+        assert len(captured) == 1, f"expected exactly 1 aggregated warning, got {captured!r}"
+        assert "trunc-multi.pdf" in captured[0]
+        assert "1" in captured[0] and "2" in captured[0], (
+            f"aggregated warning must name the affected page(s), got {captured[0]!r}"
+        )
+
+    def test_no_warning_entry_when_no_truncation(self):
+        """Case 2: no element truncated -> disclosure sweep emits nothing."""
+        import app.backend.processors.pdf_processor as _mod
+
+        doc = self._make_doc([(1, False), (2, False)])
+        captured = []
+
+        with patch.object(_mod, "_run_fitz_render"):
+            _mod._dispatch_render(
+                doc=doc,
+                translations={},
+                output_path="/tmp/no_trunc_disclosure_test.pdf",
+                target_lang="en",
+                mode=None,
+                draw_mask=False,
+                doc_id="clean-multi.pdf",
+                warnings_callback=captured.append,
+            )
+
+        assert captured == [], f"expected no warnings when nothing was truncated, got {captured!r}"
+
+    def test_warning_fires_identically_fitz_or_reportlab_truncation_source(self):
+        """Case 3 (CONTINGENT on IP-1/IP-12 element-ref threading): the sweep
+        reads the IR render_truncated marker post-render — it must fire the
+        same way regardless of WHICH backend (fitz primary or the ReportLab
+        fallback) set that marker.
+        """
+        import app.backend.processors.pdf_processor as _mod
+
+        # render_truncated already set on the IR (simulates the fitz path
+        # having marked it during a real _run_fitz_render call).
+        doc_fitz_source = self._make_doc([(1, True)])
+        captured_fitz = []
+        with patch.object(_mod, "_run_fitz_render"):
+            _mod._dispatch_render(
+                doc=doc_fitz_source,
+                translations={},
+                output_path="/tmp/fitz_source.pdf",
+                target_lang="en",
+                mode=None,
+                draw_mask=False,
+                doc_id="fitz-source.pdf",
+                warnings_callback=captured_fitz.append,
+            )
+
+        # render_truncated already set on the IR (simulates the ReportLab
+        # fallback path having marked it via the IP-1 element-ref thread),
+        # AND the fitz primary path fails so the fallback branch also fires.
+        doc_reportlab_source = self._make_doc([(1, True)])
+        captured_reportlab = []
+        with patch.object(_mod, "_run_fitz_render", side_effect=RuntimeError("forced fallback")), \
+             patch.object(_mod, "_run_reportlab_render"):
+            _mod._dispatch_render(
+                doc=doc_reportlab_source,
+                translations={},
+                output_path="/tmp/reportlab_source.pdf",
+                target_lang="en",
+                mode=None,
+                draw_mask=False,
+                doc_id="reportlab-source.pdf",
+                warnings_callback=captured_reportlab.append,
+            )
+
+        assert len(captured_fitz) == 1, f"fitz-source truncation must emit 1 entry, got {captured_fitz!r}"
+        truncation_entries_reportlab = [
+            w for w in captured_reportlab if w != _mod.FITZ_FALLBACK_WARNING
+        ]
+        assert len(truncation_entries_reportlab) == 1, (
+            "truncation disclosure must fire identically on the ReportLab-fallback "
+            f"source, got {captured_reportlab!r}"
         )

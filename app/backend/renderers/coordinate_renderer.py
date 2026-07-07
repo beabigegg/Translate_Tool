@@ -261,13 +261,19 @@ class CoordinateRenderer(BaseRenderer):
                 if translated_text is None:
                     continue
 
-                # Shift to right column
+                # Shift to right column. Thread style/element (IP-1) so the
+                # shared cascade (render_text_region) gets a faithful starting
+                # font AND a render_truncated marker target (BR-38, AC-3) on
+                # this side-by-side sub-path, same as create_text_regions_from_
+                # elements does for the fitz side-by-side path.
                 region = TextRegion(
                     text=translated_text,
                     x0=element.bbox.x0 + current_original_width,
                     y0=element.bbox.y0,
                     x1=element.bbox.x1 + current_original_width,
                     y1=element.bbox.y1,
+                    style=element.style,
+                    element=element,
                 )
                 translation_regions.append(region)
 

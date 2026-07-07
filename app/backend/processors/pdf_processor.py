@@ -24,6 +24,7 @@ from app.backend.config import (
     PDF_HEADER_FOOTER_MARGIN_PT,
     PDF_PARSER_ENGINE,
     PDF_SKIP_HEADER_FOOTER,
+    PDF_TABLE_ROW_GROWTH_ENABLED,
 )
 from app.backend.processors.com_helpers import is_win32com_available, word_convert
 from app.backend.processors.docx_processor import translate_docx
@@ -44,6 +45,14 @@ FITZ_FALLBACK_WARNING = (
 DOCX_ROUTING_WARNING = (
     "Layout preservation skipped: PDF was converted to bilingual DOCX mode — "
     "use output_format=pdf for layout-faithful output"
+)
+# BR-104 (pdf-render-truncation-disclosure, AC-11): one aggregated entry per
+# file naming the affected page(s) when any element's translated text was
+# truncated by the BR-36 fit cascade (render_truncated=True). Disclosure-only —
+# never fails the job, never alters output.
+TEXT_TRUNCATION_WARNING_TEMPLATE = (
+    "'{doc_id}' page(s) {pages}: translated text did not fully fit its layout "
+    "box and was truncated — content may be incomplete in the rendered output"
 )
 
 def _apply_formula_passthrough(elements: list) -> None:
@@ -1052,9 +1061,23 @@ def _dispatch_render(
         * ReportLab fallback is invoked.
     - If ReportLab also raises, the exception propagates (job → failed).
     - Never catches BaseException or KeyboardInterrupt (Decision B).
+
+    AC-10/BR-103: before dispatch, a bounded local table-row-growth pre-pass
+    mutates ``doc`` in place (grows over-full table rows within their own
+    table/page budget), gated by PDF_TABLE_ROW_GROWTH_ENABLED.
+    AC-11/BR-104: after the render call returns (either branch), ``doc`` is
+    swept for residual render_truncated markers and exactly one aggregated
+    warning is emitted per file via ``warnings_callback`` when any are found.
     """
     if log is None:
         log = lambda s: None  # noqa: E731
+
+    if doc is not None and PDF_TABLE_ROW_GROWTH_ENABLED:
+        try:
+            from app.backend.renderers.text_region_renderer import grow_table_rows
+            grow_table_rows(doc)
+        except Exception as exc:
+            logger.warning(f"[PDF] row-growth pre-pass failed for '{doc_id}': {exc}")
 
     try:
         _run_fitz_render(
@@ -1083,6 +1106,33 @@ def _dispatch_render(
             draw_mask=draw_mask,
             log=log,
         )
+
+    _emit_truncation_disclosure_warning(doc, doc_id, warnings_callback)
+
+
+def _emit_truncation_disclosure_warning(
+    doc: "TranslatableDocument",
+    doc_id: str,
+    warnings_callback: Optional[Callable[[str], None]],
+) -> None:
+    """AC-11/BR-104: emit exactly one aggregated job.warnings entry per file
+    naming the affected page(s) when any element has render_truncated=True.
+
+    Disclosure-only: never raises, never alters output, no-op when doc is
+    None/empty or no element was truncated.
+    """
+    if doc is None or not warnings_callback:
+        return
+    try:
+        truncated_pages = sorted({
+            elem.page_num for elem in doc.elements if getattr(elem, "render_truncated", False)
+        })
+    except Exception:
+        return
+    if not truncated_pages:
+        return
+    pages_str = ", ".join(str(p) for p in truncated_pages)
+    warnings_callback(TEXT_TRUNCATION_WARNING_TEMPLATE.format(doc_id=doc_id, pages=pages_str))
 
 
 def parse_pdf_to_document(

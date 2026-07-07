@@ -552,6 +552,78 @@ class TestLayoutEquivalence:
             assert abs(p.x1 - elem.bbox.x1) <= TOLERANCE
             assert abs(p.y1 - elem.bbox.y1) <= TOLERANCE
 
+    def test_reportlab_path_also_calls_shared_fit_text_cascade(self):
+        """AC-8/BR-40 (ADR-0012): the ReportLab draw path must call the SAME
+        shared fit_text_cascade the fitz path calls (test_insert_text_calls_
+        fit_cascade covers the fitz side) — the shared-call invariant replaces
+        the old fitz-exclusivity invariant this contract used to enforce."""
+        from reportlab.pdfgen.canvas import Canvas
+        from app.backend.renderers.text_region_renderer import (
+            CascadeDecision,
+            TextRegion,
+            render_text_region,
+        )
+
+        buffer = io.BytesIO()
+        canvas = Canvas(buffer, pagesize=(612, 792))
+        region = TextRegion(text="Hello World", x0=72, y0=700, x1=200, y1=720)
+
+        with patch(
+            "app.backend.renderers.text_region_renderer.fit_text_cascade"
+        ) as mock_cascade:
+            mock_cascade.return_value = CascadeDecision(
+                font_size=10.0,
+                line_spacing=1.15,
+                letter_spacing=0.0,
+                overflow=False,
+                truncated=False,
+                fitted_text="Hello World",
+            )
+            render_text_region(canvas, region, target_lang="en", page_height=792)
+
+        assert mock_cascade.called, (
+            "render_text_region (ReportLab draw path) must call fit_text_cascade "
+            "— BR-40 amendment: the SAME shared cascade authority for ALL PDF paths"
+        )
+
+    def test_row_growth_geometry_identical_fitz_vs_reportlab(self):
+        """AC-10 case 5 (BR-103): after grow_table_rows mutates the shared IR
+        once, BOTH backends read the identical grown geometry via the ONE
+        shared reflow_document() output — convergence by construction
+        (BR-35/BR-40), not by re-deriving growth per backend."""
+        from app.backend.renderers.bbox_reflow import reflow_document
+        from app.backend.renderers.text_region_renderer import grow_table_rows
+
+        long_text = (
+            "This translated sentence is far too long to fit inside a narrow, "
+            "short table row no matter how much the font shrinks. " * 3
+        )
+        row0 = TranslatableElement(
+            element_id="c1", content="short", element_type=ElementType.TABLE_CELL,
+            page_num=1, bbox=BoundingBox(x0=50, y0=100, x1=150, y1=115),
+            translated_content=long_text, reading_order=0,
+            metadata={"table_id": "p1_t0", "table_row": 0, "table_col": 0},
+        )
+        row1 = TranslatableElement(
+            element_id="c2", content="next row", element_type=ElementType.TABLE_CELL,
+            page_num=1, bbox=BoundingBox(x0=50, y0=115, x1=150, y1=130),
+            translated_content="next row", reading_order=1,
+            metadata={"table_id": "p1_t0", "table_row": 1, "table_col": 0},
+        )
+        doc = _make_doc([row0, row1])
+
+        grow_table_rows(doc)
+        delta = row0.bbox.y1 - 115
+        assert delta > 0, "fixture must actually trigger row growth"
+
+        # Both fitz_renderer._generate_overlay and CoordinateRenderer._render_overlay
+        # obtain placement geometry via this SAME shared call.
+        placements = reflow_document(doc)
+        p_row1 = next(p for p in placements if p.element_id == "c2")
+        assert p_row1.y0 == pytest.approx(row1.bbox.y0)
+        assert p_row1.y1 == pytest.approx(row1.bbox.y1)
+        assert p_row1.y0 == pytest.approx(115 + delta)
+
 
 # ---------------------------------------------------------------------------
 # AC-6  TestMalformedIRDataBoundary

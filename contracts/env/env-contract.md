@@ -3,8 +3,8 @@ contract: env
 summary: Environment variable inventory, secret handling, and deployment sync policy.
 owner: platform-team
 surface: runtime-config
-schema-version: 0.14.0
-last-changed: 2026-07-06
+schema-version: 0.15.0
+last-changed: 2026-07-07
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -51,6 +51,7 @@ breaking-change-policy: deprecate-2-minors
 | OCR_ENABLED | backend | all | no | no | false | false | platform-team | boolean (true/false or 1/0) | yes | When false (default), PDF pages whose `page.get_text()` returns near-empty content produce a WARNING and near-blank IR output. When true, enables the lazy-imported OCR backend (Surya or PaddleOCR) for such pages. The OCR library must be installed separately; the backend starts normally and CI passes without it when `OCR_ENABLED=false`. See BR-87. |
 | LIBREOFFICE_PATH | backend | all | no | no | (empty = auto-detect) | /usr/bin/soffice | platform-team | non-empty string (valid executable path) when set | no | Explicit path to the LibreOffice binary. When empty (default), `is_libreoffice_available()` auto-detects via `PATH` lookup then common per-OS install locations. When set but not executable, falls back to auto-detection with a WARNING logged. See BR-9, BR-96, § External Binary Dependencies. |
 | LIBREOFFICE_TIMEOUT | backend | all | no | no | 120 | 120 | platform-team | positive integer (seconds) | no | Wall-clock timeout for the LibreOffice headless conversion subprocess (`.doc`/`.xls`/`.ppt` → modern format). On timeout, conversion raises and the affected file is skipped (per-file isolation, BR-96); the job continues for other files. See BR-9, BR-96, § External Binary Dependencies. |
+| PDF_TABLE_ROW_GROWTH_ENABLED | backend | all | no | no | true | true | application-team | boolean (true/false or 1/0) | no | Enables the bounded local table-row-growth pre-pass (BR-103, ADR-0013) that runs once in `pdf_processor._dispatch_render` before either PDF renderer backend. Set to `false`/`0` to disable it as a production kill-switch: in overlay mode the pre-pass shifts translated text and whitening rects but NOT the preserved source-PDF table rule lines/graphics, so a grown row can visually cross the original horizontal rules (HIGH risk, best-effort mitigation only — the within-table page-capped growth bound limits but does not eliminate this). When disabled, over-full table cells fall straight through to the normal BR-36 cascade (shrink/truncate), surfaced via the BR-104 disclosure warning; AC-9 (real whitespace-below) and AC-11 (truncation disclosure) are unaffected by this flag. See BR-103. |
 
 ## External Binary Dependencies
 
