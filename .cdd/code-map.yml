@@ -1,6 +1,6 @@
-# generated: 2026-07-08T00:23:39Z by cdd-kit 3.6.0
-# files: 200, src-lines: 57413, map-lines: 5156, compression: 11.1x
-# sources-digest: aa6a733f46d01983546ff7714767b91d95462109c90902be42ed58b7d45292c9
+# generated: 2026-07-08T06:41:10Z by cdd-kit 3.6.0
+# files: 203, src-lines: 58727, map-lines: 5264, compression: 11.2x
+# sources-digest: 25f3368e9f94908d6aa9d71f38a8d44c6435652f8f69e49d59540c39a3428fe6
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
@@ -262,7 +262,7 @@ app/backend/clients/openai_compatible_client.py:  # 422 lines
         - { name: set_runtime_options_override, lines: 417-418 }
         - { name: set_cache_variant, lines: 420-422 }
 
-app/backend/config.py:  # 566 lines
+app/backend/config.py:  # 579 lines
   imports:
     - { module: __future__, items: [annotations], line: 5 }
     - { module: logging, items: [], line: 7 }
@@ -323,70 +323,72 @@ app/backend/config.py:  # 566 lines
     - { name: PDF_HEADER_FOOTER_MARGIN_PT, line: 169 }
     - { name: LAYOUT_DETECTOR_MODEL_PATH, line: 174 }
     - { name: LAYOUT_DETECTOR_ENABLED, line: 176 }
-    - { name: PDF_RENDER_DPI, line: 181 }
-    - { name: OCR_ENABLED, line: 186 }
-    - { name: PDF_TABLE_ROW_GROWTH_ENABLED, line: 195 }
-    - { name: TABLE_RECOGNITION_MODEL_PATH, line: 200 }
-    - { name: TABLE_RECOGNITION_ENABLED, line: 203 }
-    - { name: JUDGE_ENABLED, line: 208 }
-    - { name: JUDGE_PROVIDER, line: 213 }
-    - { name: JUDGE_MODEL, line: 217 }
-    - { name: JUDGE_LAYOUT_MODEL, line: 220 }
-    - { name: JUDGE_CLOUD_PROVIDER_ID, line: 223 }
-    - { name: JUDGE_MAX_ITERATIONS, line: 225 }
-    - { name: LAYOUT_PRESERVATION_MODE, line: 228 }
-    - { name: DEFAULT_FONT_FAMILY, line: 229 }
-    - { name: MIN_READABLE_FONT_PT, line: 230 }
-    - { name: MIN_FONT_SIZE_PT, line: 231 }
-    - { name: MAX_FONT_SIZE_PT, line: 232 }
-    - { name: FONT_SIZE_SHRINK_FACTOR, line: 233 }
-    - { name: PDF_DRAW_MASK, line: 234 }
-    - { name: PDF_MASK_MARGIN_PT, line: 235 }
-    - { name: PDF_SHOW_MISSING_PLACEHOLDER, line: 236 }
-    - { name: FONT_SIZE_CONFIG, line: 240 }
-    - { name: MAX_SEGMENTS, line: 253 }
-    - { name: MAX_TEXT_LENGTH, line: 254 }
-    - { name: MAX_JOBS_IN_MEMORY, line: 257 }
-    - { name: JOB_TTL_HOURS, line: 258 }
-    - { name: CLEANUP_INTERVAL_MINUTES, line: 259 }
-    - { name: HTTP_POOL_CONNECTIONS, line: 262 }
-    - { name: HTTP_POOL_MAXSIZE, line: 263 }
-    - { name: ENV_CONNECT_TIMEOUT, line: 265 }
-    - { name: ENV_READ_TIMEOUT, line: 266 }
-    - { name: LIBREOFFICE_PATH, line: 269 }
-    - { name: LIBREOFFICE_TIMEOUT, line: 270 }
-    - { name: VERIFY_MAX_RETRIES, line: 272 }
-    - { name: TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED, line: 275 }
-    - { name: TERM_INJECT_CONF_THRESHOLD, line: 276 }
-    - { name: TERM_EMBEDDING_MODEL, line: 279 }
-    - { name: TERM_EMBEDDING_THRESHOLD, line: 280 }
-    - { name: TERM_EXTRACTION_MODEL, line: 281 }
-    - { name: SUPPORTED_EXTENSIONS, line: 283 }
-    - { name: LANG_CODE_MAP, line: 285 }
-    - { name: DATA_DIR, line: 357 }
-    - { name: JOBS_DIR, line: 358 }
-    - { name: LOG_DIR, line: 359 }
-    - { name: TRANSLATION_CACHE_ENABLED, line: 360 }
-    - { name: CACHE_DIR, line: 361 }
-    - { name: DEFAULT_HOST, line: 363 }
-    - { name: DEFAULT_PORT, line: 364 }
-    - { name: ALLOWED_ORIGINS, line: 366 }
+    - { name: LAYOUT_QA_ENABLED, line: 183 }
+    - { name: LAYOUT_QA_MAX_BOXES_PER_PAGE, line: 189 }
+    - { name: PDF_RENDER_DPI, line: 194 }
+    - { name: OCR_ENABLED, line: 199 }
+    - { name: PDF_TABLE_ROW_GROWTH_ENABLED, line: 208 }
+    - { name: TABLE_RECOGNITION_MODEL_PATH, line: 213 }
+    - { name: TABLE_RECOGNITION_ENABLED, line: 216 }
+    - { name: JUDGE_ENABLED, line: 221 }
+    - { name: JUDGE_PROVIDER, line: 226 }
+    - { name: JUDGE_MODEL, line: 230 }
+    - { name: JUDGE_LAYOUT_MODEL, line: 233 }
+    - { name: JUDGE_CLOUD_PROVIDER_ID, line: 236 }
+    - { name: JUDGE_MAX_ITERATIONS, line: 238 }
+    - { name: LAYOUT_PRESERVATION_MODE, line: 241 }
+    - { name: DEFAULT_FONT_FAMILY, line: 242 }
+    - { name: MIN_READABLE_FONT_PT, line: 243 }
+    - { name: MIN_FONT_SIZE_PT, line: 244 }
+    - { name: MAX_FONT_SIZE_PT, line: 245 }
+    - { name: FONT_SIZE_SHRINK_FACTOR, line: 246 }
+    - { name: PDF_DRAW_MASK, line: 247 }
+    - { name: PDF_MASK_MARGIN_PT, line: 248 }
+    - { name: PDF_SHOW_MISSING_PLACEHOLDER, line: 249 }
+    - { name: FONT_SIZE_CONFIG, line: 253 }
+    - { name: MAX_SEGMENTS, line: 266 }
+    - { name: MAX_TEXT_LENGTH, line: 267 }
+    - { name: MAX_JOBS_IN_MEMORY, line: 270 }
+    - { name: JOB_TTL_HOURS, line: 271 }
+    - { name: CLEANUP_INTERVAL_MINUTES, line: 272 }
+    - { name: HTTP_POOL_CONNECTIONS, line: 275 }
+    - { name: HTTP_POOL_MAXSIZE, line: 276 }
+    - { name: ENV_CONNECT_TIMEOUT, line: 278 }
+    - { name: ENV_READ_TIMEOUT, line: 279 }
+    - { name: LIBREOFFICE_PATH, line: 282 }
+    - { name: LIBREOFFICE_TIMEOUT, line: 283 }
+    - { name: VERIFY_MAX_RETRIES, line: 285 }
+    - { name: TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED, line: 288 }
+    - { name: TERM_INJECT_CONF_THRESHOLD, line: 289 }
+    - { name: TERM_EMBEDDING_MODEL, line: 292 }
+    - { name: TERM_EMBEDDING_THRESHOLD, line: 293 }
+    - { name: TERM_EXTRACTION_MODEL, line: 294 }
+    - { name: SUPPORTED_EXTENSIONS, line: 296 }
+    - { name: LANG_CODE_MAP, line: 298 }
+    - { name: DATA_DIR, line: 370 }
+    - { name: JOBS_DIR, line: 371 }
+    - { name: LOG_DIR, line: 372 }
+    - { name: TRANSLATION_CACHE_ENABLED, line: 373 }
+    - { name: CACHE_DIR, line: 374 }
+    - { name: DEFAULT_HOST, line: 376 }
+    - { name: DEFAULT_PORT, line: 377 }
+    - { name: ALLOWED_ORIGINS, line: 379 }
   classes:
     - name: ModelType
       lines: 18-22
     - name: TimeoutConfig
-      lines: 373-426
+      lines: 386-439
       methods:
-        - { name: set_from_config, lines: 381-383 }
-        - { name: set_timeouts, lines: 385-387 }
-        - { name: clear_runtime_overrides, lines: 389-391 }
-        - { name: connect_timeout, lines: 394-407 }
-        - { name: read_timeout, lines: 410-423 }
-        - { name: get_timeout_tuple, lines: 425-426 }
+        - { name: set_from_config, lines: 394-396 }
+        - { name: set_timeouts, lines: 398-400 }
+        - { name: clear_runtime_overrides, lines: 402-404 }
+        - { name: connect_timeout, lines: 407-420 }
+        - { name: read_timeout, lines: 423-436 }
+        - { name: get_timeout_tuple, lines: 438-439 }
   functions:
-    - { name: _expand_env_vars, lines: 440-467 }
-    - { name: _expand_node, lines: 470-497 }
-    - { name: load_providers_config, lines: 500-566 }
+    - { name: _expand_env_vars, lines: 453-480 }
+    - { name: _expand_node, lines: 483-510 }
+    - { name: load_providers_config, lines: 513-579 }
 
 app/backend/main.py:  # 64 lines
   imports:
@@ -755,7 +757,7 @@ app/backend/processors/libreoffice_helpers.py:  # 226 lines
     - { name: xls_to_xlsx, lines: 199-211 }
     - { name: ppt_to_pptx, lines: 214-226 }
 
-app/backend/processors/orchestrator.py:  # 909 lines
+app/backend/processors/orchestrator.py:  # 910 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: logging, items: [], line: 5 }
@@ -782,43 +784,44 @@ app/backend/processors/orchestrator.py:  # 909 lines
     - { name: _extract_all_segments, lines: 215-318 }
     - { name: _detect_document_context, lines: 321-338 }
     - { name: _output_name, lines: 341-367 }
-    - { name: process_files, lines: 370-909 }
+    - { name: process_files, lines: 370-910 }
 
-app/backend/processors/pdf_processor.py:  # 1164 lines
+app/backend/processors/pdf_processor.py:  # 1223 lines
   imports:
     - { module: __future__, items: [annotations], line: 8 }
     - { module: logging, items: [], line: 10 }
     - { module: os, items: [], line: 11 }
     - { module: threading, items: [], line: 12 }
     - { module: pathlib, items: [Path], line: 13 }
-    - { module: typing, items: [TYPE_CHECKING, Callable, Dict, List, Optional], line: 14 }
+    - { module: typing, items: [TYPE_CHECKING, Any, Callable, Dict, List, Optional], line: 14 }
     - { module: docx, items: [], line: 16 }
     - { module: PyPDF2, items: [PdfReader], line: 17 }
     - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 19 }
-    - { module: app.backend.config, items: [MAX_SEGMENTS, MAX_TEXT_LENGTH, PDF_DRAW_MASK, PDF_HEADER_FOOTER_MARGIN_PT, PDF_PARSER_ENGINE, PDF_SKIP_HEADER_FOOTER, PDF_TABLE_ROW_GROWTH_ENABLED], line: 20 }
-    - { module: app.backend.processors.com_helpers, items: [is_win32com_available, word_convert], line: 29 }
-    - { module: app.backend.processors.docx_processor, items: [translate_docx], line: 30 }
-    - { module: app.backend.utils.exceptions, items: [check_document_size_limits], line: 31 }
-    - { module: app.backend.utils.translation_helpers, items: [translate_blocks_batch], line: 32 }
+    - { module: app.backend.config, items: [LAYOUT_QA_ENABLED, MAX_SEGMENTS, MAX_TEXT_LENGTH, PDF_DRAW_MASK, PDF_HEADER_FOOTER_MARGIN_PT, PDF_PARSER_ENGINE, PDF_SKIP_HEADER_FOOTER, PDF_TABLE_ROW_GROWTH_ENABLED], line: 20 }
+    - { module: app.backend.processors.com_helpers, items: [is_win32com_available, word_convert], line: 30 }
+    - { module: app.backend.processors.docx_processor, items: [translate_docx], line: 31 }
+    - { module: app.backend.services.layout_qa, items: [run_layout_qa], line: 32 }
+    - { module: app.backend.utils.exceptions, items: [check_document_size_limits], line: 33 }
+    - { module: app.backend.utils.translation_helpers, items: [translate_blocks_batch], line: 34 }
   constants:
-    - { name: FITZ_FALLBACK_WARNING, line: 41 }
-    - { name: DOCX_ROUTING_WARNING, line: 45 }
-    - { name: TEXT_TRUNCATION_WARNING_TEMPLATE, line: 53 }
+    - { name: FITZ_FALLBACK_WARNING, line: 43 }
+    - { name: DOCX_ROUTING_WARNING, line: 47 }
+    - { name: TEXT_TRUNCATION_WARNING_TEMPLATE, line: 55 }
   functions:
-    - { name: _apply_formula_passthrough, lines: 58-75 }
-    - { name: _group_table_elements, lines: 78-101 }
-    - { name: _translate_pdf_tables_with_context, lines: 104-207 }
-    - { name: _get_pymupdf_parser, lines: 214-228 }
-    - { name: _save_layout_viz, lines: 231-281 }
-    - { name: translate_pdf, lines: 284-413 }
-    - { name: _translate_pdf_with_pymupdf, lines: 416-656 }
-    - { name: _translate_pdf_with_pypdf2, lines: 659-779 }
-    - { name: _translate_pdf_to_pdf, lines: 782-993 }
-    - { name: _run_fitz_render, lines: 1000-1017 }
-    - { name: _run_reportlab_render, lines: 1020-1041 }
-    - { name: _dispatch_render, lines: 1044-1110 }
-    - { name: _emit_truncation_disclosure_warning, lines: 1113-1135 }
-    - { name: parse_pdf_to_document, lines: 1138-1164 }
+    - { name: _apply_formula_passthrough, lines: 60-77 }
+    - { name: _group_table_elements, lines: 80-103 }
+    - { name: _translate_pdf_tables_with_context, lines: 106-209 }
+    - { name: _get_pymupdf_parser, lines: 216-230 }
+    - { name: _save_layout_viz, lines: 233-283 }
+    - { name: translate_pdf, lines: 286-423 }
+    - { name: _translate_pdf_with_pymupdf, lines: 426-680 }
+    - { name: _translate_pdf_with_pypdf2, lines: 683-817 }
+    - { name: _translate_pdf_to_pdf, lines: 820-1045 }
+    - { name: _run_fitz_render, lines: 1052-1069 }
+    - { name: _run_reportlab_render, lines: 1072-1093 }
+    - { name: _dispatch_render, lines: 1096-1169 }
+    - { name: _emit_truncation_disclosure_warning, lines: 1172-1194 }
+    - { name: parse_pdf_to_document, lines: 1197-1223 }
 
 app/backend/processors/pptx_processor.py:  # 481 lines
   imports:
@@ -1149,6 +1152,28 @@ app/backend/services/job_manager.py:  # 780 lines
         - { name: get_stats, lines: 764-780 }
   functions:
     - { name: _record_job_warning, lines: 146-156 }
+
+app/backend/services/layout_qa.py:  # 311 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 21 }
+    - { module: dataclasses, items: [dataclass, field], line: 23 }
+    - { module: types, items: [SimpleNamespace], line: 24 }
+    - { module: typing, items: [Callable, Dict, List, Optional], line: 25 }
+    - { module: app.backend.config, items: [LAYOUT_QA_MAX_BOXES_PER_PAGE], line: 27 }
+  constants:
+    - { name: BIOU_REGRESSION_BUDGET, line: 35 }
+    - { name: LAYOUT_QA_WARNING_TEMPLATE, line: 142 }
+  classes:
+    - name: LayoutQAResult
+      lines: 152-158
+  functions:
+    - { name: _iou, lines: 38-48 }
+    - { name: compute_biou, lines: 51-66 }
+    - { name: check_residual_text, lines: 69-95 }
+    - { name: compute_truncation_rate, lines: 98-133 }
+    - { name: _normalize, lines: 161-163 }
+    - { name: _rendered_page_bboxes, lines: 166-169 }
+    - { name: run_layout_qa, lines: 172-311 }
 
 app/backend/services/metrics.py:  # 160 lines
   imports:
@@ -2225,20 +2250,17 @@ tests/fixtures/golden/generate_simple_test_pdf.py:  # 25 lines
 
 tests/metrics/__init__.py:  # 0 lines
 
-tests/metrics/biou.py:  # 45 lines
-  constants:
-    - { name: BIOU_REGRESSION_BUDGET, line: 14 }
-  functions:
-    - { name: _iou, lines: 17-27 }
-    - { name: compute_biou, lines: 30-45 }
+tests/metrics/biou.py:  # 15 lines
+  imports:
+    - { module: app.backend.services.layout_qa, items: [BIOU_REGRESSION_BUDGET, _iou, compute_biou], line: 11 }
 
-tests/metrics/residual_text.py:  # 40 lines
-  functions:
-    - { name: check_residual_text, lines: 14-40 }
+tests/metrics/residual_text.py:  # 8 lines
+  imports:
+    - { module: app.backend.services.layout_qa, items: [check_residual_text], line: 8 }
 
-tests/metrics/truncation_rate.py:  # 48 lines
-  functions:
-    - { name: compute_truncation_rate, lines: 13-48 }
+tests/metrics/truncation_rate.py:  # 8 lines
+  imports:
+    - { module: app.backend.services.layout_qa, items: [compute_truncation_rate], line: 8 }
 
 tests/test_bbox_utils.py:  # 253 lines
   imports:
@@ -2579,7 +2601,7 @@ tests/test_docx_parser.py:  # 226 lines
         - { name: parser_include_inserts, lines: 197-199 }
         - { name: test_skip_inserted_translation, lines: 201-226 }
 
-tests/test_env_contract.py:  # 251 lines
+tests/test_env_contract.py:  # 286 lines
   imports:
     - { module: __future__, items: [annotations], line: 7 }
     - { module: pathlib, items: [Path], line: 9 }
@@ -2588,7 +2610,7 @@ tests/test_env_contract.py:  # 251 lines
     - { name: ENV_CONTRACT_PATH, line: 13 }
   classes:
     - name: TestEnvContractDeclared
-      lines: 20-148
+      lines: 20-183
       methods:
         - { name: test_ollama_base_url_declared, lines: 23-24 }
         - { name: test_translation_cache_enabled_declared, lines: 26-27 }
@@ -2603,23 +2625,26 @@ tests/test_env_contract.py:  # 251 lines
         - { name: test_term_embedding_model_declared, lines: 97-104 }
         - { name: test_term_embedding_threshold_declared, lines: 106-113 }
         - { name: test_term_extraction_model_declared, lines: 115-122 }
-        - { name: test_term_embedding_model_wired_in_config, lines: 124-131 }
-        - { name: test_term_embedding_threshold_wired_in_config, lines: 133-139 }
-        - { name: test_term_extraction_model_wired_in_config, lines: 141-148 }
+        - { name: test_layout_qa_enabled_declared, lines: 124-131 }
+        - { name: test_layout_qa_max_boxes_per_page_declared, lines: 133-140 }
+        - { name: test_layout_qa_enabled_wired_in_config_default_false, lines: 142-157 }
+        - { name: test_term_embedding_model_wired_in_config, lines: 159-166 }
+        - { name: test_term_embedding_threshold_wired_in_config, lines: 168-174 }
+        - { name: test_term_extraction_model_wired_in_config, lines: 176-183 }
     - name: TestQeDefault
-      lines: 151-185
+      lines: 186-220
       methods:
-        - { name: test_qe_enabled_default_true_in_contract, lines: 154-168 }
-        - { name: test_qe_enabled_default_true_in_config, lines: 170-185 }
+        - { name: test_qe_enabled_default_true_in_contract, lines: 189-203 }
+        - { name: test_qe_enabled_default_true_in_config, lines: 205-220 }
     - name: TestQeRescoreThresholdRetired
-      lines: 188-251
+      lines: 223-286
       methods:
-        - { name: test_qe_rescore_threshold_removed_from_contract, lines: 191-195 }
-        - { name: test_qe_rescore_threshold_removed_from_schema, lines: 197-205 }
-        - { name: test_qe_rescore_threshold_removed_from_env_template, lines: 207-212 }
-        - { name: test_qe_rescore_threshold_removed_from_config, lines: 214-220 }
-        - { name: test_env_contract_qe_enabled_row_scrubbed_of_rescore_claim, lines: 222-226 }
-        - { name: test_qe_rescore_threshold_zero_references_repo_wide, lines: 228-251 }
+        - { name: test_qe_rescore_threshold_removed_from_contract, lines: 226-230 }
+        - { name: test_qe_rescore_threshold_removed_from_schema, lines: 232-240 }
+        - { name: test_qe_rescore_threshold_removed_from_env_template, lines: 242-247 }
+        - { name: test_qe_rescore_threshold_removed_from_config, lines: 249-255 }
+        - { name: test_env_contract_qe_enabled_row_scrubbed_of_rescore_claim, lines: 257-261 }
+        - { name: test_qe_rescore_threshold_zero_references_repo_wide, lines: 263-286 }
   functions:
     - { name: _contract_text, lines: 16-17 }
 
@@ -2953,7 +2978,7 @@ tests/test_ir_pipeline_decoupling.py:  # 379 lines
   functions:
     - { name: _make_simple_ir, lines: 30-49 }
 
-tests/test_job_manager_current_segment.py:  # 213 lines
+tests/test_job_manager_current_segment.py:  # 273 lines
   imports:
     - { module: __future__, items: [annotations], line: 11 }
     - { module: tempfile, items: [], line: 13 }
@@ -2969,7 +2994,8 @@ tests/test_job_manager_current_segment.py:  # 213 lines
     - { name: _run_job_with_judge_check, lines: 83-111 }
     - { name: test_snapshot_capture_is_reference_assignment_negligible_overhead, lines: 118-138 }
     - { name: test_current_segment_snapshot_overwritten_not_appended_across_calls, lines: 145-163 }
-    - { name: test_judge_snapshot_written_onto_jobrecord_at_scoring_and_retranslating_substeps, lines: 170-213 }
+    - { name: test_pdf_job_populates_current_segment_stage_translate_end_to_end, lines: 170-223 }
+    - { name: test_judge_snapshot_written_onto_jobrecord_at_scoring_and_retranslating_substeps, lines: 230-273 }
 
 tests/test_job_record_judge.py:  # 77 lines
   imports:
@@ -3237,6 +3263,56 @@ tests/test_layout_metrics.py:  # 292 lines
         - { name: test_truncation_rate_importable_from_tests_metrics, lines: 288-291 }
   functions:
     - { name: _bb, lines: 33-35 }
+
+tests/test_layout_qa.py:  # 527 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 25 }
+    - { module: pathlib, items: [Path], line: 27 }
+    - { module: pytest, items: [], line: 29 }
+    - { module: app.backend.models.translatable_document, items: [BoundingBox, DocumentMetadata, ElementType, PageInfo, TranslatableDocument, TranslatableElement], line: 33 }
+    - { module: app.backend.services, items: [layout_qa], line: 41 }
+  constants:
+    - { name: REPO_ROOT, line: 43 }
+  classes:
+    - name: TestBiouRegressionSignal
+      lines: 104-170
+      methods:
+        - { name: test_biou_regression_below_budget_emits_one_aggregated_warning, lines: 106-132 }
+        - { name: test_biou_regression_budget_is_named_constant_and_consumed_by_run_layout_qa, lines: 134-170 }
+    - name: TestResidualSignal
+      lines: 177-286
+      methods:
+        - { name: test_residual_source_text_emits_warning, lines: 179-212 }
+        - { name: test_correctly_translated_box_not_flagged_as_residual, lines: 214-240 }
+        - { name: test_biou_and_residual_both_present_aggregate_into_single_entry, lines: 242-286 }
+    - name: TestFailSoft
+      lines: 293-367
+      methods:
+        - { name: test_metric_exception_is_caught_returns_none_no_warning, lines: 295-321 }
+        - { name: test_corrupt_output_pdf_reopen_is_fail_soft, lines: 323-340 }
+        - { name: test_missing_output_file_is_fail_soft, lines: 342-357 }
+        - { name: test_no_doc_or_no_callback_is_a_no_op, lines: 359-367 }
+    - name: TestDataBoundary
+      lines: 374-470
+      methods:
+        - { name: test_empty_source_bboxes_no_raise, lines: 376-391 }
+        - { name: test_empty_rendered_bboxes_no_raise, lines: 393-406 }
+        - { name: test_mismatched_box_counts_no_raise, lines: 408-426 }
+        - { name: test_no_text_page_no_raise, lines: 428-439 }
+        - { name: test_page_over_max_boxes_per_page_short_circuits_without_raising, lines: 441-470 }
+    - name: TestMetricCoreIdentity
+      lines: 477-500
+      methods:
+        - { name: test_biou_shim_same_object_as_runtime, lines: 479-482 }
+        - { name: test_residual_text_shim_same_object_as_runtime, lines: 484-487 }
+        - { name: test_truncation_rate_shim_same_object_as_runtime, lines: 489-492 }
+        - { name: test_iou_and_budget_importable_from_shim, lines: 494-500 }
+  functions:
+    - { name: _make_doc, lines: 50-61 }
+    - { name: _make_pdf_with_textboxes, lines: 64-90 }
+    - { name: _blank_pdf, lines: 93-97 }
+    - { name: test_br_106_documented_in_business_rules, lines: 507-511 }
+    - { name: test_office_processors_do_not_import_run_layout_qa, lines: 518-527 }
 
 tests/test_libreoffice_helpers.py:  # 259 lines
   imports:
@@ -3995,7 +4071,7 @@ tests/test_pdf_parser.py:  # 637 lines
         - { name: test_parse_invokes_layout_detector_on_native_pdf, lines: 570-610 }
         - { name: test_detector_failure_parse_still_returns_document, lines: 612-637 }
 
-tests/test_pdf_render_warnings.py:  # 579 lines
+tests/test_pdf_render_warnings.py:  # 699 lines
   imports:
     - { module: __future__, items: [annotations], line: 20 }
     - { module: threading, items: [], line: 22 }
@@ -4037,9 +4113,41 @@ tests/test_pdf_render_warnings.py:  # 579 lines
         - { name: test_one_aggregated_warning_per_file_regardless_of_truncated_count, lines: 484-507 }
         - { name: test_no_warning_entry_when_no_truncation, lines: 509-528 }
         - { name: test_warning_fires_identically_fitz_or_reportlab_truncation_source, lines: 530-579 }
+    - name: TestLayoutQaDisabled
+      lines: 586-616
+      methods:
+        - { name: test_flag_off_run_layout_qa_not_invoked_no_warning, lines: 596-616 }
+    - name: TestLayoutQaWarning
+      lines: 619-699
+      methods:
+        - { name: test_biou_regression_warning_fires_through_real_seam, lines: 625-659 }
+        - { name: test_layout_qa_exception_never_fails_job_or_fabricates_warning, lines: 661-699 }
   functions:
     - { name: _make_job, lines: 35-72 }
     - { name: _get_test_client, lines: 75-77 }
+
+tests/test_pdf_stage_snapshot.py:  # 290 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 29 }
+    - { module: pathlib, items: [Path], line: 31 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 32 }
+    - { module: app.backend.models.translatable_document, items: [BoundingBox, DocumentMetadata, ElementType, PageInfo, TranslatableDocument, TranslatableElement], line: 34 }
+  classes:
+    - name: _FakePdfPage
+      lines: 78-83
+      methods:
+        - { name: __init__, lines: 79-80 }
+        - { name: extract_text, lines: 82-83 }
+    - name: _FakePdfReader
+      lines: 86-88
+      methods:
+        - { name: __init__, lines: 87-88 }
+  functions:
+    - { name: _make_multi_element_doc, lines: 44-63 }
+    - { name: _fake_translate_blocks_batch, lines: 66-75 }
+    - { name: test_translate_pdf_signature_accepts_status_callback, lines: 95-152 }
+    - { name: test_pymupdf_path_on_segment_done_emits_translate_stage_snapshot, lines: 160-204 }
+    - { name: test_pypdf2_and_to_pdf_paths_on_segment_done_emit_translate_stage_snapshot, lines: 212-290 }
 
 tests/test_pptx_parser.py:  # 255 lines
   imports:

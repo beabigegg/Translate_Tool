@@ -1,0 +1,10 @@
+change-id: layout-qa-safety-net
+agent: ci-cd-gatekeeper
+status: done
+summary: "ci-gates.md written (76 lines). Independently verified (not relayed) from contracts/ci/ci-gate-contract.md Gate Inventory: residual-text, biou-layout-fidelity, truncation-rate, reading-order-edit-distance commands all target test files (tests/test_pdf_layout_refactor.py, tests/test_layout_metrics.py), never tests/metrics/{biou,residual_text,truncation_rate}.py module paths directly -- the metric-core re-host into app/backend/services/layout_qa.py is CI-transparent. No ci-gate-contract.md edit required; task 2.6 stays skipped. No new workflow/job/secret/Makefile target; the existing blanket unit-tests (`pytest tests/`) and contract-validate (`cdd-kit validate --contracts`) gates auto-pick up the new test file and contract edits. Carry-forward: re-export shims must keep tests.metrics.biou/residual_text/truncation_rate importable with all public names (compute_biou, _iou, BIOU_REGRESSION_BUDGET, check_residual_text, compute_truncation_rate) intact."
+artifacts:
+  - { type: tiers-modified, pointer: "3 (no change from classification; no tier promoted)" }
+  - { type: gate-promotions, pointer: "none" }
+  - { type: workflow-files-changed, pointer: "none -- .github/workflows/*.yml untouched; only ci-gates.md written" }
+  - { type: required-status-checks, pointer: "unit-tests, contract-validate, change-gate, residual-text (unchanged set; biou-layout-fidelity/truncation-rate remain informational)" }
+next-action: "implementation-planner / backend-engineer proceed; qa-reviewer spot-checks shim import-site grep before close"

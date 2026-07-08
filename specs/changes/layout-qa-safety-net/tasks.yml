@@ -1,0 +1,42 @@
+change-id: layout-qa-safety-net
+status: in-progress
+tier: 3
+tier-floor-override: "Feature-add, default-OFF flag, fail-soft, additive/observational, no output/pixel change. Gate vocab may floor on 'endpoint' (appears ONLY in the non-goal 'NOT adding a new API endpoint'), 'config'/'flag' (a default-off feature flag, not a secret/migration/auth surface), and generic feature-add terms — none reflect a real migration, secret, auth, or endpoint change. No API/UI/Office change. change-classifier confirmed Tier 3."
+context-governance: v1
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on: []
+
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done, note: "change-classifier: Tier 3, feature lane, low risk; design.md required (arch review yes); 7 agents" }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done, note: "contract-reviewer: env (LAYOUT_QA_ENABLED + LAYOUT_QA_MAX_BOXES_PER_PAGE, 0.15.0->0.16.0) + business (BR-106, 0.24.2->0.25.0) + CHANGELOG; api/data-shape/ci confirmed NO EDIT. approved" }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: done, note: "spec-architect: design.md + ADR-0015. Metric core → layout_qa.py, tests/metrics/* re-export shims (no CI-contract edit). Seam = pdf_processor._render_with_fallback (BR-104 site), not orchestrator. Warning reuses plain-str job.warnings (no data-shape edit). New BR-106. Perf: per-page matching + LAYOUT_QA_MAX_BOXES_PER_PAGE. Env: LAYOUT_QA_ENABLED + LAYOUT_QA_MAX_BOXES_PER_PAGE" }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done, note: "ci-cd-gatekeeper: ci-gates.md written; independently verified ci-gate-contract.md gate commands target test files (test_layout_metrics.py/test_pdf_layout_refactor.py), never tests/metrics/* module paths — metric-core re-host is CI-transparent, no contract edit, task 2.6 stays skipped. No new workflow/job/secret." }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done, note: "implementation-planner: IP-1..IP-6 for backend-engineer. Surfaced seam-name correction (_dispatch_render, not _render_with_fallback — BR-106 corrected) + residual-source disambiguation (filter check_residual_text to elements whose own source string still appears in rendered clip). Test files test_pdf_render_warnings.py/test_layout_metrics.py added to Allowed Paths." }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: skipped, note: "no API change — job.warnings already exists (BR-96/BR-104); no endpoint (classifier)" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no CSS/UI change (classifier)" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: done, note: "env-contract.md +2 vars, 0.15.0->0.16.0; .env.example.template + env.schema.json updated; CHANGELOG [env 0.16.0]" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: skipped, note: "contract-reviewer confirmed no edit — warning reuses existing job.warnings string[] shape (data-shape 38-41)" }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: done, note: "business-rules.md BR-106 added, 0.24.2->0.25.0; CHANGELOG [business 0.25.0]" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "contract-reviewer + design: no ci-gate-contract.md edit — CI references test files, not tests/metrics module paths; ci-cd-gatekeeper to independently confirm" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done, note: "tests/test_layout_qa.py (AC-2..AC-9: BIoU regression, residual disambiguation, aggregation, fail-soft, data-boundary, shim-identity, named-constant); tests/test_env_contract.py AC-6 flag tests" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: done, note: "tests/test_pdf_render_warnings.py TestLayoutQaDisabled/TestLayoutQaWarning drive real _dispatch_render seam; flag-off asserts run_layout_qa.assert_not_called()" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: skipped, note: "no E2E; fail-soft resilience folded into unit/integration in test_layout_qa.py (classifier)" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "no dedicated monkey engineer (Tier 3); data-boundary cases folded into unit tests 3.1 (classifier)" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "no stress/soak — default-off opt-in feature (classifier)" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: done, note: "layout_qa.py (metric core + run_layout_qa, fail-soft); pdf_processor._dispatch_render seam wired (guarded); tests/metrics/* → re-export shims (test_layout_metrics.py green, no orphaned importer). Full smoke 1217 pass/0 fail" }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no frontend change — warnings surface via existing job.warnings (classifier)" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: done, note: "config.py: LAYOUT_QA_ENABLED (default false) + LAYOUT_QA_MAX_BOXES_PER_PAGE (default 500), byte-consistent with env-contract.md" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: skipped, note: "ci-cd-gatekeeper: no new workflow/job/secret; blanket pytest + validate --contracts auto-cover the new tests + contract edits" }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI change (classifier)" }
+  - { id: "5.2", section: Review, title: "Visual review", status: skipped, note: "no visual change (classifier)" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done, note: "contract-reviewer: approved; no breaking change; BR-106/env names collision-free; absence-test tokens clear" }
+  - { id: "5.4", section: Review, title: "QA review", status: done, note: "qa-reviewer: release-ready. 6/6 verify items confirmed (anti-tautology, shim identity, fail-soft, no regression, contracts, residual disambiguation). Flagged residual-text CI gate = PRE-EXISTING (PR#8, 31d0cd5), out of scope, non-blocking follow-up for ci-cd-gatekeeper+test-strategist" }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done, note: "cdd-kit gate green; test-evidence collect/targeted/changed-area/contract passed; full smoke 1217 pass" }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "local gate = same required validations CI runs (validate --contracts, blanket pytest); PR CI to confirm" }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full-regression informational; no non-deterministic checks" }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gate — no real-infra/load/soak surface (ci-cd-gatekeeper)" }
+  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }

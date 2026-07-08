@@ -1,0 +1,16 @@
+{
+  "change_id": "layout-qa-safety-net",
+  "phase": "changed-area",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest tests/test_layout_qa.py tests/test_env_contract.py tests/test_layout_metrics.py tests/test_pdf_render_warnings.py::TestLayoutQaDisabled tests/test_pdf_render_warnings.py::TestLayoutQaWarning tests/test_pdf_render_warnings.py::TestTruncationDisclosureWarning -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/layout-qa-safety-net/test-runs/20260708-144325/junit.xml'",
+  "duration_ms": 962,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/layout-qa-safety-net/test-runs/20260708-144325/summary.json",
+    "stdout": "specs/changes/layout-qa-safety-net/test-runs/20260708-144325/stdout.log",
+    "stderr": "specs/changes/layout-qa-safety-net/test-runs/20260708-144325/stderr.log",
+    "junit": "specs/changes/layout-qa-safety-net/test-runs/20260708-144325/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

@@ -1,0 +1,18 @@
+{
+  "change_id": "layout-qa-safety-net",
+  "phase": "full",
+  "status": "timeout",
+  "exit_code": null,
+  "command": "python -m pytest -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/layout-qa-safety-net/test-runs/20260708-144348/junit.xml'",
+  "duration_ms": 1209,
+  "first_failure": {
+    "kind": "timeout",
+    "message": "command exceeded timeout of 1200 ms"
+  },
+  "artifacts": {
+    "summary": "specs/changes/layout-qa-safety-net/test-runs/20260708-144348/summary.json",
+    "stdout": "specs/changes/layout-qa-safety-net/test-runs/20260708-144348/stdout.log",
+    "stderr": "specs/changes/layout-qa-safety-net/test-runs/20260708-144348/stderr.log"
+  },
+  "next_action": "investigate the timeout or raise --timeout for a legitimately long suite"
+}

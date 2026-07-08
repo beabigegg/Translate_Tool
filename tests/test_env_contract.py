@@ -121,6 +121,41 @@ class TestEnvContractDeclared:
             "Add it to the env-contract table per term-extraction-db-first."
         )
 
+    def test_layout_qa_enabled_declared(self):
+        """AC-6: LAYOUT_QA_ENABLED must be declared in env-contract.md (layout-qa-safety-net, BR-106)."""
+        text = _contract_text()
+        assert "LAYOUT_QA_ENABLED" in text, (
+            "LAYOUT_QA_ENABLED is not declared in "
+            f"{ENV_CONTRACT_PATH}. "
+            "Add it to the env-contract table per BR-106."
+        )
+
+    def test_layout_qa_max_boxes_per_page_declared(self):
+        """AC-6: LAYOUT_QA_MAX_BOXES_PER_PAGE must be declared in env-contract.md (BR-106)."""
+        text = _contract_text()
+        assert "LAYOUT_QA_MAX_BOXES_PER_PAGE" in text, (
+            "LAYOUT_QA_MAX_BOXES_PER_PAGE is not declared in "
+            f"{ENV_CONTRACT_PATH}. "
+            "Add it to the env-contract table per BR-106."
+        )
+
+    def test_layout_qa_enabled_wired_in_config_default_false(self):
+        """AC-6: LAYOUT_QA_ENABLED/LAYOUT_QA_MAX_BOXES_PER_PAGE must be wired in
+        config.py with the byte-consistent defaults documented in env-contract.md
+        (false / 500)."""
+        from app.backend import config
+
+        assert hasattr(config, "LAYOUT_QA_ENABLED"), (
+            "LAYOUT_QA_ENABLED constant missing from config.py"
+        )
+        assert config.LAYOUT_QA_ENABLED is False, (
+            f"LAYOUT_QA_ENABLED must default to False; got {config.LAYOUT_QA_ENABLED!r}"
+        )
+        assert hasattr(config, "LAYOUT_QA_MAX_BOXES_PER_PAGE"), (
+            "LAYOUT_QA_MAX_BOXES_PER_PAGE constant missing from config.py"
+        )
+        assert config.LAYOUT_QA_MAX_BOXES_PER_PAGE == 500
+
     def test_term_embedding_model_wired_in_config(self):
         """TERM_EMBEDDING_MODEL must be read in config.py."""
         from app.backend import config

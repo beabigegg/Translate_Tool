@@ -1,0 +1,7 @@
+artifacts:
+  - { type: adr-written, pointer: "docs/adr/0015-layout-qa-metric-core-in-runtime.md" }
+  - { type: affected-areas, pointer: "pdf render seam (pdf_processor._render_with_fallback), layout_qa service, tests/metrics shims, config flag, env+business contracts" }
+  - { type: decision-summary, pointer: "move metric core into app/backend/services/layout_qa.py; tests/metrics re-export; QA seam = pdf_processor._render_with_fallback ~L1160 (NOT orchestrator); one aggregated job.warnings string; no ci/data-shape contract edit" }
+  - { type: risks-noted, pointer: "0 high, 2 medium (shared-module orphan risk; residual-text false positives)" }
+  - { type: seam-correction, pointer: "BR-104 sweep runs in pdf_processor.py::_render_with_fallback (L1160), not orchestrator.py as change-request framed" }
+  - { type: contract-scope, pointer: "WILL: env + business(BR-106); WILL NOT: ci-gate, data-shape, api" }

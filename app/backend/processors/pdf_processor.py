@@ -18,6 +18,7 @@ from PyPDF2 import PdfReader
 
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import (
+    LAYOUT_QA_ENABLED,
     MAX_SEGMENTS,
     MAX_TEXT_LENGTH,
     PDF_DRAW_MASK,
@@ -28,6 +29,7 @@ from app.backend.config import (
 )
 from app.backend.processors.com_helpers import is_win32com_available, word_convert
 from app.backend.processors.docx_processor import translate_docx
+from app.backend.services.layout_qa import run_layout_qa
 from app.backend.utils.exceptions import check_document_size_limits
 from app.backend.utils.translation_helpers import translate_blocks_batch
 
@@ -1118,6 +1120,10 @@ def _dispatch_render(
     AC-11/BR-104: after the render call returns (either branch), ``doc`` is
     swept for residual render_truncated markers and exactly one aggregated
     warning is emitted per file via ``warnings_callback`` when any are found.
+    BR-106: when LAYOUT_QA_ENABLED, a fail-soft post-render layout-QA safety
+    net (run_layout_qa) re-opens the output and emits an additional aggregated
+    warning on BIoU regression / residual source text. Default off; never
+    fails the job.
     """
     if log is None:
         log = lambda s: None  # noqa: E731
@@ -1158,6 +1164,9 @@ def _dispatch_render(
         )
 
     _emit_truncation_disclosure_warning(doc, doc_id, warnings_callback)
+
+    if LAYOUT_QA_ENABLED:
+        run_layout_qa(doc, output_path, doc_id, warnings_callback, log=log)
 
 
 def _emit_truncation_disclosure_warning(

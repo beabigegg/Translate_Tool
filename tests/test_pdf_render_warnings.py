@@ -577,3 +577,123 @@ class TestTruncationDisclosureWarning:
             "truncation disclosure must fire identically on the ReportLab-fallback "
             f"source, got {captured_reportlab!r}"
         )
+
+
+# ---------------------------------------------------------------------------
+# TestLayoutQaDisabled / TestLayoutQaWarning (BR-106, layout-qa-safety-net)
+# ---------------------------------------------------------------------------
+
+class TestLayoutQaDisabled:
+    """AC-1: with LAYOUT_QA_ENABLED=false (default), run_layout_qa is never
+    invoked and no new job.warnings entry is emitted.
+
+    Entry point: _dispatch_render directly (not translate_pdf), matching this
+    file's established anti-tautology convention. Patches the consumer binding
+    (pdf_processor.run_layout_qa) and asserts NOT-CALLED -- not merely that
+    captured warnings are empty -- per the flag-off anti-tautology guard.
+    """
+
+    def test_flag_off_run_layout_qa_not_invoked_no_warning(self):
+        import app.backend.processors.pdf_processor as _mod
+
+        doc = TestTruncationDisclosureWarning._make_doc([(1, False)])
+        captured = []
+
+        with patch.object(_mod, "_run_fitz_render"):
+            with patch.object(_mod, "run_layout_qa") as mock_run_layout_qa:
+                _mod._dispatch_render(
+                    doc=doc,
+                    translations={},
+                    output_path="/tmp/layout_qa_disabled_test.pdf",
+                    target_lang="en",
+                    mode=None,
+                    draw_mask=False,
+                    doc_id="qa-disabled.pdf",
+                    warnings_callback=captured.append,
+                )
+
+        mock_run_layout_qa.assert_not_called()
+        assert captured == [], f"expected no warnings with the flag off, got {captured!r}"
+
+
+class TestLayoutQaWarning:
+    """AC-2/AC-3/AC-4: with LAYOUT_QA_ENABLED=true, the real _dispatch_render
+    seam fires run_layout_qa exactly once per warranted file via
+    warnings_callback -> _record_job_warning; fail-soft on exception.
+    """
+
+    def test_biou_regression_warning_fires_through_real_seam(self, tmp_path):
+        """AC-2: real seam -- _dispatch_render invokes the REAL run_layout_qa
+        (not a mock wrapper), which re-opens a real rendered PDF and detects a
+        BIoU regression, emitting exactly one job.warnings entry."""
+        import fitz
+
+        import app.backend.processors.pdf_processor as _mod
+
+        doc = TestTruncationDisclosureWarning._make_doc([(1, False)])
+        # doc's element bbox is fixed at (0, 0, 100, 20) (see _make_doc); render
+        # real text far away from it so the mean BIoU regresses below budget.
+        out_path = str(tmp_path / "real_seam_regress.pdf")
+        pdf = fitz.open()
+        page = pdf.new_page(width=612, height=792)
+        page.insert_textbox(fitz.Rect(400, 600, 560, 650), "Unrelated rendered text", fontsize=11)
+        pdf.save(out_path)
+        pdf.close()
+
+        captured = []
+        with patch.object(_mod, "LAYOUT_QA_ENABLED", True):
+            with patch.object(_mod, "_run_fitz_render"):
+                _mod._dispatch_render(
+                    doc=doc,
+                    translations={},
+                    output_path=out_path,
+                    target_lang="en",
+                    mode=None,
+                    draw_mask=False,
+                    doc_id="real-seam-regress.pdf",
+                    warnings_callback=captured.append,
+                )
+
+        assert len(captured) == 1, f"expected exactly 1 aggregated warning, got {captured!r}"
+        assert "real-seam-regress.pdf" in captured[0]
+        assert "1" in captured[0]
+
+    def test_layout_qa_exception_never_fails_job_or_fabricates_warning(self, tmp_path):
+        """AC-4: forcing an internal layout-QA metric to raise must never
+        propagate out of _dispatch_render (job never fails) and must never
+        fabricate a warning."""
+        import fitz
+
+        import app.backend.processors.pdf_processor as _mod
+
+        doc = TestTruncationDisclosureWarning._make_doc([(1, False)])
+        out_path = str(tmp_path / "real_seam_exception.pdf")
+        pdf = fitz.open()
+        page = pdf.new_page(width=612, height=792)
+        page.insert_textbox(fitz.Rect(0, 0, 100, 20), "some text", fontsize=8)
+        pdf.save(out_path)
+        pdf.close()
+
+        captured = []
+        with patch.object(_mod, "LAYOUT_QA_ENABLED", True):
+            with patch.object(_mod, "_run_fitz_render"):
+                with patch(
+                    "app.backend.services.layout_qa.compute_biou",
+                    side_effect=RuntimeError("forced layout-qa metric failure"),
+                ):
+                    # Must not raise -- this call succeeding IS the assertion
+                    # that the job would not fail.
+                    _mod._dispatch_render(
+                        doc=doc,
+                        translations={},
+                        output_path=out_path,
+                        target_lang="en",
+                        mode=None,
+                        draw_mask=False,
+                        doc_id="qa-exception.pdf",
+                        warnings_callback=captured.append,
+                    )
+
+        assert captured == [], (
+            f"a caught layout-QA exception must not fabricate a warning, got {captured!r}"
+        )
