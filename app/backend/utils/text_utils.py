@@ -133,6 +133,58 @@ def should_translate(text: Any, source_lang: str) -> bool:
     return True
 
 
+META_REFUSAL_MAX_CHARS = 200
+"""Module-level constant (NOT config/env) — length gate for BR-108's
+meta/refusal output guard. A genuine translation of a real paragraph is
+not a terse self-referential meta sentence; only short replies are refusal
+candidates. This bounds the allowlist match to short strings, guarding
+against false positives on long genuine translations that might otherwise
+happen to contain an allowlisted substring."""
+
+_META_REFUSAL_PATTERNS: tuple = (
+    "provide the text",
+    "text you'd like translated",
+    "text you would like translated",
+    "what would you like me to translate",
+    "which language would you like",
+    "no text was provided",
+    "no text provided",
+    "i don't see any text",
+    "i do not see any text",
+)
+
+
+def is_meta_refusal(reply: str, source: str) -> bool:
+    """Detect a meta/refusal reply standing in for an actual translation (BR-108).
+
+    A meta/refusal reply is a self-referential ask-for-source-text or
+    question-back response from the model (e.g. "Could you please provide
+    the text you'd like translated?") in place of an actual translation.
+
+    Precise by design: only a short reply (<= META_REFUSAL_MAX_CHARS) that
+    matches a small allowlist of self-referential phrases is classified as
+    a refusal. A genuine translation that merely contains a question mark,
+    or otherwise reads like a note, MUST NOT be misclassified (AC-3
+    false-positive guard).
+
+    Args:
+        reply: The model's reply text.
+        source: The original source segment (kept for API symmetry with the
+            BR-107 passthrough helper; not used in the classification — the
+            reply content alone determines refusal).
+
+    Returns:
+        True when `reply` is classified as a meta/refusal response.
+    """
+    r = (reply or "").strip()
+    if not r:
+        return False
+    if len(r) > META_REFUSAL_MAX_CHARS:
+        return False
+    low = r.lower()
+    return any(pat in low for pat in _META_REFUSAL_PATTERNS)
+
+
 def _is_cjk_lang(lang: Optional[str]) -> bool:
     """Check if language code indicates CJK (Chinese/Japanese/Korean)."""
     if not lang:

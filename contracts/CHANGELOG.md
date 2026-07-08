@@ -8,6 +8,9 @@ While a contract is at 0.x (draft), entries here are optional.
 Once a contract reaches 1.0.0, every schema-version bump must have
 a corresponding entry below.
 
+## [business 0.26.0] — 2026-07-08
+Added: BR-107 (`body-segment-passthrough`) and BR-108 (`meta-refusal-output-guard`) — extends the BR-68 table-cell numeric-passthrough concept to the body/paragraph translation path (`translate_merged_paragraphs` → `client.translate_once`): trivial/non-translatable body segments (pure numeric/punctuation, whitespace-only, already-target-language, very short single token) bypass the LLM call entirely (output = source); and a body-path LLM reply detected as a meta/refusal (ask-back for source text, question-back, language-detection/notes remark) is never written to output — the pipeline falls back to source text or marks the segment failed (BR-25 placeholder). Reuses the BR-68 `passthrough` disposition concept in prose only — NO new `translation_status` enum value, NO data-shape-contract.md change (the body path has no per-segment `translation_status` field to begin with). BR-68 and the table-cell path are unchanged. Added Table Z. Fixed in change `nontranslatable-segment-guard`.
+
 ## [business 0.25.1] — 2026-07-08
 Fixed: BR-78 (`context-window-segment-prefix`) — preceding-segment translation context is now delivered out-of-band via the LLM client's system channel (`system_context` param on `translate_once`) instead of being concatenated into the translatable user payload; eliminates a cloud-provider (PANJIT/DeepSeek) prompt-bleed bug where neighbor-segment text was itself translated and leaked into the output. Updated Table V rows accordingly. `CONTEXT_WINDOW_SEGMENTS` (2) / `CONTEXT_MAX_CHARS` (300) values unchanged — no config change. Fixed in change `context-prefix-bleed-fix`.
 

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.243" timestamp="2026-07-08T20:31:23.775155+08:00" hostname="EGG"><testcase classname="tests.test_nontranslatable_segment_guard.TestTrivialPassthrough" name="test_pure_number_not_called_output_equals_source" time="0.018"><failure message="assert 1 == 0&#10; +  where 1 = &lt;tests.test_nontranslatable_segment_guard.FakeLLMClient object at 0x7fc211506c50&gt;.call_count">tests/test_nontranslatable_segment_guard.py:106: in test_pure_number_not_called_output_equals_source
+    assert client.call_count == 0
+E   assert 1 == 0
+E    +  where 1 = &lt;tests.test_nontranslatable_segment_guard.FakeLLMClient object at 0x7fc211506c50&gt;.call_count</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="1" failures="0" skipped="0" tests="1" time="0.150" timestamp="2026-07-08T20:19:43.034865+08:00" hostname="EGG"><testcase classname="" name="tests.test_nontranslatable_segment_guard" time="0.000"><error message="collection failure">ImportError while importing test module '/home/egg/Projects/Translate_Tool/tests/test_nontranslatable_segment_guard.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../miniforge3/envs/translate-tool/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_nontranslatable_segment_guard.py:28: in &lt;module&gt;
+    from app.backend.utils.text_utils import is_meta_refusal
+E   ImportError: cannot import name 'is_meta_refusal' from 'app.backend.utils.text_utils' (/home/egg/Projects/Translate_Tool/app/backend/utils/text_utils.py)</error></testcase></testsuite></testsuites>

@@ -1,0 +1,1 @@
+python -m pytest tests/test_nontranslatable_segment_guard.py::TestTrivialPassthrough tests/test_nontranslatable_segment_guard.py::TestRefusalOutputGuard tests/test_nontranslatable_segment_guard.py::TestReproduction8D -q --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/nontranslatable-segment-guard/test-runs/20260708-203123/junit.xml' --maxfail=1

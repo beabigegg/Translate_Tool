@@ -1,0 +1,10 @@
+change-id: nontranslatable-segment-guard
+agent: test-strategist
+status: done
+summary: "Test plan written mapping AC-1..AC-7 to test families. New tests/test_nontranslatable_segment_guard.py (does not exist yet — bug-fix-engineer writes it first, RED, per bug-fix lane) covers: trivial-passthrough classifier (5 unit cases, call-counter fake, assert exact source string) AC-1; meta/refusal output guard (3 unit cases) AC-2; refusal-detector NEGATIVE cases (mandatory anti-tautology guard) AC-3; conservative passthrough of genuine content AC-4; end-to-end translate_merged_paragraphs integration test combining all guard paths; 8D-fixture RED->GREEN reproduction AC-6. Regression baseline (must stay green, unmodified): tests/test_table_recognizer.py + tests/test_table_context_translation.py (AC-5, table BR-68 path) and tests/test_context_window_segments.py (context-prefix seam shared by the target function). AC-7 (BR-107/BR-108 + Table Z) already present in business-rules.md 0.26.0 (contract-reviewer); verified structurally via cdd-kit validate --contracts, behaviorally proven by the AC-1..AC-4 tests per Table Z's own test-id column."
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/nontranslatable-segment-guard/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_nontranslatable_segment_guard.py (NEW) -> app/backend/utils/translation_helpers.py::translate_merged_paragraphs (lines 133-199)" }
+  - { type: coverage-tiers, pointer: "unit (tier 0), integration (tier 1), regression (tier 1), contract (tier 1)" }
+  - { type: mapping-completeness, pointer: "AC-1 through AC-7 all mapped; AC-5 mapped to existing unmodified regression suites rather than new tests" }
+next-action: "implementation-planner finalizes implementation-plan.md Test Execution Plan referencing this table; bug-fix-engineer writes tests/test_nontranslatable_segment_guard.py first (RED)"

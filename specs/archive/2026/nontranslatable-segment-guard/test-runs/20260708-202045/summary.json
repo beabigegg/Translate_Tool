@@ -1,0 +1,15 @@
+{
+  "change_id": "nontranslatable-segment-guard",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "cdd-kit validate --contracts --env --ci",
+  "duration_ms": 531,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/nontranslatable-segment-guard/test-runs/20260708-202045/summary.json",
+    "stdout": "specs/changes/nontranslatable-segment-guard/test-runs/20260708-202045/stdout.log",
+    "stderr": "specs/changes/nontranslatable-segment-guard/test-runs/20260708-202045/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

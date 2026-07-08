@@ -1,0 +1,10 @@
+change-id: nontranslatable-segment-guard
+agent: contract-reviewer
+status: done
+summary: "approved (minor/additive). Drafted apply-ready: BR-107 (body-segment-passthrough — trivial/non-translatable body segments bypass the LLM, output=source, mirroring BR-68 at body granularity) + BR-108 (meta-refusal-output-guard — body-path LLM meta/refusal replies discarded, fall back to source or BR-25 fail, precise detector) + Table Z; business 0.25.1->0.26.0 + CHANGELOG. Confirmed NO EDIT to api/env/ci and NO data-shape change — translation_status is TableCell-only (data-shape L392-478), body path has no such field, so prose-only reuse of passthrough disposition (keeps Architecture Review at 'no'). BR-68 unchanged. Absence-test clear (no BR-92/rescore); BR-107/108 free."
+artifacts:
+  - { type: contracts-reviewed, pointer: "contracts/business/business-rules.md" }
+  - { type: contracts-reviewed, pointer: "contracts/data/data-shape-contract.md" }
+  - { type: version-bumps, pointer: "business 0.25.1->0.26.0 (minor/additive); api/env/data-shape/ci unchanged" }
+  - { type: breaking-changes, pointer: "none" }
+next-action: "test-strategist + implementation-planner + bug-fix-engineer"

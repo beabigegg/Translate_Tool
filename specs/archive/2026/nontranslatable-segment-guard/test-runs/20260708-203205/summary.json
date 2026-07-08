@@ -1,0 +1,16 @@
+{
+  "change_id": "nontranslatable-segment-guard",
+  "phase": "collect",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest --collect-only -q tests/test_nontranslatable_segment_guard.py tests/test_table_recognizer.py tests/test_table_context_translation.py tests/test_context_window_segments.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/nontranslatable-segment-guard/test-runs/20260708-203205/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 599,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/nontranslatable-segment-guard/test-runs/20260708-203205/summary.json",
+    "stdout": "specs/changes/nontranslatable-segment-guard/test-runs/20260708-203205/stdout.log",
+    "stderr": "specs/changes/nontranslatable-segment-guard/test-runs/20260708-203205/stderr.log",
+    "junit": "specs/changes/nontranslatable-segment-guard/test-runs/20260708-203205/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

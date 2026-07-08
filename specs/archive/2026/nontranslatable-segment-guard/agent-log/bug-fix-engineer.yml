@@ -1,0 +1,60 @@
+change-id: nontranslatable-segment-guard
+timestamp: 2026-07-08T20:32:09Z
+agent: bug-fix-engineer
+status: complete
+files-read:
+  - specs/changes/nontranslatable-segment-guard/context-manifest.md
+  - specs/changes/nontranslatable-segment-guard/change-request.md
+  - specs/changes/nontranslatable-segment-guard/change-classification.md
+  - specs/changes/nontranslatable-segment-guard/implementation-plan.md
+  - specs/changes/nontranslatable-segment-guard/test-plan.md
+  - specs/changes/nontranslatable-segment-guard/ci-gates.md
+  - app/backend/utils/text_utils.py
+  - app/backend/utils/translation_helpers.py
+  - app/backend/services/translation_service.py
+  - app/backend/clients/base_llm_client.py
+  - contracts/business/business-rules.md
+  - tests/test_context_window_segments.py
+  - docs/TEST_DOC/CS2408-0021 信和達(歐朗) P6SMBJ18CA  本體破损 -onepage.pdf
+artifacts:
+  - { type: symptom, pointer: "A trivial/non-translatable body segment (or an already-English label) is sent to the cloud LLM, which replies with a meta/refusal string (e.g. \"Could you please provide the text you'd like translated?\"), and that reply is written verbatim into the output in place of the segment (8D PDF English run, task 42265c0b)." }
+  - { type: reproduction, pointer: "test-reproduced; failing_before_fix: true; specs/changes/nontranslatable-segment-guard/test-runs/20260708-203123/summary.json — genuine BEHAVIORAL RED (assertion-failure, not a collection error): with text_utils.py's is_meta_refusal already in place but translation_helpers.py::translate_merged_paragraphs temporarily reverted to the pre-fix empty-check + unconditional-accept (git show HEAD), TestTrivialPassthrough::test_pure_number_not_called_output_equals_source fails with `assert 1 == 0` on call_count (the trivial \"1\" segment WAS sent to the LLM) and TestRefusalOutputGuard/TestReproduction8D fail on the meta reply being written into results instead of the source." }
+  - { type: hypothesis, pointer: "H1 CONFIRMED — app/backend/utils/translation_helpers.py::translate_merged_paragraphs missing BR-107 input passthrough (table cells already have a numeric passthrough, BR-68, translation_service.py:887; the body-segment path had only an empty/whitespace early-continue, not a should_translate() check)" }
+  - { type: hypothesis, pointer: "H2 CONFIRMED — app/backend/utils/translation_helpers.py::translate_merged_paragraphs missing BR-108 output guard on the `if ok:` branch (no code anywhere rejected a meta/refusal LLM reply before writing it to results/tmap)" }
+  - { type: hypothesis, pointer: "H3 REJECTED — app/backend/services/translation_service.py tmap mapping (L374-388); the mapping step is not where the bug lives, it just writes whatever translate_merged_paragraphs returns" }
+  - { type: hypothesis, pointer: "H4 REJECTED — app/backend/clients/openai_compatible_client.py / ollama_client.py client-side short-token bypass; that bypass is unrelated and the fix must not touch client.translate_once's signature" }
+  - { type: root-cause, pointer: "app/backend/utils/translation_helpers.py:173-182 (no BR-107 input guard before client.translate_once) and :196-208 (no BR-108 output guard after ok=True)" }
+  - { type: files-changed, pointer: "app/backend/utils/text_utils.py (new is_meta_refusal + META_REFUSAL_MAX_CHARS), app/backend/utils/translation_helpers.py (BR-107 input guard replacing the empty/whitespace early-continue; BR-108 output guard inside the ok branch), tests/test_nontranslatable_segment_guard.py (new, RED-first)" }
+  - { type: regression-evidence, pointer: "specs/changes/nontranslatable-segment-guard/test-runs/20260708-203123/summary.json (BEHAVIORAL RED, translation_helpers.py temporarily reverted to pre-fix via `git show HEAD`, assert 1==0 on call_count / meta string written) -> specs/changes/nontranslatable-segment-guard/test-runs/20260708-203144/summary.json (GREEN, same command, same node ids, fix restored, exit 0). Broader ladder: specs/changes/nontranslatable-segment-guard/test-runs/20260708-202039/summary.json (changed-area, full new test module, 18 passed). Regression suites tests/test_context_prefix_bleed.py, tests/test_pdf_layout_table_fixes.py, tests/test_sentence_mode_consistency.py, tests/test_openai_compatible_client.py, tests/test_table_recognizer.py, tests/test_table_context_translation.py, tests/test_context_window_segments.py all green (59 passed, ad hoc conda run -n translate-tool pytest); full ladder (collect/targeted/changed-area/contract/full) all passed, test-evidence.yml final-status: passed." }
+  - { type: residual-risk, pointer: "none — additive branches only; table-cell BR-68 path and translate_once signature untouched; guards are conservative by design (ambiguous/borderline content still reaches the LLM)." }
+bug-fix:
+  schema-version: 0.1.0
+  symptom: "A trivial/non-translatable body (non-table) segment on the translate_merged_paragraphs -> client.translate_once path is sent to the LLM, which replies with a meta/refusal string, and that reply is written verbatim into the output in place of the segment."
+  expected_behavior: "Trivial/non-translatable body segments pass through untranslated (output = source, no LLM call). If the LLM does reply with a meta/refusal string, the pipeline discards it and falls back to the source — the meta string is never written to output."
+  actual_behavior: "Body segments had no non-translatable passthrough (unlike table cells, BR-68) and no output-side guard: a trivial/short segment was sent to the LLM, the LLM asked back for the source text, and the ask-back string was stored as the \"translation\"."
+  observed_surface: "8D PDF English translation run (task 42265c0b) — an output block showing \"Could you please provide the text you'd like translated?\" in place of a trivial/already-English body segment."
+  reproduction:
+    status: test-reproduced
+    command: "python -m pytest tests/test_nontranslatable_segment_guard.py::TestTrivialPassthrough tests/test_nontranslatable_segment_guard.py::TestRefusalOutputGuard tests/test_nontranslatable_segment_guard.py::TestReproduction8D -q --tb=short -ra"
+    failing_before_fix: true
+    summary: "specs/changes/nontranslatable-segment-guard/test-runs/20260708-203123/summary.json"
+  hypotheses:
+    - { id: H1, candidate: "app/backend/utils/translation_helpers.py::translate_merged_paragraphs — missing BR-107 input passthrough (only an empty/whitespace early-continue existed)", reason: "table cells already have a numeric passthrough (BR-68, translation_service.py:887); no equivalent existed for body segments", result: confirmed }
+    - { id: H2, candidate: "app/backend/utils/translation_helpers.py::translate_merged_paragraphs — missing BR-108 output guard on the `if ok:` branch", reason: "no code rejected a meta/refusal LLM reply before writing it to results", result: confirmed }
+    - { id: H3, candidate: "app/backend/services/translation_service.py tmap mapping (L374-388)", reason: "considered whether the tmap/result-mapping step silently accepted bad replies", result: rejected }
+    - { id: H4, candidate: "app/backend/clients/openai_compatible_client.py / ollama_client.py client-side short-token bypass", reason: "translation_helpers.py:182 references an existing client-side bypass; considered whether the fix belonged in the client instead of the helper", result: rejected }
+  root_cause:
+    pointer: "app/backend/utils/translation_helpers.py:173-182,196-208"
+    summary: "translate_merged_paragraphs only skipped truly empty/whitespace text before calling client.translate_once (no BR-107 trivial-content passthrough), and never inspected the LLM reply for a meta/refusal response before writing it to results (no BR-108 output guard)."
+  fix:
+    files_changed:
+      - app/backend/utils/text_utils.py
+      - app/backend/utils/translation_helpers.py
+      - tests/test_nontranslatable_segment_guard.py
+    summary: "Added a new pure helper is_meta_refusal(reply, source) (+ META_REFUSAL_MAX_CHARS=200 length gate, small self-referential allowlist) in text_utils.py. In translate_merged_paragraphs: replaced the empty/whitespace early-continue with a should_translate() input guard (BR-107) that sets output=source with no LLM call for trivial content; added an is_meta_refusal() output guard (BR-108) inside the ok branch that discards a meta/refusal reply and falls back to the source instead of writing it to results."
+  regression:
+    status: passed
+    command: "python -m pytest tests/test_nontranslatable_segment_guard.py::TestTrivialPassthrough tests/test_nontranslatable_segment_guard.py::TestRefusalOutputGuard tests/test_nontranslatable_segment_guard.py::TestReproduction8D -q --tb=short -ra"
+    summary: "specs/changes/nontranslatable-segment-guard/test-runs/20260708-203144/summary.json"
+  residual_risk: none
+next-action: "qa-reviewer release-readiness review"
