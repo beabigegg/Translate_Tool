@@ -1,0 +1,6 @@
+agent: implementation-planner
+change-id: nontranslatable-segment-guard
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/nontranslatable-segment-guard/implementation-plan.md" }
+  - { type: owner-map, pointer: "bug-fix-engineer (folds backend-engineer)" }
+  - { type: scope-summary, pointer: "In: INPUT guard (reuse should_translate) + OUTPUT guard (new is_meta_refusal) in translate_merged_paragraphs; new test file. Out: BR-68 table path, legacy sentence/non-batch loops, data-shape, contracts (BR-107/108/Table Z already applied)." }

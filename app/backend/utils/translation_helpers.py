@@ -16,7 +16,12 @@ from app.backend.config import (
 )
 from app.backend.services.context_prompts import build_context_prefix
 from app.backend.utils.logging_utils import logger
-from app.backend.utils.text_utils import is_cjk_language, split_sentences
+from app.backend.utils.text_utils import (
+    is_cjk_language,
+    is_meta_refusal,
+    should_translate,
+    split_sentences,
+)
 
 # Segment marker for merged paragraph translation
 SEGMENT_MARKER_PREFIX = "<<<SEG_"
@@ -166,8 +171,11 @@ def translate_merged_paragraphs(
     completed = 0
 
     for i, text in enumerate(texts):
-        if not text or not text.strip():
-            results[i] = (True, "")
+        if not should_translate(text, src_lang or "auto"):
+            # BR-107 input passthrough: trivial/non-translatable segment
+            # (empty/whitespace, pure digits/punctuation, no letters, or a
+            # very short single token) — no LLM call, output = source.
+            results[i] = (True, text or "")
             completed += 1
             if progress_log:
                 progress_log(completed)
@@ -187,9 +195,16 @@ def translate_merged_paragraphs(
         system_ctx = ctx if (ctx and len(text.strip()) > 4) else None
         ok, translated = client.translate_once(text, tgt, src_lang, system_context=system_ctx)
         if ok:
-            results[i] = (True, translated)
-            if on_segment_done:
-                on_segment_done(text, translated)
+            if is_meta_refusal(translated, text):
+                # BR-108 output guard: reply is a meta/refusal (ask-back for
+                # source text, question-back, language-note) — discard it and
+                # fall back to the source. Skip on_segment_done to avoid
+                # caching the fallback as if it were a real translation.
+                results[i] = (True, text)
+            else:
+                results[i] = (True, translated)
+                if on_segment_done:
+                    on_segment_done(text, translated)
         else:
             results[i] = (False, f"[翻譯失敗] {text[:30]}...")
         completed += 1

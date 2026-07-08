@@ -1,0 +1,10 @@
+change-id: nontranslatable-segment-guard
+agent: qa-reviewer
+status: done
+summary: "release-ready (approved). Behavioral RED confirmed: test-runs/20260708-203123 first_failure.kind=assertion-failure (assert 1==0, FakeLLMClient.call_count — trivial '1' segment genuinely SENT pre-fix); the earlier collection-ImportError run 201942 is NOT referenced as the reproduction. reproduction/regression commands match runs minus runner flags; test-evidence final-status passed, all phases + full smoke, no waivers. Anti-tautology holds: call-counter fake asserts call_count==0 AND exact SOURCE value; refusal test asserts source written / meta NOT in results; MANDATORY negative case (genuine '?'-containing reply NOT suppressed — independently confirmed is_meta_refusal returns False, so a naive '?' detector would fail it); AC-4 asserts call_count>0 for translatable content. Guards correct (should_translate 2-arg reuse input; is_meta_refusal 200-char+allowlist output, source fallback); only text_utils.py + translation_helpers.py changed (client/table/data-shape untouched). No regression (table BR-68 + context tests green; full smoke exit 0). Contracts consistent (BR-107/108 + Table Z, 0.26.0, validate green)."
+artifacts:
+  - { type: gate-results, pointer: "collect/targeted/changed-area/contract/full all pass; independent re-run 11 passed" }
+  - { type: evidence-quality, pointer: "repro (RED summary.json assertion-failure + independently re-ran green)" }
+  - { type: decision, pointer: "release-ready (approved)" }
+  - { type: residual-risk, pointer: "should_translate <3 non-CJK-letter passthrough — conservative source-bias, acceptable on CJK-source platform; a legit 1-2 letter word on an English->CJK job would pass through untranslated (low likelihood, non-blocking)" }
+next-action: "local gate → PR"

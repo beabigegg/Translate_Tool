@@ -1,0 +1,20 @@
+{
+  "change_id": "nontranslatable-segment-guard",
+  "phase": "changed-area",
+  "status": "failed",
+  "exit_code": 2,
+  "command": "python -m pytest tests/test_nontranslatable_segment_guard.py -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/nontranslatable-segment-guard/test-runs/20260708-201942/junit.xml'",
+  "duration_ms": 386,
+  "first_failure": {
+    "kind": "collection-error",
+    "nodeid": "tests.test_nontranslatable_segment_guard",
+    "message": "collection failure"
+  },
+  "artifacts": {
+    "summary": "specs/changes/nontranslatable-segment-guard/test-runs/20260708-201942/summary.json",
+    "stdout": "specs/changes/nontranslatable-segment-guard/test-runs/20260708-201942/stdout.log",
+    "stderr": "specs/changes/nontranslatable-segment-guard/test-runs/20260708-201942/stderr.log",
+    "junit": "specs/changes/nontranslatable-segment-guard/test-runs/20260708-201942/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

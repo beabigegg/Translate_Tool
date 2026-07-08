@@ -1,0 +1,11 @@
+F
+=================================== FAILURES ===================================
+___ TestTrivialPassthrough.test_pure_number_not_called_output_equals_source ____
+tests/test_nontranslatable_segment_guard.py:106: in test_pure_number_not_called_output_equals_source
+    assert client.call_count == 0
+E   assert 1 == 0
+E    +  where 1 = <tests.test_nontranslatable_segment_guard.FakeLLMClient object at 0x7fc211506c50>.call_count
+=========================== short test summary info ============================
+FAILED tests/test_nontranslatable_segment_guard.py::TestTrivialPassthrough::test_pure_number_not_called_output_equals_source
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 0.24s

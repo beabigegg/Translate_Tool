@@ -1,0 +1,20 @@
+{
+  "change_id": "nontranslatable-segment-guard",
+  "phase": "targeted",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "python -m pytest tests/test_nontranslatable_segment_guard.py::TestTrivialPassthrough tests/test_nontranslatable_segment_guard.py::TestRefusalOutputGuard tests/test_nontranslatable_segment_guard.py::TestReproduction8D -q --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/nontranslatable-segment-guard/test-runs/20260708-203123/junit.xml' --maxfail=1",
+  "duration_ms": 562,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests.test_nontranslatable_segment_guard.TestTrivialPassthrough::test_pure_number_not_called_output_equals_source",
+    "message": "assert 1 == 0\n +  where 1 = <tests.test_nontranslatable_segment_guard.FakeLLMClient object at 0x7fc211506c50>.call_count"
+  },
+  "artifacts": {
+    "summary": "specs/changes/nontranslatable-segment-guard/test-runs/20260708-203123/summary.json",
+    "stdout": "specs/changes/nontranslatable-segment-guard/test-runs/20260708-203123/stdout.log",
+    "stderr": "specs/changes/nontranslatable-segment-guard/test-runs/20260708-203123/stderr.log",
+    "junit": "specs/changes/nontranslatable-segment-guard/test-runs/20260708-203123/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

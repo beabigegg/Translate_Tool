@@ -1,0 +1,42 @@
+change-id: nontranslatable-segment-guard
+status: in-progress
+tier: 2
+tier-floor-override: "Behavior-changing bug-fix on the translation body path. Gate vocab may floor on 'cache'/'provider' — both appear as EVIDENCE only (the translation cache was empty proving the reply was live; PANJIT/DeepSeek named as the providers); NO translation_cache.py or provider-routing change is in scope. No auth/secret/migration/endpoint/session change. change-classifier confirmed Tier 2."
+context-governance: v1
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on: []
+
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done, note: "change-classifier: Tier 2, bug-fix lane, data symptom; no arch review; 5 agents" }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done, note: "contract-reviewer: BR-107 (body-segment-passthrough) + BR-108 (meta-refusal-output-guard) + Table Z; business 0.25.1->0.26.0 + CHANGELOG; api/env/data-shape/ci NO EDIT (translation_status is TableCell-only). approved" }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: skipped, note: "no architecture review (classifier); localized fix with BR-68 precedent. Would flip to yes only if a NEW translation_status value is introduced" }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done, note: "ci-cd-gatekeeper: ci-gates.md; no new workflow/job/secret — contract-and-fast-tests (validate --contracts + blanket pytest) auto-covers new test + BR-107/108; no ci-gate-contract edit (2.6 skipped). Rollback = git revert" }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done, note: "implementation-planner: INPUT guard reuses should_translate(text, source_lang) (2-arg) at translation_helpers L169-174 (replaces empty-check; no LLM call, output=source); OUTPUT guard = new is_meta_refusal(reply, source) in text_utils.py (allowlist + META_REFUSAL_MAX_CHARS=200 gate = AC-3 false-positive guard), applied at L189-192, fallback=SOURCE. No translation_service change. Regression grep pre-resolved (test_context_prefix_bleed SEG1-3 stay green)" }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: skipped, note: "no API change (classifier)" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no CSS/UI change (classifier)" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: skipped, note: "no env change (classifier)" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: skipped, note: "conditional — skip unless a NEW translation_status value is introduced; default reuses passthrough/failed (classifier)" }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: done, note: "BR-107 + BR-108 + Table Z added; business 0.25.1->0.26.0; CHANGELOG [business 0.26.0]. validate --contracts green" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no CI/CD change (classifier)" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done, note: "tests/test_nontranslatable_segment_guard.py written RED-first (TDD); AC-1..AC-4 unit tests + bonus is_meta_refusal direct unit tests; all GREEN post-fix" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: done, note: "TestTranslateMergedParagraphsEndToEnd + TestReproduction8D (AC-6) using real 8D PDF fixtures; faithful behavioral RED pre-fix (test-runs/20260708-203123: assertion-failure, FakeLLMClient.call_count 1!=0 — trivial segment sent), GREEN post-fix (test-runs/20260708-203144)" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: skipped, note: "no E2E; resilience (refusal fallback) folded into unit tests (classifier)" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "no monkey; boundary cases folded into unit tests (classifier)" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "no stress/soak surface (classifier)" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: done, note: "bug-fix-engineer folds backend-engineer scope: is_meta_refusal()+META_REFUSAL_MAX_CHARS in text_utils.py (BR-108); BR-107 input guard + BR-108 output guard in translate_merged_paragraphs (translation_helpers.py); no translation_service.py or client changes needed" }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no frontend change (classifier)" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: skipped, note: "no env/deploy change (classifier)" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: skipped, note: "no CI/CD workflow change (classifier)" }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI change (classifier)" }
+  - { id: "5.2", section: Review, title: "Visual review", status: skipped, note: "no visual change (classifier)" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done, note: "contract-reviewer: approved (minor/additive); BR-68 unchanged; absence-test clear (no BR-92/rescore); BR-107/108 free" }
+  - { id: "5.4", section: Review, title: "QA review", status: done, note: "qa-reviewer: release-ready. Behavioral RED confirmed (assertion-failure, not collection error); anti-tautology holds incl. mandatory refusal-negative case; guards correct; no regression; contracts consistent. Residual: conservative <3 non-CJK passthrough (acceptable on CJK-source)" }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done, note: "cdd-kit gate green; test-evidence all phases + full smoke passed" }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "local gate = same required validations CI runs; PR CI to confirm" }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full-regression informational; no non-deterministic checks" }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gate (classifier)" }
+  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }

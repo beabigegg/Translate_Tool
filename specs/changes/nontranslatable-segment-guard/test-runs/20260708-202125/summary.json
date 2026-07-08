@@ -1,0 +1,16 @@
+{
+  "change_id": "nontranslatable-segment-guard",
+  "phase": "full",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/nontranslatable-segment-guard/test-runs/20260708-202125/junit.xml'",
+  "duration_ms": 165947,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/nontranslatable-segment-guard/test-runs/20260708-202125/summary.json",
+    "stdout": "specs/changes/nontranslatable-segment-guard/test-runs/20260708-202125/stdout.log",
+    "stderr": "specs/changes/nontranslatable-segment-guard/test-runs/20260708-202125/stderr.log",
+    "junit": "specs/changes/nontranslatable-segment-guard/test-runs/20260708-202125/junit.xml"
+  },
+  "next_action": "all phases green"
+}

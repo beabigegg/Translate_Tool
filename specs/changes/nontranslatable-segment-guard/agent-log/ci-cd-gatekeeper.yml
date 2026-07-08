@@ -1,0 +1,18 @@
+change-id: nontranslatable-segment-guard
+agent: ci-cd-gatekeeper
+timestamp: "2026-07-08T00:00:00Z"
+status: complete
+artifacts:
+  - { type: tiers-modified, pointer: "none (Tier 2 existing gates only)" }
+  - { type: gate-promotions, pointer: "none" }
+  - { type: workflow-files-changed, pointer: "n/a (no workflow edit required)" }
+  - { type: required-status-checks, pointer: "contract-and-fast-tests" }
+next-action: none
+notes: >
+  Confirmed existing PR-required job contract-and-fast-tests
+  (.github/workflows/contract-driven-gates.yml) already runs
+  cdd-kit validate --contracts (covers BR-107/BR-108 business-rules.md
+  0.25.1->0.26.0 edit) and the blanket pytest tests/ step, which
+  auto-discovers the new tests/test_nontranslatable_segment_guard.py.
+  No new job/secret/ci-gate-contract.md row needed; task 2.6 stays skipped
+  per change-classification.md. full-regression remains informational.

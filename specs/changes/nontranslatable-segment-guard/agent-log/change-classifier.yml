@@ -1,0 +1,14 @@
+change-id: nontranslatable-segment-guard
+agent: change-classifier
+status: done
+summary: "Tier 2, bug-fix lane, data symptom, medium risk, module-level. No architecture review (design.md no) unless a NEW translation_status value is introduced (then design+data-shape required; default plan reuses passthrough/failed). Contracts: business (new/extended BR mirroring BR-68 for the body path + refusal guard) only. 5 agents: implementation-planner, bug-fix-engineer (folds backend), test-strategist, contract-reviewer, qa-reviewer. AC-1..AC-7. Deterministic repro with fakes."
+artifacts:
+  - { type: tier, pointer: "Tier 2" }
+  - { type: risk, pointer: "medium / module-level" }
+  - { type: lane, pointer: "bug-fix (data symptom)" }
+  - { type: required-reviewers, pointer: "implementation-planner, bug-fix-engineer, test-strategist, contract-reviewer, qa-reviewer" }
+  - { type: context-manifest-draft, pointer: "specs/changes/nontranslatable-segment-guard/context-manifest.md" }
+next-action: "contract-reviewer drafts the body-path passthrough + refusal-guard BR (reuse existing dispositions); then test-strategist + implementation-planner + bug-fix-engineer"
+notes:
+  - "No atomic split. Watch tier-floor override on 'cache'/'provider' vocab (evidence only)."
+  - "Standalone bug-fix before resuming steps 2/3 of the translation-prompt realignment."
