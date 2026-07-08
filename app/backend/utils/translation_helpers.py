@@ -173,16 +173,19 @@ def translate_merged_paragraphs(
                 progress_log(completed)
             continue
 
-        prefix = build_context_prefix(
+        ctx = build_context_prefix(
             texts, i,
             config.CONTEXT_WINDOW_SEGMENTS,
             config.CONTEXT_MAX_CHARS,
         )
         # Apply context only when text is substantial; short single-token inputs
         # (e.g. CJK "N/A" tokens) have LLM bypasses in the client that match on
-        # the raw text — prepending context would break those bypasses.
-        prompted_text = (prefix + text) if prefix and len(text.strip()) > 4 else text
-        ok, translated = client.translate_once(prompted_text, tgt, src_lang)
+        # the raw text — attaching context would break those bypasses.
+        # Context is delivered via the system channel (BR-78 / ADR-0016), NOT
+        # concatenated onto `text` — the translatable payload for segment i is
+        # always exactly `text`, never `text` glued with a neighbor's content.
+        system_ctx = ctx if (ctx and len(text.strip()) > 4) else None
+        ok, translated = client.translate_once(text, tgt, src_lang, system_context=system_ctx)
         if ok:
             results[i] = (True, translated)
             if on_segment_done:

@@ -39,9 +39,10 @@ class TestProtocolDefinition:
 
         sig_translate_once = inspect.signature(LLMClient.translate_once)
         params = list(sig_translate_once.parameters.keys())
-        # cancel_event is an additive, back-compatible optional kwarg
-        # (qa-judge-hang-recovery / BR-99) — does not break structural conformance.
-        assert params == ["self", "text", "tgt", "src_lang", "cancel_event"], (
+        # cancel_event and system_context are additive, back-compatible optional
+        # kwargs (qa-judge-hang-recovery / BR-99; context-prefix-bleed-fix / BR-78)
+        # — neither breaks structural conformance.
+        assert params == ["self", "text", "tgt", "src_lang", "cancel_event", "system_context"], (
             f"translate_once params: {params}"
         )
 

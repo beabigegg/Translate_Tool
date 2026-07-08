@@ -1,0 +1,5 @@
+artifacts:
+  - { type: adr-written, pointer: "docs/adr/0016-context-out-of-band-system-channel.md" }
+  - { type: affected-areas, pointer: "llm-client-protocol, translation prompt-assembly, BR-78" }
+  - { type: decision-summary, pointer: "route sliding-context via system channel (additive translate_once system_context param), not user text; delete kept as fallback" }
+  - { type: risks-noted, pointer: "2 medium (weak source-lang context signal / provider system-vs-user honoring; CER-001 pdf thread out-of-scope), 0 high" }

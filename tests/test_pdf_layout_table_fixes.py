@@ -352,7 +352,11 @@ class _StubTableClient:
     def _build_table_translate_prompt(serialized, src, tgt):
         return "TABLE:\n" + serialized
 
-    def translate_once(self, prompt, tgt, src):
+    def translate_once(self, prompt, tgt, src, cancel_event=None, system_context=None):
+        # cancel_event/system_context: additive, back-compatible LLMClient.translate_once
+        # kwargs (qa-judge-hang-recovery / context-prefix-bleed-fix). This stub also serves
+        # _translate_pdf_to_pdf's body-text path (translate_merged_paragraphs), not only the
+        # direct table-context call site, so it must tolerate both.
         if prompt.startswith("TABLE:\n"):
             self.table_prompts.append(prompt)
             body = prompt.split("TABLE:\n", 1)[1]

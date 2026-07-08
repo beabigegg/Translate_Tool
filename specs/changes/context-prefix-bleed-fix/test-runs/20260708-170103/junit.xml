@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.174" timestamp="2026-07-08T17:01:03.405681+08:00" hostname="EGG"><testcase classname="tests.test_context_prefix_bleed" name="test_build_context_prefix_returns_system_channel_block_no_user_glue" time="0.027"><failure message="AssertionError: assert 'Context (do... translate):' not in 'Context (do...为电镀前本体打伤\n\n'&#10;  &#10;  'Context (do not translate):' is contained here:&#10;    Context (do not translate):&#10;    1、客户信和达（欧朗）2024.08.23反馈我司材料P6SMBJ18CA DC 2427M 20PCS本体破损，退回4pcs分析&#10;    2、不良品本体侧面破损，破损处有锡电镀层，判断为电镀前本体打伤">tests/test_context_prefix_bleed.py:94: in test_build_context_prefix_returns_system_channel_block_no_user_glue
+    assert "Context (do not translate):" not in result
+E   AssertionError: assert 'Context (do... translate):' not in 'Context (do...为电镀前本体打伤\n\n'
+E     
+E     'Context (do not translate):' is contained here:
+E       Context (do not translate):
+E       1、客户信和达（欧朗）2024.08.23反馈我司材料P6SMBJ18CA DC 2427M 20PCS本体破损，退回4pcs分析
+E       2、不良品本体侧面破损，破损处有锡电镀层，判断为电镀前本体打伤</failure></testcase></testsuite></testsuites>

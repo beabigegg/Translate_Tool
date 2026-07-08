@@ -1,0 +1,7 @@
+change-id: context-prefix-bleed-fix
+agent: backend-engineer
+status: folded-into-bug-fix-engineer
+summary: "The data-symptom backend scope (LLM client-protocol system_context seam across base_llm_client/openai_compatible_client/ollama_client + translate_merged_paragraphs + build_context_prefix) was implemented by bug-fix-engineer as the bug-fix-lane lead (all files in its allowed scope). No separate backend-engineer edit needed; see agent-log/bug-fix-engineer.yml for the full implementation + test evidence."
+artifacts:
+  - { type: note, pointer: "client-protocol + prompt-assembly edits done by bug-fix-engineer (bug-fix lane)" }
+next-action: "qa-reviewer"

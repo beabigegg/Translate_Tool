@@ -1,0 +1,16 @@
+{
+  "change_id": "context-prefix-bleed-fix",
+  "phase": "targeted",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest tests/test_context_prefix_bleed.py tests/test_openai_compatible_client.py::TestSystemContextChannel::test_system_context_prepended_as_leading_system_message tests/test_ollama_client_dynamic_strategy.py::test_system_context_merged_into_system_field tests/test_llm_client_protocol.py::TestProtocolDefinition::test_protocol_method_signatures tests/test_context_window_segments.py -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/context-prefix-bleed-fix/test-runs/20260708-171746/junit.xml'",
+  "duration_ms": 482,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/context-prefix-bleed-fix/test-runs/20260708-171746/summary.json",
+    "stdout": "specs/changes/context-prefix-bleed-fix/test-runs/20260708-171746/stdout.log",
+    "stderr": "specs/changes/context-prefix-bleed-fix/test-runs/20260708-171746/stderr.log",
+    "junit": "specs/changes/context-prefix-bleed-fix/test-runs/20260708-171746/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

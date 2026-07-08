@@ -108,8 +108,12 @@ class OpenAICompatibleClient:
     def _models_url(self) -> str:
         return f"{self.base_url}/v1/models"
 
-    def _build_messages(self, user_content: str) -> List[dict]:
-        return [{"role": "user", "content": user_content}]
+    def _build_messages(self, user_content: str, system_context: Optional[str] = None) -> List[dict]:
+        messages: List[dict] = []
+        if system_context:
+            messages.append({"role": "system", "content": system_context})
+        messages.append({"role": "user", "content": user_content})
+        return messages
 
     def _run_bounded_post(self, fn, cancel_event=None):
         """Run a blocking cloud call on a daemon worker, bounded by a wall-clock
@@ -165,16 +169,21 @@ class OpenAICompatibleClient:
             raise outcome["exc"]
         return outcome["resp"]
 
-    def _post_completion(self, user_content: str, cancel_event=None) -> Tuple[bool, str]:
+    def _post_completion(
+        self, user_content: str, cancel_event=None, system_context: Optional[str] = None
+    ) -> Tuple[bool, str]:
         """POST to /v1/chat/completions and return (ok, text).
 
         cancel_event (optional threading.Event): when set, an in-flight call is
         aborted promptly and degraded (BR-99). Every call is additionally bounded
         by the `OPENAI_TOTAL_TIMEOUT_SECONDS` wall-clock ceiling (BR-100).
+
+        system_context (optional, BR-78): forwarded to `_build_messages` as a
+        leading `role:"system"` message; never merged into `user_content`.
         """
         payload = {
             "model": self.model,
-            "messages": self._build_messages(user_content),
+            "messages": self._build_messages(user_content, system_context),
             "stream": False,
             "max_tokens": self._max_tokens,
         }
@@ -277,12 +286,21 @@ class OpenAICompatibleClient:
         )
 
     def translate_once(
-        self, text: str, tgt: str, src_lang: Optional[str], cancel_event=None
+        self,
+        text: str,
+        tgt: str,
+        src_lang: Optional[str],
+        cancel_event=None,
+        system_context: Optional[str] = None,
     ) -> Tuple[bool, str]:
         """Translate a single text segment via /v1/chat/completions.
 
         cancel_event (optional threading.Event): forwarded to the bounded post so
         an in-flight re-translation can be cancelled/ceiling-bounded (BR-99/BR-100).
+
+        system_context (optional, BR-78): delivered as a leading system message,
+        never concatenated into `text`/the user "Translate the following text..."
+        payload — keeps reference context out of the translatable body.
 
         Returns:
             (ok, translated_text) where ok=False signals a failure.
@@ -292,7 +310,7 @@ class OpenAICompatibleClient:
             f"Translate the following text from {src} to {tgt}. "
             f"Output only the translation, no explanations.\n\n{text}"
         )
-        ok, result = self._post_completion(prompt, cancel_event=cancel_event)
+        ok, result = self._post_completion(prompt, cancel_event=cancel_event, system_context=system_context)
         logger.info(
             "[%s] translate_once ok=%s tgt=%s len_in=%d len_out=%d",
             self.provider_id, ok, tgt, len(text), len(result),

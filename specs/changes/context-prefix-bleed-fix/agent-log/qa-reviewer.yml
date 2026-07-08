@@ -1,0 +1,10 @@
+change-id: context-prefix-bleed-fix
+agent: qa-reviewer
+status: done
+summary: "release-ready (approved). Independently re-verified: reverted the 2 production functions → 5/6 tests in test_context_prefix_bleed.py genuinely FAIL on pre-fix (incl. all 3 channel-selection assertions), re-ran GREEN post-fix. Reproduction evidence valid (test-runs/20260708-170103 status=failed exit=1; commands match runs minus runner flags); test-evidence final-status passed, all required phases + full smoke passed, no waivers. Seam correct (additive system_context=None; OpenAI prepends system msg with context-free user body; Ollama system-field merge; translate_merged_paragraphs user payload = target segment only; build_context_prefix drops 'do not translate' label). No regression (96 passed local re-run; config unchanged; Office/judge/QE/layout untouched). Contracts consistent (BR-78 0.25.1, Table V matches code, validate --contracts pass). CER-002 accepted: signature-only test-double tolerance, zero behavior change; pdf_processor.py (CER-001) NOT edited."
+artifacts:
+  - { type: gate-results, pointer: "collect/targeted/changed-area/contract/full all pass; local re-run 96 passed" }
+  - { type: evidence-quality, pointer: "repro (reverted-and-ran: 5/6 RED pre-fix, GREEN post-fix)" }
+  - { type: decision, pointer: "release-ready (approved)" }
+  - { type: residual-risk, pointer: "CER-001 pending/out-of-scope: PDF direct translate_once sites do not receive system_context — pre-existing (they never got BR-78 context), unchanged by this fix" }
+next-action: "local gate → PR"

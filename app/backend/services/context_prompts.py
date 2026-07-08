@@ -259,17 +259,24 @@ def _get_context_detection_prompt(target_lang: str) -> str:
 # Sliding-context prefix builder (BR-78, Decision Table V)
 # ---------------------------------------------------------------------------
 
+_SYSTEM_CONTEXT_LABEL = "Previous segments — reference only, do NOT translate or repeat:"
+
+
 def build_context_prefix(
     segments: "list[str]",
     current_idx: int,
     n_context: int,
     max_chars: int,
 ) -> str:
-    """Return a read-only context prefix for the segment at *current_idx*.
+    """Return a read-only reference block for the segment at *current_idx*.
 
     Implements BR-78 / Decision Table V: include up to *n_context* immediately
-    preceding segments as a ``"Context (do not translate):"`` block, truncating
-    from the oldest end when combined text exceeds *max_chars*.
+    preceding segments as a system-channel reference block, truncating from
+    the oldest end when combined text exceeds *max_chars*. The returned string
+    is intended for delivery via ``translate_once(system_context=...)`` — an
+    out-of-band channel — never concatenated onto the translatable user text
+    (that glue is exactly the bleed this rule prevents; see
+    context-prefix-bleed-fix / ADR-0016).
 
     This is a leaf function (no app.backend imports).  Window size and char cap
     are passed as arguments so the caller controls them and tests can vary them
@@ -282,8 +289,9 @@ def build_context_prefix(
         max_chars:   Maximum total characters for the combined context body.
 
     Returns:
-        A ``"Context (do not translate):\\n...\\n\\n"`` prefix string,
-        or ``""`` when *n_context* <= 0 or *current_idx* == 0 (no predecessors).
+        A ``"Previous segments — reference only, do NOT translate or repeat:\\n..."``
+        block string, or ``""`` when *n_context* <= 0 or *current_idx* == 0
+        (no predecessors).
     """
     if n_context <= 0 or current_idx <= 0:
         return ""
@@ -294,4 +302,4 @@ def build_context_prefix(
     context = "\n".join(preceding)
     if len(context) > max_chars:
         context = context[-max_chars:]
-    return f"Context (do not translate):\n{context}\n\n"
+    return f"{_SYSTEM_CONTEXT_LABEL}\n{context}"

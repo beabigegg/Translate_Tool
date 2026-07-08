@@ -1,0 +1,20 @@
+{
+  "change_id": "context-prefix-bleed-fix",
+  "phase": "targeted",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "python -m pytest tests/test_context_prefix_bleed.py -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/context-prefix-bleed-fix/test-runs/20260708-170103/junit.xml'",
+  "duration_ms": 443,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests.test_context_prefix_bleed::test_build_context_prefix_returns_system_channel_block_no_user_glue",
+    "message": "AssertionError: assert 'Context (do... translate):' not in 'Context (do...为电镀前本体打伤\\n\\n'\n  \n  'Context (do not translate):' is contained here:\n    Context (do not translate):\n    1、客户信和达（欧朗）2024.08.23反馈我司材料P6SMBJ18CA DC 2427M 20PCS本体破损，退回4pcs分析\n    2、不良品本体侧面破损，破损处有锡电镀层，判断为电镀前本体打伤"
+  },
+  "artifacts": {
+    "summary": "specs/changes/context-prefix-bleed-fix/test-runs/20260708-170103/summary.json",
+    "stdout": "specs/changes/context-prefix-bleed-fix/test-runs/20260708-170103/stdout.log",
+    "stderr": "specs/changes/context-prefix-bleed-fix/test-runs/20260708-170103/stderr.log",
+    "junit": "specs/changes/context-prefix-bleed-fix/test-runs/20260708-170103/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

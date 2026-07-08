@@ -440,7 +440,12 @@ class OllamaClient:
         return self._build_payload(prompt)
 
     def translate_once(
-        self, text: str, tgt: str, src_lang: Optional[str], cancel_event=None
+        self,
+        text: str,
+        tgt: str,
+        src_lang: Optional[str],
+        cancel_event=None,
+        system_context: Optional[str] = None,
     ) -> Tuple[bool, str]:
         # Local mid-read abort is best-effort only; honor a set cancel_event at the
         # call boundary so a re-translate started after stop_flag exits promptly
@@ -452,6 +457,13 @@ class OllamaClient:
         if src_stripped in _SHORT_NA_TOKENS:
             return True, _LANGUAGE_NA.get(tgt, "N/A")
         payload = self._build_single_translate_payload(text, tgt, src_lang)
+        if system_context:
+            # Merge (protocol parity; runtime-unused for Ollama today) rather than
+            # overwrite, so any model-type-derived self.system_prompt is preserved.
+            merged_system = "\n\n".join(
+                p for p in (payload.get("system"), system_context) if p
+            )
+            payload["system"] = merged_system
         last = None
         for attempt in range(1, API_ATTEMPTS + 1):
             try:

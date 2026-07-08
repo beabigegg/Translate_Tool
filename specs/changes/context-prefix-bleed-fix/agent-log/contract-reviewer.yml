@@ -1,0 +1,9 @@
+change-id: context-prefix-bleed-fix
+agent: contract-reviewer
+status: done
+summary: "approved (patch/fix). Drafted apply-ready BR-78 rewording (Rule Inventory row + Table V rows 1/2/3/5) — preceding-segment context now delivered out-of-band via the client system channel (translate_once system_context param), NEVER concatenated into the translatable user payload; intent (N-preceding coherence context, CONTEXT_WINDOW_SEGMENTS/CONTEXT_MAX_CHARS caps, truncate-from-oldest, never in output) preserved. business 0.25.0->0.25.1 (patch) + CHANGELOG [business 0.25.1]. BR-78 id/name unchanged. api/env/data-shape/ci NO EDIT. Absence-test check clear (no BR-92/rescore reintroduced; no test asserts BR-78 row text verbatim). Flagged: test_context_window_segments.py payload asserts must move prompt→system (owned by bug-fix/backend)."
+artifacts:
+  - { type: contracts-reviewed, pointer: "contracts/business/business-rules.md" }
+  - { type: version-bumps, pointer: "business 0.25.0->0.25.1 (patch/fix); api/env/data-shape/ci unchanged" }
+  - { type: breaking-changes, pointer: "none (translate_once system_context additive, default None)" }
+next-action: "test-strategist + implementation-planner; bug-fix-engineer updates test_context_window_segments.py payload asserts (prompt→system)"

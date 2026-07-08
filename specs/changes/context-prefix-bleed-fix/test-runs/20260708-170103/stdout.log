@@ -1,0 +1,15 @@
+F
+=================================== FAILURES ===================================
+_____ test_build_context_prefix_returns_system_channel_block_no_user_glue ______
+tests/test_context_prefix_bleed.py:94: in test_build_context_prefix_returns_system_channel_block_no_user_glue
+    assert "Context (do not translate):" not in result
+E   AssertionError: assert 'Context (do... translate):' not in 'Context (do...为电镀前本体打伤\n\n'
+E     
+E     'Context (do not translate):' is contained here:
+E       Context (do not translate):
+E       1、客户信和达（欧朗）2024.08.23反馈我司材料P6SMBJ18CA DC 2427M 20PCS本体破损，退回4pcs分析
+E       2、不良品本体侧面破损，破损处有锡电镀层，判断为电镀前本体打伤
+=========================== short test summary info ============================
+FAILED tests/test_context_prefix_bleed.py::test_build_context_prefix_returns_system_channel_block_no_user_glue
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 0.18s

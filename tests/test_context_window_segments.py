@@ -59,7 +59,7 @@ def test_build_context_prefix_includes_n_preceding() -> None:
     result = build_context_prefix(segments, current_idx=2, n_context=2, max_chars=1000)
     assert "Alpha." in result
     assert "Beta." in result
-    assert result.startswith("Context (do not translate):")
+    assert result.startswith("Previous segments — reference only, do NOT translate or repeat:")
 
 
 def test_build_context_prefix_capped_at_n() -> None:
@@ -77,10 +77,13 @@ def test_build_context_prefix_capped_at_n() -> None:
 # ---------------------------------------------------------------------------
 
 def test_prompt_payload_contains_neighbor_text_at_call_boundary(monkeypatch) -> None:
-    """_call_ollama payload for Segment B. must contain the literal 'Segment A.'
+    """_call_ollama payload for Segment B. must carry the literal 'Segment A.'
+    context via the `system` field — never inside the translatable `prompt`
+    (context-prefix-bleed-fix: context moved out of the user payload).
 
-    This is a SELECTION test: asserts the specific adjacent segment text appears,
-    not just that some context was added.  Mock boundary: _call_ollama.
+    This is a SELECTION test: asserts the specific adjacent segment text
+    appears in the correct channel, not just that some context was added.
+    Mock boundary: _call_ollama.
     """
     monkeypatch.setattr(app_config, "CONTEXT_WINDOW_SEGMENTS", 2)
     monkeypatch.setattr(app_config, "CONTEXT_MAX_CHARS", 300)
@@ -102,10 +105,15 @@ def test_prompt_payload_contains_neighbor_text_at_call_boundary(monkeypatch) -> 
         "No _call_ollama call found with 'Segment B.' in payload['prompt']. "
         "Wiring may be broken."
     )
-    # SELECTION assertion: the context must also contain the literal preceding text
-    assert "Segment A." in segment_b_calls[0]["prompt"], (
-        "Prompt for 'Segment B.' does not contain literal 'Segment A.' context. "
-        "Context prefix wiring is broken."
+    # SELECTION assertion: the neighbor text must be in the system channel.
+    assert "Segment A." in segment_b_calls[0].get("system", ""), (
+        "System field for 'Segment B.' does not contain literal 'Segment A.' context. "
+        "Context-channel wiring is broken."
+    )
+    # Regression guard: neighbor text must NEVER be glued into the translatable prompt.
+    assert "Segment A." not in segment_b_calls[0]["prompt"], (
+        "Neighbor text leaked into the translatable prompt payload — this is exactly "
+        "the context-prefix-bleed regression."
     )
 
 
@@ -119,11 +127,10 @@ def test_build_context_prefix_truncated_to_max_chars() -> None:
     segments = [long_text, "Target"]
     result = build_context_prefix(segments, current_idx=1, n_context=1, max_chars=50)
     # Strip the header line to measure only the body
-    header = "Context (do not translate):\n"
+    header = "Previous segments — reference only, do NOT translate or repeat:\n"
     assert result.startswith(header)
     body = result[len(header):]
-    # The body (including the trailing \n\n) should be derived from at most 50 chars
-    # of the combined context.
+    # The body should be derived from at most 50 chars of the combined context.
     assert len(body.rstrip()) <= 50
 
 
@@ -171,8 +178,12 @@ def test_prompt_payload_has_no_context_prefix_when_n_zero(monkeypatch) -> None:
         )
 
     for call in calls:
-        assert "Context (do not translate):" not in call.get("prompt", ""), (
+        assert "Previous segments" not in call.get("prompt", ""), (
             "Context header found in prompt even though CONTEXT_WINDOW_SEGMENTS=0. "
+            "The n=0 backward-compat guarantee is broken."
+        )
+        assert "Previous segments" not in call.get("system", ""), (
+            "Context header found in system field even though CONTEXT_WINDOW_SEGMENTS=0. "
             "The n=0 backward-compat guarantee is broken."
         )
 
@@ -198,7 +209,7 @@ def test_context_prefix_header_not_present_in_translated_output(monkeypatch) -> 
         )
 
     for _ok, translated in results:
-        assert "Context (do not translate):" not in translated, (
+        assert "Previous segments — reference only, do NOT translate or repeat:" not in translated, (
             f"Context header leaked into translated output: {translated!r}"
         )
 
@@ -219,7 +230,7 @@ def test_build_context_prefix_uses_available_neighbors_at_last_segment() -> None
     result = build_context_prefix(segments, current_idx=1, n_context=2, max_chars=300)
     # Should include the only available predecessor without IndexError
     assert "Only_predecessor" in result
-    assert result.startswith("Context (do not translate):")
+    assert result.startswith("Previous segments — reference only, do NOT translate or repeat:")
 
 
 # ---------------------------------------------------------------------------
