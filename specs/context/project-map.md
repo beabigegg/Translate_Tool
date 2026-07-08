@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
 visible-dirs: 59
-visible-files: 234
+visible-files: 236
 omitted-dirs: 12
 truncated-dirs: 1
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -105,6 +105,7 @@ Translate_Tool/
 |   |   |   |-- context_prompts.py
 |   |   |   |-- doc_chunker.py
 |   |   |   |-- job_manager.py
+|   |   |   |-- layout_qa.py
 |   |   |   |-- metrics.py
 |   |   |   |-- model_router.py
 |   |   |   |-- quality_evaluator.py
@@ -201,7 +202,8 @@ Translate_Tool/
 |   |   |-- 0011-cloud-llm-total-timeout-and-cancellable-post.md
 |   |   |-- 0012-shared-fit-cascade-all-pdf-paths.md
 |   |   |-- 0013-bounded-local-table-row-growth-prepass.md
-|   |   \-- 0014-retire-phantom-br-and-inert-env-var.md
+|   |   |-- 0014-retire-phantom-br-and-inert-env-var.md
+|   |   \-- 0015-layout-qa-metric-core-in-runtime.md
 |   |-- TEST_DOC/
 |   |   |-- EN-P-QC1102-D7 量测系统分析(MSA)程序.docx
 |   |   \-- W-RM0901-G6 机器设备保养及维护管理准则.docx
@@ -312,6 +314,7 @@ Translate_Tool/
 |   |-- test_judge_apply.py
 |   |-- test_layout_detector.py
 |   |-- test_layout_metrics.py
+|   |-- test_layout_qa.py
 |   |-- test_libreoffice_helpers.py
 |   |-- test_llm_client_protocol.py
 |   |-- test_metrics_counters.py
@@ -329,8 +332,7 @@ Translate_Tool/
 |   |-- test_pdf_layout_refactor.py
 |   |-- test_pdf_layout_table_fixes.py
 |   |-- test_pdf_layout_viz_persistence.py
-|   |-- test_pdf_parser.py
-|   \-- ... (29 more entries truncated; cap=50)
+|   \-- ... (30 more entries truncated; cap=50)
 |-- .env
 |-- .gitignore
 |-- AGENTS.md

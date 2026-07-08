@@ -38,5 +38,5 @@ tasks:
   - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "local gate = same required validations CI runs (validate --contracts, blanket pytest); PR CI to confirm" }
   - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full-regression informational; no non-deterministic checks" }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gate — no real-infra/load/soak surface (ci-cd-gatekeeper)" }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done, note: "cdd-kit archive → specs/archive/2026/layout-qa-safety-net; INDEX.md updated" }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "2 promote-to-guidance (contract-reviewer): A metric-in-runtime shim FOLDED into existing shared-module learning (net 0); B no-shell-agent-names-nonexistent-seam appended (+1). Product behavior in BR-106/ADR-0015. validate --contracts green; context-scan refreshed" }

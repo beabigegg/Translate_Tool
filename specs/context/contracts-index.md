@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 contract-count: 9
 missing-summary-count: 0
-inputs-digest: 30b05e8756ef48ed06a5c3c71cc9f3a2ad0c3eb3f09a769e497cf5cf9cd1b4f9
+inputs-digest: dbe60792140bf639461d4c1b3d12d94575296a0229fef9501c64b2353e25d408
 ---
 
 # Contracts Index
@@ -69,7 +69,7 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: Business Rules
 - owner: application-team
 - surface: domain-behavior
-- schema-version: 0.24.2
+- schema-version: 0.25.0
 - last-changed: 2026-07-08
 - breaking-change-policy: deprecate-2-minors
 - summary: Business decision tables, rule inventory, and change policy for behavior updates.
@@ -131,8 +131,8 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: Env Contract
 - owner: platform-team
 - surface: runtime-config
-- schema-version: 0.15.0
-- last-changed: 2026-07-07
+- schema-version: 0.16.0
+- last-changed: 2026-07-08
 - breaking-change-policy: deprecate-2-minors
 - summary: Environment variable inventory, secret handling, and deployment sync policy.
 
