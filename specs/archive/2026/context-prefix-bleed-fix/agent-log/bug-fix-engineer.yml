@@ -1,0 +1,123 @@
+change-id: context-prefix-bleed-fix
+timestamp: 2026-07-08T17:20:00Z
+agent: bug-fix-engineer
+status: complete
+files-read:
+  - specs/changes/context-prefix-bleed-fix/implementation-plan.md
+  - specs/changes/context-prefix-bleed-fix/design.md
+  - specs/changes/context-prefix-bleed-fix/test-plan.md
+  - specs/changes/context-prefix-bleed-fix/ci-gates.md
+  - specs/changes/context-prefix-bleed-fix/change-classification.md
+  - specs/changes/context-prefix-bleed-fix/change-request.md
+  - specs/changes/context-prefix-bleed-fix/context-manifest.md
+  - specs/changes/context-prefix-bleed-fix/tasks.yml
+  - app/backend/clients/base_llm_client.py
+  - app/backend/clients/openai_compatible_client.py
+  - app/backend/clients/ollama_client.py
+  - app/backend/services/context_prompts.py
+  - app/backend/utils/translation_helpers.py
+  - tests/test_context_window_segments.py
+  - tests/test_llm_client_protocol.py
+  - tests/test_openai_compatible_client.py
+  - tests/test_ollama_client_dynamic_strategy.py
+  - tests/test_sentence_mode_consistency.py
+  - tests/test_pdf_layout_table_fixes.py (grep for _StubTableClient/translate_once only, plus a scratch copy under an isolated pytest run — pdf_processor.py itself was never read, per CER-001)
+artifacts:
+  - { type: root-cause, pointer: "app/backend/utils/translation_helpers.py:176-188 (translate_merged_paragraphs glued build_context_prefix's output onto the segment text before calling client.translate_once); app/backend/services/context_prompts.py:265-303 (build_context_prefix emitted a user-glue \"Context (do not translate):\" prefix)" }
+  - { type: files-changed, pointer: "app/backend/clients/base_llm_client.py, app/backend/clients/openai_compatible_client.py, app/backend/clients/ollama_client.py, app/backend/services/context_prompts.py, app/backend/utils/translation_helpers.py, tests/test_context_prefix_bleed.py (new), tests/test_context_window_segments.py, tests/test_llm_client_protocol.py, tests/test_openai_compatible_client.py, tests/test_ollama_client_dynamic_strategy.py, tests/test_pdf_layout_table_fixes.py (scope expansion, see CER-002)" }
+  - { type: regression-evidence, pointer: "specs/changes/context-prefix-bleed-fix/test-evidence.yml (final-status: passed; collect/targeted/changed-area/contract/full all passed)" }
+  - { type: residual-risk, pointer: "CER-001 (threading system_context UP through pdf_processor.py's direct translate_once call sites) remains pending/out of scope — the PDF path's per-call translate_once sites are untouched, so cloud PDF table/body translations flowing through those direct call sites still do not receive BR-78 context (pre-existing behavior, unchanged by this fix). CER-002 (see below) is a same-change scope expansion, not a residual risk." }
+next-action: "qa-reviewer release-readiness review"
+
+bug-fix:
+  schema-version: 0.1.0
+  symptom: >
+    Translating a single 8D-report segment (e.g. "3、此失效模式内部外检有发现...")
+    via a cloud provider (PANJIT/DeepSeek) returned Vietnamese output covering
+    points 1 + 2 + 3 — the two PRECEDING segments' text bled verbatim into the
+    current segment's translation.
+  expected_behavior: >
+    Only the target segment N is translated; the to-translate user payload
+    handed to client.translate_once for segment N contains ONLY segment N.
+  actual_behavior: >
+    build_context_prefix (BR-78) prepended the previous CONTEXT_WINDOW_SEGMENTS
+    (=2) raw source segments as an inline "Context (do not translate):" block,
+    and translate_merged_paragraphs glued that block onto the segment BEFORE
+    calling client.translate_once. The client's "Translate the following
+    text... Output only the translation" wrapper then contained two conflicting
+    instructions in one user message, and cloud models resolved this by
+    translating everything, including the "do not translate" context.
+  observed_surface: "Cloud (PANJIT/DeepSeek) translation output for multi-segment documents (8D reports, PDFs with several paragraphs)"
+  reproduction:
+    status: test-reproduced
+    command: "python -m pytest tests/test_context_prefix_bleed.py -q --maxfail=1 --tb=short -ra"
+    failing_before_fix: true
+    summary: "specs/changes/context-prefix-bleed-fix/test-runs/20260708-170103/summary.json"
+  hypotheses:
+    - { id: H1, candidate: "app/backend/utils/translation_helpers.py::translate_merged_paragraphs (prompted_text = prefix + text)", reason: "change-request.md root-cause trace + code read confirms the glue point", result: confirmed }
+    - { id: H2, candidate: "app/backend/services/context_prompts.py::build_context_prefix (\"Context (do not translate):\" label)", reason: "the block this function returns is exactly what gets glued onto the user text", result: confirmed }
+    - { id: H3, candidate: "app/backend/clients/openai_compatible_client.py::translate_once (single user message wrapper)", reason: "candidate: maybe the wrapper itself splits context vs text; reading the code showed it does not — it blindly wraps whatever prompted_text it receives, confirming the bleed originates upstream in translation_helpers.py, not in the client", result: rejected }
+    - { id: H4, candidate: "app/backend/services/translation_service.py critique/re-translation path", reason: "critique loop also calls translate_once; could be a second bleed source", result: unconfirmed }
+  root_cause:
+    pointer: "app/backend/utils/translation_helpers.py:176-188"
+    summary: >
+      translate_merged_paragraphs concatenated build_context_prefix's
+      "Context (do not translate):\n<raw preceding segments>\n\n" output
+      directly onto the segment's own text and handed the combined string to
+      client.translate_once as a single user payload; the client's own
+      "Translate the following text..." wrapper then had no structural way to
+      distinguish translatable content from reference-only content.
+  fix:
+    files_changed:
+      - app/backend/clients/base_llm_client.py
+      - app/backend/clients/openai_compatible_client.py
+      - app/backend/clients/ollama_client.py
+      - app/backend/services/context_prompts.py
+      - app/backend/utils/translation_helpers.py
+      - tests/test_context_prefix_bleed.py
+      - tests/test_context_window_segments.py
+      - tests/test_llm_client_protocol.py
+      - tests/test_openai_compatible_client.py
+      - tests/test_ollama_client_dynamic_strategy.py
+      - tests/test_pdf_layout_table_fixes.py
+    summary: >
+      Added an additive `system_context: Optional[str] = None` parameter to
+      `LLMClient.translate_once` (Protocol + both real implementations).
+      OpenAICompatibleClient._build_messages prepends a leading
+      {"role":"system","content":system_context} message when set, leaving the
+      user "Translate the following text..." wrapper unchanged and
+      context-free. OllamaClient.translate_once merges system_context into the
+      payload's `system` field (parity; runtime-unused). translate_merged_paragraphs
+      no longer glues the prefix onto `text` — it passes the raw segment as
+      `text=` and the BR-78 reference block via `system_context=`.
+      build_context_prefix now returns a reworded system-channel block
+      ("Previous segments — reference only, do NOT translate or repeat:\n...")
+      with no "Context (do not translate):" user-glue framing. Updated the
+      test doubles/assertions broken by the additive kwarg and the new return
+      shape (test_context_window_segments.py, test_llm_client_protocol.py) and
+      added new system-channel contract tests (test_openai_compatible_client.py,
+      test_ollama_client_dynamic_strategy.py). Also updated
+      `_StubTableClient.translate_once` in tests/test_pdf_layout_table_fixes.py
+      to tolerate the additive kwarg (see CER-002 in context-manifest.md) —
+      design.md's assumption that the PDF path never reaches
+      translate_merged_paragraphs was verified false during implementation
+      (the same client instance also serves the PDF body-text path), and the
+      additive kwarg broke that fixed-signature fake; the fix is a
+      zero-behavior-change signature tolerance, matching every other test
+      double already updated in this change.
+  regression:
+    status: passed
+    command: "python -m pytest -q --maxfail=1 --tb=short -ra"
+    summary: "specs/changes/context-prefix-bleed-fix/test-runs/20260708-171906/summary.json"
+  residual_risk: >
+    CER-001 (pdf_processor.py's direct translate_once call sites) stays
+    pending/out of scope per the implementation plan — those call sites do
+    not receive system_context and are unaffected by this change (neither
+    improved nor regressed on the context-bleed dimension for that specific
+    call path; they already bypassed build_context_prefix's gluing prior to
+    this fix). CER-002 (tests/test_pdf_layout_table_fixes.py test-double
+    signature tolerance) was a same-change, evidence-driven, zero-behavior
+    scope expansion — flagged for human/orchestrator review since the file
+    was explicitly marked "do not touch" in change-request.md/design.md/
+    implementation-plan.md based on an assumption this implementation
+    disproved.

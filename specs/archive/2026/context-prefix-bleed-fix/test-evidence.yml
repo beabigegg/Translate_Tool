@@ -1,0 +1,59 @@
+change-id: context-prefix-bleed-fix
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+  - contract
+runs:
+  - phase: targeted
+    status: passed
+    command: >-
+      python -m pytest tests/test_context_prefix_bleed.py
+      tests/test_openai_compatible_client.py::TestSystemContextChannel::test_system_context_prepended_as_leading_system_message
+      tests/test_ollama_client_dynamic_strategy.py::test_system_context_merged_into_system_field
+      tests/test_llm_client_protocol.py::TestProtocolDefinition::test_protocol_method_signatures
+      tests/test_context_window_segments.py -q --maxfail=1 --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/context-prefix-bleed-fix/test-runs/20260708-171746/junit.xml'
+    summary: specs/changes/context-prefix-bleed-fix/test-runs/20260708-171746/summary.json
+    junit: specs/changes/context-prefix-bleed-fix/test-runs/20260708-171746/junit.xml
+  - phase: collect
+    status: passed
+    command: >-
+      python -m pytest --collect-only -q tests/test_context_prefix_bleed.py
+      tests/test_openai_compatible_client.py::TestSystemContextChannel::test_system_context_prepended_as_leading_system_message
+      tests/test_ollama_client_dynamic_strategy.py::test_system_context_merged_into_system_field
+      tests/test_llm_client_protocol.py::TestProtocolDefinition::test_protocol_method_signatures
+      tests/test_context_window_segments.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/context-prefix-bleed-fix/test-runs/20260708-171733/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/context-prefix-bleed-fix/test-runs/20260708-171733/summary.json
+    junit: specs/changes/context-prefix-bleed-fix/test-runs/20260708-171733/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      python -m pytest tests/test_context_prefix_bleed.py tests/test_context_window_segments.py
+      tests/test_llm_client_protocol.py tests/test_openai_compatible_client.py
+      tests/test_ollama_client_dynamic_strategy.py tests/test_context_prompt_i18n.py tests/test_fewshot_glossary.py
+      tests/test_sentence_mode_consistency.py tests/test_critique_loop_batching.py
+      tests/test_translation_service_stage_snapshot.py tests/test_glossary_enforcement.py
+      tests/test_provider_fallback.py tests/test_doc_chunker.py tests/test_orchestrator_judge.py
+      tests/test_job_manager_current_segment.py tests/test_pdf_layout_table_fixes.py
+      tests/test_table_context_translation.py tests/test_output_mode_processors.py tests/test_providers_api.py -q
+      --maxfail=1 --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/context-prefix-bleed-fix/test-runs/20260708-171755/junit.xml'
+    summary: specs/changes/context-prefix-bleed-fix/test-runs/20260708-171755/summary.json
+    junit: specs/changes/context-prefix-bleed-fix/test-runs/20260708-171755/junit.xml
+  - phase: contract
+    status: passed
+    command: cdd-kit validate --contracts --env --ci
+    summary: specs/changes/context-prefix-bleed-fix/test-runs/20260708-171859/summary.json
+  - phase: full
+    status: passed
+    command: >-
+      python -m pytest -q --maxfail=1 --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/context-prefix-bleed-fix/test-runs/20260708-171906/junit.xml'
+    summary: specs/changes/context-prefix-bleed-fix/test-runs/20260708-171906/summary.json
+    junit: specs/changes/context-prefix-bleed-fix/test-runs/20260708-171906/junit.xml
+final-status: passed

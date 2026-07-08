@@ -1,0 +1,16 @@
+{
+  "change_id": "context-prefix-bleed-fix",
+  "phase": "full",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/context-prefix-bleed-fix/test-runs/20260708-171906/junit.xml'",
+  "duration_ms": 136331,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/context-prefix-bleed-fix/test-runs/20260708-171906/summary.json",
+    "stdout": "specs/changes/context-prefix-bleed-fix/test-runs/20260708-171906/stdout.log",
+    "stderr": "specs/changes/context-prefix-bleed-fix/test-runs/20260708-171906/stderr.log",
+    "junit": "specs/changes/context-prefix-bleed-fix/test-runs/20260708-171906/junit.xml"
+  },
+  "next_action": "all phases green"
+}

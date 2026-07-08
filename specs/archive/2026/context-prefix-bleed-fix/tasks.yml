@@ -1,0 +1,42 @@
+change-id: context-prefix-bleed-fix
+status: in-progress
+tier: 2
+tier-floor-override: "Prompt-assembly correctness bug-fix. Gate vocab may floor on 'cache' (SCENARIO_CACHE/translation_cache nearby), 'endpoint'/'route', 'session' — none correspond to a real auth, secret, migration, endpoint, or session change. Business-logic change is BR-78 text only (context relocated out of the translatable payload; no new field/behavior surface). change-classifier confirmed Tier 2."
+context-governance: v1
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on: []
+
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done, note: "change-classifier: Tier 2, bug-fix lane, data symptom; arch review yes (design.md); 7 agents" }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done, note: "contract-reviewer: BR-78 + Table V reworded (context via system channel, not translatable payload), business 0.25.0->0.25.1 + CHANGELOG; api/env/data/ci NO EDIT. approved" }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: done, note: "spec-architect: design.md + ADR-0016. Decision (b) route context via SYSTEM channel — additive translate_once(system_context=None); OpenAI prepends system msg, Ollama merges system field. build_context_prefix returns raw context (no 'do not translate' label). Only translate_merged_paragraphs passes it. Test doubles: test_context_window_segments.py payload asserts move prompt→system. No config/api/env/data/ci change; BR-78 + Table V reworded." }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done, note: "ci-cd-gatekeeper: ci-gates.md; no new workflow/job/secret — contract-and-fast-tests (validate --contracts + blanket pytest) auto-covers new/edited tests + BR-78 edit; no ci-gate-contract edit (2.6 skipped). Rollback = git revert / CONTEXT_WINDOW_SEGMENTS=0" }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done, note: "implementation-planner: IP-1..IP-10. system_context seam (base_llm_client sig / openai _build_messages system msg / ollama system field), translate_merged_paragraphs passes it, build_context_prefix drops label. Found 3 MORE literal-header asserts in test_context_window_segments.py (L62,122-127,222) + test_llm_client_protocol.py L44 param list to update. All affected test files confirmed in global Allowed Paths." }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: skipped, note: "no API change (classifier)" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no CSS/UI change (classifier)" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: skipped, note: "no env change — CONTEXT_WINDOW_SEGMENTS/CONTEXT_MAX_CHARS keep values (classifier)" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: skipped, note: "no IR/data-shape change (classifier)" }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: done, note: "BR-78 row + Table V rows reworded (system-channel delivery); business 0.25.0->0.25.1; CHANGELOG [business 0.25.1]. validate --contracts green" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no CI/CD change (classifier)" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done, note: "bug-fix-engineer: tests/test_context_prefix_bleed.py (NEW, RED pre-fix/GREEN post-fix); tests/test_llm_client_protocol.py + tests/test_context_window_segments.py updated for additive kwarg / new return shape" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: done, note: "bug-fix-engineer: tests/test_openai_compatible_client.py::TestSystemContextChannel + tests/test_ollama_client_dynamic_strategy.py::test_system_context_merged_into_system_field (new); tests/test_context_prefix_bleed.py 8D-fixture fake-client integration test" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: skipped, note: "deterministic at prompt-assembly layer; no live-LLM E2E (classifier)" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "not a report/import/export change (classifier)" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "no load/soak surface (classifier)" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: done, note: "bug-fix-engineer: system_context seam (base_llm_client Protocol, openai_compatible_client leading system message, ollama_client system-field merge), translate_merged_paragraphs passes system_context= instead of prefix+text, build_context_prefix returns reworded system-channel block. Full bounded ladder (collect/targeted/changed-area/contract/full) green — test-evidence.yml final-status: passed. CER-002 filed+resolved for tests/test_pdf_layout_table_fixes.py (see context-manifest.md); CER-001 (pdf_processor.py) stays pending." }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no frontend change (classifier)" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: skipped, note: "no env/deploy change (classifier)" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: skipped, note: "no CI/CD workflow change (classifier)" }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI change (classifier)" }
+  - { id: "5.2", section: Review, title: "Visual review", status: skipped, note: "no visual change (classifier)" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done, note: "contract-reviewer: approved (patch/fix, no breaking change); BR-78 id/name unchanged; absence-test tokens clear (no BR-92/rescore)" }
+  - { id: "5.4", section: Review, title: "QA review", status: done, note: "qa-reviewer: release-ready. Reverted-and-ran confirmed 5/6 RED pre-fix→GREEN post-fix; seam correct; no regression (96 pass); contracts consistent; CER-002 accepted (signature-only, pdf_processor.py NOT edited)" }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done, note: "cdd-kit gate green; test-evidence collect/targeted/changed-area/contract + full passed" }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "local gate = same required validations CI runs; PR CI to confirm" }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full-regression informational; no non-deterministic checks" }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gate — no real-infra/load surface (classifier)" }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done, note: "cdd-kit archive → specs/archive/2026/context-prefix-bleed-fix; INDEX.md updated" }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "A (context-out-of-band invariant) do-not-promote-again (held by BR-78+ADR-0016). B (additive-kwarg-breaks-fakes on translate_once) FOLDED into existing CLAUDE.md bullet (net 0): +translate_once seam, +grep-whole-tree/do-not-touch-file nuance, +change-id. contract-reviewer approved; validate --contracts green; context-scan refreshed" }

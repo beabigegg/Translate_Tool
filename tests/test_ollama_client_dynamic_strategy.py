@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import ModelType
 
@@ -48,3 +50,38 @@ def test_translation_dedicated_payload_uses_system_prompt_when_present() -> None
     )
     payload_no_system = client_no_system._build_single_translate_payload("切弯脚", "English", "Simplified Chinese")
     assert "system" not in payload_no_system
+
+
+def test_system_context_merged_into_system_field() -> None:
+    """translate_once(system_context=...) merges the reference block into the
+    _call_ollama payload's `system` field — parity with the OpenAI-compatible
+    client's system-channel placement (context-prefix-bleed-fix, BR-78).
+    Mock boundary: _call_ollama (HTTP boundary), never an internal method."""
+    client = OllamaClient(model="qwen3.5:4b")
+    reference_block = "Previous segments — reference only, do NOT translate or repeat:\nSegment A."
+
+    with patch.object(client, "_call_ollama", return_value=(True, "ok")) as mock_call:
+        client.translate_once("Segment B.", "zh-TW", "English", system_context=reference_block)
+
+    payload = mock_call.call_args[0][0]
+    assert payload["system"] == reference_block
+    assert "Segment A." not in payload["prompt"]
+    assert "Segment B." in payload["prompt"]
+
+
+def test_system_context_merged_with_existing_system_prompt() -> None:
+    """When the client already carries a self.system_prompt (e.g. glossary),
+    system_context is appended rather than overwriting it."""
+    client = OllamaClient(
+        model="dedicated-translation-model:q4",
+        model_type=ModelType.TRANSLATION.value,
+        system_prompt="Glossary: 切弯脚 -> trim & form",
+    )
+    reference_block = "Previous segments — reference only, do NOT translate or repeat:\nSegment A."
+
+    with patch.object(client, "_call_ollama", return_value=(True, "ok")) as mock_call:
+        client.translate_once("Segment B.", "English", "Simplified Chinese", system_context=reference_block)
+
+    payload = mock_call.call_args[0][0]
+    assert "Glossary: 切弯脚 -> trim & form" in payload["system"]
+    assert reference_block in payload["system"]

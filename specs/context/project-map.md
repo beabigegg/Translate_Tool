@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
 visible-dirs: 59
-visible-files: 236
+visible-files: 238
 omitted-dirs: 12
 truncated-dirs: 1
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -203,8 +203,10 @@ Translate_Tool/
 |   |   |-- 0012-shared-fit-cascade-all-pdf-paths.md
 |   |   |-- 0013-bounded-local-table-row-growth-prepass.md
 |   |   |-- 0014-retire-phantom-br-and-inert-env-var.md
-|   |   \-- 0015-layout-qa-metric-core-in-runtime.md
+|   |   |-- 0015-layout-qa-metric-core-in-runtime.md
+|   |   \-- 0016-context-out-of-band-system-channel.md
 |   |-- TEST_DOC/
+|   |   |-- CS2408-0021 信和達(歐朗) P6SMBJ18CA  本體破损 -onepage.pdf
 |   |   |-- EN-P-QC1102-D7 量测系统分析(MSA)程序.docx
 |   |   \-- W-RM0901-G6 机器设备保养及维护管理准则.docx
 |   \-- improvement-plan.md
@@ -290,6 +292,7 @@ Translate_Tool/
 |   |-- conftest.py
 |   |-- test_bbox_utils.py
 |   |-- test_cloud_total_timeout.py
+|   |-- test_context_prefix_bleed.py
 |   |-- test_context_prompt_i18n.py
 |   |-- test_context_window_segments.py
 |   |-- test_coordinate_renderer.py
@@ -331,8 +334,7 @@ Translate_Tool/
 |   |-- test_pdf_generator.py
 |   |-- test_pdf_layout_refactor.py
 |   |-- test_pdf_layout_table_fixes.py
-|   |-- test_pdf_layout_viz_persistence.py
-|   \-- ... (30 more entries truncated; cap=50)
+|   \-- ... (31 more entries truncated; cap=50)
 |-- .env
 |-- .gitignore
 |-- AGENTS.md

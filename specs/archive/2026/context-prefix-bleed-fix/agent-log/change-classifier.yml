@@ -1,0 +1,14 @@
+change-id: context-prefix-bleed-fix
+agent: change-classifier
+status: done
+summary: "Tier 2, bug-fix lane, data symptom, medium risk, cross-module. Architecture review REQUIRED (design.md yes) — the fix introduces a 'context via system channel' seam across the shared LLM client protocol; spec-architect decides delete-vs-system-channel + the exact signature. Contracts: business (BR-78 text update) only; no api/env/data/css/ci. 7 agents: spec-architect, implementation-planner, bug-fix-engineer, backend-engineer, test-strategist, contract-reviewer, qa-reviewer. AC-1..AC-7. Deterministic repro exists (build_context_prefix + 8D segments)."
+artifacts:
+  - { type: tier, pointer: "Tier 2" }
+  - { type: risk, pointer: "medium / cross-module" }
+  - { type: lane, pointer: "bug-fix (data symptom)" }
+  - { type: required-reviewers, pointer: "spec-architect, implementation-planner, bug-fix-engineer, backend-engineer, test-strategist, contract-reviewer, qa-reviewer" }
+  - { type: context-manifest-draft, pointer: "specs/changes/context-prefix-bleed-fix/context-manifest.md" }
+next-action: "spec-architect writes design.md (delete vs system-channel context seam) before implementation-planner"
+notes:
+  - "No atomic-split; step 1 of a 3-step translation-prompt realignment (steps 2/3 are separate)."
+  - "Recommend tier-floor-override (cache/endpoint/session vocab present but no real auth/secret/migration/endpoint change)."

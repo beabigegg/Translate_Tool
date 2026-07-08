@@ -8,6 +8,9 @@ While a contract is at 0.x (draft), entries here are optional.
 Once a contract reaches 1.0.0, every schema-version bump must have
 a corresponding entry below.
 
+## [business 0.25.1] — 2026-07-08
+Fixed: BR-78 (`context-window-segment-prefix`) — preceding-segment translation context is now delivered out-of-band via the LLM client's system channel (`system_context` param on `translate_once`) instead of being concatenated into the translatable user payload; eliminates a cloud-provider (PANJIT/DeepSeek) prompt-bleed bug where neighbor-segment text was itself translated and leaked into the output. Updated Table V rows accordingly. `CONTEXT_WINDOW_SEGMENTS` (2) / `CONTEXT_MAX_CHARS` (300) values unchanged — no config change. Fixed in change `context-prefix-bleed-fix`.
+
 ## [env 0.16.0] — 2026-07-08
 Added: `LAYOUT_QA_ENABLED` (bool, default false — opt-in gate for the runtime layout-QA safety net on the PDF output path; BR-106) and `LAYOUT_QA_MAX_BOXES_PER_PAGE` (positive integer, default 500 — per-page BIoU-matching short-circuit). Updated: `.env.example.template` and `env.schema.json`. Added in change `layout-qa-safety-net`.
 

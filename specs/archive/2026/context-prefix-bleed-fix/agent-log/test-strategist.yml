@@ -1,0 +1,13 @@
+agent: test-strategist
+change-id: context-prefix-bleed-fix
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/context-prefix-bleed-fix/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_context_prefix_bleed.py (NEW) → app/backend/services/context_prompts.py (build_context_prefix), app/backend/utils/translation_helpers.py (translate_merged_paragraphs)" }
+  - { type: tdd-pairs, pointer: "tests/test_llm_client_protocol.py::TestProtocolDefinition::test_protocol_method_signatures (updated) → app/backend/clients/base_llm_client.py (LLMClient.translate_once)" }
+  - { type: tdd-pairs, pointer: "tests/test_openai_compatible_client.py::TestSystemContextChannel (new) → app/backend/clients/openai_compatible_client.py" }
+  - { type: tdd-pairs, pointer: "tests/test_ollama_client_dynamic_strategy.py::test_system_context_merged_into_system_field (new) → app/backend/clients/ollama_client.py" }
+  - { type: coverage-tiers, pointer: "unit (tier 0), integration (tier 1), contract (tier 0/1); no e2e/resilience/monkey/stress/soak per change-classification.md" }
+  - { type: mapping-completeness, pointer: "AC-1..AC-7 all mapped; AC-7 includes explicit Test Update Contract entries for the 3 existing tests broken by the additive system_context kwarg / payload-location move" }
+notes:
+  - "tests/test_context_prefix_bleed.py is the load-bearing bug-fix-lane repro file: must be RED against pre-fix code (bleed present) and GREEN after (design.md Decision (b))."
+  - "Flagged test_llm_client_protocol.py::test_protocol_method_signatures as a pre-existing hard-assert that WILL fail once system_context is added — bug-fix-engineer/backend-engineer must update it in this same change, not treat it as an unrelated regression."

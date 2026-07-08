@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 contract-count: 9
 missing-summary-count: 0
-inputs-digest: dbe60792140bf639461d4c1b3d12d94575296a0229fef9501c64b2353e25d408
+inputs-digest: c8991703e7a80c2d85f6783e704787168bbcb64c713e3086667019d1705f1a63
 ---
 
 # Contracts Index
@@ -69,7 +69,7 @@ Generated from deterministic metadata. Add YAML frontmatter fields such as `summ
 - title: Business Rules
 - owner: application-team
 - surface: domain-behavior
-- schema-version: 0.25.0
+- schema-version: 0.25.1
 - last-changed: 2026-07-08
 - breaking-change-policy: deprecate-2-minors
 - summary: Business decision tables, rule inventory, and change policy for behavior updates.

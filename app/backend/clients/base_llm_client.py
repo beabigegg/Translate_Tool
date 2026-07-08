@@ -26,12 +26,19 @@ class LLMClient(Protocol):
         tgt: str,
         src_lang: Optional[str],
         cancel_event: Optional[threading.Event] = None,
+        system_context: Optional[str] = None,
     ) -> Tuple[bool, str]:
         """Translate a single text segment.
 
         cancel_event (optional): when set, implementations SHOULD abort an
         in-flight call promptly and degrade (best-effort for local clients).
         Back-compatible default None keeps structural-subtype conformance.
+
+        system_context (optional, BR-78): a read-only reference block (e.g.
+        preceding-segment context) delivered out-of-band via the provider's
+        system channel — never concatenated onto `text`, so it is never
+        itself translated. Back-compatible default None reproduces prior
+        behavior exactly.
 
         Returns:
             (ok, translated_text) where ok=False signals a failure.

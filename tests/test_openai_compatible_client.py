@@ -196,6 +196,53 @@ class TestMaxTokensPayload:
         assert kwargs["json"]["max_tokens"] == 8192
 
 
+# ── system_context channel (context-prefix-bleed-fix, BR-78) ───────────────────
+
+class TestSystemContextChannel:
+    def test_system_context_prepended_as_leading_system_message(self):
+        """When `system_context` is set, `translate_once` must emit a leading
+        `role:"system"` message carrying it verbatim, and the user message must
+        keep the unchanged "Translate the following text..." wrapper — context
+        must never be concatenated into the translatable user content."""
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        client = OpenAICompatibleClient(
+            base_url="http://fake-host:8080",
+            api_key="test-key",
+            model="gpt-oss:120b",
+        )
+        reference_block = "Previous segments — reference only, do NOT translate or repeat:\nSegment A."
+        with patch("requests.Session.post", return_value=_make_chat_response("ok")) as mock_post:
+            client.translate_once(
+                "Segment B.", "French", "English", system_context=reference_block,
+            )
+
+        _, kwargs = mock_post.call_args
+        messages = kwargs["json"]["messages"]
+        assert messages[0] == {"role": "system", "content": reference_block}
+        assert messages[-1]["role"] == "user"
+        assert "Segment B." in messages[-1]["content"]
+        assert reference_block not in messages[-1]["content"]
+
+    def test_no_system_context_omits_system_message(self):
+        """When `system_context` is None (default), the message list is the
+        unchanged single user message — no leading system message is added."""
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        client = OpenAICompatibleClient(
+            base_url="http://fake-host:8080",
+            api_key="test-key",
+            model="gpt-oss:120b",
+        )
+        with patch("requests.Session.post", return_value=_make_chat_response("ok")) as mock_post:
+            client.translate_once("Hello", "French", "English")
+
+        _, kwargs = mock_post.call_args
+        messages = kwargs["json"]["messages"]
+        assert len(messages) == 1
+        assert messages[0]["role"] == "user"
+
+
 # ── translate_batch ───────────────────────────────────────────────────────────
 
 class TestTranslateBatch:
