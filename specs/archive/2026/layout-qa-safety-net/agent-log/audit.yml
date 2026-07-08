@@ -1,0 +1,15 @@
+- type: tier-floor-override
+  change-id: layout-qa-safety-net
+  timestamp: '2026-07-08T06:53:41.562Z'
+  declared-tier: 3
+  floor-tier: 0
+  label: critical surface (auth / payments / data migration / concurrency / secrets)
+  matched:
+    - endpoint
+    - session
+  reason: >-
+    Feature-add, default-OFF flag, fail-soft, additive/observational, no output/pixel change. Gate
+    vocab may floor on 'endpoint' (appears ONLY in the non-goal 'NOT adding a new API endpoint'),
+    'config'/'flag' (a default-off feature flag, not a secret/migration/auth surface), and generic
+    feature-add terms — none reflect a real migration, secret, auth, or endpoint change. No
+    API/UI/Office change. change-classifier confirmed Tier 3.

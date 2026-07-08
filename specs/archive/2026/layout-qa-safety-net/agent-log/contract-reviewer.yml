@@ -1,0 +1,11 @@
+change-id: layout-qa-safety-net
+agent: contract-reviewer
+status: done
+summary: "approved. Drafted apply-ready text (applied verbatim by main Claude): env-contract.md +2 vars (LAYOUT_QA_ENABLED default false, LAYOUT_QA_MAX_BOXES_PER_PAGE default 500), 0.15.0->0.16.0; .env.example.template + env.schema.json entries; business-rules.md BR-106 (layout-qa-safety-net-disclosure), 0.24.2->0.25.0; CHANGELOG [env 0.16.0] + [business 0.25.0]. Confirmed NO EDIT to api-contract.md, data-shape-contract.md (warning reuses existing job.warnings string[] shape), ci-gate-contract.md (CI references test files not tests/metrics module paths — ci-cd-gatekeeper to independently confirm). No BR-106 / env-name / absence-test-token collisions. No breaking change."
+artifacts:
+  - { type: contracts-reviewed, pointer: "contracts/env/env-contract.md" }
+  - { type: contracts-reviewed, pointer: "contracts/business/business-rules.md" }
+  - { type: contracts-reviewed, pointer: "contracts/data/data-shape-contract.md" }
+  - { type: version-bumps, pointer: "env 0.15.0->0.16.0; business 0.24.2->0.25.0; api/data-shape/ci unchanged" }
+  - { type: breaking-changes, pointer: "none" }
+next-action: "ci-cd-gatekeeper independently confirms shim keeps tests.metrics.* importable; then test-strategist + implementation-planner"

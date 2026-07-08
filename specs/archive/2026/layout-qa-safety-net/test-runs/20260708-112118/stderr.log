@@ -1,0 +1,6 @@
+ERROR: not found: /home/egg/Projects/Translate_Tool/tests/test_layout_qa.py::test_biou_regression_below_budget_emits_one_aggregated_warning
+(no match in any of [<Module test_layout_qa.py>])
+
+ERROR: not found: /home/egg/Projects/Translate_Tool/tests/test_layout_qa.py::test_biou_regression_budget_is_named_constant_and_consumed_by_run_layout_qa
+(no match in any of [<Module test_layout_qa.py>])
+

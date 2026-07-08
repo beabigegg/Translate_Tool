@@ -1,0 +1,7 @@
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/layout-qa-safety-net/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer (IP-1..IP-6); test authoring by test-strategist" }
+  - { type: scope-summary, pointer: "in: layout_qa.py service + metric-core move, 3 tests/metrics shims, pdf_processor _dispatch_render seam, 2 config flags, residual disambiguation. out: all change-request non-goals, all contract edits (already applied), job_manager plumbing changes" }
+  - { type: seam-correction, pointer: "REAL seam is pdf_processor.py::_dispatch_render (L1094-1160) beside _emit_truncation_disclosure_warning L1160 — design.md/BR-106/spec-architect log all name a non-existent _render_with_fallback" }
+  - { type: open-detail-resolved, pointer: "residual disambiguation: keep check_residual_text unchanged; run_layout_qa filters records to source-string-still-present (normalized substring) via getattr(elem,'text','') — never warn from raw check_residual_text" }
+  - { type: risks-noted, pointer: "tests/test_pdf_render_warnings.py referenced by test-plan.md but NOT in manifest Allowed Paths — needs expansion/CER before integration tests written" }

@@ -1,0 +1,15 @@
+{
+  "change_id": "layout-qa-safety-net",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "cdd-kit validate --contracts --env",
+  "duration_ms": 541,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/layout-qa-safety-net/test-runs/20260708-144335/summary.json",
+    "stdout": "specs/changes/layout-qa-safety-net/test-runs/20260708-144335/stdout.log",
+    "stderr": "specs/changes/layout-qa-safety-net/test-runs/20260708-144335/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

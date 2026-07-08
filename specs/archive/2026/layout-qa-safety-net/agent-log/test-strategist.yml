@@ -1,0 +1,8 @@
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/layout-qa-safety-net/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_layout_qa.py (new) -> app/backend/services/layout_qa.py (new)" }
+  - { type: tdd-pairs, pointer: "tests/test_pdf_render_warnings.py::TestLayoutQaDisabled/TestLayoutQaWarning (new, sibling to TestTruncationDisclosureWarning) -> app/backend/processors/pdf_processor.py::_render_with_fallback seam" }
+  - { type: tdd-pairs, pointer: "tests/test_env_contract.py::TestEnvContractDeclared (new methods) -> contracts/env/env-contract.md, .env.example.template, env.schema.json, app/backend/config.py" }
+  - { type: coverage-tiers, pointer: "unit, data-boundary, resilience, contract, integration (no e2e/monkey/stress/soak — non-goal per change-classification.md)" }
+  - { type: mapping-completeness, pointer: "AC-1..AC-9 all mapped; AC-5 additionally protected by existing tests/test_layout_metrics.py::TestModuleImports (kept green, not duplicated)" }
+  - { type: anti-tautology-note, pointer: "integration tests must fire the real _render_with_fallback seam (job_manager.create_job path per test_orchestrator_judge.py pattern), not a mocked wrapper; flag-off asserts metric functions never called; warning assertions check WHICH content (page ids / signal name), not just count" }

@@ -1,0 +1,10 @@
+change-id: layout-qa-safety-net
+agent: qa-reviewer
+status: done
+summary: "release-ready (approved). All 6 verify items re-verified locally under translate-tool conda env: (1) test-evidence collect/targeted/changed-area/contract passed, final-status passed, no waivers, full smoke 1217 pass/0 fail; (2) anti-tautology holds — flag-off asserts run_layout_qa.assert_not_called(), integration fires real _dispatch_render seam, warnings assert WHICH signal+page, shim identity (tests.metrics.biou.compute_biou is layout_qa.compute_biou; _iou + BIOU_REGRESSION_BUDGET from both), fail-soft forces exception → no propagate/no warning; (3) no orphan — all tests.metrics importers resolve, test_layout_metrics.py green; (4) no regression — api/openapi/frontend/office untouched, default-off byte-for-byte, BR-38/BR-104 unedited; (5) contracts consistent, validate --contracts --env pass, BR-106 seam corrected to _dispatch_render; (6) residual disambiguation real (layout_qa.py L262-277, maps residual record→element via id(bbox), flags only when source string still in rendered clip)."
+artifacts:
+  - { type: gate-results, pointer: "targeted pass (7); changed-area pass (73); validate --contracts --env pass; full-smoke pass (1217/0, 4 skipped)" }
+  - { type: evidence-quality, pointer: "repro (independently re-ran targeted+changed-area+validate; reproduced flagged-gate zero-collection + git-blame provenance)" }
+  - { type: decision, pointer: "approved (release-ready)" }
+  - { type: residual-risk, pointer: "PRE-EXISTING (non-blocking, follow-up): ci-gate residual-text command `pytest tests/test_pdf_layout_refactor.py -k residual_text` collects 0 tests (silent-pass); introduced PR#8 (31d0cd51), NOT this change; owner ci-cd-gatekeeper + test-strategist" }
+next-action: "local gate → PR"

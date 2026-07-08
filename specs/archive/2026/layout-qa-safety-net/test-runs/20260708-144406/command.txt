@@ -1,0 +1,1 @@
+python -m pytest -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/layout-qa-safety-net/test-runs/20260708-144406/junit.xml'

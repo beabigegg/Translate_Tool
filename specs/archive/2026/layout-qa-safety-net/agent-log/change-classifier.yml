@@ -1,0 +1,14 @@
+change-id: layout-qa-safety-net
+agent: change-classifier
+status: done
+summary: "Tier 3, feature lane, low risk (default-off flag, fail-soft, additive/observational). Architecture review REQUIRED (design.md yes) — metric-core hosting module-boundary + orchestrator post-render seam + aggregated-warning shape + BIoU budget constant. Contracts: env + business (new BR above BR-105) required; data-shape + ci conditional on the metric-hosting decision. No API/UI/Office change. 7 agents: spec-architect, implementation-planner, backend-engineer, test-strategist, contract-reviewer, ci-cd-gatekeeper, qa-reviewer. AC-1..AC-9. Recommends tier-floor-override (endpoint appears only in a non-goal; config/flag is a default-off flag)."
+artifacts:
+  - { type: tier, pointer: "Tier 3" }
+  - { type: risk, pointer: "low (default-off, fail-soft, additive/observational)" }
+  - { type: required-artifacts, pointer: "the 7 always-required + design.md" }
+  - { type: required-reviewers, pointer: "spec-architect, implementation-planner, backend-engineer, test-strategist, contract-reviewer, ci-cd-gatekeeper, qa-reviewer" }
+  - { type: context-manifest-draft, pointer: "specs/changes/layout-qa-safety-net/context-manifest.md" }
+next-action: "spec-architect writes design.md (metric-core hosting + orchestrator seam + BIoU budget) before implementation-planner"
+notes:
+  - "No atomic-split trigger; no Tier 5 fast-path (touches source + tests + contracts)."
+  - "Salvage of the still-valuable part of CLOSED PR #13 (branch claude/session-uu3mpx) — design reference only, out of scope to read."

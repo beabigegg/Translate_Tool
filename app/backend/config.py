@@ -175,6 +175,19 @@ LAYOUT_DETECTOR_MODEL_PATH: Optional[str] = os.environ.get("LAYOUT_DETECTOR_MODE
 # LAYOUT_DETECTOR_ENABLED: default on; set to "0"/"false"/"no" to revert to heuristic.
 LAYOUT_DETECTOR_ENABLED: bool = os.environ.get("LAYOUT_DETECTOR_ENABLED", "true").lower() in ("1", "true", "yes")
 
+# Layout-QA safety net (layout-qa-safety-net, BR-106). Default OFF: when
+# false, no output-side layout-QA pass runs after a PDF render; rendered
+# output and job behavior are byte-for-byte unchanged. Set to "1"/"true"/"yes"
+# to enable the fail-soft post-render BIoU-regression + residual-source-text
+# check via run_layout_qa() (PDF->PDF path only).
+LAYOUT_QA_ENABLED: bool = os.environ.get("LAYOUT_QA_ENABLED", "false").lower() in ("1", "true", "yes")
+# LAYOUT_QA_MAX_BOXES_PER_PAGE: performance short-circuit for the layout-QA
+# pass (BR-106) -- a page whose source or rendered box count exceeds this
+# value is skipped from BIoU matching (and logged), bounding the per-page
+# O(source_boxes x rendered_boxes) matching cost. Ignored when
+# LAYOUT_QA_ENABLED=false.
+LAYOUT_QA_MAX_BOXES_PER_PAGE: int = int(os.getenv("LAYOUT_QA_MAX_BOXES_PER_PAGE", "500"))
+
 # PDF rasterisation DPI for layout detector (pdf-layout-refactor, AC-6, D-6)
 # Higher DPI improves detector classification quality; 150 is the balanced default.
 # Set PDF_RENDER_DPI=72 to reproduce the previous 72-DPI behaviour.

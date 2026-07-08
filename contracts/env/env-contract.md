@@ -3,8 +3,8 @@ contract: env
 summary: Environment variable inventory, secret handling, and deployment sync policy.
 owner: platform-team
 surface: runtime-config
-schema-version: 0.15.0
-last-changed: 2026-07-07
+schema-version: 0.16.0
+last-changed: 2026-07-08
 breaking-change-policy: deprecate-2-minors
 ---
 
@@ -52,6 +52,8 @@ breaking-change-policy: deprecate-2-minors
 | LIBREOFFICE_PATH | backend | all | no | no | (empty = auto-detect) | /usr/bin/soffice | platform-team | non-empty string (valid executable path) when set | no | Explicit path to the LibreOffice binary. When empty (default), `is_libreoffice_available()` auto-detects via `PATH` lookup then common per-OS install locations. When set but not executable, falls back to auto-detection with a WARNING logged. See BR-9, BR-96, § External Binary Dependencies. |
 | LIBREOFFICE_TIMEOUT | backend | all | no | no | 120 | 120 | platform-team | positive integer (seconds) | no | Wall-clock timeout for the LibreOffice headless conversion subprocess (`.doc`/`.xls`/`.ppt` → modern format). On timeout, conversion raises and the affected file is skipped (per-file isolation, BR-96); the job continues for other files. See BR-9, BR-96, § External Binary Dependencies. |
 | PDF_TABLE_ROW_GROWTH_ENABLED | backend | all | no | no | true | true | application-team | boolean (true/false or 1/0) | no | Enables the bounded local table-row-growth pre-pass (BR-103, ADR-0013) that runs once in `pdf_processor._dispatch_render` before either PDF renderer backend. Set to `false`/`0` to disable it as a production kill-switch: in overlay mode the pre-pass shifts translated text and whitening rects but NOT the preserved source-PDF table rule lines/graphics, so a grown row can visually cross the original horizontal rules (HIGH risk, best-effort mitigation only — the within-table page-capped growth bound limits but does not eliminate this). When disabled, over-full table cells fall straight through to the normal BR-36 cascade (shrink/truncate), surfaced via the BR-104 disclosure warning; AC-9 (real whitespace-below) and AC-11 (truncation disclosure) are unaffected by this flag. See BR-103. |
+| LAYOUT_QA_ENABLED | backend | all | no | no | false | true | application-team | boolean (true/false or 1/0) | yes | When false (default), the runtime layout-QA safety net does not run; PDF render behavior is byte-for-byte unchanged. When true, after a PDF→PDF render, `run_layout_qa()` re-opens the output and measures mean best-match BIoU regression (per page, vs `BIOU_REGRESSION_BUDGET=0.8`) and residual untranslated source text inside its own bbox; on regression, emits exactly ONE aggregated `job.warnings` entry via the existing `warnings_callback` → `_record_job_warning` plumbing (BR-96, BR-104). Fail-soft: any exception (corrupt/unreadable output, metric error) is caught and logged; the job never fails and no warning is fabricated. PDF output path only — Office (`.docx`/`.xlsx`/`.pptx`) formats are unaffected. See BR-106. |
+| LAYOUT_QA_MAX_BOXES_PER_PAGE | backend | all | no | no | 500 | 500 | application-team | positive integer | yes | Performance short-circuit for the layout-QA pass (BR-106): on any page where the source or rendered box count exceeds this value, BIoU matching for that page is skipped and logged (the page is excluded from the mean-BIoU calculation); rendering and translation are unaffected. Bounds the per-page O(source_boxes × rendered_boxes) matching cost. Ignored entirely when `LAYOUT_QA_ENABLED=false`. See BR-106. |
 
 ## External Binary Dependencies
 

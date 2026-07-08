@@ -8,6 +8,12 @@ While a contract is at 0.x (draft), entries here are optional.
 Once a contract reaches 1.0.0, every schema-version bump must have
 a corresponding entry below.
 
+## [env 0.16.0] — 2026-07-08
+Added: `LAYOUT_QA_ENABLED` (bool, default false — opt-in gate for the runtime layout-QA safety net on the PDF output path; BR-106) and `LAYOUT_QA_MAX_BOXES_PER_PAGE` (positive integer, default 500 — per-page BIoU-matching short-circuit). Updated: `.env.example.template` and `env.schema.json`. Added in change `layout-qa-safety-net`.
+
+## [business 0.25.0] — 2026-07-08
+Added: BR-106 (`layout-qa-safety-net-disclosure`) — after a PDF render, when `LAYOUT_QA_ENABLED=true`, a fail-soft runtime layout-QA pass measures mean best-match BIoU regression (vs `BIOU_REGRESSION_BUDGET=0.8`) and residual untranslated source text, emitting exactly ONE aggregated `job.warnings` entry via the existing `warnings_callback` → `_record_job_warning` plumbing (BR-96, BR-104) when either signal regresses; never fails the job; default off; reuses the existing `job.warnings: string[]` shape (no data-shape-contract.md edit). Added in change `layout-qa-safety-net`.
+
 ## [data 0.17.4] — 2026-07-08
 Added: `JobStatus / JobRecord — current-segment snapshot fields` — architecture note documenting the three independent per-segment translation entry points (`translate_texts` for Office, `translate_blocks_batch` for PDF, `translate_document` for chunked Doc2Doc): a cross-cutting per-segment concern (snapshot, QE, judge, critique/adopt) wired at only one entry point leaves the others silently unpopulated (as happened for PDF here), so future per-segment concerns must be wired AND tested through each format's real entry point. Documentation-only; no field added/removed/renamed/retyped. Promoted-learning close-out of change `pdf-stage-detail-snapshot`.
 
