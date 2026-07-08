@@ -3,7 +3,7 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.17.3
+schema-version: 0.17.4
 last-changed: 2026-07-08
 breaking-change-policy: deprecate-2-minors
 ---
@@ -55,6 +55,8 @@ breaking-change-policy: deprecate-2-minors
 All 8 fields are set on a SINGLE mutable `JobRecord.current_segment` struct, overwritten in place (never a rolling history/list) each time the backend has a new snapshot to report (ADR-0010). None are ever supplied by clients. Additive optional fields — backward-compatible.
 
 PDF translation path parity (added in `pdf-stage-detail-snapshot`): `current_stage="translate"` plus `current_segment_source` / `current_segment_draft` now also populate for **PDF** jobs, not only Office formats (DOCX/PPTX/XLSX). Previously these three fields stayed `null` for the entire duration of a PDF job because the PDF pipeline (`translate_blocks_batch`) bypassed `translation_service.translate_texts` — the only call site wired for the snapshot by `translation-progress-detail-ui`. PDF uses batch translation with no critique/QE/adopt loop, so for a PDF job `current_stage` is never `critique`, `qe`, or `adopt` — only `translate` (and `judge`, which was already format-agnostic via `job_manager` and unaffected by this fix). No field is added, removed, renamed, or retyped; the nullability/fallback rules for all 8 fields above are unchanged.
+
+**Architecture note:** per-segment translation has independent parallel entry points — `translation_service.translate_texts` (Office: DOCX/PPTX/XLSX), `utils/translation_helpers.translate_blocks_batch` (PDF), and `translation_service.translate_document` (chunked Doc2Doc — separate per the Doc2Doc entry-point contract above). Wiring a cross-cutting per-segment concern (this snapshot, QE, judge, critique/adopt) at only one entry point leaves the others silently unpopulated, as happened here for PDF. Any future per-segment concern must be wired AND tested through each format's real entry point, not the seam in isolation.
 
 See `contracts/api/api-contract.md > ## Schemas > JobStatus` for the authoritative full field table.
 

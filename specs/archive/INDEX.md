@@ -45,3 +45,4 @@
 | batch-critique-qe-scoring | 2026 | 2026-07-07 | specs/archive/2026/batch-critique-qe-scoring/ |
 | qa-mechanism-docs | 2026 | 2026-07-07 | specs/archive/2026/qa-mechanism-docs/ |
 | translation-progress-detail-ui | 2026 | 2026-07-07 | specs/archive/2026/translation-progress-detail-ui/ |
+| pdf-stage-detail-snapshot | 2026 | 2026-07-08 | specs/archive/2026/pdf-stage-detail-snapshot/ |

@@ -8,6 +8,9 @@ While a contract is at 0.x (draft), entries here are optional.
 Once a contract reaches 1.0.0, every schema-version bump must have
 a corresponding entry below.
 
+## [data 0.17.4] — 2026-07-08
+Added: `JobStatus / JobRecord — current-segment snapshot fields` — architecture note documenting the three independent per-segment translation entry points (`translate_texts` for Office, `translate_blocks_batch` for PDF, `translate_document` for chunked Doc2Doc): a cross-cutting per-segment concern (snapshot, QE, judge, critique/adopt) wired at only one entry point leaves the others silently unpopulated (as happened for PDF here), so future per-segment concerns must be wired AND tested through each format's real entry point. Documentation-only; no field added/removed/renamed/retyped. Promoted-learning close-out of change `pdf-stage-detail-snapshot`.
+
 ## [data 0.17.3] — 2026-07-08
 Added: `JobStatus / JobRecord — current-segment snapshot fields` — PDF translation path parity note: `current_stage="translate"` plus `current_segment_source`/`current_segment_draft` now also populate for PDF jobs (previously stayed `null` for the whole job because the PDF pipeline's `translate_blocks_batch` bypassed `translation_service.translate_texts`, the only call site wired for the snapshot by `translation-progress-detail-ui`); PDF has no critique/QE/adopt loop, so `current_stage` is only ever `translate` or `judge` for a PDF job. No field added/removed/renamed/retyped; nullability/fallback rules unchanged. Added in change `pdf-stage-detail-snapshot`.
 

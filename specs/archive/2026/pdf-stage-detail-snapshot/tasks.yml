@@ -38,5 +38,5 @@ tasks:
   - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "Local gate green — same required validations CI runs (validate --contracts, full pytest). PR CI to confirm." }
   - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full-regression informational on PR; no non-deterministic checks" }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gate required (classifier)" }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done, note: "cdd-kit archive → specs/archive/2026/pdf-stage-detail-snapshot; INDEX.md updated" }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "promote-to-contract: data-shape-contract.md architecture note (3 per-segment entry points; wire+test every format path); 0.17.3->0.17.4 + CHANGELOG. No CLAUDE.md growth (test-side already covered by tautology entry 1b). contract-reviewer approved." }
