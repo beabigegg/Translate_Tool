@@ -38,5 +38,5 @@ tasks:
   - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "local gate = same required validations CI runs; PR CI to confirm" }
   - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full-regression informational; no non-deterministic checks" }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gate (classifier)" }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done, note: "cdd-kit archive → specs/archive/2026/nontranslatable-segment-guard; INDEX.md updated" }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "A (BR-107/108/Table Z) do-not-promote-again (already in contract). B (collection-ImportError is not a faithful bug-fix RED) FOLDED into existing bug-fix-evidence CLAUDE.md bullet (net 0): behavioral-not-collection RED + keep-new-helper/restore-only-behavior-file recipe. contract-reviewer approved; validate green; context-scan refreshed" }

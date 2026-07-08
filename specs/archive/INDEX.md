@@ -48,3 +48,4 @@
 | pdf-stage-detail-snapshot | 2026 | 2026-07-08 | specs/archive/2026/pdf-stage-detail-snapshot/ |
 | layout-qa-safety-net | 2026 | 2026-07-08 | specs/archive/2026/layout-qa-safety-net/ |
 | context-prefix-bleed-fix | 2026 | 2026-07-08 | specs/archive/2026/context-prefix-bleed-fix/ |
+| nontranslatable-segment-guard | 2026 | 2026-07-08 | specs/archive/2026/nontranslatable-segment-guard/ |
