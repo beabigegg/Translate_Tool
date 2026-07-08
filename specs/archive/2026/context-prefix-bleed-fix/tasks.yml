@@ -38,5 +38,5 @@ tasks:
   - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "local gate = same required validations CI runs; PR CI to confirm" }
   - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full-regression informational; no non-deterministic checks" }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gate — no real-infra/load surface (classifier)" }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done, note: "cdd-kit archive → specs/archive/2026/context-prefix-bleed-fix; INDEX.md updated" }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "A (context-out-of-band invariant) do-not-promote-again (held by BR-78+ADR-0016). B (additive-kwarg-breaks-fakes on translate_once) FOLDED into existing CLAUDE.md bullet (net 0): +translate_once seam, +grep-whole-tree/do-not-touch-file nuance, +change-id. contract-reviewer approved; validate --contracts green; context-scan refreshed" }
