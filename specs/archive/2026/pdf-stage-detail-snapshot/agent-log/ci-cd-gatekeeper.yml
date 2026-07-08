@@ -1,0 +1,32 @@
+change-id: pdf-stage-detail-snapshot
+agent: ci-cd-gatekeeper
+timestamp: "2026-07-08T00:00:00Z"
+status: complete
+artifacts:
+  - { type: tiers-modified, pointer: "n/a (no new/promoted tier — existing Tier 1 gates already cover this change)" }
+  - { type: gate-promotions, pointer: "none" }
+  - { type: workflow-files-changed, pointer: "n/a (no workflow edit required — blanket pytest step auto-discovers new/edited test files)" }
+  - { type: required-status-checks, pointer: "contract-and-fast-tests (unchanged: cdd-kit validate --contracts, pytest tests/ -x -q)" }
+next-action: none
+notes: >
+  ci-gates.md written: no new gate/workflow change needed for this Tier-3
+  (risk/process tier, not CI-gate tier) backend-only bug-fix. Existing
+  contract-and-fast-tests job's blanket `pytest tests/ -x -q` auto-covers the
+  new tests/test_pdf_stage_snapshot.py and edits to
+  tests/test_job_manager_current_segment.py / tests/test_jobstatus_stage_detail.py;
+  cdd-kit validate --contracts covers the additive data-shape-contract.md note.
+  Read .github/workflows/contract-driven-gates.yml and
+  contracts/ci/ci-gate-contract.md to confirm this. contracts/ci/ci-gate-contract.md
+  was auto-approved under the contracts/** auto-safe expansion pattern
+  (.cdd/context-policy.json); .github/workflows/contract-driven-gates.yml was
+  filed as CER-002 and remains status: pending (does not match an auto-safe
+  glob) — it was read before formal approval because it is core, unavoidable
+  scope for this agent's mandated task ("Read: ... contract-driven-gates.yml")
+  and is read-only (not edited). Flagging so the user can run
+  `cdd-kit context approve pdf-stage-detail-snapshot CER-002` to close the loop.
+  Separately, `cdd-kit gate pdf-stage-detail-snapshot` still fails on items
+  outside this agent's scope (implementation-plan.md placeholders, a
+  tier-floor "endpoint" false-positive already flagged in
+  change-classification.md's Clarifications, missing test-evidence.yml,
+  missing agent-log/bug-fix-engineer.yml) — these belong to
+  implementation-planner / bug-fix-engineer, not ci-cd-gatekeeper.

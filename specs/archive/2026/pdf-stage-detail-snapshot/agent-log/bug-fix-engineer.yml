@@ -1,0 +1,59 @@
+change-id: pdf-stage-detail-snapshot
+timestamp: 2026-07-08T09:30:00Z
+agent: bug-fix-engineer
+status: complete
+files-read:
+  - specs/changes/pdf-stage-detail-snapshot/context-manifest.md
+  - specs/changes/pdf-stage-detail-snapshot/implementation-plan.md
+  - specs/changes/pdf-stage-detail-snapshot/change-classification.md
+  - specs/changes/pdf-stage-detail-snapshot/test-plan.md
+  - specs/changes/pdf-stage-detail-snapshot/agent-log/contract-reviewer.yml
+  - app/backend/processors/pdf_processor.py
+  - app/backend/processors/orchestrator.py
+  - app/backend/services/job_manager.py
+  - app/backend/services/translation_service.py
+  - app/backend/utils/translation_helpers.py
+  - contracts/data/data-shape-contract.md
+  - tests/test_pdf_layout_viz_persistence.py
+  - tests/test_job_manager_current_segment.py
+  - tests/test_jobstatus_stage_detail.py
+artifacts:
+  - { type: symptom, pointer: "GET /api/jobs/{id} for a running PDF job returns current_stage/current_segment_source/current_segment_draft = null throughout translation; StageDetailPanel shows nothing for PDFs" }
+  - { type: root-cause, pointer: "app/backend/processors/pdf_processor.py:284-413 (translate_pdf, pre-fix) had no status_callback param, and none of its 3 sub-functions ever passed on_segment_done into translate_blocks_batch; orchestrator.py's .pdf branch (~L865-882) never passed status_callback into translate_pdf" }
+  - { type: files-changed, pointer: "app/backend/processors/pdf_processor.py, app/backend/processors/orchestrator.py, contracts/data/data-shape-contract.md, contracts/CHANGELOG.md, tests/test_pdf_stage_snapshot.py (new), tests/test_job_manager_current_segment.py (extended)" }
+  - { type: regression-evidence, pointer: "conda run -n translate-tool python -m pytest tests/ -q: 1191 passed, 4 skipped, 0 failed (full backend sweep, post-fix)" }
+  - { type: residual-risk, pointer: "none — additive/observational only; Windows-only COM word_convert route and _translate_pdf_tables_with_context table-cell path do not emit the snapshot (out of scope per implementation-plan.md Known Risks, AC-3 names only the 3 flatten-batch sub-functions)" }
+bug-fix:
+  schema-version: 0.1.0
+  symptom: "GET /api/jobs/{id} for a running PDF job returns current_stage / current_segment_source / current_segment_draft = null for the entire duration of the job; StageDetailPanel never shows a current segment for PDF jobs (only for DOCX/PPTX/XLSX)."
+  expected_behavior: "PDF jobs report current_stage=\"translate\" with non-null current_segment_source/current_segment_draft while translating, matching Office formats."
+  actual_behavior: "current_stage and current_segment_source/current_segment_draft stayed null throughout the whole PDF job, because translate_pdf -> translate_blocks_batch bypasses translation_service.translate_texts (the only call site translation-progress-detail-ui wired for CurrentSegmentSnapshot), and translate_pdf had no status_callback parameter at all."
+  observed_surface: "GET /api/jobs/{id} JSON response current_segment_* fields; frontend StageDetailPanel current-segment display for PDF jobs"
+  reproduction:
+    status: test-reproduced
+    command: "pytest tests/test_pdf_stage_snapshot.py::test_pymupdf_path_on_segment_done_emits_translate_stage_snapshot"
+    failing_before_fix: true
+    summary: "specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-091848/summary.json"
+  hypotheses:
+    - { id: H1, candidate: "app/backend/processors/pdf_processor.py::translate_pdf + _translate_pdf_with_pymupdf/_translate_pdf_with_pypdf2/_translate_pdf_to_pdf", reason: "graph/plan pointed at translate_pdf lacking a status_callback param and never wiring translate_blocks_batch's existing on_segment_done hook", result: confirmed }
+    - { id: H2, candidate: "app/backend/processors/orchestrator.py::process_files .pdf branch", reason: "process_files already receives status_callback as a param but the .pdf branch's translate_pdf(...) call never forwarded it, even if translate_pdf itself accepted one", result: confirmed }
+    - { id: H3, candidate: "app/backend/services/job_manager.py::_status_cb / CurrentSegmentSnapshot", reason: "possibility the snapshot-writing mechanism itself was broken specifically for PDF jobs", result: rejected }
+    - { id: H4, candidate: "app/backend/utils/translation_helpers.py::translate_blocks_batch", reason: "possibility translate_blocks_batch lacked the on_segment_done hook needed to emit per-segment snapshots", result: rejected }
+  root_cause:
+    pointer: "app/backend/processors/pdf_processor.py:284-413"
+    summary: "translate_pdf (and its 3 sub-functions _translate_pdf_with_pymupdf/_translate_pdf_with_pypdf2/_translate_pdf_to_pdf) had no status_callback parameter and never passed on_segment_done into translate_blocks_batch; orchestrator.py's .pdf branch also never forwarded its own status_callback param into translate_pdf(...). PDF jobs therefore never reached job_manager's _status_cb, unlike DOCX/PPTX/XLSX which route through translation_service.translate_texts (already wired by translation-progress-detail-ui)."
+  fix:
+    files_changed:
+      - app/backend/processors/pdf_processor.py
+      - app/backend/processors/orchestrator.py
+      - contracts/data/data-shape-contract.md
+      - contracts/CHANGELOG.md
+      - tests/test_pdf_stage_snapshot.py
+      - tests/test_job_manager_current_segment.py
+    summary: "Added an optional status_callback param (default None) to translate_pdf and its 3 sub-functions; at each flatten translate_blocks_batch(...) call, pass on_segment_done=<wrapper> that lazy-imports CurrentSegmentSnapshot from job_manager and calls status_callback(detail, CurrentSegmentSnapshot(stage=\"translate\", source=src, draft=translated)). orchestrator.py's .pdf branch now forwards its existing status_callback param into translate_pdf(...). Applied contract-reviewer's exact drafted PDF-path parity note to data-shape-contract.md, bumped schema-version 0.17.2 -> 0.17.3, and appended the matching CHANGELOG entry. Added tests/test_pdf_stage_snapshot.py (3 tests) and extended tests/test_job_manager_current_segment.py with a real end-to-end .pdf create_job() case."
+  regression:
+    status: passed
+    command: "pytest tests/test_pdf_stage_snapshot.py::test_pymupdf_path_on_segment_done_emits_translate_stage_snapshot"
+    summary: "specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-091907/summary.json"
+  residual_risk: "none — additive/observational only (no field added/removed/renamed/retyped, no route/contract change beyond the additive data-shape note). Out-of-scope, unaffected by this fix: the Windows-only COM word_convert->translate_docx route inside translate_pdf and the _translate_pdf_tables_with_context table-cell path do not emit the snapshot (per implementation-plan.md Known Risks; AC-3 names only the 3 flatten-batch sub-functions)."
+next-action: "qa-reviewer release-readiness review"

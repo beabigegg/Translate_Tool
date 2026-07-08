@@ -11,7 +11,7 @@ import logging
 import os
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 import docx
 from PyPDF2 import PdfReader
@@ -298,6 +298,7 @@ def translate_pdf(
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
     block_overrides: Optional[Dict[str, str]] = None,
     warnings_callback: Optional[Callable[[str], None]] = None,
+    status_callback: Optional[Callable[[Optional[str], Optional[Any]], None]] = None,
 ) -> bool:
     """Translate a PDF file.
 
@@ -315,6 +316,10 @@ def translate_pdf(
         output_format: Output format - "docx" (default) or "pdf" (requires Phase 3).
         layout_mode: Layout mode - "inline" (default), "overlay", or "side_by_side".
         draw_mask: Draw white mask over original text in overlay mode. None uses config.
+        status_callback: Optional progress hook, called as
+            ``status_callback(message, segment=None)`` (pdf-stage-detail-snapshot,
+            BR-105 parity) with a ``CurrentSegmentSnapshot(stage="translate", ...)``
+            each time a segment finishes translating on the flatten batch path.
 
     Returns:
         True if stopped early, False if completed.
@@ -347,6 +352,7 @@ def translate_pdf(
             post_translate_hook=post_translate_hook,
             block_overrides=block_overrides,
             warnings_callback=warnings_callback,
+            status_callback=status_callback,
         )
 
     # Try Windows COM conversion first (highest quality)
@@ -397,6 +403,7 @@ def translate_pdf(
             pre_translate_hook=pre_translate_hook,
             post_translate_hook=post_translate_hook,
             block_overrides=block_overrides,
+            status_callback=status_callback,
         )
     else:
         return _translate_pdf_with_pypdf2(
@@ -409,6 +416,7 @@ def translate_pdf(
             log,
             pre_translate_hook=pre_translate_hook,
             post_translate_hook=post_translate_hook,
+            status_callback=status_callback,
             block_overrides=block_overrides,
         )
 
@@ -425,6 +433,7 @@ def _translate_pdf_with_pymupdf(
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
     block_overrides: Optional[Dict[str, str]] = None,
+    status_callback: Optional[Callable[[Optional[str], Optional[Any]], None]] = None,
 ) -> bool:
     """Translate PDF using PyMuPDF parser with bbox support.
 
@@ -575,9 +584,22 @@ def _translate_pdf_with_pymupdf(
                 # unmapped table cells (multi-element cells, failed tables) stay in it.
                 flatten_texts = [t for t in unique_texts if t not in table_tmap]
 
+                # pdf-stage-detail-snapshot: emit CurrentSegmentSnapshot(stage="translate")
+                # per segment on the flatten batch path, mirroring translation_service's
+                # status_callback wiring for Office formats (BR-105 parity).
+                _on_segment_done = None
+                if status_callback is not None:
+                    def _on_segment_done(src_text: str, translated: str, _tgt: str = tgt) -> None:
+                        from app.backend.services.job_manager import CurrentSegmentSnapshot
+                        status_callback(
+                            f"翻譯中…（{_tgt}）",
+                            CurrentSegmentSnapshot(stage="translate", source=src_text, draft=translated),
+                        )
+
                 log(f"[PDF] Batch translating to {tgt}...")
                 results = translate_blocks_batch(
-                    flatten_texts, tgt, src_lang, client, log=log
+                    flatten_texts, tgt, src_lang, client, log=log,
+                    on_segment_done=_on_segment_done,
                 )
                 translations_by_target[tgt] = {
                     text: (translated if ok else f"[Translation failed|{tgt}] {text}")
@@ -667,6 +689,7 @@ def _translate_pdf_with_pypdf2(
     pre_translate_hook: Optional[Callable[[List[str]], None]] = None,
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
     block_overrides: Optional[Dict[str, str]] = None,
+    status_callback: Optional[Callable[[Optional[str], Optional[Any]], None]] = None,
 ) -> bool:
     """Translate PDF using PyPDF2 (fallback method).
 
@@ -727,9 +750,22 @@ def _translate_pdf_with_pypdf2(
                     stopped = True
                     break
 
+                # pdf-stage-detail-snapshot: emit CurrentSegmentSnapshot(stage="translate")
+                # per segment, mirroring translation_service's status_callback wiring
+                # for Office formats (BR-105 parity).
+                _on_segment_done = None
+                if status_callback is not None:
+                    def _on_segment_done(src_text: str, translated: str, _tgt: str = tgt) -> None:
+                        from app.backend.services.job_manager import CurrentSegmentSnapshot
+                        status_callback(
+                            f"翻譯中…（{_tgt}）",
+                            CurrentSegmentSnapshot(stage="translate", source=src_text, draft=translated),
+                        )
+
                 log(f"[PDF] Batch translating to {tgt}...")
                 results = translate_blocks_batch(
-                    unique_texts, tgt, src_lang, client, log=log
+                    unique_texts, tgt, src_lang, client, log=log,
+                    on_segment_done=_on_segment_done,
                 )
                 translations_by_target[tgt] = {
                     text: (translated if ok else f"[Translation failed|{tgt}] {text}")
@@ -794,6 +830,7 @@ def _translate_pdf_to_pdf(
     post_translate_hook: Optional[Callable[[List[Tuple[str, str, str]]], None]] = None,
     block_overrides: Optional[Dict[str, str]] = None,
     warnings_callback: Optional[Callable[[str], None]] = None,
+    status_callback: Optional[Callable[[Optional[str], Optional[Any]], None]] = None,
 ) -> bool:
     """Translate PDF to PDF with layout preservation.
 
@@ -927,8 +964,21 @@ def _translate_pdf_to_pdf(
                 )
                 flatten_texts = [t for t in unique_texts if t not in table_tmap]
 
+                # pdf-stage-detail-snapshot: emit CurrentSegmentSnapshot(stage="translate")
+                # per segment, mirroring translation_service's status_callback wiring
+                # for Office formats (BR-105 parity).
+                _on_segment_done = None
+                if status_callback is not None:
+                    def _on_segment_done(src_text: str, translated: str, _tgt: str = tgt) -> None:
+                        from app.backend.services.job_manager import CurrentSegmentSnapshot
+                        status_callback(
+                            f"翻譯中…（{_tgt}）",
+                            CurrentSegmentSnapshot(stage="translate", source=src_text, draft=translated),
+                        )
+
                 results = translate_blocks_batch(
-                    flatten_texts, tgt, src_lang, client, log=log
+                    flatten_texts, tgt, src_lang, client, log=log,
+                    on_segment_done=_on_segment_done,
                 )
 
                 # Build text -> translation mapping

@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.476" timestamp="2026-07-08T09:18:48.498189+08:00" hostname="EGG"><testcase classname="tests.test_pdf_stage_snapshot" name="test_pymupdf_path_on_segment_done_emits_translate_stage_snapshot" time="0.442"><failure message="TypeError: _translate_pdf_with_pymupdf() got an unexpected keyword argument 'status_callback'">tests/test_pdf_stage_snapshot.py:184: in test_pymupdf_path_on_segment_done_emits_translate_stage_snapshot
+    pdf_processor_module._translate_pdf_with_pymupdf(
+E   TypeError: _translate_pdf_with_pymupdf() got an unexpected keyword argument 'status_callback'</failure></testcase></testsuite></testsuites>

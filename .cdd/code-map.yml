@@ -1,13 +1,13 @@
-# generated: 2026-07-07T15:24:43Z by cdd-kit 3.6.0
-# files: 193, src-lines: 55281, map-lines: 5032, compression: 11.0x
-# sources-digest: 8f168eae251f562f9b0bc56d6ab11d13da87a3377106b7f2bd244b13cc2dd4dc
+# generated: 2026-07-08T00:23:39Z by cdd-kit 3.6.0
+# files: 200, src-lines: 57413, map-lines: 5156, compression: 11.1x
+# sources-digest: aa6a733f46d01983546ff7714767b91d95462109c90902be42ed58b7d45292c9
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
 
 app/backend/api/__init__.py:  # 0 lines
 
-app/backend/api/routes.py:  # 1170 lines
+app/backend/api/routes.py:  # 1266 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: asyncio, items: [], line: 5 }
@@ -24,50 +24,51 @@ app/backend/api/routes.py:  # 1170 lines
     - { module: app.backend.services.metrics, items: [_get_metrics_snapshot], line: 52 }
     - { module: app.backend.clients.ollama_client, items: [list_ollama_models], line: 53 }
     - { module: app.backend.clients.openai_compatible_client, items: [OpenAICompatibleClient], line: 54 }
-    - { module: app.backend.config, items: [JUDGE_ENABLED, ModelType, QE_DEVICE, QE_ENABLED, QE_MODEL_NAME, VRAM_METADATA, load_providers_config], line: 55 }
-    - { module: app.backend.services.model_router, items: [RouteGroup, get_route_info, resolve_route_groups], line: 64 }
-    - { module: app.backend.translation_profiles, items: [get_profile, list_profiles], line: 69 }
-    - { module: app.backend.services.job_manager, items: [JobManager, JOBS_DIR], line: 70 }
-    - { module: app.backend.services.translation_cache, items: [get_cache], line: 71 }
-    - { module: app.backend.services.term_db, items: [TermDB, _VALID_STATUSES], line: 72 }
+    - { module: app.backend.config, items: [CRITIQUE_LOOP_ENABLED, CRITIQUE_MAX_ITERATIONS, JUDGE_ENABLED, JUDGE_MAX_ITERATIONS, ModelType, QE_DEVICE, QE_ENABLED, QE_MODEL_NAME, VRAM_METADATA, load_providers_config], line: 55 }
+    - { module: app.backend.services.model_router, items: [RouteGroup, get_route_info, resolve_route_groups], line: 67 }
+    - { module: app.backend.translation_profiles, items: [get_profile, list_profiles], line: 72 }
+    - { module: app.backend.services.job_manager, items: [JobManager, JOBS_DIR], line: 73 }
+    - { module: app.backend.services.translation_cache, items: [get_cache], line: 74 }
+    - { module: app.backend.services.term_db, items: [TermDB, _VALID_STATUSES], line: 75 }
   functions:
-    - { name: _sanitize_filename, lines: 80-81 }
-    - { name: health, lines: 85-86 }  # @router.get('/health')
-    - { name: get_metrics_endpoint, lines: 90-92 }  # @router.get('/metrics', response_model=MetricsResponse)
-    - { name: models, lines: 96-97 }  # @router.get('/models', response_model=ModelsResponse)
-    - { name: profiles, lines: 101-110 }  # @router.get('/profiles', response_model=List[ProfileItem])
-    - { name: model_config, lines: 114-130 }  # @router.get('/model-config', response_model=List[ModelConfigItem])
-    - { name: route_info, lines: 134-141 }  # @router.get('/route-info', response_model=RouteInfoResponse)
-    - { name: async create_job, lines: 145-272 }  # @router.post('/jobs', response_model=JobCreateResponse)
-    - { name: job_status, lines: 276-371 }  # @router.get('/jobs/{job_id}', response_model=JobStatus)
-    - { name: cancel_job, lines: 375-378 }  # @router.post('/jobs/{job_id}/cancel')
-    - { name: job_quality, lines: 382-407 }  # @router.get('/jobs/{job_id}/quality', response_model=JobQualityResponse)
-    - { name: job_audit, lines: 411-426 }  # @router.get('/jobs/{job_id}/audit', response_model=JobAuditResponse)
-    - { name: get_job_judge, lines: 430-456 }  # @router.get('/jobs/{job_id}/judge', response_model=JobJudgeResponse)
-    - { name: post_job_judge_apply, lines: 460-501 }  # @router.post('/jobs/{job_id}/judge/apply', status_code=202)
-    - { name: job_layout, lines: 505-541 }  # @router.get('/jobs/{job_id}/layout', response_model=LayoutVizResponse)
-    - { name: job_layout_page, lines: 545-556 }  # @router.get('/jobs/{job_id}/layout/page/{file_stem}/{page_num}')
-    - { name: download, lines: 560-570 }  # @router.get('/jobs/{job_id}/download')
-    - { name: get_stats, lines: 575-579 }  # @router.get('/stats')
-    - { name: cache_stats, lines: 583-589 }  # @router.get('/cache/stats')
-    - { name: clear_cache, lines: 593-599 }  # @router.delete('/cache')
-    - { name: terms_stats, lines: 607-620 }  # @router.get('/terms/stats', response_model=TermStatsResponse)
-    - { name: terms_export, lines: 624-654 }  # @router.get('/terms/export')
-    - { name: async terms_import, lines: 658-693 }  # @router.post('/terms/import', response_model=TermImportResult)
-    - { name: terms_unverified, lines: 697-716 }  # @router.get('/terms/unverified', response_model=List[TermItem])
-    - { name: terms_approve, lines: 720-725 }  # @router.post('/terms/approve')
-    - { name: terms_reject, lines: 729-734 }  # @router.post('/terms/reject')
-    - { name: terms_flag_needs_review, lines: 738-743 }  # @router.post('/terms/flag-needs-review')
-    - { name: terms_approved, lines: 747-766 }  # @router.get('/terms/approved', response_model=List[TermItem])
-    - { name: terms_edit, lines: 770-781 }  # @router.patch('/terms/edit')
-    - { name: wikidata_search, lines: 789-801 }  # @router.post('/terms/wikidata/search', response_model=WikidataSearchResponse)
-    - { name: wikidata_import, lines: 805-820 }  # @router.post('/terms/wikidata/import')
-    - { name: providers_health, lines: 829-906 }  # @router.get('/providers/health', response_model=List[ProviderHealthItem], respons...
-    - { name: providers_models, lines: 910-941 }  # @router.get('/providers/models', response_model=List[ProviderModelEntry], respons...
-    - { name: provider_live_models, lines: 945-981 }  # @router.get('/providers/{provider_id}/live-models', response_model=List[str])
-    - { name: async providers_test_translation, lines: 985-1170 }  # @router.post('/providers/test-translation', response_model=List[TestTranslationRe...
+    - { name: _sanitize_filename, lines: 83-84 }
+    - { name: health, lines: 88-89 }  # @router.get('/health')
+    - { name: get_metrics_endpoint, lines: 93-95 }  # @router.get('/metrics', response_model=MetricsResponse)
+    - { name: models, lines: 99-100 }  # @router.get('/models', response_model=ModelsResponse)
+    - { name: profiles, lines: 104-113 }  # @router.get('/profiles', response_model=List[ProfileItem])
+    - { name: model_config, lines: 117-133 }  # @router.get('/model-config', response_model=List[ModelConfigItem])
+    - { name: route_info, lines: 137-144 }  # @router.get('/route-info', response_model=RouteInfoResponse)
+    - { name: async create_job, lines: 148-275 }  # @router.post('/jobs', response_model=JobCreateResponse)
+    - { name: _compute_multi_phase_eta, lines: 278-333 }
+    - { name: job_status, lines: 337-467 }  # @router.get('/jobs/{job_id}', response_model=JobStatus)
+    - { name: cancel_job, lines: 471-474 }  # @router.post('/jobs/{job_id}/cancel')
+    - { name: job_quality, lines: 478-503 }  # @router.get('/jobs/{job_id}/quality', response_model=JobQualityResponse)
+    - { name: job_audit, lines: 507-522 }  # @router.get('/jobs/{job_id}/audit', response_model=JobAuditResponse)
+    - { name: get_job_judge, lines: 526-552 }  # @router.get('/jobs/{job_id}/judge', response_model=JobJudgeResponse)
+    - { name: post_job_judge_apply, lines: 556-597 }  # @router.post('/jobs/{job_id}/judge/apply', status_code=202)
+    - { name: job_layout, lines: 601-637 }  # @router.get('/jobs/{job_id}/layout', response_model=LayoutVizResponse)
+    - { name: job_layout_page, lines: 641-652 }  # @router.get('/jobs/{job_id}/layout/page/{file_stem}/{page_num}')
+    - { name: download, lines: 656-666 }  # @router.get('/jobs/{job_id}/download')
+    - { name: get_stats, lines: 671-675 }  # @router.get('/stats')
+    - { name: cache_stats, lines: 679-685 }  # @router.get('/cache/stats')
+    - { name: clear_cache, lines: 689-695 }  # @router.delete('/cache')
+    - { name: terms_stats, lines: 703-716 }  # @router.get('/terms/stats', response_model=TermStatsResponse)
+    - { name: terms_export, lines: 720-750 }  # @router.get('/terms/export')
+    - { name: async terms_import, lines: 754-789 }  # @router.post('/terms/import', response_model=TermImportResult)
+    - { name: terms_unverified, lines: 793-812 }  # @router.get('/terms/unverified', response_model=List[TermItem])
+    - { name: terms_approve, lines: 816-821 }  # @router.post('/terms/approve')
+    - { name: terms_reject, lines: 825-830 }  # @router.post('/terms/reject')
+    - { name: terms_flag_needs_review, lines: 834-839 }  # @router.post('/terms/flag-needs-review')
+    - { name: terms_approved, lines: 843-862 }  # @router.get('/terms/approved', response_model=List[TermItem])
+    - { name: terms_edit, lines: 866-877 }  # @router.patch('/terms/edit')
+    - { name: wikidata_search, lines: 885-897 }  # @router.post('/terms/wikidata/search', response_model=WikidataSearchResponse)
+    - { name: wikidata_import, lines: 901-916 }  # @router.post('/terms/wikidata/import')
+    - { name: providers_health, lines: 925-1002 }  # @router.get('/providers/health', response_model=List[ProviderHealthItem], respons...
+    - { name: providers_models, lines: 1006-1037 }  # @router.get('/providers/models', response_model=List[ProviderModelEntry], respons...
+    - { name: provider_live_models, lines: 1041-1077 }  # @router.get('/providers/{provider_id}/live-models', response_model=List[str])
+    - { name: async providers_test_translation, lines: 1081-1266 }  # @router.post('/providers/test-translation', response_model=List[TestTranslationRe...
 
-app/backend/api/schemas.py:  # 286 lines
+app/backend/api/schemas.py:  # 297 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: enum, items: [Enum], line: 5 }
@@ -79,67 +80,67 @@ app/backend/api/schemas.py:  # 286 lines
     - name: JobCreateResponse
       lines: 19-20
     - name: JobStatus
-      lines: 23-48
+      lines: 23-59
     - name: TermImportResult
-      lines: 51-54
+      lines: 62-65
     - name: TermStatsResponse
-      lines: 57-65
+      lines: 68-76
     - name: TermItem
-      lines: 68-77
+      lines: 79-88
     - name: TermApproveRequest
-      lines: 80-83
+      lines: 91-94
     - name: TermRejectRequest
-      lines: 86-89
+      lines: 97-100
     - name: TermFlagNeedsReviewRequest
-      lines: 92-95
+      lines: 103-106
     - name: TermEditRequest
-      lines: 98-103
+      lines: 109-114
     - name: WikidataSearchRequest
-      lines: 106-110
+      lines: 117-121
     - name: WikidataCandidate
-      lines: 113-117
+      lines: 124-128
     - name: WikidataSearchResponse
-      lines: 120-122
+      lines: 131-133
     - name: WikidataImportRequest
-      lines: 125-131
+      lines: 136-142
     - name: ModelsResponse
-      lines: 134-135
+      lines: 145-146
     - name: ProfileItem
-      lines: 138-142
+      lines: 149-153
     - name: ModelConfigItem
-      lines: 145-151
+      lines: 156-162
     - name: RouteInfoEntry
-      lines: 154-160
+      lines: 165-171
     - name: RouteInfoResponse
-      lines: 163-164
+      lines: 174-175
     - name: MetricsResponse
-      lines: 167-172
+      lines: 178-183
     - name: BlockQualityScore
-      lines: 175-179
+      lines: 186-190
     - name: JobQualityResponse
-      lines: 182-186
+      lines: 193-197
     - name: JobAuditResponse
-      lines: 189-197
+      lines: 200-208
     - name: JobJudgeResponse
-      lines: 200-209
+      lines: 211-220
     - name: JobJudgeApplyResponse
-      lines: 212-214
+      lines: 223-225
     - name: ProviderHealthItem
-      lines: 221-225
+      lines: 232-236
     - name: ProviderModelEntry
-      lines: 228-232
+      lines: 239-243
     - name: TestTranslationRequest
-      lines: 235-242
+      lines: 246-253
     - name: TestTranslationResult
-      lines: 245-256
+      lines: 256-267
     - name: LayoutBoxSchema
-      lines: 263-267
+      lines: 274-278
     - name: LayoutPageSchema
-      lines: 270-275
+      lines: 281-286
     - name: LayoutFileVizResponse
-      lines: 278-281
+      lines: 289-292
     - name: LayoutVizResponse
-      lines: 284-286
+      lines: 295-297
 
 app/backend/clients/__init__.py:  # 4 lines
   imports:
@@ -1086,7 +1087,7 @@ app/backend/services/doc_chunker.py:  # 387 lines
     - { name: split_document, lines: 157-344 }
     - { name: reassemble_document, lines: 351-387 }
 
-app/backend/services/job_manager.py:  # 694 lines
+app/backend/services/job_manager.py:  # 780 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: atexit, items: [], line: 5 }
@@ -1117,35 +1118,37 @@ app/backend/services/job_manager.py:  # 694 lines
       lines: 51-59
     - name: JudgeResult
       lines: 63-76
+    - name: CurrentSegmentSnapshot
+      lines: 80-98
     - name: JobRecord
-      lines: 80-111
+      lines: 102-143
     - name: JobLogger
-      lines: 127-183
+      lines: 159-215
       methods:
-        - { name: __init__, lines: 132-135 }
-        - { name: advance_processed_offset, lines: 137-139 }
-        - { name: log, lines: 141-148 }
-        - { name: _parse_progress, lines: 150-183 }
+        - { name: __init__, lines: 164-167 }
+        - { name: advance_processed_offset, lines: 169-171 }
+        - { name: log, lines: 173-180 }
+        - { name: _parse_progress, lines: 182-215 }
     - name: JobManager
-      lines: 186-694
+      lines: 218-780
       methods:
-        - { name: __init__, lines: 187-201 }
-        - { name: _shutdown, lines: 203-207 }
-        - { name: _start_cleanup_thread, lines: 209-221 }
-        - { name: _cleanup_orphaned_dirs, lines: 223-238 }
-        - { name: _cleanup_expired_jobs, lines: 240-254 }
-        - { name: _cleanup_by_capacity, lines: 256-271 }
-        - { name: _remove_job, lines: 273-283 }
-        - { name: create_job, lines: 285-543 }
-        - { name: _archive_outputs, lines: 545-550 }
-        - { name: get_job, lines: 552-553 }
-        - { name: get_quality, lines: 555-560 }
-        - { name: cancel_job, lines: 562-569 }
-        - { name: list_jobs, lines: 571-572 }
-        - { name: apply_judge, lines: 574-676 }
-        - { name: get_stats, lines: 678-694 }
+        - { name: __init__, lines: 219-233 }
+        - { name: _shutdown, lines: 235-239 }
+        - { name: _start_cleanup_thread, lines: 241-253 }
+        - { name: _cleanup_orphaned_dirs, lines: 255-270 }
+        - { name: _cleanup_expired_jobs, lines: 272-286 }
+        - { name: _cleanup_by_capacity, lines: 288-303 }
+        - { name: _remove_job, lines: 305-315 }
+        - { name: create_job, lines: 317-629 }
+        - { name: _archive_outputs, lines: 631-636 }
+        - { name: get_job, lines: 638-639 }
+        - { name: get_quality, lines: 641-646 }
+        - { name: cancel_job, lines: 648-655 }
+        - { name: list_jobs, lines: 657-658 }
+        - { name: apply_judge, lines: 660-762 }
+        - { name: get_stats, lines: 764-780 }
   functions:
-    - { name: _record_job_warning, lines: 114-124 }
+    - { name: _record_job_warning, lines: 146-156 }
 
 app/backend/services/metrics.py:  # 160 lines
   imports:
@@ -1191,7 +1194,7 @@ app/backend/services/quality_evaluator.py:  # 125 lines
     - { name: load_model, lines: 25-65 }
     - { name: score_blocks, lines: 74-125 }
 
-app/backend/services/quality_judge.py:  # 543 lines
+app/backend/services/quality_judge.py:  # 564 lines
   imports:
     - { module: __future__, items: [annotations], line: 14 }
     - { module: json, items: [], line: 16 }
@@ -1199,7 +1202,7 @@ app/backend/services/quality_judge.py:  # 543 lines
     - { module: typing, items: [Callable, Dict, List, Optional, Tuple], line: 18 }
   classes:
     - name: QualityJudge
-      lines: 56-543
+      lines: 56-564
       methods:
         - { name: __init__, lines: 68-90 }
         - { name: _build_cloud_client, lines: 92-117 }
@@ -1210,8 +1213,8 @@ app/backend/services/quality_judge.py:  # 543 lines
         - { name: judge_block, lines: 208-223 }
         - { name: judge_layout, lines: 225-272 }
         - { name: evaluate, lines: 274-315 }
-        - { name: run_judge_loop, lines: 317-359 }
-        - { name: _run_judge_loop_impl, lines: 361-543 }
+        - { name: run_judge_loop, lines: 317-369 }
+        - { name: _run_judge_loop_impl, lines: 371-564 }
 
 app/backend/services/term_audit.py:  # 117 lines
   imports:
@@ -1339,12 +1342,12 @@ app/backend/services/translation_cache.py:  # 265 lines
     - { name: _make_key, lines: 26-34 }
     - { name: get_cache, lines: 251-265 }
 
-app/backend/services/translation_service.py:  # 870 lines
+app/backend/services/translation_service.py:  # 972 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: logging, items: [], line: 5 }
     - { module: time, items: [], line: 6 }
-    - { module: typing, items: [TYPE_CHECKING, Callable, Dict, List, Optional, Tuple], line: 7 }
+    - { module: typing, items: [TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple], line: 7 }
     - { module: app.backend.clients.base_llm_client, items: [LLMClient], line: 9 }
     - { module: app.backend.config, items: [CHUNK_OVERLAP_TOKENS, CRITIQUE_LOOP_ENABLED, CRITIQUE_MAX_ITERATIONS, CRITIQUE_TIMEOUT_SECONDS, DEFAULT_MAX_BATCH_CHARS, SENTENCE_MODE], line: 10 }
     - { module: app.backend.services.context_prompts, items: [apply_glossary_substitution, compute_glossary_match_rate], line: 18 }
@@ -1354,13 +1357,13 @@ app/backend/services/translation_service.py:  # 870 lines
   functions:
     - { name: _heuristic_should_adopt, lines: 42-56 }
     - { name: _critique_gate_adopt, lines: 59-96 }
-    - { name: _batched_critique_adopt, lines: 99-165 }
-    - { name: _ensure_opencc_s2t, lines: 172-183 }
-    - { name: _convert_to_traditional, lines: 186-198 }
-    - { name: _is_traditional_chinese_target, lines: 201-204 }
-    - { name: translate_texts, lines: 207-548 }
-    - { name: translate_document, lines: 555-716 }
-    - { name: translate_table_cells, lines: 723-870 }
+    - { name: _batched_critique_adopt, lines: 99-193 }
+    - { name: _ensure_opencc_s2t, lines: 200-211 }
+    - { name: _convert_to_traditional, lines: 214-226 }
+    - { name: _is_traditional_chinese_target, lines: 229-232 }
+    - { name: translate_texts, lines: 235-650 }
+    - { name: translate_document, lines: 657-818 }
+    - { name: translate_table_cells, lines: 825-972 }
 
 app/backend/services/translation_strategy.py:  # 349 lines
   imports:
@@ -1746,12 +1749,32 @@ app/frontend/src/components/domain/StepWizard.jsx:  # 29 lines
   functions:
     - { name: StepWizard, lines: 4-29 }
 
-app/frontend/src/components/domain/TranslationProgress.jsx:  # 85 lines
+app/frontend/src/components/domain/TranslationProgress.jsx:  # 226 lines
   imports:
     - { module: react, items: ['default:React'], line: 1 }
+    - { module: '../../i18n/index.js', items: [useTranslation], line: 2 }
+    - { module: '../../constants/defaults.js', items: [JUDGE_MAX_ITERATIONS_DISPLAY], line: 3 }
+  constants:
+    - { name: STAGE_COLOR_VARS, line: 15 }
+    - { name: JUDGE_TIER_COLOR_VARS, line: 24 }
   functions:
-    - { name: qualityTier, lines: 3-8 }
-    - { name: TranslationProgress, lines: 10-85 }
+    - { name: qualityTier, lines: 7-12 }
+    - { name: StageBadge, lines: 30-49 }
+    - { name: JudgeTierBadge, lines: 51-70 }
+    - { name: StageDetailPanel, lines: 79-143 }
+    - { name: TranslationProgress, lines: 145-226 }
+
+app/frontend/src/components/domain/TranslationProgress.test.jsx:  # 157 lines
+  imports:
+    - { module: react, items: ['default:React'], line: 1 }
+    - { module: 'node:fs', items: ['default:fs'], line: 2 }
+    - { module: 'node:path', items: ['default:path'], line: 3 }
+    - { module: 'node:url', items: [fileURLToPath], line: 4 }
+    - { module: '@testing-library/react', items: [render, screen], line: 5 }
+    - { module: '../../contexts/SettingsContext.jsx', items: [SettingsProvider], line: 6 }
+    - { module: './TranslationProgress.jsx', items: [TranslationProgress], line: 7 }
+  functions:
+    - { name: renderProgress, lines: 16-22 }
 
 app/frontend/src/components/domain/VramCalculator.jsx:  # 37 lines
   imports:
@@ -1863,12 +1886,13 @@ app/frontend/src/components/ui/Tabs.jsx:  # 16 lines
   functions:
     - { name: Tabs, lines: 2-16 }
 
-app/frontend/src/constants/defaults.js:  # 4 lines
+app/frontend/src/constants/defaults.js:  # 10 lines
   constants:
     - { name: DEFAULT_GPU_VRAM, line: 1 }
     - { name: DEFAULT_SRC_LANG, line: 2 }
     - { name: DEFAULT_PROFILE, line: 3 }
     - { name: HISTORY_MAX_ENTRIES, line: 4 }
+    - { name: JUDGE_MAX_ITERATIONS_DISPLAY, line: 10 }
 
 app/frontend/src/constants/fileTypes.js:  # 11 lines
   constants:
@@ -1929,7 +1953,7 @@ app/frontend/src/hooks/useTheme.js:  # 8 lines
   functions:
     - { name: useTheme, lines: 2-8 }
 
-app/frontend/src/i18n/en.js:  # 129 lines
+app/frontend/src/i18n/en.js:  # 138 lines
 
 app/frontend/src/i18n/index.js:  # 11 lines
   imports:
@@ -1941,7 +1965,7 @@ app/frontend/src/i18n/index.js:  # 11 lines
   functions:
     - { name: useTranslation, lines: 7-11 }
 
-app/frontend/src/i18n/zh-TW.js:  # 129 lines
+app/frontend/src/i18n/zh-TW.js:  # 138 lines
 
 app/frontend/src/main.jsx:  # 14 lines
   imports:
@@ -2377,7 +2401,7 @@ tests/test_coordinate_renderer.py:  # 564 lines
   functions:
     - { name: create_test_document, lines: 25-71 }
 
-tests/test_critique_gate.py:  # 195 lines
+tests/test_critique_gate.py:  # 303 lines
   imports:
     - { module: __future__, items: [annotations], line: 15 }
     - { module: unittest.mock, items: [MagicMock, patch], line: 17 }
@@ -2394,6 +2418,29 @@ tests/test_critique_gate.py:  # 195 lines
     - { name: test_heuristic_penalises_empty_output_and_failure_markers, lines: 152-164 }
     - { name: test_heuristic_rejects_extreme_length_ratios, lines: 167-183 }
     - { name: test_heuristic_accepts_normal_revised_text, lines: 186-195 }
+    - { name: _get_batched_helper, lines: 204-206 }
+    - { name: test_batched_round_scores_map_to_correct_segment_index, lines: 209-252 }
+    - { name: test_batched_adopt_empty_scores_keeps_all_drafts, lines: 255-272 }
+    - { name: test_batched_adopt_qe_unavailable_falls_back_to_heuristic_per_segment, lines: 275-290 }
+    - { name: test_batched_adopt_empty_pairs_returns_empty_list_without_calling_score_blocks, lines: 293-303 }
+
+tests/test_critique_loop_batching.py:  # 498 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 23 }
+    - { module: time, items: [], line: 25 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 26 }
+    - { module: pytest, items: [], line: 28 }
+    - { module: app.backend.services.quality_evaluator, items: [], line: 32 }
+  functions:
+    - { name: _make_client, lines: 39-42 }
+    - { name: test_batched_loop_matches_per_segment_adoption_parity, lines: 50-125 }
+    - { name: test_score_blocks_call_count_bounded_by_iterations_not_segment_count, lines: 132-179 }
+    - { name: test_tie_score_keeps_draft_in_batched_round, lines: 186-228 }
+    - { name: test_cached_segments_excluded_from_round_batch, lines: 235-293 }
+    - { name: test_segment_exception_in_round_does_not_abort_other_segments, lines: 300-346 }
+    - { name: test_segment_timeout_in_round_does_not_abort_other_segments, lines: 349-398 }
+    - { name: test_critique_config_defaults_unchanged_after_batching, lines: 405-432 }
+    - { name: test_critique_loop_invocation_and_iteration_counters_match_baseline, lines: 440-498 }
 
 tests/test_dead_references.py:  # 121 lines
   imports:
@@ -2576,7 +2623,22 @@ tests/test_env_contract.py:  # 251 lines
   functions:
     - { name: _contract_text, lines: 16-17 }
 
-tests/test_fewshot_glossary.py:  # 524 lines
+tests/test_eta_multi_phase_heuristic.py:  # 173 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 13 }
+    - { module: app.backend.api.routes, items: [_compute_multi_phase_eta], line: 15 }
+  functions:
+    - { name: _eta, lines: 18-39 }
+    - { name: test_translate_phase_only_rate_before_critique_starts, lines: 46-57 }
+    - { name: test_critique_phase_estimated_via_max_iterations_factor_before_observed, lines: 64-74 }
+    - { name: test_blended_two_phase_estimate_once_critique_rate_observed, lines: 81-93 }
+    - { name: test_eta_omits_critique_phase_when_critique_and_qe_disabled, lines: 100-105 }
+    - { name: test_judge_phase_estimated_via_max_iterations_factor_before_observed, lines: 112-121 }
+    - { name: test_judge_phase_blended_estimate_once_observed_rate_available, lines: 128-139 }
+    - { name: test_eta_omits_judge_phase_when_judge_disabled, lines: 146-153 }
+    - { name: test_eta_omits_judge_phase_when_winning_provider_is_deepseek, lines: 160-173 }
+
+tests/test_fewshot_glossary.py:  # 527 lines
   imports:
     - { module: __future__, items: [annotations], line: 8 }
     - { module: hashlib, items: [], line: 10 }
@@ -2615,32 +2677,32 @@ tests/test_fewshot_glossary.py:  # 524 lines
         - { name: test_glossary_terms_sourced_from_term_db_not_hardcoded, lines: 214-223 }
         - { name: test_empty_term_db_produces_empty_glossary_block, lines: 225-230 }
     - name: TestCritiqueLoop
-      lines: 237-296
+      lines: 237-299
       methods:
         - { name: _make_client, lines: 240-246 }
         - { name: test_critique_loop_runs_at_least_once_per_request, lines: 252-268 }
-        - { name: test_revised_draft_recorded_in_tmap, lines: 274-296 }
+        - { name: test_revised_draft_recorded_in_tmap, lines: 274-299 }
     - name: TestCritiqueLoopBounds
-      lines: 303-412
+      lines: 306-415
       methods:
-        - { name: _make_client, lines: 306-312 }
-        - { name: test_loop_stops_at_critique_max_iterations, lines: 318-334 }
-        - { name: test_loop_degrades_to_last_valid_draft_on_critique_failure, lines: 340-358 }
-        - { name: test_loop_degrades_to_draft_on_timeout, lines: 365-388 }
-        - { name: test_job_does_not_fail_when_critique_times_out, lines: 394-412 }
+        - { name: _make_client, lines: 309-315 }
+        - { name: test_loop_stops_at_critique_max_iterations, lines: 321-337 }
+        - { name: test_loop_degrades_to_last_valid_draft_on_critique_failure, lines: 343-361 }
+        - { name: test_loop_degrades_to_draft_on_timeout, lines: 368-391 }
+        - { name: test_job_does_not_fail_when_critique_times_out, lines: 397-415 }
     - name: TestCacheKeyGlossaryDigest
-      lines: 419-478
+      lines: 422-481
       methods:
-        - { name: test_cache_key_differs_after_glossary_state_changes, lines: 422-451 }
-        - { name: test_pre_glossary_cache_entry_is_a_miss_after_term_added, lines: 453-478 }
+        - { name: test_cache_key_differs_after_glossary_state_changes, lines: 425-454 }
+        - { name: test_pre_glossary_cache_entry_is_a_miss_after_term_added, lines: 456-481 }
     - name: TestCritiqueMetrics
-      lines: 485-524
+      lines: 488-527
       methods:
-        - { name: test_critique_loop_invocations_increments_per_request, lines: 488-492 }
-        - { name: test_critique_iterations_total_reflects_actual_iteration_count, lines: 494-498 }
-        - { name: test_glossary_match_rate_reported_in_get_metrics, lines: 500-504 }
-        - { name: test_new_counters_initialize_to_zero, lines: 506-511 }
-        - { name: test_new_counters_reset_via_reset_helper, lines: 513-524 }
+        - { name: test_critique_loop_invocations_increments_per_request, lines: 491-495 }
+        - { name: test_critique_iterations_total_reflects_actual_iteration_count, lines: 497-501 }
+        - { name: test_glossary_match_rate_reported_in_get_metrics, lines: 503-507 }
+        - { name: test_new_counters_initialize_to_zero, lines: 509-514 }
+        - { name: test_new_counters_reset_via_reset_helper, lines: 516-527 }
   functions:
     - { name: tmp_db, lines: 27-29 }  # @pytest.fixture()
     - { name: _make_term, lines: 32-45 }
@@ -2891,6 +2953,24 @@ tests/test_ir_pipeline_decoupling.py:  # 379 lines
   functions:
     - { name: _make_simple_ir, lines: 30-49 }
 
+tests/test_job_manager_current_segment.py:  # 213 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 11 }
+    - { module: tempfile, items: [], line: 13 }
+    - { module: time, items: [], line: 14 }
+    - { module: types, items: [], line: 15 }
+    - { module: pathlib, items: [Path], line: 16 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 17 }
+  functions:
+    - { name: _make_fake_judge_result, lines: 24-35 }
+    - { name: _wait_for_job, lines: 38-44 }
+    - { name: _make_minimal_route_group, lines: 47-54 }
+    - { name: _run_job_with_process_files_side_effect, lines: 57-80 }
+    - { name: _run_job_with_judge_check, lines: 83-111 }
+    - { name: test_snapshot_capture_is_reference_assignment_negligible_overhead, lines: 118-138 }
+    - { name: test_current_segment_snapshot_overwritten_not_appended_across_calls, lines: 145-163 }
+    - { name: test_judge_snapshot_written_onto_jobrecord_at_scoring_and_retranslating_substeps, lines: 170-213 }
+
 tests/test_job_record_judge.py:  # 77 lines
   imports:
     - { module: __future__, items: [annotations], line: 7 }
@@ -2902,7 +2982,7 @@ tests/test_job_record_judge.py:  # 77 lines
     - { name: test_judge_result_optional_fields_default_none, lines: 40-52 }
     - { name: test_job_record_has_judge_fields, lines: 59-77 }
 
-tests/test_jobstatus_download_url.py:  # 264 lines
+tests/test_jobstatus_download_url.py:  # 274 lines
   imports:
     - { module: __future__, items: [annotations], line: 6 }
     - { module: threading, items: [], line: 8 }
@@ -2914,27 +2994,50 @@ tests/test_jobstatus_download_url.py:  # 264 lines
     - { module: fastapi.testclient, items: [TestClient], line: 15 }
   classes:
     - name: TestDownloadUrlDerivation
-      lines: 65-195
+      lines: 75-205
       methods:
-        - { name: test_completed_with_existing_zip, lines: 68-82 }
-        - { name: test_completed_no_zip_returns_none, lines: 84-95 }
-        - { name: test_completed_zip_path_missing_on_disk, lines: 97-111 }
-        - { name: test_running_status_returns_none, lines: 113-128 }
-        - { name: test_failed_status_returns_none, lines: 130-145 }
-        - { name: test_stopped_status_returns_none, lines: 147-162 }
-        - { name: test_derivation_parametrized, lines: 174-195 }
+        - { name: test_completed_with_existing_zip, lines: 78-92 }
+        - { name: test_completed_no_zip_returns_none, lines: 94-105 }
+        - { name: test_completed_zip_path_missing_on_disk, lines: 107-121 }
+        - { name: test_running_status_returns_none, lines: 123-138 }
+        - { name: test_failed_status_returns_none, lines: 140-155 }
+        - { name: test_stopped_status_returns_none, lines: 157-172 }
+        - { name: test_derivation_parametrized, lines: 184-205 }
     - name: TestJobStatusEndpoint
-      lines: 202-236
+      lines: 212-246
       methods:
-        - { name: test_get_job_status_completed_has_download_url, lines: 205-222 }
-        - { name: test_get_job_status_running_download_url_null, lines: 224-236 }
+        - { name: test_get_job_status_completed_has_download_url, lines: 215-232 }
+        - { name: test_get_job_status_running_download_url_null, lines: 234-246 }
     - name: TestDownloadEndpointUnchanged
-      lines: 243-264
+      lines: 253-274
       methods:
-        - { name: test_download_endpoint_still_returns_zip, lines: 246-264 }
+        - { name: test_download_endpoint_still_returns_zip, lines: 256-274 }
   functions:
-    - { name: _make_job, lines: 22-53 }
-    - { name: _get_test_client, lines: 56-58 }
+    - { name: _make_job, lines: 22-63 }
+    - { name: _get_test_client, lines: 66-68 }
+
+tests/test_jobstatus_stage_detail.py:  # 214 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 8 }
+    - { module: threading, items: [], line: 10 }
+    - { module: typing, items: [Optional], line: 11 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 12 }
+    - { module: fastapi.testclient, items: [TestClient], line: 14 }
+  classes:
+    - name: TestJobStatusAdditiveFields
+      lines: 83-214
+      methods:
+        - { name: test_new_fields_present_when_populated, lines: 84-105 }
+        - { name: test_current_stage_enum_values_translate_critique_qe_adopt, lines: 107-116 }
+        - { name: test_existing_fields_unchanged_when_new_fields_absent, lines: 118-133 }
+        - { name: test_new_fields_null_when_job_just_started, lines: 135-147 }
+        - { name: test_new_fields_null_when_critique_and_qe_disabled, lines: 149-163 }
+        - { name: test_current_stage_enum_includes_judge, lines: 165-173 }
+        - { name: test_judge_fields_shape_when_judge_stage_active, lines: 175-195 }
+        - { name: test_judge_fields_null_outside_judge_stage, lines: 197-214 }
+  functions:
+    - { name: _make_job, lines: 21-59 }
+    - { name: _get_test_client, lines: 62-64 }
 
 tests/test_judge_api.py:  # 297 lines
   imports:
@@ -3892,7 +3995,7 @@ tests/test_pdf_parser.py:  # 637 lines
         - { name: test_parse_invokes_layout_detector_on_native_pdf, lines: 570-610 }
         - { name: test_detector_failure_parse_still_returns_document, lines: 612-637 }
 
-tests/test_pdf_render_warnings.py:  # 570 lines
+tests/test_pdf_render_warnings.py:  # 579 lines
   imports:
     - { module: __future__, items: [annotations], line: 20 }
     - { module: threading, items: [], line: 22 }
@@ -3903,40 +4006,40 @@ tests/test_pdf_render_warnings.py:  # 570 lines
     - { module: fastapi.testclient, items: [TestClient], line: 28 }
   classes:
     - name: TestFitzFallbackWarning
-      lines: 75-226
+      lines: 84-235
       methods:
-        - { name: test_fitz_exception_emits_exact_fallback_warning, lines: 78-109 }
-        - { name: test_fitz_mock_targets_consumer_call_site_not_renderer_module, lines: 111-142 }
-        - { name: test_fitz_crash_fallback_still_wraps_long_text, lines: 144-226 }
+        - { name: test_fitz_exception_emits_exact_fallback_warning, lines: 87-118 }
+        - { name: test_fitz_mock_targets_consumer_call_site_not_renderer_module, lines: 120-151 }
+        - { name: test_fitz_crash_fallback_still_wraps_long_text, lines: 153-235 }
     - name: TestDocxRoutingWarning
-      lines: 233-275
+      lines: 242-284
       methods:
-        - { name: test_docx_routing_emits_exact_layout_skip_warning, lines: 236-275 }
+        - { name: test_docx_routing_emits_exact_layout_skip_warning, lines: 245-284 }
     - name: TestNoDegradationNoWarning
-      lines: 282-306
+      lines: 291-315
       methods:
-        - { name: test_no_warning_when_fitz_succeeds, lines: 285-306 }
+        - { name: test_no_warning_when_fitz_succeeds, lines: 294-315 }
     - name: TestWarningsSchema
-      lines: 313-366
+      lines: 322-375
       methods:
-        - { name: test_warnings_field_is_list_or_none_not_bare_string, lines: 316-352 }
-        - { name: test_jobstatus_schema_has_warnings_field, lines: 354-366 }
+        - { name: test_warnings_field_is_list_or_none_not_bare_string, lines: 325-361 }
+        - { name: test_jobstatus_schema_has_warnings_field, lines: 363-375 }
     - name: TestWarningsApiPropagation
-      lines: 373-426
+      lines: 382-435
       methods:
-        - { name: test_fitz_fallback_warning_in_api_response, lines: 380-394 }
-        - { name: test_docx_routing_warning_in_api_response, lines: 396-410 }
-        - { name: test_no_warnings_is_null_or_empty_in_api_response, lines: 412-426 }
+        - { name: test_fitz_fallback_warning_in_api_response, lines: 389-403 }
+        - { name: test_docx_routing_warning_in_api_response, lines: 405-419 }
+        - { name: test_no_warnings_is_null_or_empty_in_api_response, lines: 421-435 }
     - name: TestTruncationDisclosureWarning
-      lines: 433-570
+      lines: 442-579
       methods:
-        - { name: _make_doc, lines: 442-473 }
-        - { name: test_one_aggregated_warning_per_file_regardless_of_truncated_count, lines: 475-498 }
-        - { name: test_no_warning_entry_when_no_truncation, lines: 500-519 }
-        - { name: test_warning_fires_identically_fitz_or_reportlab_truncation_source, lines: 521-570 }
+        - { name: _make_doc, lines: 451-482 }
+        - { name: test_one_aggregated_warning_per_file_regardless_of_truncated_count, lines: 484-507 }
+        - { name: test_no_warning_entry_when_no_truncation, lines: 509-528 }
+        - { name: test_warning_fires_identically_fitz_or_reportlab_truncation_source, lines: 530-579 }
   functions:
-    - { name: _make_job, lines: 35-63 }
-    - { name: _get_test_client, lines: 66-68 }
+    - { name: _make_job, lines: 35-72 }
+    - { name: _get_test_client, lines: 75-77 }
 
 tests/test_pptx_parser.py:  # 255 lines
   imports:
@@ -4089,7 +4192,7 @@ tests/test_providers_api.py:  # 697 lines
     - { name: _mock_health_ok, lines: 80-84 }
     - { name: _mock_health_fail, lines: 87-91 }
 
-tests/test_quality_evaluation.py:  # 688 lines
+tests/test_quality_evaluation.py:  # 754 lines
   imports:
     - { module: __future__, items: [annotations], line: 10 }
     - { module: typing, items: [List, Tuple], line: 12 }
@@ -4120,7 +4223,9 @@ tests/test_quality_evaluation.py:  # 688 lines
     - { name: test_qe_rescore_threshold_not_in_config, lines: 538-549 }
     - { name: test_br_92_removed_from_business_rules, lines: 552-561 }
     - { name: test_qe_enabled_config_default_is_true, lines: 568-584 }
-    - { name: test_qe_scoring_invoked_identically_for_converted_legacy_document, lines: 593-688 }
+    - { name: test_cuda_oom_ladder_functions_with_larger_batched_blocks_list, lines: 600-632 }
+    - { name: test_score_blocks_batch_size_param_unaffected_by_input_list_length, lines: 635-656 }
+    - { name: test_qe_scoring_invoked_identically_for_converted_legacy_document, lines: 659-754 }
 
 tests/test_quality_judge.py:  # 753 lines
   imports:
@@ -4182,6 +4287,18 @@ tests/test_quality_judge.py:  # 753 lines
     - { name: test_translation_client_reuses_existing_config_symbols_only, lines: 592-604 }
     - { name: test_translation_client_cached_built_once, lines: 607-617 }
     - { name: test_translation_client_never_none, lines: 620-643 }
+
+tests/test_quality_judge_snapshot_callback.py:  # 113 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 12 }
+    - { module: typing, items: [List, Tuple], line: 14 }
+    - { module: unittest.mock, items: [patch], line: 15 }
+  functions:
+    - { name: _make_judge, lines: 22-28 }
+    - { name: _make_blocks, lines: 31-32 }
+    - { name: test_callback_none_is_complete_noop, lines: 39-47 }
+    - { name: test_callback_invoked_at_scoring_and_retranslating_substeps_with_attempt_index, lines: 54-88 }
+    - { name: test_callback_that_raises_does_not_break_judge_loop, lines: 95-113 }
 
 tests/test_renderer_convergence.py:  # 932 lines
   imports:
@@ -5000,6 +5117,13 @@ tests/test_translation_service.py:  # 172 lines
   functions:
     - { name: _make_docx_paragraphs_only, lines: 30-38 }
     - { name: _mock_client, lines: 41-48 }
+
+tests/test_translation_service_stage_snapshot.py:  # 87 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 16 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 18 }
+  functions:
+    - { name: test_status_callback_emits_structured_snapshot_at_each_stage_transition, lines: 21-87 }
 
 tests/test_translation_strategy.py:  # 482 lines
   imports:

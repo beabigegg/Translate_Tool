@@ -164,6 +164,66 @@ def test_current_segment_snapshot_overwritten_not_appended_across_calls():
 
 
 # ---------------------------------------------------------------------------
+# AC-1, AC-5 (pdf-stage-detail-snapshot): PDF path parity, end-to-end
+# ---------------------------------------------------------------------------
+
+def test_pdf_job_populates_current_segment_stage_translate_end_to_end():
+    """AC-1, AC-5: real create_job() -> process_files() -> translate_pdf() runs
+    for real (unlike the process_files-faking harness above); only
+    translate_blocks_batch (the LLM call boundary) is mocked. Proves the
+    orchestrator's .pdf branch and translate_pdf actually thread status_callback
+    all the way through to job.current_segment, matching the Office parity
+    already proven by test_snapshot_capture_is_reference_assignment_negligible_overhead
+    et al. above.
+
+    model_type="translation" bypasses the (network-calling) context-detection
+    step; enable_term_extraction=False and QE_ENABLED/JUDGE_ENABLED disabled
+    keep the run scoped to the translate stage under test (out of scope per
+    test-plan.md).
+    """
+    from app.backend.services.job_manager import JobManager
+    from app.backend.services.model_router import RouteGroup
+
+    fixture_pdf = Path(__file__).parent / "fixtures" / "test.pdf"
+
+    def fake_translate_blocks_batch(texts, tgt, src_lang, client, log=None, on_segment_done=None, **kwargs):
+        results = []
+        for text in texts:
+            translated = f"[{tgt}] {text}"
+            if on_segment_done is not None:
+                on_segment_done(text, translated)
+            results.append((True, translated))
+        return results
+
+    with tempfile.TemporaryDirectory() as tmp:
+        fake_file = Path(tmp) / "sample.pdf"
+        fake_file.write_bytes(fixture_pdf.read_bytes())
+        route_group = RouteGroup(
+            targets=["English"], model="test-model", profile_id="general", model_type="translation",
+        )
+
+        with patch("app.backend.processors.pdf_processor.translate_blocks_batch", side_effect=fake_translate_blocks_batch), \
+             patch("app.backend.services.job_manager.QE_ENABLED", False), \
+             patch("app.backend.services.job_manager.config.JUDGE_ENABLED", False):
+
+            jm = JobManager()
+            job = jm.create_job(
+                uploaded_files=[fake_file],
+                route_groups=[route_group],
+                src_lang=None,
+                include_headers=False,
+                enable_term_extraction=False,
+            )
+            _wait_for_job(job)
+
+    assert job.status == "completed", f"job did not complete: status={job.status} error={job.error}"
+    assert job.current_segment is not None, "current_segment stayed null for the PDF job (the bug)"
+    assert job.current_segment.stage == "translate"
+    assert job.current_segment.source, "current_segment_source stayed empty/null"
+    assert job.current_segment.draft, "current_segment_draft stayed empty/null"
+
+
+# ---------------------------------------------------------------------------
 # AC-9: judge snapshot written at BOTH the scoring and retranslating sub-steps
 # ---------------------------------------------------------------------------
 

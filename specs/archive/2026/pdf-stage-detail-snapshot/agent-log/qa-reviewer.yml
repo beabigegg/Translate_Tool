@@ -1,0 +1,10 @@
+change-id: pdf-stage-detail-snapshot
+agent: qa-reviewer
+status: done
+summary: "release-ready. All 5 confirmations pass: reproduction evidence valid (RED pre-fix TypeError → GREEN post-fix, commands match runs); fix correct + None-safe (status_callback optional, lazy CurrentSegmentSnapshot import, 2 positional args matching _status_cb, orchestrator .pdf wires it); no regression (Office/judge/translate_texts untouched, PDF output unchanged, param trailing-optional); tests non-tautological (mock fires on_segment_done, exact stage/source/draft + single-overwrite asserts); contract additive (data 0.17.2->0.17.3 + CHANGELOG, api untouched, validators pass). Two artifact gaps flagged (observed_surface, tier-floor-override) resolved by main Claude."
+artifacts:
+  - { type: decision, pointer: "release-ready (after observed_surface + tier-floor-override recorded)" }
+  - { type: gate-results, pointer: "validate --contracts/--versions pass; test-evidence collect/targeted/changed-area/contract passed; full sweep 1191 pass" }
+  - { type: evidence-quality, pointer: "repro (independently re-ran diff + tests + validators)" }
+  - { type: residual-risk, pointer: "N1 non-blocking: PDF path does not emit terminal status_callback(None), so a completed PDF job leaves current_segment frozen at last translate segment (Office clears it) — harmless terminal-state parity gap, follow-up only" }
+next-action: gate + PR

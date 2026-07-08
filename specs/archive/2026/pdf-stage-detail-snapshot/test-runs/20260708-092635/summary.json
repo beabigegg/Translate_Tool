@@ -1,0 +1,15 @@
+{
+  "change_id": "pdf-stage-detail-snapshot",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "cdd-kit validate --contracts --env --ci",
+  "duration_ms": 759,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092635/summary.json",
+    "stdout": "specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092635/stdout.log",
+    "stderr": "specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092635/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

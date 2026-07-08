@@ -1,0 +1,42 @@
+change-id: pdf-stage-detail-snapshot
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: targeted
+    status: passed
+    command: >-
+      python -m pytest tests/test_pdf_stage_snapshot.py
+      tests/test_job_manager_current_segment.py::test_pdf_job_populates_current_segment_stage_translate_end_to_end -q
+      --maxfail=1 --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092609/junit.xml'
+    summary: specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092609/summary.json
+    junit: specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092609/junit.xml
+  - phase: collect
+    status: passed
+    command: >-
+      python -m pytest --collect-only -q
+      tests/test_job_manager_current_segment.py::test_pdf_job_populates_current_segment_stage_translate_end_to_end
+      tests/test_pdf_stage_snapshot.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092601/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092601/summary.json
+    junit: specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092601/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      python -m pytest tests/test_pdf_stage_snapshot.py tests/test_job_manager_current_segment.py
+      tests/test_jobstatus_stage_detail.py tests/test_translation_service_stage_snapshot.py
+      tests/test_pdf_layout_table_fixes.py tests/test_pdf_layout_viz_persistence.py tests/test_pdf_render_warnings.py
+      tests/test_ir_pipeline_decoupling.py tests/test_renderer_convergence.py -q --maxfail=1 --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092621/junit.xml'
+    summary: specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092621/summary.json
+    junit: specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092621/junit.xml
+  - phase: contract
+    status: passed
+    command: cdd-kit validate --contracts --env --ci
+    summary: specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092635/summary.json
+final-status: passed

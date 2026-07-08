@@ -879,6 +879,7 @@ def process_files(
                     post_translate_hook=post_translate_hook,
                     block_overrides=block_overrides,
                     warnings_callback=warnings_callback,
+                    status_callback=status_callback,
                 )
             else:
                 log(f"[SKIP] Unsupported file: {src.name}")

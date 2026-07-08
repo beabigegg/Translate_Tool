@@ -1,0 +1,42 @@
+change-id: pdf-stage-detail-snapshot
+status: in-progress
+tier: 3
+tier-floor-override: "Additive/observational bug-fix: PDF path now populates already-declared JobStatus current_segment progress-detail fields. The tier-floor matched 'endpoint' — it appears only in negation context (no new/changed route or endpoint); no auth, payments, data-migration, concurrency, or secrets surface; the data-shape edit is an additive documentary note (no field add/rename/retype). change-classifier confirmed Tier 3."
+context-governance: v1
+archive-tasks:
+  - "7.1"
+  - "7.2"
+depends-on: []
+
+tasks:
+  # status: pending | done | skipped   (optional: note: "reason or context")
+  - { id: "1.1", section: Preparation, title: "Confirm classification and required artifacts", status: done, note: "change-classifier: Tier 3, bug-fix lane, data symptom; no arch review" }
+  - { id: "1.2", section: Preparation, title: "Confirm contracts to update", status: done, note: "contract-reviewer: no api drift; data-shape additive note drafted (0.17.2->0.17.3)" }
+  - { id: "1.3", section: Preparation, title: "Confirm design decisions if required", status: skipped, note: "no design/architecture review required (classifier)" }
+  - { id: "1.4", section: Preparation, title: "Confirm CI/CD gate plan", status: done, note: "ci-cd-gatekeeper: no workflow change; blanket pytest + validate --contracts cover it" }
+  - { id: "1.5", section: Preparation, title: "Confirm implementation plan", status: done, note: "implementation-planner: 6 IP items, root cause re-verified against source; hazards flagged (add Any import, lazy-import CurrentSegmentSnapshot)" }
+  - { id: "2.1", section: "Contract Updates", title: "API contract", status: skipped, note: "no API change — JobStatus snapshot fields already documented by #7 (classifier)" }
+  - { id: "2.2", section: "Contract Updates", title: "CSS/UI contract", status: skipped, note: "no CSS/UI change (classifier)" }
+  - { id: "2.3", section: "Contract Updates", title: "Env contract", status: skipped, note: "no env change (classifier)" }
+  - { id: "2.4", section: "Contract Updates", title: "Data shape contract", status: done, note: "data-shape-contract.md PDF-path parity note applied (contract-reviewer draft verbatim); 0.17.2->0.17.3 + CHANGELOG" }
+  - { id: "2.5", section: "Contract Updates", title: "Business logic contract", status: skipped, note: "no business-logic change (classifier)" }
+  - { id: "2.6", section: "Contract Updates", title: "CI/CD contract", status: skipped, note: "no CI/CD change (classifier)" }
+  - { id: "3.1", section: "Tests First", title: "Unit/contract tests", status: done, note: "tests/test_pdf_stage_snapshot.py (3 anti-tautology tests firing on_segment_done; AC-8 repro)" }
+  - { id: "3.2", section: "Tests First", title: "Integration tests", status: done, note: "test_job_manager_current_segment.py extended: real create_job→process_files→translate_pdf end-to-end (AC-1/2/5)" }
+  - { id: "3.3", section: "Tests First", title: "E2E/resilience tests", status: skipped, note: "no E2E/resilience tests (classifier)" }
+  - { id: "3.4", section: "Tests First", title: "Data-boundary/monkey tests", status: skipped, note: "no monkey/fuzz tests (classifier)" }
+  - { id: "3.5", section: "Tests First", title: "Stress/soak tests if required", status: skipped, note: "no stress/soak tests (classifier)" }
+  - { id: "4.1", section: Implementation, title: "Backend", status: done, note: "pdf_processor.translate_pdf +3 sub-fns thread status_callback; on_segment_done→CurrentSegmentSnapshot(stage=translate); orchestrator .pdf branch wires it. Full sweep 1191 pass" }
+  - { id: "4.2", section: Implementation, title: "Frontend", status: skipped, note: "no frontend change — StageDetailPanel already exists (classifier)" }
+  - { id: "4.3", section: Implementation, title: "Env/deploy", status: skipped, note: "no env/deploy change (classifier)" }
+  - { id: "4.4", section: Implementation, title: "CI/CD workflows", status: skipped, note: "no CI/CD workflow change (classifier)" }
+  - { id: "5.1", section: Review, title: "UI/UX review", status: skipped, note: "no UI/UX review — no UI change (classifier)" }
+  - { id: "5.2", section: Review, title: "Visual review", status: skipped, note: "no visual review — no UI change (classifier)" }
+  - { id: "5.3", section: Review, title: "Contract review", status: done, note: "contract-reviewer: no api drift; data-shape additive note approved" }
+  - { id: "5.4", section: Review, title: "QA review", status: done, note: "qa-reviewer: release-ready, 0 blocking code bugs; 5/5 confirmations pass; 2 artifact gaps (observed_surface, tier-floor-override) cleared. N1 non-blocking terminal-clear parity gap noted as follow-up. See qa-reviewer.yml" }
+  - { id: "6.1", section: Verification, title: "Local gates", status: done, note: "cdd-kit gate green; 4 evidence phases (collect/targeted/changed-area/contract) passed in translate-tool env; full sweep 1191 pass" }
+  - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "Local gate green — same required validations CI runs (validate --contracts, full pytest). PR CI to confirm." }
+  - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full-regression informational on PR; no non-deterministic checks" }
+  - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gate required (classifier)" }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done, note: "cdd-kit archive → specs/archive/2026/pdf-stage-detail-snapshot; INDEX.md updated" }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done, note: "promote-to-contract: data-shape-contract.md architecture note (3 per-segment entry points; wire+test every format path); 0.17.3->0.17.4 + CHANGELOG. No CLAUDE.md growth (test-side already covered by tautology entry 1b). contract-reviewer approved." }
