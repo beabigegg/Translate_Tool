@@ -8,6 +8,9 @@ While a contract is at 0.x (draft), entries here are optional.
 Once a contract reaches 1.0.0, every schema-version bump must have
 a corresponding entry below.
 
+## [data 0.17.3] — 2026-07-08
+Added: `JobStatus / JobRecord — current-segment snapshot fields` — PDF translation path parity note: `current_stage="translate"` plus `current_segment_source`/`current_segment_draft` now also populate for PDF jobs (previously stayed `null` for the whole job because the PDF pipeline's `translate_blocks_batch` bypassed `translation_service.translate_texts`, the only call site wired for the snapshot by `translation-progress-detail-ui`); PDF has no critique/QE/adopt loop, so `current_stage` is only ever `translate` or `judge` for a PDF job. No field added/removed/renamed/retyped; nullability/fallback rules unchanged. Added in change `pdf-stage-detail-snapshot`.
+
 ## [css 0.3.1] — 2026-07-08
 Added: `StageDetailPanel`/`StageBadge` component-rules row (JudgePanel precedent) — single-column panel inside `TranslationProgress.jsx` rendering `current_stage`/current-segment content incl. the judge sub-state (tier badge, attempt counter, scoring/retranslating substep); explicit "renders nothing when no current-segment detail" visibility rule, mirroring `JudgePanel`'s disabled/unavailable rule. Colors via CSS vars only. Added in change `translation-progress-detail-ui`.
 

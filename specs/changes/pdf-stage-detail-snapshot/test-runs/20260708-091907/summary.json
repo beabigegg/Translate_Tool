@@ -1,0 +1,16 @@
+{
+  "change_id": "pdf-stage-detail-snapshot",
+  "phase": "targeted",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "pytest tests/test_pdf_stage_snapshot.py::test_pymupdf_path_on_segment_done_emits_translate_stage_snapshot --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-091907/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 2710,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-091907/summary.json",
+    "stdout": "specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-091907/stdout.log",
+    "stderr": "specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-091907/stderr.log",
+    "junit": "specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-091907/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

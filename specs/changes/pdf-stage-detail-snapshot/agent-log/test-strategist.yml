@@ -1,0 +1,22 @@
+change-id: pdf-stage-detail-snapshot
+agent: test-strategist
+timestamp: "2026-07-08T00:00:00Z"
+status: complete
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/pdf-stage-detail-snapshot/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_pdf_stage_snapshot.py::test_translate_pdf_signature_accepts_status_callback → app/backend/processors/pdf_processor.py:284-413" }
+  - { type: tdd-pairs, pointer: "tests/test_pdf_stage_snapshot.py::test_pymupdf_path_on_segment_done_emits_translate_stage_snapshot → app/backend/processors/pdf_processor.py:416-656" }
+  - { type: tdd-pairs, pointer: "tests/test_pdf_stage_snapshot.py::test_pypdf2_and_to_pdf_paths_on_segment_done_emit_translate_stage_snapshot → app/backend/processors/pdf_processor.py:659-993" }
+  - { type: tdd-pairs, pointer: "tests/test_job_manager_current_segment.py::test_pdf_job_populates_current_segment_stage_translate_end_to_end → app/backend/services/job_manager.py:80-98" }
+  - { type: coverage-tiers, pointer: "unit, integration, contract (regression)" }
+  - { type: mapping-completeness, pointer: "AC-1..AC-8 all mapped; AC-6/AC-7 mapped to existing regression suites (no new test needed)" }
+next-action: none
+notes: >
+  orchestrator.py is out of test-strategist's allowed read scope; AC-5's
+  integration test is planned as a black-box extension of
+  test_job_manager_current_segment.py's real create_job() harness (mocking
+  only translate_blocks_batch/LLM client), not by reading orchestrator
+  internals. Reused the exact mock pattern already in
+  tests/test_pdf_layout_viz_persistence.py (patch.object on translate_blocks_batch
+  + fake PyMuPDFParser) as the mock-boundary precedent for the new PDF unit
+  tests, per CLAUDE.md's tautological-test guidance.

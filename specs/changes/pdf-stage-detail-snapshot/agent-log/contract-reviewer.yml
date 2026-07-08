@@ -1,0 +1,10 @@
+change-id: pdf-stage-detail-snapshot
+agent: contract-reviewer
+status: done
+summary: "No api-contract.md drift (JobStatus current_segment_* fields already declared by #7, format-agnostic; values-populate fix, not a schema change). One additive data-shape-contract.md note drafted (PDF-path parity: current_stage='translate' + source/draft now populate for PDF; only 'translate' stage applies, no critique/qe/adopt). Bump data 0.17.2->0.17.3 + CHANGELOG. Approved."
+artifacts:
+  - { type: contracts-reviewed, pointer: "contracts/data/data-shape-contract.md" }
+  - { type: contracts-reviewed, pointer: "contracts/api/api-contract.md" }
+  - { type: version-bumps, pointer: "data-shape 0.17.2 -> 0.17.3 (patch, additive note); api no bump" }
+  - { type: breaking-changes, pointer: "none" }
+next-action: bug-fix-engineer applies the drafted data-shape note verbatim + version bump + CHANGELOG

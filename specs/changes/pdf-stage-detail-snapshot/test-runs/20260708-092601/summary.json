@@ -1,0 +1,16 @@
+{
+  "change_id": "pdf-stage-detail-snapshot",
+  "phase": "collect",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest --collect-only -q tests/test_job_manager_current_segment.py::test_pdf_job_populates_current_segment_stage_translate_end_to_end tests/test_pdf_stage_snapshot.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092601/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 278,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092601/summary.json",
+    "stdout": "specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092601/stdout.log",
+    "stderr": "specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092601/stderr.log",
+    "junit": "specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092601/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

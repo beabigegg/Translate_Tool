@@ -1,0 +1,14 @@
+- type: tier-floor-override
+  change-id: pdf-stage-detail-snapshot
+  timestamp: '2026-07-08T01:40:03.252Z'
+  declared-tier: 3
+  floor-tier: 2
+  label: behavioral surface (api / data shape / queue / cache / external integration)
+  matched:
+    - endpoint
+  reason: >-
+    Additive/observational bug-fix: PDF path now populates already-declared JobStatus
+    current_segment progress-detail fields. The tier-floor matched 'endpoint' — it appears only in
+    negation context (no new/changed route or endpoint); no auth, payments, data-migration,
+    concurrency, or secrets surface; the data-shape edit is an additive documentary note (no field
+    add/rename/retype). change-classifier confirmed Tier 3.

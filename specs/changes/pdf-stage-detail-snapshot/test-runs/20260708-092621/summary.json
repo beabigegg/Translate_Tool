@@ -1,0 +1,16 @@
+{
+  "change_id": "pdf-stage-detail-snapshot",
+  "phase": "changed-area",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest tests/test_pdf_stage_snapshot.py tests/test_job_manager_current_segment.py tests/test_jobstatus_stage_detail.py tests/test_translation_service_stage_snapshot.py tests/test_pdf_layout_table_fixes.py tests/test_pdf_layout_viz_persistence.py tests/test_pdf_render_warnings.py tests/test_ir_pipeline_decoupling.py tests/test_renderer_convergence.py -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092621/junit.xml'",
+  "duration_ms": 7251,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092621/summary.json",
+    "stdout": "specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092621/stdout.log",
+    "stderr": "specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092621/stderr.log",
+    "junit": "specs/changes/pdf-stage-detail-snapshot/test-runs/20260708-092621/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

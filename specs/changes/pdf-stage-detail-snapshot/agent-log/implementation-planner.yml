@@ -1,0 +1,25 @@
+change-id: pdf-stage-detail-snapshot
+agent: implementation-planner
+timestamp: "2026-07-08T00:00:00Z"
+status: complete
+summary: >
+  Execution packet written for the bug-fix-engineer. Root cause confirmed by
+  reading the seam: translate_pdf (L284) + _translate_pdf_with_pymupdf (L416) /
+  _translate_pdf_with_pypdf2 (L659) / _translate_pdf_to_pdf (L782) never receive
+  status_callback; their 3 flatten translate_blocks_batch calls (L579/L731/L930)
+  pass no on_segment_done. Fix mirrors translation_service L483-512 (lazy
+  CurrentSegmentSnapshot import, stage="translate") and satisfies
+  job_manager._status_cb(detail, segment) at L390. orchestrator .pdf branch (L867)
+  gets status_callback=status_callback (in scope via process_files L395).
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/pdf-stage-detail-snapshot/implementation-plan.md" }
+  - { type: owner-map, pointer: "bug-fix-engineer (all 6 IP items)" }
+  - { type: scope-summary, pointer: "5 in scope (3 code seams + data-shape contract + tests); 6 out of scope (Office/judge, output/perf, critique-QE-adopt, api-contract, COM route, table-cell path)" }
+next-action: bug-fix-engineer implements IP-1..IP-6 per implementation-plan.md
+notes: >
+  No blockers. All required files/seams present and read. Key risks flagged in
+  the plan: signature-reproducing PDF test doubles (grep+update, IP-6), lazy
+  CurrentSegmentSnapshot import to avoid job_manager->orchestrator->pdf_processor
+  circular import, add `Any` to pdf_processor typing import (L14), scope
+  evidence to new node-ids in the translate-tool conda env (onnxruntime subset
+  artifact), and the COM/table-cell PDF sub-paths intentionally left uncovered.
