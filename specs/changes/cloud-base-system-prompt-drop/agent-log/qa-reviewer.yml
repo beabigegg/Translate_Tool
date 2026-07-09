@@ -1,0 +1,31 @@
+change-id: cloud-base-system-prompt-drop
+timestamp: 2026-07-09
+agent: qa-reviewer
+status: approved
+summary: >-
+  Approved. Additive optional kwarg; two orchestrator cloud sites populated, the
+  five non-translation sites deliberately left at default per BR-110 (narrowed).
+  Behavioral RED confirmed; all assertions sit at the outgoing-payload boundary.
+artifacts:
+  - { type: gate-results, pointer: "collect/targeted/changed-area/contract/full all passed" }
+  - { type: evidence-quality, pointer: "specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195033" }
+  - { type: decision, pointer: "approved" }
+  - { type: tautology-audit, pointer: "tests/test_openai_compatible_client.py" }
+  - { type: failure-routing, pointer: "none" }
+notes: >-
+  QA flagged that the new Ollama regression test constructs the client directly
+  and so would not go red if the orchestrator's L590 Ollama pass-through were
+  removed. Main Claude checked this by experiment: deleting that line turns the
+  PRE-EXISTING test_local_ollama_context_detection_unchanged red in the full
+  suite (1 failed, 1275 passed). AC-4 is therefore guarded, just by a different
+  test than the one QA inspected — no coverage hole. Main Claude also
+  independently ran the revert experiment on the two cloud pass-throughs (exactly
+  3 tests red, 64/64 green restored) and a live PANJIT probe (base_system_prompt
+  1107 chars, role declaration present in the outgoing system message, ordering
+  base < "Document context:" holds). The circular-looking payload assertion in
+  test_constructor_system_prompt_kwarg_delivered_to_outgoing_payload is anchored
+  by a preceding literal-value assertion, so the pair is sound.
+follow-ups:
+  - "Deferred: xlsx ws.max_column=257 / table_serializer.parse() phantom-column defect (JSON structured-I/O change)."
+  - "Deferred: critique-loop call volume (1 translate + 3 critique calls per segment)."
+next-action: gate-then-pr

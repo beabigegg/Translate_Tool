@@ -1,0 +1,11 @@
+agent: implementation-planner
+change-id: cloud-base-system-prompt-drop
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/cloud-base-system-prompt-drop/implementation-plan.md" }
+  - { type: owner-map, pointer: "bug-fix-engineer (IP-1/IP-2), contract-reviewer (IP-3), test-strategist (IP-4)" }
+  - { type: scope-summary, pointer: "2 orchestrator sites populate system_prompt; 5 non-translation sites left at default; xlsx + critique-volume out of scope" }
+notes:
+  - "Decision: additive optional system_prompt kwarg on OpenAICompatibleClient.__init__ (mirrors OllamaClient:112), passed at orchestrator L532+L560 only. Rejected post-construction assignment (violates BR-110 'at construction', not mirror-symmetric, forgettable)."
+  - "All 7 construction sites verified on live source; model_router.py has no reference (classifier error already corrected)."
+  - "LLMClient Protocol (base_llm_client.py) declares exactly 5 methods; __init__ not among them — additive kwarg does not affect test_protocol_defines_five_methods."
+  - "FLAGGED: BR-110's enumeration sentence over-reaches (names judge/term-extractor/diagnostic-route sites that do not supply a base prompt), contradicting its own conditional clause. IP-3 assigns the narrowing to contract-reviewer; bump schema-version from LIVE value (0.28.0), not a pre-baked number."

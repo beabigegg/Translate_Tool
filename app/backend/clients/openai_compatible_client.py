@@ -54,6 +54,11 @@ class OpenAICompatibleClient:
         provider_id: Logical provider ID (used in logs and attribution).
         connect_timeout: HTTP connect timeout in seconds (default 120 s).
         read_timeout: HTTP read timeout in seconds (default 300 s).
+        system_prompt: Optional caller-supplied base system prompt (BR-110),
+            normalized identically to OllamaClient (`.strip()`, `""` when
+            omitted/falsy). Delivered to the model as system-channel content
+            on every translate_once() call (BR-109); never read by
+            complete().
     """
 
     def __init__(
@@ -66,6 +71,7 @@ class OpenAICompatibleClient:
         read_timeout: float = _READ_TIMEOUT_S,
         verify_ssl: bool = True,
         max_tokens: Optional[int] = None,
+        system_prompt: Optional[str] = None,
     ) -> None:
         from app.backend.config import OPENAI_COMPLETION_MAX_TOKENS
 
@@ -73,6 +79,7 @@ class OpenAICompatibleClient:
         self.api_key = api_key
         self.model = model
         self.provider_id = provider_id
+        self.system_prompt = (system_prompt or "").strip()
         self._connect_timeout = connect_timeout
         self._read_timeout = read_timeout
         self._max_tokens = max_tokens if max_tokens is not None else OPENAI_COMPLETION_MAX_TOKENS

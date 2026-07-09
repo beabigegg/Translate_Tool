@@ -1,0 +1,3 @@
+ERROR: not found: /home/egg/Projects/Translate_Tool/tests/test_openai_compatible_client.py::test_default_construction_without_system_prompt_stays_empty
+(no match in any of [<Module test_openai_compatible_client.py>])
+

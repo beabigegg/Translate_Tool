@@ -1,0 +1,9 @@
+agent: test-strategist
+change-id: cloud-base-system-prompt-drop
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/cloud-base-system-prompt-drop/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_orchestrator_context_detection.py::test_cloud_client_delivers_profile_base_system_prompt_semiconductor → app/backend/processors/orchestrator.py (base_system_prompt read, L608) + app/backend/clients/openai_compatible_client.py (__init__)" }
+  - { type: tdd-pairs, pointer: "tests/test_openai_compatible_client.py::test_default_construction_without_system_prompt_stays_empty → app/backend/clients/openai_compatible_client.py (__init__ default kwarg)" }
+  - { type: tdd-pairs, pointer: "tests/test_ollama_client_dynamic_strategy.py::test_ollama_outgoing_payload_base_system_prompt_unchanged → app/backend/clients/ollama_client.py (_build_payload, regression-only)" }
+  - { type: coverage-tiers, pointer: "unit (tier 0), integration (tier 1), contract (tier 1)" }
+  - { type: mapping-completeness, pointer: "AC-1..AC-7 mapped to concrete bare node IDs across 3 files; AC-8 is contract-only, covered by cdd-kit validate --contracts, no test file needed" }

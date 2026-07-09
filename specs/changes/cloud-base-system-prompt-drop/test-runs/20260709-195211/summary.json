@@ -1,0 +1,16 @@
+{
+  "change_id": "cloud-base-system-prompt-drop",
+  "phase": "full",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195211/junit.xml'",
+  "duration_ms": 237244,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195211/summary.json",
+    "stdout": "specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195211/stdout.log",
+    "stderr": "specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195211/stderr.log",
+    "junit": "specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195211/junit.xml"
+  },
+  "next_action": "all phases green"
+}

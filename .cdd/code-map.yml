@@ -1,6 +1,6 @@
-# generated: 2026-07-09T06:16:36Z by cdd-kit 3.6.0
-# files: 206, src-lines: 59999, map-lines: 5404, compression: 11.1x
-# sources-digest: 4bd37182d662b4145e1e8cd7236fb5c7b111e113433454d2d15b4750ff833f26
+# generated: 2026-07-09T11:22:08Z by cdd-kit 3.6.0
+# files: 206, src-lines: 60571, map-lines: 5422, compression: 11.2x
+# sources-digest: 5c38c11fe522e65fa16083591ca25459db5cc021ff625826a93bba8f358c0355
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
@@ -759,35 +759,36 @@ app/backend/processors/libreoffice_helpers.py:  # 226 lines
     - { name: xls_to_xlsx, lines: 199-211 }
     - { name: ppt_to_pptx, lines: 214-226 }
 
-app/backend/processors/orchestrator.py:  # 914 lines
+app/backend/processors/orchestrator.py:  # 989 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: logging, items: [], line: 5 }
     - { module: os, items: [], line: 6 }
-    - { module: threading, items: [], line: 7 }
-    - { module: pathlib, items: [Path], line: 8 }
-    - { module: typing, items: [Callable, Dict, List, Optional, Tuple], line: 9 }
-    - { module: app.backend.clients.base_llm_client, items: [LLMClient], line: 11 }
-    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 12 }
-    - { module: app.backend.config, items: [CONTEXT_DETECTION_ENABLED, CONTEXT_SAMPLE_CHARS, DEFAULT_MAX_BATCH_CHARS, DEFAULT_MODEL, DYNAMIC_SCENARIO_STRATEGY_ENABLED, GENERAL_NUM_CTX, LAYOUT_PRESERVATION_MODE, OLLAMA_BASE_URL, PDF_SKIP_HEADER_FOOTER, QWEN_CONTEXT_FLOW_ENABLED, SCENARIO_CACHE_VARIANT_ENABLED, SUPPORTED_EXTENSIONS, TRANSLATION_NUM_CTX, TimeoutConfig], line: 13 }
-    - { module: app.backend.processors.com_helpers, items: [is_win32com_available, word_convert], line: 29 }
-    - { module: app.backend.processors.docx_processor, items: [translate_docx], line: 30 }
-    - { module: app.backend.processors.libreoffice_helpers, items: [doc_to_docx, is_libreoffice_available, ppt_to_pptx, xls_to_xlsx], line: 31 }
-    - { module: app.backend.processors.pdf_processor, items: [translate_pdf], line: 37 }
-    - { module: app.backend.processors.pptx_processor, items: [translate_pptx], line: 38 }
-    - { module: app.backend.processors.xlsx_processor, items: [translate_xlsx_xls], line: 39 }
-    - { module: app.backend.services.context_prompts, items: [_CONTEXT_DETECTION_PROMPTS, _get_context_detection_prompt], line: 40 }
-    - { module: app.backend.services.translation_strategy, items: [build_strategy, build_terminology_block, detect_translation_scenario, scenario_from_profile], line: 44 }
+    - { module: tempfile, items: [], line: 7 }
+    - { module: threading, items: [], line: 8 }
+    - { module: pathlib, items: [Path], line: 9 }
+    - { module: typing, items: [Callable, Dict, List, Optional, Tuple], line: 10 }
+    - { module: app.backend.clients.base_llm_client, items: [LLMClient], line: 12 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 13 }
+    - { module: app.backend.config, items: [CONTEXT_DETECTION_ENABLED, CONTEXT_SAMPLE_CHARS, DEFAULT_MAX_BATCH_CHARS, DEFAULT_MODEL, DYNAMIC_SCENARIO_STRATEGY_ENABLED, GENERAL_NUM_CTX, LAYOUT_PRESERVATION_MODE, OLLAMA_BASE_URL, PDF_SKIP_HEADER_FOOTER, QWEN_CONTEXT_FLOW_ENABLED, SCENARIO_CACHE_VARIANT_ENABLED, SUPPORTED_EXTENSIONS, TRANSLATION_NUM_CTX, TimeoutConfig], line: 14 }
+    - { module: app.backend.processors.com_helpers, items: [is_win32com_available, word_convert], line: 30 }
+    - { module: app.backend.processors.docx_processor, items: [translate_docx], line: 31 }
+    - { module: app.backend.processors.libreoffice_helpers, items: [doc_to_docx, is_libreoffice_available, ppt_to_pptx, xls_to_xlsx], line: 32 }
+    - { module: app.backend.processors.pdf_processor, items: [translate_pdf], line: 38 }
+    - { module: app.backend.processors.pptx_processor, items: [translate_pptx], line: 39 }
+    - { module: app.backend.processors.xlsx_processor, items: [translate_xlsx_xls], line: 40 }
+    - { module: app.backend.services.context_prompts, items: [_CONTEXT_DETECTION_PROMPTS, _get_context_detection_prompt], line: 41 }
+    - { module: app.backend.services.translation_strategy, items: [build_strategy, build_terminology_block, detect_translation_scenario, scenario_from_profile], line: 45 }
   functions:
-    - { name: _cap_terms_by_budget, lines: 54-68 }
-    - { name: _sample_file_text, lines: 71-146 }
-    - { name: _group_into_chunks, lines: 152-171 }
-    - { name: _split_paragraphs_to_sentences, lines: 174-184 }
-    - { name: _extract_spreadsheet_rows, lines: 187-213 }
-    - { name: _extract_all_segments, lines: 216-319 }
-    - { name: _detect_document_context, lines: 322-343 }
-    - { name: _output_name, lines: 346-372 }
-    - { name: process_files, lines: 375-914 }
+    - { name: _cap_terms_by_budget, lines: 55-69 }
+    - { name: _sample_file_text, lines: 72-202 }
+    - { name: _group_into_chunks, lines: 208-227 }
+    - { name: _split_paragraphs_to_sentences, lines: 230-240 }
+    - { name: _extract_spreadsheet_rows, lines: 243-269 }
+    - { name: _extract_all_segments, lines: 272-375 }
+    - { name: _detect_document_context, lines: 378-412 }
+    - { name: _output_name, lines: 415-441 }
+    - { name: process_files, lines: 444-989 }
 
 app/backend/processors/pdf_processor.py:  # 1223 lines
   imports:
@@ -3746,30 +3747,47 @@ tests/test_openai_compatible_client.py:  # 659 lines
     - { name: _make_chat_response, lines: 22-29 }
     - { name: _make_http_error_response, lines: 32-36 }
 
-tests/test_orchestrator_context_detection.py:  # 473 lines
+tests/test_orchestrator_context_detection.py:  # 970 lines
   imports:
     - { module: __future__, items: [annotations], line: 32 }
     - { module: inspect, items: [], line: 34 }
-    - { module: pathlib, items: [Path], line: 35 }
-    - { module: unittest.mock, items: [MagicMock, patch], line: 36 }
-    - { module: pytest, items: [], line: 38 }
-    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 40 }
-    - { module: app.backend.clients.openai_compatible_client, items: [OpenAICompatibleClient], line: 41 }
-    - { module: app.backend.processors.orchestrator, items: [_detect_document_context, process_files], line: 42 }
+    - { module: logging, items: [], line: 35 }
+    - { module: pathlib, items: [Path], line: 36 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 37 }
+    - { module: pytest, items: [], line: 39 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 41 }
+    - { module: app.backend.clients.openai_compatible_client, items: [OpenAICompatibleClient], line: 42 }
+    - { module: app.backend.processors, items: [lo], line: 43 }
+    - { module: app.backend.processors.orchestrator, items: [_detect_document_context, _sample_file_text, process_files], line: 44 }
   functions:
-    - { name: _make_real_docx, lines: 73-83 }
-    - { name: _mock_post_with_content, lines: 86-95 }
-    - { name: _make_capturing_translate_docx, lines: 98-113 }
-    - { name: test_cloud_active_client_used_for_summary_not_local_ollama, lines: 120-140 }
-    - { name: test_cloud_summary_generated_without_local_ollama_present, lines: 143-183 }
-    - { name: test_cloud_summary_injected_as_document_context_in_system_prompt, lines: 190-264 }
-    - { name: test_context_detection_disabled_skips_cloud_summary, lines: 271-296 }
-    - { name: test_qwen_context_flow_disabled_skips_cloud_summary, lines: 299-324 }
-    - { name: test_translation_dedicated_cloud_client_skips_summary, lines: 331-356 }
-    - { name: test_detect_document_context_returns_empty_on_cloud_call_exception, lines: 363-372 }
-    - { name: test_job_continues_with_no_preamble_when_cloud_summary_empty, lines: 375-404 }
-    - { name: test_local_ollama_context_detection_unchanged, lines: 411-442 }
-    - { name: test_no_scope_creep_into_injection_wiring_or_json_io, lines: 449-473 }
+    - { name: _make_real_docx, lines: 79-89 }
+    - { name: _mock_post_with_content, lines: 92-101 }
+    - { name: _make_capturing_translate_docx, lines: 104-119 }
+    - { name: test_cloud_active_client_used_for_summary_not_local_ollama, lines: 126-146 }
+    - { name: test_cloud_summary_generated_without_local_ollama_present, lines: 149-189 }
+    - { name: test_cloud_summary_injected_as_document_context_in_system_prompt, lines: 196-270 }
+    - { name: test_context_detection_disabled_skips_cloud_summary, lines: 277-302 }
+    - { name: test_qwen_context_flow_disabled_skips_cloud_summary, lines: 305-330 }
+    - { name: test_translation_dedicated_cloud_client_skips_summary, lines: 337-362 }
+    - { name: test_detect_document_context_returns_empty_on_cloud_call_exception, lines: 369-378 }
+    - { name: test_job_continues_with_no_preamble_when_cloud_summary_empty, lines: 381-410 }
+    - { name: test_local_ollama_context_detection_unchanged, lines: 417-448 }
+    - { name: test_no_scope_creep_into_injection_wiring_or_json_io, lines: 455-479 }
+    - { name: _reset_libreoffice_cache, lines: 504-511 }  # @pytest.fixture(autouse=True)
+    - { name: _make_xlsx_writing_popen, lines: 514-545 }
+    - { name: _make_soffice_available_patch, lines: 548-550 }
+    - { name: test_sample_file_text_reads_legacy_xls_via_conversion, lines: 557-571 }
+    - { name: test_process_files_context_detected_for_legacy_xls, lines: 574-627 }
+    - { name: test_sample_file_text_docx_table_only_includes_cell_text, lines: 634-649 }
+    - { name: test_sample_file_text_pptx_table_includes_cell_text, lines: 656-673 }
+    - { name: test_detect_document_context_logs_info_reason_on_exception, lines: 680-700 }
+    - { name: test_detect_document_context_logs_info_reason_when_provider_call_fails, lines: 703-717 }
+    - { name: test_detect_document_context_logs_info_reason_when_summary_empty, lines: 720-733 }
+    - { name: test_process_files_logs_info_reason_when_sample_empty, lines: 736-783 }
+    - { name: test_detect_document_context_logs_info_on_success, lines: 790-804 }
+    - { name: test_sampling_exception_degrades_to_no_preamble_job_completes, lines: 820-853 }  # @pytest.mark.parametrize('ext,translate_attr', [('.docx', 'translate_docx'), ('.p...
+    - { name: test_xls_sampling_does_not_double_convert_via_libreoffice, lines: 860-899 }
+    - { name: test_legacy_xls_and_table_only_docx_both_emit_context_detected, lines: 906-970 }
 
 tests/test_orchestrator_judge.py:  # 386 lines
   imports:

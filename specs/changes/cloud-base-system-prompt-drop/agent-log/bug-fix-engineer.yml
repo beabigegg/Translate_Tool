@@ -1,0 +1,55 @@
+change-id: cloud-base-system-prompt-drop
+timestamp: 2026-07-09T19:52:11Z
+agent: bug-fix-engineer
+status: complete
+files-read:
+  - specs/changes/cloud-base-system-prompt-drop/implementation-plan.md
+  - specs/changes/cloud-base-system-prompt-drop/test-plan.md
+  - specs/changes/cloud-base-system-prompt-drop/context-manifest.md
+  - contracts/business/business-rules.md
+  - app/backend/clients/openai_compatible_client.py
+  - app/backend/clients/ollama_client.py
+  - app/backend/processors/orchestrator.py
+  - app/backend/services/translation_strategy.py
+  - app/backend/translation_profiles.py
+  - tests/test_openai_compatible_client.py
+  - tests/test_orchestrator_context_detection.py
+  - tests/test_ollama_client_dynamic_strategy.py
+artifacts:
+  - { type: root-cause, pointer: "app/backend/processors/orchestrator.py:532-538 and :561-567" }
+  - { type: files-changed, pointer: "app/backend/clients/openai_compatible_client.py, app/backend/processors/orchestrator.py, tests/test_orchestrator_context_detection.py, tests/test_openai_compatible_client.py, tests/test_ollama_client_dynamic_strategy.py" }
+  - { type: regression-evidence, pointer: "specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195121/summary.json (targeted, passed)" }
+  - { type: residual-risk, pointer: "none" }
+bug-fix:
+  schema-version: 0.1.0
+  symptom: "Cloud translations (PANJIT/DeepSeek) lose the profile's base system prompt (e.g. the semiconductor role declaration) -- only the scenario appendix / few-shot block / BR-109 'Document context:' preamble reach the model, never the profile's own instructions."
+  expected_behavior: "When a job is dispatched to a cloud provider with profile_id=semiconductor, the outgoing /v1/chat/completions system message must contain the profile's role-declaration text (e.g. 'You are a professional semiconductor translator for IC design, packaging, and test content.'), composed ahead of the scenario appendix, few-shot block, and any Document-context preamble."
+  actual_behavior: "OpenAICompatibleClient.__init__ had no system_prompt parameter, so orchestrator.py's two cloud-client construction sites (L532 primary, L560 fallback) could not pass the caller-supplied profile prompt. `base_system_prompt = client.system_prompt` (orchestrator.py L608) then read the class-attribute default `\"\"`, so build_strategy composed every cloud request from an empty base -- the profile's own instructions never reached the model on the cloud path, while local Ollama translations were unaffected (OllamaClient already accepted system_prompt at construction)."
+  observed_surface: "Cloud provider (PANJIT/DeepSeek) translation requests via process_files()"
+  reproduction:
+    status: test-reproduced
+    command: "python -m pytest tests/test_orchestrator_context_detection.py::test_cloud_client_delivers_profile_base_system_prompt_semiconductor -q --maxfail=1 --tb=short -ra"
+    failing_before_fix: true
+    summary: "specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195033/summary.json"
+  hypotheses:
+    - { id: H1, candidate: "app/backend/clients/openai_compatible_client.py::OpenAICompatibleClient.__init__", reason: "class-attribute default system_prompt: str = \"\" (compatibility stub) suggested the constructor never accepted a caller value, unlike the sibling OllamaClient", result: confirmed }
+    - { id: H2, candidate: "app/backend/processors/orchestrator.py::process_files (base_system_prompt read, L608)", reason: "base_system_prompt = client.system_prompt is read immediately after construction; if the client was never given a value this read is trivially empty", result: confirmed }
+    - { id: H3, candidate: "app/backend/services/translation_strategy.py::build_strategy", reason: "possible the composition function silently drops or overwrites the base prompt rather than the client never receiving it", result: rejected }
+    - { id: H4, candidate: "app/backend/clients/openai_compatible_client.py::translate_once (merge order)", reason: "possible self.system_prompt is delivered but at the wrong position/merged incorrectly rather than being empty", result: rejected }
+  root_cause:
+    pointer: "app/backend/processors/orchestrator.py:532-538"
+    summary: "OpenAICompatibleClient() constructed without a system_prompt kwarg (no such parameter existed) at both the primary (L532-538) and fallback-chain (L561-567) cloud-client construction sites, so client.system_prompt stayed at its class-attribute default \"\" and base_system_prompt (L610) was always empty on the cloud path."
+  fix:
+    files_changed:
+      - app/backend/clients/openai_compatible_client.py
+      - app/backend/processors/orchestrator.py
+      - tests/test_orchestrator_context_detection.py
+      - tests/test_openai_compatible_client.py
+      - tests/test_ollama_client_dynamic_strategy.py
+    summary: "Added an additive optional system_prompt: Optional[str] = None kwarg to OpenAICompatibleClient.__init__, normalized identically to OllamaClient (self.system_prompt = (system_prompt or \"\").strip()); passed system_prompt=system_prompt at the two orchestrator cloud-client construction sites only (L532 primary, L561 fallback), per IP-1/IP-2. No other construction site (judge, term extractor, diagnostic routes) was touched, per BR-110 and the Construction-Site Audit."
+  regression:
+    status: passed
+    command: "python -m pytest tests/test_orchestrator_context_detection.py::test_cloud_client_delivers_profile_base_system_prompt_semiconductor tests/test_orchestrator_context_detection.py::test_base_prompt_precedes_document_context_preamble_in_composition tests/test_ollama_client_dynamic_strategy.py::test_ollama_outgoing_payload_base_system_prompt_unchanged tests/test_orchestrator_context_detection.py::test_fallback_chain_client_delivers_profile_base_system_prompt 'tests/test_openai_compatible_client.py::TestSystemPromptConstruction::test_default_construction_without_system_prompt_stays_empty' -q --maxfail=1 --tb=short -ra"
+    summary: "specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195121/summary.json"
+  residual_risk: "none -- additive optional kwarg with an \"\"-equivalent default; the pre-existing 39 constructor call sites across 6 test files (test_openai_compatible_client.py, test_provider_fallback.py, test_cloud_total_timeout.py, test_term_extractor.py, test_term_extractor_resilience.py, test_llm_client_protocol.py) and the 5 non-translation production construction sites (routes.py x3, quality_judge.py, term_extractor.py) all remain source-compatible and were verified green (changed-area + collect phases plus a direct run of the 5 non-changed-area files: 80 passed). Full suite: 1276 passed, 4 skipped (pre-existing fixture-availability skips unrelated to this change), 0 failed."
+next-action: "qa-reviewer release-readiness review"

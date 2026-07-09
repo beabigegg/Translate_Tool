@@ -1,0 +1,17 @@
+change-id: cloud-base-system-prompt-drop
+timestamp: 2026-07-09
+agent: ci-cd-gatekeeper
+status: passed
+summary: >-
+  No workflow edit. Existing merge-blocking contract-and-fast-tests job runs both
+  `cdd-kit validate --contracts` and the blanket `pytest tests/ -x -q`, covering
+  every new test and the BR-110 schema-version/CHANGELOG sync.
+artifacts:
+  - { type: ci-gates, pointer: "specs/changes/cloud-base-system-prompt-drop/ci-gates.md" }
+  - { type: workflow-changes, pointer: "none" }
+notes: >-
+  Unlike the preceding change, there is no silent-skip hazard here: the transport
+  boundary is mocked, so the AC-1/AC-3 payload assertions have no network or
+  binary dependency and cannot skip. No OpenAPI re-export needed — no API
+  endpoint or schema surface is touched.
+next-action: run-implementation-planner

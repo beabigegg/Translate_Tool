@@ -1,0 +1,20 @@
+{
+  "change_id": "cloud-base-system-prompt-drop",
+  "phase": "targeted",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "python -m pytest tests/test_orchestrator_context_detection.py::test_cloud_client_delivers_profile_base_system_prompt_semiconductor -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195033/junit.xml'",
+  "duration_ms": 676,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests.test_orchestrator_context_detection::test_cloud_client_delivers_profile_base_system_prompt_semiconductor",
+    "message": "AssertionError: the profile's base system_prompt must reach the outgoing cloud request -- it must not be silently dropped by an unpopulated OpenAICompatibleClient.system_prompt (BR-110)\nassert 'You are a professional semiconductor translator for IC design, packaging, and test content.' in 'Document context: ok'"
+  },
+  "artifacts": {
+    "summary": "specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195033/summary.json",
+    "stdout": "specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195033/stdout.log",
+    "stderr": "specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195033/stderr.log",
+    "junit": "specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195033/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}
