@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
 visible-dirs: 59
-visible-files: 239
+visible-files: 238
 omitted-dirs: 12
 truncated-dirs: 1
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -44,10 +44,9 @@ Translate_Tool/
 |   \-- workflows/
 |       \-- contract-driven-gates.yml
 |-- .run/
-|   |-- logs/
-|   |   |-- backend.log
-|   |   \-- frontend.log
-|   \-- backend.pid
+|   \-- logs/
+|       |-- backend.log
+|       \-- frontend.log
 |-- app/
 |   |-- backend/
 |   |   |-- api/

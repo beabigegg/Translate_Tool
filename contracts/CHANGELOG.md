@@ -8,6 +8,9 @@ While a contract is at 0.x (draft), entries here are optional.
 Once a contract reaches 1.0.0, every schema-version bump must have
 a corresponding entry below.
 
+## [business 0.27.2] — 2026-07-09
+Fixed: BR-109 (`cloud-context-detection-parity`) — pins down what "visible in the job log" means. Only the logger named `TranslateTool` owns the `RotatingFileHandler` that writes `translator.log`; root has no handlers and Python's `lastResort` emits WARNING and above, so `logging.getLogger(__name__).info(...)` from a backend module is dropped at runtime. The observability requirement is satisfied only by delivery through the job's `log(...)` callback, and a caplog-based unit test passing is not sufficient evidence. Promoted from a lesson in `doc-context-sampling-fix`, where the first observability implementation reproduced the very silent-skip defect it was meant to repair. Fixed in change `doc-context-sampling-fix` (learning promotion).
+
 ## [business 0.27.1] — 2026-07-09
 Fixed: BR-109 (`cloud-context-detection-parity`) — clarifies that the sample text fed into the document-context summary seam must be representative of the document's real content, including table-resident text (`.docx`/`.pptx`) and legacy-format (`.xls`) text recovered via the existing conversion path, not only top-level paragraphs; and that a skipped or failed sample MUST be distinguishable from a successful detection at INFO level (never debug-only). Addresses a production gap (job `d19484ce43f94fa4b076ef0a0d07abae`) where the orchestrator's sampler returned an empty string for common document shapes, making BR-109's benefit invisible while appearing to satisfy its graceful-fallback clause. The delivery mechanism (ADR-0016) is unchanged. Fixed in change `doc-context-sampling-fix`.
 

@@ -50,3 +50,4 @@
 | context-prefix-bleed-fix | 2026 | 2026-07-08 | specs/archive/2026/context-prefix-bleed-fix/ |
 | nontranslatable-segment-guard | 2026 | 2026-07-08 | specs/archive/2026/nontranslatable-segment-guard/ |
 | cloud-doc-context-summary | 2026 | 2026-07-09 | specs/archive/2026/cloud-doc-context-summary/ |
+| doc-context-sampling-fix | 2026 | 2026-07-09 | specs/archive/2026/doc-context-sampling-fix/ |
