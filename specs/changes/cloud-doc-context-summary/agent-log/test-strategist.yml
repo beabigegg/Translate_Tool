@@ -1,0 +1,34 @@
+change-id: cloud-doc-context-summary
+agent: test-strategist
+status: done
+summary: "Mapped AC-1..AC-7 to tests/test_orchestrator_context_detection.py (new, matches BR-109's contract pointer) plus regression pins on 2 existing files; identified a seam risk backend-engineer must resolve before wiring (Ollama-only private methods used by _detect_document_context) and flagged 2 existing tests needing coordinated updates."
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/cloud-doc-context-summary/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_orchestrator_context_detection.py::test_cloud_active_client_used_for_summary_not_local_ollama -> app/backend/processors/orchestrator.py:556-564 (guard + call-site)" }
+  - { type: tdd-pairs, pointer: "tests/test_orchestrator_context_detection.py::test_detect_document_context_returns_empty_on_cloud_call_exception -> app/backend/processors/orchestrator.py:_detect_document_context (321-338)" }
+  - { type: coverage-tiers, pointer: "unit (tier 0), integration (tier 1), contract (tier 1, co-located), resilience (tier 1), regression (tier 0), e2e (manual)" }
+  - { type: mapping-completeness, pointer: "AC-1..AC-7 all mapped; AC-7 split across a targeted assertion plus 2 unmodified-regression files" }
+notes: |
+  Verified against live source (app/backend/processors/orchestrator.py, openai_compatible_client.py,
+  ollama_client.py) before mapping, per the no-shell-agent seam-verification learning:
+  - `_detect_document_context(client, sample, log, target_lang="")` today calls
+    `client._build_no_system_payload(...)` and `client._call_ollama(...)` — BOTH are
+    OllamaClient-only; OpenAICompatibleClient implements neither. Simply removing the
+    `_cloud_client is None` guard clause (orchestrator.py:562) and passing `client`
+    instead of `ollama_client` (line 564) is NOT sufficient for AC-1/AC-2 to pass —
+    the call must be routed through a method both clients implement (both implement
+    `translate_once`/`health`/etc. per the shared LLMClient protocol). Flagged this
+    explicitly in test-plan.md Notes so backend-engineer verifies the real call path
+    rather than assuming one.
+  - `client._is_translation_dedicated()` is already checked against the ACTIVE client
+    (cloud or local) at the existing call site — AC-4's skip requires no new wiring,
+    only a correctly-targeted test double.
+  - Existing tests needing coordinated update (Test Update Contract table in
+    test-plan.md): tests/test_context_prompt_i18n.py::test_immediate_and_deferred_use_same_template
+    (mocks the Ollama-only methods directly) and
+    tests/test_provider_fallback.py::TestOrchestratorProviderWiring::test_cloud_client_used_when_provider_id_set
+    (force-disables CONTEXT_DETECTION_ENABLED specifically citing this change's bug as
+    the reason — rationale goes stale post-fix).
+  - tests/test_orchestrator_phase0.py::_make_mock_ollama_client is local-path-only
+    (provider_id unset) so lower risk; noted as verify-only, not a required update.
+next-action: "backend-engineer implements against test-plan.md; must resolve the seam-risk note (real cross-client call path for the summary) before or while making tests/test_orchestrator_context_detection.py pass."

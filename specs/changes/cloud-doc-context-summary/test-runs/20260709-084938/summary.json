@@ -1,0 +1,16 @@
+{
+  "change_id": "cloud-doc-context-summary",
+  "phase": "targeted",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest tests/test_orchestrator_context_detection.py -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/cloud-doc-context-summary/test-runs/20260709-084938/junit.xml'",
+  "duration_ms": 699,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/cloud-doc-context-summary/test-runs/20260709-084938/summary.json",
+    "stdout": "specs/changes/cloud-doc-context-summary/test-runs/20260709-084938/stdout.log",
+    "stderr": "specs/changes/cloud-doc-context-summary/test-runs/20260709-084938/stderr.log",
+    "junit": "specs/changes/cloud-doc-context-summary/test-runs/20260709-084938/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

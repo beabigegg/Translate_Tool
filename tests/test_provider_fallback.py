@@ -395,13 +395,11 @@ class TestOrchestratorProviderWiring:
                 return_value=self._PANJIT_PROVIDERS_CONFIG,
             ), patch(
                 "requests.Session.post",
+                # Context detection (BR-109) now also routes through the cloud
+                # client's complete() -> _post_completion() -> Session.post, so
+                # the shared _mock_post fixture answers that extra summary call
+                # too (same 200/"Bonjour monde" response is a harmless "summary").
                 side_effect=_mock_post,
-            ), patch(
-                # Disable context detection — it calls OllamaClient internals
-                # (_build_no_system_payload, _call_ollama) not available on cloud clients.
-                # This test focuses on client dispatch wiring, not context detection.
-                "app.backend.processors.orchestrator.CONTEXT_DETECTION_ENABLED",
-                False,
             ), patch(
                 "app.backend.processors.orchestrator.translate_docx",
                 return_value=False,  # stopped=False (not stopped)

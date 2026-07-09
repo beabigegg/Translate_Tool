@@ -1,0 +1,11 @@
+change-id: cloud-doc-context-summary
+agent: change-classifier
+status: done
+summary: "Tier 2, feature lane, medium/module-level; no arch review; enable doc-context summary on cloud path (guard removal + client parameterization reusing existing seams)."
+artifacts:
+  - { type: tier, pointer: "Tier 2" }
+  - { type: risk, pointer: "medium / module-level" }
+  - { type: required-agents, pointer: "implementation-planner, backend-engineer, test-strategist, contract-reviewer, qa-reviewer" }
+  - { type: context-manifest-draft, pointer: "specs/changes/cloud-doc-context-summary/context-manifest.md" }
+notes: "feature lane; no architecture review (design.md=no, task 1.3 N/A); primary contract=business-rules BR (context-detection/QWEN_CONTEXT_FLOW extends to cloud), light env-contract description update (no new var), no API/data-shape/CI change; CER-001 approved for whole-tests/ grep of changed-seam test doubles."
+next-action: "contract-reviewer updates business-rules BR + env-contract flag descriptions."

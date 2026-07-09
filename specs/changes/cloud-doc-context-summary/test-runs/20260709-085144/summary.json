@@ -1,0 +1,15 @@
+{
+  "change_id": "cloud-doc-context-summary",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "cdd-kit validate --contracts --env --ci",
+  "duration_ms": 484,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/cloud-doc-context-summary/test-runs/20260709-085144/summary.json",
+    "stdout": "specs/changes/cloud-doc-context-summary/test-runs/20260709-085144/stdout.log",
+    "stderr": "specs/changes/cloud-doc-context-summary/test-runs/20260709-085144/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

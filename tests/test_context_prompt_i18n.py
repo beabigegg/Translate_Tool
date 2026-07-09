@@ -84,8 +84,7 @@ def test_immediate_and_deferred_use_same_template() -> None:
         pytest.skip("orchestrator module not importable in this environment")
 
     mock_client = MagicMock()
-    mock_client._build_no_system_payload.return_value = {"prompt": sentinel}
-    mock_client._call_ollama.return_value = (True, "detected context")
+    mock_client.complete.return_value = (True, "detected context")
 
     helper_path: str
     if hasattr(orch_module, "_get_context_detection_prompt"):
@@ -102,9 +101,12 @@ def test_immediate_and_deferred_use_same_template() -> None:
         )
         mock_helper.assert_called_once_with("ja")
 
-    # Verify the sentinel was passed to the LLM payload builder
-    call_args = mock_client._build_no_system_payload.call_args
-    assert call_args is not None, "_build_no_system_payload was not called"
+    # Verify the sentinel was passed to the shared raw-completion seam
+    # (BR-109: complete() is implemented by both OllamaClient and
+    # OpenAICompatibleClient, unlike the Ollama-only private methods this
+    # replaced).
+    call_args = mock_client.complete.call_args
+    assert call_args is not None, "complete() was not called"
     prompt_arg = call_args[0][0] if call_args[0] else call_args[1].get("prompt", "")
     assert sentinel in prompt_arg, \
         f"Prompt sent to LLM must contain the helper sentinel; got: {prompt_arg!r}"

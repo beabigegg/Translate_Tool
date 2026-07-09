@@ -8,6 +8,7 @@ import threading
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
+from app.backend.clients.base_llm_client import LLMClient
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import (
     CONTEXT_DETECTION_ENABLED,
@@ -319,16 +320,20 @@ def _extract_all_segments(file_path: Path, chunk_size: int = _PHASE0_CHUNK_SIZE)
 
 
 def _detect_document_context(
-    client: OllamaClient,
+    client: LLMClient,
     sample: str,
     log: Callable[[str], None],
     target_lang: str = "",
 ) -> str:
-    """Ask LLM to describe the document in one sentence (localized prompt)."""
+    """Ask LLM to describe the document in one sentence (localized prompt).
+
+    Routed through the shared `client.complete()` raw-completion seam
+    (BR-109) so this works identically on the local Ollama client and on
+    any active cloud client (OpenAICompatibleClient).
+    """
     prompt = _get_context_detection_prompt(target_lang).format(sample=sample)
-    payload = client._build_no_system_payload(prompt)
     try:
-        ok, result = client._call_ollama(payload)
+        ok, result = client.complete(prompt)
         if ok and result.strip():
             context = result.strip()[:200]
             log(f"[CONTEXT] Detected: {context}")
@@ -559,9 +564,8 @@ def process_files(
             and QWEN_CONTEXT_FLOW_ENABLED
             and not client._is_translation_dedicated()
             and sample
-            and _cloud_client is None  # skip when cloud provider is active — local Ollama won't have the cloud model
         ):
-            doc_context = _detect_document_context(ollama_client, sample, log, target_lang=targets[0] if targets else "")
+            doc_context = _detect_document_context(client, sample, log, target_lang=targets[0] if targets else "")
 
         if DYNAMIC_SCENARIO_STRATEGY_ENABLED:
             scenario = forced_scenario or detect_translation_scenario(src.name, sample_text=sample, detected_context=doc_context)

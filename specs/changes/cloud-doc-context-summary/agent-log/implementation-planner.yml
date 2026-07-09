@@ -1,0 +1,16 @@
+change-id: cloud-doc-context-summary
+agent: implementation-planner
+status: done
+summary: "Verified seam; planned a client-agnostic complete(prompt) seam on both concrete clients + guard removal, routing _detect_document_context via it; injection wiring unchanged."
+artifacts:
+  - { type: plan, pointer: "specs/changes/cloud-doc-context-summary/implementation-plan.md" }
+  - { type: seam-correction, pointer: "app/backend/processors/orchestrator.py" }
+notes: |
+  Seam facts confirmed against live source:
+  - _detect_document_context = orchestrator.py:321-338; calls Ollama-only _build_no_system_payload (L329) + _call_ollama (L331). OpenAICompatibleClient implements neither.
+  - Guard site orchestrator.py:557-564; exclusion at L562 (`and _cloud_client is None`); call at L564 passes ollama_client not the active client.
+  - translate_once is the WRONG shared seam: both impls wrap arg in "Translate the following text..." framing → would translate the summary instruction. Raw-completion paths are private + asymmetric (Ollama _call_ollama/_build_no_system_payload; cloud _post_completion).
+  - Resolution: add thin public complete(prompt)->(ok,text) to BOTH concrete clients; route _detect_document_context through client.complete(prompt); delete L562; change L564 arg ollama_client->client. NOT added to base_llm_client Protocol (test_llm_client_protocol::test_protocol_defines_five_methods asserts exactly 5 methods — out of scope).
+  - Injection point unchanged: build_strategy branch L566-575 (detected_context=doc_context; literal "Document context:" in translation_strategy.py:304) + else branch L586-589.
+  - Fakes to update same change: test_context_prompt_i18n.py::test_immediate_and_deferred_use_same_template (mock complete); test_provider_fallback.py::TestOrchestratorProviderWiring::test_cloud_client_used_when_provider_id_set (drop stale CONTEXT_DETECTION_ENABLED=False patch). test_orchestrator_phase0.py::_make_mock_ollama_client verify-only.
+next-action: "backend-engineer implements complete() on both clients + guard edit, writes tests/test_orchestrator_context_detection.py TDD, updates the two fakes."

@@ -1,0 +1,1 @@
+python -m pytest --collect-only -q tests/test_orchestrator_context_detection.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/cloud-doc-context-summary/test-runs/20260709-084925/junit.xml' --maxfail=1 --tb=short -ra

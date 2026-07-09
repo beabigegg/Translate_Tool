@@ -1,6 +1,6 @@
-# generated: 2026-07-08T11:44:25Z by cdd-kit 3.6.0
-# files: 204, src-lines: 59044, map-lines: 5302, compression: 11.1x
-# sources-digest: aa68763bbd73ea13f250fafcd59ab214528a2448f51dcbd38e000055188e01a3
+# generated: 2026-07-09T00:38:11Z by cdd-kit 3.6.0
+# files: 205, src-lines: 59418, map-lines: 5373, compression: 11.1x
+# sources-digest: a0871d009ae18b2a74943d75794c6e22c73de247cf66cd133f42721832c9a065
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
@@ -162,7 +162,7 @@ app/backend/clients/base_llm_client.py:  # 82 lines
         - { name: list_models, lines: 64-70 }
         - { name: unload, lines: 72-82 }
 
-app/backend/clients/ollama_client.py:  # 902 lines
+app/backend/clients/ollama_client.py:  # 919 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: json, items: [], line: 5 }
@@ -177,7 +177,7 @@ app/backend/clients/ollama_client.py:  # 902 lines
     - { module: app.backend.utils.logging_utils, items: [logger], line: 29 }
   classes:
     - name: OllamaClient
-      lines: 92-890
+      lines: 92-907
       methods:
         - { name: __init__, lines: 98-126 }
         - { name: _get_session, lines: 129-153 }
@@ -220,13 +220,14 @@ app/backend/clients/ollama_client.py:  # 902 lines
         - { name: health, lines: 880-882 }
         - { name: list_models, lines: 884-886 }
         - { name: unload, lines: 888-890 }
+        - { name: complete, lines: 900-907 }
   functions:
     - { name: _is_latin_only, lines: 52-56 }
     - { name: _has_non_latin, lines: 59-64 }
     - { name: _drop_english_preamble, lines: 67-89 }
-    - { name: list_ollama_models, lines: 893-902 }
+    - { name: list_ollama_models, lines: 910-919 }
 
-app/backend/clients/openai_compatible_client.py:  # 440 lines
+app/backend/clients/openai_compatible_client.py:  # 453 lines
   imports:
     - { module: __future__, items: [annotations], line: 18 }
     - { module: logging, items: [], line: 20 }
@@ -237,7 +238,7 @@ app/backend/clients/openai_compatible_client.py:  # 440 lines
     - { module: requests, items: [], line: 26 }
   classes:
     - name: OpenAICompatibleClient
-      lines: 44-440
+      lines: 44-453
       methods:
         - { name: __init__, lines: 59-88 }
         - { name: cache_model_key, lines: 91-95 }
@@ -251,16 +252,17 @@ app/backend/clients/openai_compatible_client.py:  # 440 lines
         - { name: embed, lines: 232-263 }
         - { name: _build_table_translate_prompt, lines: 266-286 }
         - { name: translate_once, lines: 288-318 }
-        - { name: translate_batch, lines: 320-339 }
-        - { name: health, lines: 341-357 }
-        - { name: list_models, lines: 359-368 }
-        - { name: list_live_models, lines: 370-399 }
-        - { name: unload, lines: 401-407 }
-        - { name: health_check, lines: 423-425 }
-        - { name: _is_translation_dedicated, lines: 427-429 }
-        - { name: _is_translategemma_model, lines: 431-433 }
-        - { name: set_runtime_options_override, lines: 435-436 }
-        - { name: set_cache_variant, lines: 438-440 }
+        - { name: complete, lines: 320-331 }
+        - { name: translate_batch, lines: 333-352 }
+        - { name: health, lines: 354-370 }
+        - { name: list_models, lines: 372-381 }
+        - { name: list_live_models, lines: 383-412 }
+        - { name: unload, lines: 414-420 }
+        - { name: health_check, lines: 436-438 }
+        - { name: _is_translation_dedicated, lines: 440-442 }
+        - { name: _is_translategemma_model, lines: 444-446 }
+        - { name: set_runtime_options_override, lines: 448-449 }
+        - { name: set_cache_variant, lines: 451-453 }
 
 app/backend/config.py:  # 579 lines
   imports:
@@ -757,7 +759,7 @@ app/backend/processors/libreoffice_helpers.py:  # 226 lines
     - { name: xls_to_xlsx, lines: 199-211 }
     - { name: ppt_to_pptx, lines: 214-226 }
 
-app/backend/processors/orchestrator.py:  # 910 lines
+app/backend/processors/orchestrator.py:  # 914 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: logging, items: [], line: 5 }
@@ -765,26 +767,27 @@ app/backend/processors/orchestrator.py:  # 910 lines
     - { module: threading, items: [], line: 7 }
     - { module: pathlib, items: [Path], line: 8 }
     - { module: typing, items: [Callable, Dict, List, Optional, Tuple], line: 9 }
-    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 11 }
-    - { module: app.backend.config, items: [CONTEXT_DETECTION_ENABLED, CONTEXT_SAMPLE_CHARS, DEFAULT_MAX_BATCH_CHARS, DEFAULT_MODEL, DYNAMIC_SCENARIO_STRATEGY_ENABLED, GENERAL_NUM_CTX, LAYOUT_PRESERVATION_MODE, OLLAMA_BASE_URL, PDF_SKIP_HEADER_FOOTER, QWEN_CONTEXT_FLOW_ENABLED, SCENARIO_CACHE_VARIANT_ENABLED, SUPPORTED_EXTENSIONS, TRANSLATION_NUM_CTX, TimeoutConfig], line: 12 }
-    - { module: app.backend.processors.com_helpers, items: [is_win32com_available, word_convert], line: 28 }
-    - { module: app.backend.processors.docx_processor, items: [translate_docx], line: 29 }
-    - { module: app.backend.processors.libreoffice_helpers, items: [doc_to_docx, is_libreoffice_available, ppt_to_pptx, xls_to_xlsx], line: 30 }
-    - { module: app.backend.processors.pdf_processor, items: [translate_pdf], line: 36 }
-    - { module: app.backend.processors.pptx_processor, items: [translate_pptx], line: 37 }
-    - { module: app.backend.processors.xlsx_processor, items: [translate_xlsx_xls], line: 38 }
-    - { module: app.backend.services.context_prompts, items: [_CONTEXT_DETECTION_PROMPTS, _get_context_detection_prompt], line: 39 }
-    - { module: app.backend.services.translation_strategy, items: [build_strategy, build_terminology_block, detect_translation_scenario, scenario_from_profile], line: 43 }
+    - { module: app.backend.clients.base_llm_client, items: [LLMClient], line: 11 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 12 }
+    - { module: app.backend.config, items: [CONTEXT_DETECTION_ENABLED, CONTEXT_SAMPLE_CHARS, DEFAULT_MAX_BATCH_CHARS, DEFAULT_MODEL, DYNAMIC_SCENARIO_STRATEGY_ENABLED, GENERAL_NUM_CTX, LAYOUT_PRESERVATION_MODE, OLLAMA_BASE_URL, PDF_SKIP_HEADER_FOOTER, QWEN_CONTEXT_FLOW_ENABLED, SCENARIO_CACHE_VARIANT_ENABLED, SUPPORTED_EXTENSIONS, TRANSLATION_NUM_CTX, TimeoutConfig], line: 13 }
+    - { module: app.backend.processors.com_helpers, items: [is_win32com_available, word_convert], line: 29 }
+    - { module: app.backend.processors.docx_processor, items: [translate_docx], line: 30 }
+    - { module: app.backend.processors.libreoffice_helpers, items: [doc_to_docx, is_libreoffice_available, ppt_to_pptx, xls_to_xlsx], line: 31 }
+    - { module: app.backend.processors.pdf_processor, items: [translate_pdf], line: 37 }
+    - { module: app.backend.processors.pptx_processor, items: [translate_pptx], line: 38 }
+    - { module: app.backend.processors.xlsx_processor, items: [translate_xlsx_xls], line: 39 }
+    - { module: app.backend.services.context_prompts, items: [_CONTEXT_DETECTION_PROMPTS, _get_context_detection_prompt], line: 40 }
+    - { module: app.backend.services.translation_strategy, items: [build_strategy, build_terminology_block, detect_translation_scenario, scenario_from_profile], line: 44 }
   functions:
-    - { name: _cap_terms_by_budget, lines: 53-67 }
-    - { name: _sample_file_text, lines: 70-145 }
-    - { name: _group_into_chunks, lines: 151-170 }
-    - { name: _split_paragraphs_to_sentences, lines: 173-183 }
-    - { name: _extract_spreadsheet_rows, lines: 186-212 }
-    - { name: _extract_all_segments, lines: 215-318 }
-    - { name: _detect_document_context, lines: 321-338 }
-    - { name: _output_name, lines: 341-367 }
-    - { name: process_files, lines: 370-910 }
+    - { name: _cap_terms_by_budget, lines: 54-68 }
+    - { name: _sample_file_text, lines: 71-146 }
+    - { name: _group_into_chunks, lines: 152-171 }
+    - { name: _split_paragraphs_to_sentences, lines: 174-184 }
+    - { name: _extract_spreadsheet_rows, lines: 187-213 }
+    - { name: _extract_all_segments, lines: 216-319 }
+    - { name: _detect_document_context, lines: 322-343 }
+    - { name: _output_name, lines: 346-372 }
+    - { name: process_files, lines: 375-914 }
 
 app/backend/processors/pdf_processor.py:  # 1223 lines
   imports:
@@ -1556,25 +1559,28 @@ app/backend/utils/table_serializer.py:  # 112 lines
     - { name: serialize, lines: 17-58 }
     - { name: parse, lines: 61-112 }
 
-app/backend/utils/text_utils.py:  # 246 lines
+app/backend/utils/text_utils.py:  # 298 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: re, items: [], line: 5 }
     - { module: typing, items: [Any, List, Optional], line: 6 }
     - { module: app.backend.utils.logging_utils, items: [logger], line: 8 }
+  constants:
+    - { name: META_REFUSAL_MAX_CHARS, line: 136 }
   functions:
     - { name: is_numeric_cell, lines: 23-43 }
     - { name: normalize_text, lines: 46-47 }
     - { name: has_cjk, lines: 50-52 }
     - { name: is_cjk_language, lines: 55-72 }
     - { name: should_translate, lines: 75-133 }
-    - { name: _is_cjk_lang, lines: 136-142 }
-    - { name: _get_pysbd_lang, lines: 145-169 }
-    - { name: split_sentences, lines: 172-213 }
-    - { name: _split_cjk_sentences, lines: 216-232 }
-    - { name: _split_by_punctuation, lines: 235-246 }
+    - { name: is_meta_refusal, lines: 157-185 }
+    - { name: _is_cjk_lang, lines: 188-194 }
+    - { name: _get_pysbd_lang, lines: 197-221 }
+    - { name: split_sentences, lines: 224-265 }
+    - { name: _split_cjk_sentences, lines: 268-284 }
+    - { name: _split_by_punctuation, lines: 287-298 }
 
-app/backend/utils/translation_helpers.py:  # 494 lines
+app/backend/utils/translation_helpers.py:  # 509 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: re, items: [], line: 5 }
@@ -1584,30 +1590,30 @@ app/backend/utils/translation_helpers.py:  # 494 lines
     - { module: app.backend.config, items: [DEFAULT_MAX_BATCH_CHARS, MAX_MAX_BATCH_CHARS, MAX_PARAGRAPH_CHARS, MIN_MAX_BATCH_CHARS, TRANSLATION_GRANULARITY], line: 10 }
     - { module: app.backend.services.context_prompts, items: [build_context_prefix], line: 17 }
     - { module: app.backend.utils.logging_utils, items: [logger], line: 18 }
-    - { module: app.backend.utils.text_utils, items: [is_cjk_language, split_sentences], line: 19 }
+    - { module: app.backend.utils.text_utils, items: [is_cjk_language, is_meta_refusal, should_translate, split_sentences], line: 19 }
   constants:
-    - { name: SEGMENT_MARKER_PREFIX, line: 22 }
-    - { name: SEGMENT_MARKER_SUFFIX, line: 23 }
+    - { name: SEGMENT_MARKER_PREFIX, line: 27 }
+    - { name: SEGMENT_MARKER_SUFFIX, line: 28 }
   classes:
     - name: BatchTranslator
-      lines: 300-376
+      lines: 315-391
       methods:
-        - { name: __init__, lines: 306-322 }
-        - { name: add, lines: 324-338 }
-        - { name: flush, lines: 340-357 }
-        - { name: _fallback_individual, lines: 359-366 }
-        - { name: get, lines: 368-371 }
-        - { name: translate_all, lines: 373-376 }
+        - { name: __init__, lines: 321-337 }
+        - { name: add, lines: 339-353 }
+        - { name: flush, lines: 355-372 }
+        - { name: _fallback_individual, lines: 374-381 }
+        - { name: get, lines: 383-386 }
+        - { name: translate_all, lines: 388-391 }
   functions:
-    - { name: _get_sentence_joiner, lines: 26-31 }
-    - { name: _build_segment_marker, lines: 34-36 }
-    - { name: _merge_texts_with_markers, lines: 39-88 }
-    - { name: _strip_seg_markers, lines: 91-93 }
-    - { name: _parse_merged_response, lines: 96-130 }
-    - { name: translate_merged_paragraphs, lines: 133-199 }
-    - { name: translate_block_as_paragraph, lines: 202-265 }
-    - { name: translate_block_sentencewise, lines: 268-297 }
-    - { name: translate_blocks_batch, lines: 379-494 }
+    - { name: _get_sentence_joiner, lines: 31-36 }
+    - { name: _build_segment_marker, lines: 39-41 }
+    - { name: _merge_texts_with_markers, lines: 44-93 }
+    - { name: _strip_seg_markers, lines: 96-98 }
+    - { name: _parse_merged_response, lines: 101-135 }
+    - { name: translate_merged_paragraphs, lines: 138-214 }
+    - { name: translate_block_as_paragraph, lines: 217-280 }
+    - { name: translate_block_sentencewise, lines: 283-312 }
+    - { name: translate_blocks_batch, lines: 394-509 }
 
 app/backend/utils/translation_verification.py:  # 135 lines
   imports:
@@ -2367,7 +2373,7 @@ tests/test_context_prefix_bleed.py:  # 169 lines
     - { name: test_br78_context_delivered_out_of_band_not_in_translatable_payload, lines: 147-157 }
     - { name: test_context_window_segments_and_max_chars_constants_unchanged, lines: 164-169 }
 
-tests/test_context_prompt_i18n.py:  # 221 lines
+tests/test_context_prompt_i18n.py:  # 223 lines
   imports:
     - { module: __future__, items: [annotations], line: 7 }
     - { module: importlib, items: [], line: 9 }
@@ -2378,14 +2384,14 @@ tests/test_context_prompt_i18n.py:  # 221 lines
   functions:
     - { name: test_template_selected_for_en_zhtw_ja, lines: 32-55 }
     - { name: test_unlisted_lang_falls_back_to_en, lines: 62-67 }
-    - { name: test_immediate_and_deferred_use_same_template, lines: 74-110 }
-    - { name: _clear_num_ctx_env, lines: 120-127 }
-    - { name: _restore_env, lines: 130-133 }
-    - { name: _reload_config, lines: 136-140 }
-    - { name: test_general_num_ctx_env_overrides_independently, lines: 147-158 }
-    - { name: test_translation_num_ctx_env_overrides_independently, lines: 165-176 }
-    - { name: test_num_ctx_fallback_chain_to_ollama_then_default, lines: 183-203 }
-    - { name: test_only_ollama_num_ctx_set_backward_compat, lines: 210-221 }
+    - { name: test_immediate_and_deferred_use_same_template, lines: 74-112 }
+    - { name: _clear_num_ctx_env, lines: 122-129 }
+    - { name: _restore_env, lines: 132-135 }
+    - { name: _reload_config, lines: 138-142 }
+    - { name: test_general_num_ctx_env_overrides_independently, lines: 149-160 }
+    - { name: test_translation_num_ctx_env_overrides_independently, lines: 167-178 }
+    - { name: test_num_ctx_fallback_chain_to_ollama_then_default, lines: 185-205 }
+    - { name: test_only_ollama_num_ctx_set_backward_compat, lines: 212-223 }
 
 tests/test_context_window_segments.py:  # 263 lines
   imports:
@@ -3576,6 +3582,71 @@ tests/test_model_router.py:  # 521 lines
   functions:
     - { name: _build_config, lines: 305-337 }
 
+tests/test_nontranslatable_segment_guard.py:  # 273 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 23 }
+    - { module: threading, items: [], line: 25 }
+    - { module: typing, items: [Dict, List, Optional, Tuple], line: 26 }
+    - { module: app.backend.utils.text_utils, items: [is_meta_refusal], line: 28 }
+    - { module: app.backend.utils.translation_helpers, items: [translate_merged_paragraphs], line: 29 }
+  constants:
+    - { name: PAGE_NUMBER_SEGMENT, line: 35 }
+    - { name: ALREADY_ENGLISH_LABEL_SEGMENT, line: 36 }
+    - { name: SHORT_CODE_SEGMENT, line: 37 }
+    - { name: SHORT_LOT_SEGMENT, line: 38 }
+    - { name: CJK_SENTENCE_SEGMENT, line: 39 }
+    - { name: PUNCTUATION_ONLY_SEGMENT, line: 45 }
+    - { name: WHITESPACE_ONLY_SEGMENT, line: 46 }
+    - { name: ASK_BACK_REPLY, line: 49 }
+  classes:
+    - name: FakeLLMClient
+      lines: 55-74
+      methods:
+        - { name: __init__, lines: 58-62 }
+        - { name: translate_once, lines: 64-74 }
+    - name: ScriptedLLMClient
+      lines: 77-96
+      methods:
+        - { name: __init__, lines: 80-84 }
+        - { name: translate_once, lines: 86-96 }
+    - name: TestTrivialPassthrough
+      lines: 102-133
+      methods:
+        - { name: test_pure_number_not_called_output_equals_source, lines: 103-107 }
+        - { name: test_punctuation_only_not_called_output_equals_source, lines: 109-113 }
+        - { name: test_whitespace_only_not_called_output_equals_source, lines: 115-119 }
+        - { name: test_already_target_language_token_not_called_output_equals_source, lines: 121-127 }
+        - { name: test_very_short_single_token_not_called_output_equals_source, lines: 129-133 }
+    - name: TestRefusalOutputGuard
+      lines: 139-167
+      methods:
+        - { name: test_ask_back_reply_source_written_not_meta_string, lines: 140-147 }
+        - { name: test_question_back_reply_source_written_not_meta_string, lines: 149-157 }
+        - { name: test_language_detection_note_reply_source_written_not_meta_string, lines: 159-167 }
+    - name: TestRefusalDetectorNegative
+      lines: 173-186
+      methods:
+        - { name: test_genuine_translation_containing_question_mark_is_not_suppressed, lines: 174-179 }
+        - { name: test_genuine_translation_reading_like_a_note_is_not_suppressed, lines: 181-186 }
+    - name: TestConservativePassthrough
+      lines: 192-198
+      methods:
+        - { name: test_genuine_sentence_is_sent_to_client_and_translated, lines: 193-198 }
+    - name: TestTranslateMergedParagraphsEndToEnd
+      lines: 204-224
+      methods:
+        - { name: test_trivial_and_refusal_and_normal_segments_in_one_call, lines: 205-224 }
+    - name: TestReproduction8D
+      lines: 230-257
+      methods:
+        - { name: test_8d_trivial_segment_fixture_ask_back_fake_red_pre_fix_green_post_fix, lines: 231-257 }
+    - name: TestIsMetaRefusalHelperDirect
+      lines: 263-273
+      methods:
+        - { name: test_short_ask_back_reply_is_detected, lines: 264-265 }
+        - { name: test_long_genuine_translation_is_not_detected_length_gate, lines: 267-270 }
+        - { name: test_empty_reply_is_not_a_refusal, lines: 272-273 }
+
 tests/test_ollama_client_dynamic_strategy.py:  # 87 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
@@ -4221,7 +4292,7 @@ tests/test_pptx_parser.py:  # 255 lines
         - { name: parser, lines: 233-235 }
         - { name: test_metadata_extraction, lines: 237-255 }
 
-tests/test_provider_fallback.py:  # 842 lines
+tests/test_provider_fallback.py:  # 840 lines
   imports:
     - { module: __future__, items: [annotations], line: 7 }
     - { module: pathlib, items: [Path], line: 9 }
@@ -4252,27 +4323,27 @@ tests/test_provider_fallback.py:  # 842 lines
         - { name: test_download_url_field_defaults_to_none, lines: 282-293 }
         - { name: test_download_url_field_accepts_string, lines: 295-307 }
     - name: TestOrchestratorProviderWiring
-      lines: 313-485
+      lines: 313-483
       methods:
-        - { name: test_cloud_client_used_when_provider_id_set, lines: 355-443 }
-        - { name: test_ollama_used_when_no_cloud_provider, lines: 445-485 }
+        - { name: test_cloud_client_used_when_provider_id_set, lines: 355-441 }
+        - { name: test_ollama_used_when_no_cloud_provider, lines: 443-483 }
     - name: TestFallbackChainConfig
-      lines: 491-602
+      lines: 489-600
       methods:
-        - { name: test_fallback_chain_is_panjit_deepseek, lines: 494-514 }
-        - { name: test_ollama_local_role_is_layout_assist_only, lines: 516-532 }
-        - { name: test_deepseek_excluded_when_disabled, lines: 534-573 }
-        - { name: test_deepseek_included_when_enabled, lines: 575-602 }
+        - { name: test_fallback_chain_is_panjit_deepseek, lines: 492-512 }
+        - { name: test_ollama_local_role_is_layout_assist_only, lines: 514-530 }
+        - { name: test_deepseek_excluded_when_disabled, lines: 532-571 }
+        - { name: test_deepseek_included_when_enabled, lines: 573-600 }
     - name: TestOrchestratorFallbackTraversal
-      lines: 608-819
+      lines: 606-817
       methods:
-        - { name: test_ollama_local_branch_absent_from_orchestrator, lines: 611-620 }
-        - { name: test_fallback_order_selection_at_orchestrator_seam, lines: 622-711 }
-        - { name: test_panjit_fail_deepseek_disabled_graceful, lines: 713-819 }
+        - { name: test_ollama_local_branch_absent_from_orchestrator, lines: 609-618 }
+        - { name: test_fallback_order_selection_at_orchestrator_seam, lines: 620-709 }
+        - { name: test_panjit_fail_deepseek_disabled_graceful, lines: 711-817 }
     - name: TestLayoutDetectorUnchanged
-      lines: 825-842
+      lines: 823-840
       methods:
-        - { name: test_layout_detector_source_unmodified, lines: 828-842 }
+        - { name: test_layout_detector_source_unmodified, lines: 826-840 }
   functions:
     - { name: _make_chat_response, lines: 20-24 }
     - { name: _make_http_error_response, lines: 27-31 }
