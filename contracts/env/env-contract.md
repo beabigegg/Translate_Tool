@@ -3,7 +3,7 @@ contract: env
 summary: Environment variable inventory, secret handling, and deployment sync policy.
 owner: platform-team
 surface: runtime-config
-schema-version: 0.17.0
+schema-version: 0.18.0
 last-changed: 2026-07-09
 breaking-change-policy: deprecate-2-minors
 ---
@@ -81,3 +81,5 @@ API keys (`PANJIT_API`, `DEEPSEEK_API`) must be stored in `.env` only. `.env` is
 Any new env var must be added here and to `contracts/env/.env.example.template` and `contracts/env/env.schema.json` in the same change. Secrets (column `secret: yes`) must be provisioned out-of-band; `.env.example.template` uses placeholder values only.
 
 Gate grep commands in `ci-gates.md` that assert env-var presence (e.g. the `env-sync-*` gates) must use the exact canonical names recorded in the table above. When an env var is added or renamed, update the ci-gates.md grep pattern in the same change — a stale pattern passes silently even if the var is absent from the deployment artifacts.
+
+Every `os.environ.get(...)` / `os.environ[...]` read in `app/backend/config.py` MUST have a corresponding row in the table above, whether introduced by the current change or pre-existing — any change that touches or extends a flag's behavior must backfill a still-missing row for it in the same change (`QWEN_CONTEXT_FLOW_ENABLED` was one such gap, closed by `cloud-doc-context-summary`; `DYNAMIC_SCENARIO_STRATEGY_ENABLED` is a known remaining gap). A `config.py` module-level constant that is NOT read from `os.environ` (a hardcoded code-level toggle) MUST NOT be added as an env-contract row — document it in `contracts/business/business-rules.md` prose instead, with an explicit "not an env var" note (see BR-109 / `CONTEXT_DETECTION_ENABLED`).
