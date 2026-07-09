@@ -302,6 +302,13 @@ class OpenAICompatibleClient:
         never concatenated into `text`/the user "Translate the following text..."
         payload — keeps reference context out of the translatable body.
 
+        BR-109 / ADR-0016: this client's `self.system_prompt` (the scenario
+        style plus the "Document context: <summary>" preamble assigned by the
+        orchestrator) is merged ahead of the per-segment `system_context` into
+        ONE leading system message — preamble first, then BR-78 neighbor
+        context — so both reach the model via the system channel and neither
+        is ever concatenated into the translatable user payload.
+
         Returns:
             (ok, translated_text) where ok=False signals a failure.
         """
@@ -310,12 +317,27 @@ class OpenAICompatibleClient:
             f"Translate the following text from {src} to {tgt}. "
             f"Output only the translation, no explanations.\n\n{text}"
         )
-        ok, result = self._post_completion(prompt, cancel_event=cancel_event, system_context=system_context)
+        parts = [p for p in ((self.system_prompt or "").strip(), (system_context or "").strip()) if p]
+        merged_system_context = "\n\n".join(parts) or None
+        ok, result = self._post_completion(prompt, cancel_event=cancel_event, system_context=merged_system_context)
         logger.info(
             "[%s] translate_once ok=%s tgt=%s len_in=%d len_out=%d",
             self.provider_id, ok, tgt, len(text), len(result),
         )
         return ok, result
+
+    def complete(self, prompt: str) -> Tuple[bool, str]:
+        """Raw single-turn completion, no translate framing, no system prompt.
+
+        Shared seam (BR-109) used by the document-context summary
+        (`orchestrator._detect_document_context`) on both OllamaClient and
+        OpenAICompatibleClient. Delivers `prompt` as the sole user message
+        (no "Translate the following..." wrapping) so the model summarizes
+        the document instead of translating the instruction. Wraps
+        `_post_completion`, which is already `requests.RequestException`-safe
+        and bounded by `OPENAI_TOTAL_TIMEOUT_SECONDS` (BR-100).
+        """
+        return self._post_completion(prompt)
 
     def translate_batch(
         self, texts: List[str], tgt: str, src_lang: Optional[str]
@@ -415,8 +437,12 @@ class OpenAICompatibleClient:
     # ------------------------------------------------------------------
 
     # system_prompt is read at loop start and written per-file by the scenario
-    # machinery.  Cloud clients build their own prompt inside translate_once, so
-    # these writes are intentionally ignored.
+    # machinery (scenario style + the "Document context: <summary>" preamble).
+    # BR-109 / ADR-0016: translate_once() merges this value ahead of the
+    # per-segment BR-78 system_context into ONE leading system message on
+    # every cloud call — it is delivered to the model, not discarded.
+    # complete() (the document-context summary seam) deliberately does NOT
+    # read this attribute: the summary call must carry no system prompt.
     system_prompt: str = ""
     model_type: str = "general"
 

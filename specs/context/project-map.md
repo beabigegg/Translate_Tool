@@ -328,14 +328,14 @@ Translate_Tool/
 |   |-- test_nontranslatable_segment_guard.py
 |   |-- test_ollama_client_dynamic_strategy.py
 |   |-- test_openai_compatible_client.py
+|   |-- test_orchestrator_context_detection.py
 |   |-- test_orchestrator_judge.py
 |   |-- test_orchestrator_phase0.py
 |   |-- test_output_mode_api.py
 |   |-- test_output_mode_orchestrator.py
 |   |-- test_output_mode_processors.py
 |   |-- test_pdf_generator.py
-|   |-- test_pdf_layout_refactor.py
-|   \-- ... (32 more entries truncated; cap=50)
+|   \-- ... (33 more entries truncated; cap=50)
 |-- .env
 |-- .gitignore
 |-- AGENTS.md

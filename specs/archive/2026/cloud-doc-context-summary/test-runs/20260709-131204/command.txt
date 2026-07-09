@@ -1,0 +1,1 @@
+python -m pytest --collect-only -q tests/test_orchestrator_context_detection.py tests/test_context_prefix_bleed.py tests/test_openai_compatible_client.py tests/test_provider_fallback.py tests/test_context_prompt_i18n.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/cloud-doc-context-summary/test-runs/20260709-131204/junit.xml' --maxfail=1 --tb=short -ra

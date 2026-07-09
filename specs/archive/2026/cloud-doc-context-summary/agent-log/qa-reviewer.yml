@@ -1,0 +1,21 @@
+change-id: cloud-doc-context-summary
+agent: qa-reviewer
+status: done
+summary: "Release-ready. Independently verified the AC-2 tautology is closed (asserts outgoing payload), local path byte-identical, complete() structurally system-free, BR-78 no-bleed guard intact."
+artifacts:
+  - { type: gate-results, pointer: "collect pass; targeted pass 74/0/0; changed-area pass 100/0/0; contract pass; independent re-run 33 pass" }
+  - { type: evidence-quality, pointer: "repro — re-ran tests, read source diffs, cross-checked live-probe evidence" }
+  - { type: decision, pointer: "approved" }
+  - { type: failure-routing, pointer: "none" }
+  - { type: residual-risk, pointer: "complete() off the LLMClient Protocol -> static-type-check flag only, runtime-safe; cloud E2E delivery validated by manual live probe only" }
+notes: |
+  Verified independently (not on agent claims):
+  - AC-2 is genuinely non-tautological: asserts on captured outgoing payload (post_bodies[-1]["messages"]) — system message contains "Document context: <summary>", user message does NOT. requests.Session.post patched at class level (binds at call time). Real translate_once -> _post_completion path exercised.
+  - Negative cases use call-count asserts: AC-3/AC-4 mock_detect.assert_not_called(); AC-5 asserts "" on both raise and (False,""); AC-6 asserts mock_call.called AND the exact injected system_prompt string (a fix silently disabling local would fail).
+  - complete() structurally system-free: OpenAICompatibleClient.complete -> _post_completion(prompt) with no system_context; _build_messages never reads self.system_prompt. Proven even with system_prompt pre-set.
+  - Local Ollama byte-identical: OllamaClient.complete == _call_ollama(_build_no_system_payload(prompt)), exactly the prior inline call; Ollama already merged system_prompt + system_context pre-change, so BR-109's "local unchanged" claim is true.
+  - BR-78/ADR-0016 coverage hole assessed and CLOSED: test_context_prefix_bleed.py's _FakeEchoClient never exercises the real cloud client, but TestSystemPromptDelivery::test_system_prompt_merged_ahead_of_segment_context_single_system_message drives the REAL OpenAICompatibleClient.translate_once and asserts neither system_prompt nor segment_context appears in the user payload.
+  - Broken doubles all updated (test_context_prompt_i18n.py, test_provider_fallback.py); grep of tests/ shows remaining _call_ollama/_build_no_system_payload/_post_completion/_build_messages hits are legitimate direct-method tests, not stale fakes. test_orchestrator_phase0.py unmodified and green.
+  - test-evidence.yml: required phases collect/targeted/changed-area + contract all passed, final-status passed, no waiver fields, runs under this change's test-runs/.
+  Follow-up (non-blocking): if a static type-check gate is ever added, narrow the _detect_document_context param annotation or introduce a Protocol alias exposing complete().
+next-action: "cdd-kit gate, then commit + PR."

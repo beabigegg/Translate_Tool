@@ -243,6 +243,101 @@ class TestSystemContextChannel:
         assert messages[0]["role"] == "user"
 
 
+# ── system_prompt delivery (cloud-doc-context-summary, BR-109 / ADR-0016) ──────
+#
+# `system_prompt` (the scenario style plus any orchestrator-injected
+# "Document context: <summary>" preamble) was formerly an orchestrator-
+# compatibility stub whose writes were silently discarded on the cloud path
+# ("these writes are intentionally ignored"). BR-109 now requires it be
+# delivered to the model as system-channel content on every translate_once
+# call, merged ahead of the per-segment BR-78 system_context, and NEVER
+# concatenated into the translatable user payload.
+
+class TestSystemPromptDelivery:
+    def test_system_prompt_merged_ahead_of_segment_context_single_system_message(self):
+        """Preamble (client.system_prompt) must appear BEFORE the per-segment
+        BR-78 system_context, merged into ONE leading system message — not
+        two separate system messages, and never inside the user payload."""
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        client = OpenAICompatibleClient(
+            base_url="http://fake-host:8080",
+            api_key="test-key",
+            model="gpt-oss:120b",
+        )
+        client.system_prompt = "Document context: An engineering change request."
+        segment_context = (
+            "Previous segments — reference only, do NOT translate or repeat:\nSegment A."
+        )
+
+        with patch("requests.Session.post", return_value=_make_chat_response("ok")) as mock_post:
+            client.translate_once(
+                "Segment B.", "French", "English", system_context=segment_context,
+            )
+
+        _, kwargs = mock_post.call_args
+        messages = kwargs["json"]["messages"]
+        system_messages = [m for m in messages if m["role"] == "system"]
+        assert len(system_messages) == 1, (
+            f"preamble + segment context must merge into ONE system message, got {system_messages!r}"
+        )
+        merged_content = system_messages[0]["content"]
+        assert merged_content == f"{client.system_prompt}\n\n{segment_context}"
+        assert merged_content.index(client.system_prompt) < merged_content.index(segment_context), (
+            "the document-context preamble must come BEFORE the per-segment BR-78 context"
+        )
+
+        user_messages = [m for m in messages if m["role"] == "user"]
+        assert client.system_prompt not in user_messages[-1]["content"]
+        assert segment_context not in user_messages[-1]["content"]
+
+    def test_system_prompt_alone_still_delivered_when_no_segment_context(self):
+        """When there is no per-segment BR-78 context, client.system_prompt
+        alone must still reach the model as the leading system message
+        (regression guard for the former "intentionally ignored" stub)."""
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        client = OpenAICompatibleClient(
+            base_url="http://fake-host:8080",
+            api_key="test-key",
+            model="gpt-oss:120b",
+        )
+        client.system_prompt = "Document context: A purchase order document."
+
+        with patch("requests.Session.post", return_value=_make_chat_response("ok")) as mock_post:
+            client.translate_once("Hello world", "French", "English")
+
+        _, kwargs = mock_post.call_args
+        messages = kwargs["json"]["messages"]
+        assert messages[0] == {"role": "system", "content": client.system_prompt}
+
+    def test_complete_sends_no_system_message_even_with_system_prompt_set(self):
+        """BR-109: complete() (the document-context summary seam) must never
+        carry a system prompt — even if client.system_prompt happens to be
+        set from a prior/concurrent translate call — so the model summarizes
+        the document instead of being steered by a stale style/preamble."""
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        client = OpenAICompatibleClient(
+            base_url="http://fake-host:8080",
+            api_key="test-key",
+            model="gpt-oss:120b",
+        )
+        client.system_prompt = "Document context: some leftover preamble."
+
+        with patch("requests.Session.post", return_value=_make_chat_response("A summary.")) as mock_post:
+            ok, result = client.complete("Summarize this document in one sentence: ...")
+
+        assert ok is True
+        _, kwargs = mock_post.call_args
+        messages = kwargs["json"]["messages"]
+        assert len(messages) == 1
+        assert messages[0]["role"] == "user"
+        assert not any(m["role"] == "system" for m in messages), (
+            "complete() must never emit a system message"
+        )
+
+
 # ── translate_batch ───────────────────────────────────────────────────────────
 
 class TestTranslateBatch:

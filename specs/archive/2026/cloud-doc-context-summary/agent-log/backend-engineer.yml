@@ -1,0 +1,89 @@
+change-id: cloud-doc-context-summary
+agent: backend-engineer
+status: done
+summary: "Part 1: added a shared complete(prompt) -> (ok, text) raw-completion seam to both concrete LLM clients, routed _detect_document_context through it, and removed the _cloud_client-is-None guard exclusion so the document-context summary now generates on the active cloud client (BR-109/AC-1..AC-7). Part 2 (coordinator-directed scope expansion): closed the gap where OpenAICompatibleClient.system_prompt was an orchestrator-compatibility stub whose writes were silently discarded -- translate_once() now merges it (scenario style + Document-context preamble) ahead of the per-segment BR-78 system_context into ONE leading system message on every real cloud translate call (ADR-0016), while complete() (the summary seam) still carries no system message. base_llm_client.py Protocol left untouched throughout (still exactly 5 methods)."
+artifacts:
+  - { type: files-changed, pointer: "app/backend/clients/ollama_client.py:892-908 (complete() added, IP-1)" }
+  - { type: files-changed, pointer: "app/backend/clients/openai_compatible_client.py:288-325 (translate_once merges self.system_prompt ahead of BR-78 system_context into one system message, ADR-0016)" }
+  - { type: files-changed, pointer: "app/backend/clients/openai_compatible_client.py:329-340 (complete() added, IP-2; carries no system_context by construction)" }
+  - { type: files-changed, pointer: "app/backend/clients/openai_compatible_client.py:437-446 (system_prompt stub comment corrected: writes are now delivered, not ignored)" }
+  - { type: files-changed, pointer: "app/backend/processors/orchestrator.py:11 (LLMClient import, IP-4)" }
+  - { type: files-changed, pointer: "app/backend/processors/orchestrator.py:322-340 (_detect_document_context routed through client.complete(); param annotation LLMClient, IP-3)" }
+  - { type: files-changed, pointer: "app/backend/processors/orchestrator.py:562-568 (guard: deleted '_cloud_client is None' exclusion; call arg ollama_client->client, IP-5)" }
+  - { type: files-changed, pointer: "tests/test_context_prompt_i18n.py:86-109 (test_immediate_and_deferred_use_same_template updated to mock client.complete, IP-6)" }
+  - { type: files-changed, pointer: "tests/test_provider_fallback.py:393-405 (test_cloud_client_used_when_provider_id_set: removed stale CONTEXT_DETECTION_ENABLED=False patch, IP-7)" }
+  - { type: tests-added, pointer: "tests/test_orchestrator_context_detection.py::test_cloud_active_client_used_for_summary_not_local_ollama (AC-1 unit)" }
+  - { type: tests-added, pointer: "tests/test_orchestrator_context_detection.py::test_cloud_summary_generated_without_local_ollama_present (AC-1 integration)" }
+  - { type: tests-added, pointer: "tests/test_orchestrator_context_detection.py::test_cloud_summary_injected_as_document_context_in_system_prompt (AC-2, rewritten to assert on the outgoing POST messages payload -- not the client attribute)" }
+  - { type: tests-added, pointer: "tests/test_orchestrator_context_detection.py::test_context_detection_disabled_skips_cloud_summary (AC-3)" }
+  - { type: tests-added, pointer: "tests/test_orchestrator_context_detection.py::test_qwen_context_flow_disabled_skips_cloud_summary (AC-3)" }
+  - { type: tests-added, pointer: "tests/test_orchestrator_context_detection.py::test_translation_dedicated_cloud_client_skips_summary (AC-4)" }
+  - { type: tests-added, pointer: "tests/test_orchestrator_context_detection.py::test_detect_document_context_returns_empty_on_cloud_call_exception (AC-5 unit)" }
+  - { type: tests-added, pointer: "tests/test_orchestrator_context_detection.py::test_job_continues_with_no_preamble_when_cloud_summary_empty (AC-5 resilience)" }
+  - { type: tests-added, pointer: "tests/test_orchestrator_context_detection.py::test_local_ollama_context_detection_unchanged (AC-6, kept byte-identical, unchanged in scope expansion)" }
+  - { type: tests-added, pointer: "tests/test_orchestrator_context_detection.py::test_no_scope_creep_into_injection_wiring_or_json_io (AC-7)" }
+  - { type: tests-added, pointer: "tests/test_openai_compatible_client.py::TestSystemPromptDelivery::test_system_prompt_merged_ahead_of_segment_context_single_system_message (merge-ordering: preamble before BR-78 context, ONE system message, clean user payload)" }
+  - { type: tests-added, pointer: "tests/test_openai_compatible_client.py::TestSystemPromptDelivery::test_system_prompt_alone_still_delivered_when_no_segment_context (regression guard for the former 'intentionally ignored' stub)" }
+  - { type: tests-added, pointer: "tests/test_openai_compatible_client.py::TestSystemPromptDelivery::test_complete_sends_no_system_message_even_with_system_prompt_set (BR-109: complete() carries no system message even if system_prompt is set)" }
+  - { type: test-output, pointer: "changed-area phase: tests/test_orchestrator_context_detection.py + test_context_prefix_bleed.py + test_openai_compatible_client.py + test_provider_fallback.py + test_context_prompt_i18n.py + test_llm_client_protocol.py + test_orchestrator_phase0.py + test_cloud_total_timeout.py -> all passed (see specs/changes/cloud-doc-context-summary/test-runs/20260709-131221/summary.json)" }
+  - { type: contracts-touched, pointer: "none (contract-reviewer already landed BR-109 including the ADR-0016 system-prompt-delivery requirement + env-contract.md updates; no further contract edits needed)" }
+notes: |
+  Part 1 (initial pass): verified seam facts from implementation-plan.md against live
+  source before editing: confirmed _detect_document_context (orchestrator.py:321-338
+  pre-edit) called Ollama-only client._build_no_system_payload/._call_ollama, and that
+  OpenAICompatibleClient implements neither -- resolved via the planned shared
+  complete() method on both concrete clients, NOT translate_once (which
+  translate-wraps the prompt and would corrupt the summary). base_llm_client.py
+  Protocol was NOT touched; tests/test_llm_client_protocol.py
+  ::test_protocol_defines_five_methods re-run and stays green (5 methods).
+  Grepped tests/ for _detect_document_context, _call_ollama, _build_no_system_payload,
+  _post_completion: found no other test doubles reproducing this seam beyond the
+  two named in the plan (IP-6/IP-7).
+  tests/test_orchestrator_phase0.py verified green as-is (IP-9, verify-only).
+
+  Part 2 (coordinator-directed scope expansion, same change-id, user-approved):
+  the coordinator's live PANJIT capability probe confirmed the endpoint fully
+  honors system-role messages; the limitation (client.system_prompt writes
+  silently discarded on the cloud path) was self-imposed. Fix:
+  - translate_once() now computes
+    `parts = [p for p in ((self.system_prompt or "").strip(), (system_context or "").strip()) if p]`
+    then `merged_system_context = "\n\n".join(parts) or None`, and forwards
+    that as the SOLE system_context to _post_completion -- preamble first,
+    BR-78 per-segment context second, both in ONE system message, never in
+    the user payload. `_build_messages` itself stays pure (does not read
+    self.system_prompt) so complete() -- which never passes system_context --
+    stays clean by construction (verified directly by a new test).
+  - Fixed the AC-2 tautology the coordinator flagged: the old test asserted on
+    `client.system_prompt` (the attribute) which passed even when the value
+    never reached the wire. Rewrote it to capture the actual outgoing
+    requests.Session.post JSON body via a translate_docx stub that calls the
+    real `client.translate_once(...)`, then asserts the request's system
+    message contains "Document context: <summary>" and the user message does
+    not (anti-bleed).
+  - Added 3 new tests in tests/test_openai_compatible_client.py
+    (TestSystemPromptDelivery) covering merge-ordering, system_prompt-alone
+    delivery, and complete()'s no-system-message guarantee.
+  - Re-checked (ran, all green, no edits needed) every file the coordinator
+    named for message/payload-shape risk: tests/test_context_prefix_bleed.py
+    (uses a hand-written _FakeEchoClient implementing the LLMClient Protocol
+    directly -- never touches the real OpenAICompatibleClient, so BR-78/step-1
+    bleed protection is verified independent of this change and unaffected),
+    tests/test_openai_compatible_client.py (extended, not broken -- the two
+    pre-existing TestSystemContextChannel tests don't set client.system_prompt
+    so they still observe 0/1 system messages exactly as before), Also swept
+    test_cloud_total_timeout.py, test_term_extractor.py, test_quality_judge.py,
+    test_providers_api.py, test_table_context_translation.py,
+    test_term_extractor_resilience.py for messages/system_prompt assertions --
+    none found; all pass unmodified.
+  - Discovered during Part-1 test-writing (unaffected by Part 2): orchestrator.py's
+    per-file `finally:` clause unconditionally resets
+    `client.system_prompt = base_system_prompt` after every file (pre-existing,
+    out of scope), so AC-6/local-path assertions capture client.system_prompt
+    inside the mocked translate_docx call rather than after process_files()
+    returns; AC-2 (post scope-expansion) instead captures the wire payload
+    directly, sidestepping this entirely.
+  Test evidence re-run under `conda run -n translate-tool` per project learning.
+  Full-suite smoke deferred to CI (optional per test-plan.md Test Execution
+  Ladder; all required phases -- collect, targeted, changed-area, contract --
+  passed both before and after the scope expansion).
+next-action: "qa-reviewer to confirm gate readiness; no known risks or blockers from backend-engineer."

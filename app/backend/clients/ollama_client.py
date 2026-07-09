@@ -889,6 +889,23 @@ class OllamaClient:
         """LLMClient Protocol alias: delegates to unload_model()."""
         return self.unload_model()
 
+    # ------------------------------------------------------------------
+    # Raw single-turn completion seam (BR-109)
+    # Shared by OllamaClient and OpenAICompatibleClient; used by
+    # orchestrator._detect_document_context for the document-context
+    # summary. Intentionally NOT part of the LLMClient Protocol
+    # (base_llm_client.py pins an exactly-five-method surface).
+    # ------------------------------------------------------------------
+
+    def complete(self, prompt: str) -> Tuple[bool, str]:
+        """Raw completion, no translate framing, no system prompt.
+
+        Byte-identical to the prior direct
+        `_call_ollama(_build_no_system_payload(prompt))` call previously
+        made inline by `_detect_document_context`.
+        """
+        return self._call_ollama(self._build_no_system_payload(prompt))
+
 
 def list_ollama_models(base_url: str = OLLAMA_BASE_URL, timeout: Optional[TimeoutConfig] = None) -> List[str]:
     timeout = timeout or TimeoutConfig()

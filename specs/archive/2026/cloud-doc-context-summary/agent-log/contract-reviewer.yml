@@ -1,0 +1,25 @@
+change-id: cloud-doc-context-summary
+agent: contract-reviewer
+status: done
+summary: "Added BR-109 (cloud-context-detection-parity); backfilled QWEN_CONTEXT_FLOW_ENABLED; re-reviewed the revised BR-109 delivery clause after scope expansion and required two consistency fixes (both applied)."
+artifacts:
+  - { type: contracts-reviewed, pointer: "contracts/business/business-rules.md" }
+  - { type: contracts-reviewed, pointer: "contracts/env/env-contract.md" }
+  - { type: contracts-reviewed, pointer: "contracts/CHANGELOG.md" }
+  - { type: version-bumps, pointer: "business 0.26.0->0.27.0 (net-new BR-109); env 0.16.0->0.17.0 (QWEN_CONTEXT_FLOW_ENABLED backfill); OPENAI_TOTAL_TIMEOUT_SECONDS wording fix needs no bump" }
+  - { type: breaking-changes, pointer: "none (BR-109 additive; cloud-path runtime change restores intended delivery)" }
+notes: |
+  PASS 1 — corrections to classifier assumptions (verified against live source):
+  - No existing BR governed context-detection; added NEW BR-109 (live max was BR-108). BR-78 is a DIFFERENT mechanism (sliding-window neighbor segments).
+  - CONTEXT_DETECTION_ENABLED (config.py:128) is a hardcoded Python constant, NOT read from os.environ — deliberately NOT added to env-contract.md.
+  - QWEN_CONTEXT_FLOW_ENABLED (config.py:160) is a real env var (default "1") never documented — backfilled since BR-109 depends on it.
+  Follow-up debt (out of scope): DYNAMIC_SCENARIO_STRATEGY_ENABLED (config.py:159) is also an undocumented env var.
+
+  PASS 2 — re-review of the REVISED BR-109 after the delivery-gap scope expansion:
+  - BR-109 wording approved: testable, names the exact seams (complete(), translate_once merge order), consistent with BR-78 Table V and ADR-0016. No conflict with BR-99 (cancel), BR-100 (timeout), BR-25 (failure placeholder — BR-109 degrades to no-preamble, not a translation failure).
+  - business 0.27.0 confirmed correct: BR-109 is a net-new Rule Inventory row (additive); the magnitude of the runtime behavior belongs in CHANGELOG prose, not the semver. Precedent: BR-107/BR-108.
+  - Absence-test check clean: revised BR-109 contains neither "BR-92" nor "rescore".
+  - FIX 1 (blocking, applied): env-contract.md OPENAI_TOTAL_TIMEOUT_SECONDS enumerated bounded call sites as "(translate + judge)" — stale, since complete() also wraps _post_completion and is bounded by the same ceiling. Now "(translate + judge + the BR-109 document-context summary via complete())". Wording-only; no schema bump.
+  - FIX 2 (recommended, applied): BR-78 row now cross-references that on the cloud client its system_context merges into the SAME leading system-role message as client.system_prompt (system_prompt content first, see BR-109), explicitly noting the never-in-user-payload guarantee is not weakened.
+  - Verified after fixes: `cdd-kit validate --contracts` green; BR-78 guard tests (test_context_window_segments.py + test_context_prefix_bleed.py, 17 tests) green.
+next-action: "qa-reviewer for release readiness, then cdd-kit gate."
