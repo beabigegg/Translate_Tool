@@ -535,6 +535,7 @@ def process_files(
                         model=_model_name,
                         provider_id=_provider_id,
                         verify_ssl=_prov.get("tls_verify", True),
+                        system_prompt=system_prompt,
                     )
                     log(f"[PROVIDER] Using cloud provider: {_provider_id} model={_model_name}")
         except Exception as _exc:
@@ -563,6 +564,7 @@ def process_files(
                                 model=_model_name,
                                 provider_id=_fb_id,
                                 verify_ssl=_prov.get("tls_verify", True),
+                                system_prompt=system_prompt,
                             )
                             # Quick health probe to verify reachability
                             _fb_ok, _ = _fb_client.health()

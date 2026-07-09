@@ -1,0 +1,15 @@
+{
+  "change_id": "cloud-base-system-prompt-drop",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "cdd-kit validate --contracts --env --ci",
+  "duration_ms": 1483,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195202/summary.json",
+    "stdout": "specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195202/stdout.log",
+    "stderr": "specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195202/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

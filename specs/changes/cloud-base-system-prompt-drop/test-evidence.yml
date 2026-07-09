@@ -1,0 +1,52 @@
+change-id: cloud-base-system-prompt-drop
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: targeted
+    status: passed
+    command: >-
+      python -m pytest
+      tests/test_orchestrator_context_detection.py::test_cloud_client_delivers_profile_base_system_prompt_semiconductor
+      tests/test_orchestrator_context_detection.py::test_base_prompt_precedes_document_context_preamble_in_composition
+      tests/test_ollama_client_dynamic_strategy.py::test_ollama_outgoing_payload_base_system_prompt_unchanged
+      tests/test_orchestrator_context_detection.py::test_fallback_chain_client_delivers_profile_base_system_prompt
+      'tests/test_openai_compatible_client.py::TestSystemPromptConstruction::test_default_construction_without_system_prompt_stays_empty'
+      -q --maxfail=1 --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195121/junit.xml'
+    summary: specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195121/summary.json
+    junit: specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195121/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      python -m pytest tests/test_openai_compatible_client.py tests/test_orchestrator_context_detection.py
+      tests/test_ollama_client_dynamic_strategy.py -q --maxfail=1 --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195129/junit.xml'
+    summary: specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195129/summary.json
+    junit: specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195129/junit.xml
+  - phase: collect
+    status: passed
+    command: >-
+      python -m pytest --collect-only -q tests/test_openai_compatible_client.py
+      tests/test_orchestrator_context_detection.py tests/test_ollama_client_dynamic_strategy.py
+      tests/test_provider_fallback.py tests/test_cloud_total_timeout.py tests/test_term_extractor.py
+      tests/test_term_extractor_resilience.py tests/test_llm_client_protocol.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195138/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195138/summary.json
+    junit: specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195138/junit.xml
+  - phase: contract
+    status: passed
+    command: cdd-kit validate --contracts --env --ci
+    summary: specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195202/summary.json
+  - phase: full
+    status: passed
+    command: >-
+      python -m pytest -q --maxfail=1 --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195211/junit.xml'
+    summary: specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195211/summary.json
+    junit: specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195211/junit.xml
+final-status: passed

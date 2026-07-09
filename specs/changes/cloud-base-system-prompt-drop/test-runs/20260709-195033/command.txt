@@ -1,0 +1,1 @@
+python -m pytest tests/test_orchestrator_context_detection.py::test_cloud_client_delivers_profile_base_system_prompt_semiconductor -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195033/junit.xml'

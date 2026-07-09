@@ -338,6 +338,54 @@ class TestSystemPromptDelivery:
         )
 
 
+# ── constructor system_prompt kwarg (cloud-base-system-prompt-drop, BR-110) ────
+#
+# BR-110: OpenAICompatibleClient must accept and populate `system_prompt` at
+# construction (mirroring OllamaClient), so the orchestrator's caller-supplied
+# profile base prompt is no longer silently dropped by the empty-string
+# class-attribute default. These are post-fix-only regression companions --
+# the RED reproduction for the underlying defect lives in
+# tests/test_orchestrator_context_detection.py (exercised through
+# process_files, per test-plan.md), because calling this kwarg directly
+# against unfixed source raises TypeError, not a payload assertion failure.
+
+class TestSystemPromptConstruction:
+    def test_default_construction_without_system_prompt_stays_empty(self):
+        """AC-6 (anti-vacuity guard): omitted-kwarg construction still yields
+        `system_prompt == ""` -- proving the 39 existing call-site
+        constructions (across six test files) needed no edit, not merely
+        assuming it."""
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        client = OpenAICompatibleClient(
+            base_url="http://fake-host:8080",
+            api_key="test-key",
+            model="gpt-oss:120b",
+        )
+        assert client.system_prompt == ""
+
+    def test_constructor_system_prompt_kwarg_delivered_to_outgoing_payload(self):
+        """Post-fix companion: `system_prompt` passed at construction is
+        normalized (mirrors OllamaClient's `.strip()`) and reaches the
+        outgoing /v1/chat/completions system message on translate_once()."""
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        client = OpenAICompatibleClient(
+            base_url="http://fake-host:8080",
+            api_key="test-key",
+            model="gpt-oss:120b",
+            system_prompt="  You are a professional semiconductor translator.  ",
+        )
+        assert client.system_prompt == "You are a professional semiconductor translator."
+
+        with patch("requests.Session.post", return_value=_make_chat_response("ok")) as mock_post:
+            client.translate_once("Hello world", "French", "English")
+
+        _, kwargs = mock_post.call_args
+        messages = kwargs["json"]["messages"]
+        assert messages[0] == {"role": "system", "content": client.system_prompt}
+
+
 # ── translate_batch ───────────────────────────────────────────────────────────
 
 class TestTranslateBatch:

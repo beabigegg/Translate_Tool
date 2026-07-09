@@ -968,3 +968,229 @@ def test_legacy_xls_and_table_only_docx_both_emit_context_detected(tmp_path, cap
     assert detected_count == 2, (
         f"expected both files to emit [CONTEXT] Detected:, got {detected_count}"
     )
+
+
+# ---------------------------------------------------------------------------
+# cloud-base-system-prompt-drop (BR-110): the profile's base system_prompt
+# must reach the cloud client's construction so it is non-empty on
+# `base_system_prompt = client.system_prompt` (orchestrator.py L608) and
+# flows through to the outgoing /v1/chat/completions payload, instead of
+# being silently dropped because OpenAICompatibleClient's constructor could
+# not accept it.
+#
+# Covers AC-1/AC-2/AC-3/AC-5/AC-7 (test-plan.md, cloud-base-system-prompt-drop).
+# Assertions target the captured outgoing `json=` payload of the mocked
+# requests.Session.post -- never `client.system_prompt` (BR-110).
+# ---------------------------------------------------------------------------
+
+_SEMICONDUCTOR_ROLE_DECLARATION = (
+    "You are a professional semiconductor translator for IC design, "
+    "packaging, and test content."
+)
+
+
+def test_cloud_client_delivers_profile_base_system_prompt_semiconductor(tmp_path):
+    """AC-1/AC-2/AC-7: the profile's base system_prompt must reach the
+    cloud client's construction and flow through to the outgoing system
+    message -- not be silently dropped because OpenAICompatibleClient could
+    not accept `system_prompt` at construction (BR-110).
+
+    DYNAMIC_SCENARIO_STRATEGY_ENABLED is patched off to isolate this
+    assertion to the plain base_system_prompt read/reassignment path
+    (orchestrator.py's non-dynamic else-branch) rather than scenario
+    composition (covered separately by the ordering test below, AC-3).
+    """
+    src_docx = _make_real_docx(tmp_path, "Wafer fab engineering change request for tape-out.")
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    post_bodies: list = []
+
+    def _mock_post(url, **kwargs):
+        post_bodies.append(kwargs.get("json", {}))
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.json.return_value = {"choices": [{"message": {"content": "ok"}}]}
+        return resp
+
+    def _translate_docx_dispatches_one_segment(src_path, out_path, targets, src_lang, client, **kwargs):
+        client.translate_once("Engineering change request text.", targets[0], src_lang)
+        return False
+
+    with patch("app.backend.config.load_providers_config", return_value=_PANJIT_CFG), \
+         patch("requests.Session.post", side_effect=_mock_post), \
+         patch("app.backend.processors.orchestrator.translate_docx", side_effect=_translate_docx_dispatches_one_segment), \
+         patch("app.backend.processors.orchestrator.DYNAMIC_SCENARIO_STRATEGY_ENABLED", False):
+        result = process_files(
+            files=[src_docx],
+            output_dir=out_dir,
+            targets=["French"],
+            src_lang="English",
+            include_headers_shapes_via_com=False,
+            ollama_model="qwen3.5:9b",
+            model_type="general",
+            system_prompt=_SEMICONDUCTOR_ROLE_DECLARATION,
+            profile_id="semiconductor",
+            provider_id="panjit",
+        )
+
+    _, _, stopped, _client, _term, winning_provider = result
+    assert stopped is False
+    assert winning_provider == "panjit"
+
+    translate_body = post_bodies[-1]
+    messages = translate_body["messages"]
+    system_messages = [m for m in messages if m["role"] == "system"]
+    assert len(system_messages) == 1, f"expected exactly one system message, got {system_messages!r}"
+    assert _SEMICONDUCTOR_ROLE_DECLARATION in system_messages[0]["content"], (
+        "the profile's base system_prompt must reach the outgoing cloud "
+        "request -- it must not be silently dropped by an unpopulated "
+        "OpenAICompatibleClient.system_prompt (BR-110)"
+    )
+
+
+def test_base_prompt_precedes_document_context_preamble_in_composition(tmp_path):
+    """AC-3: base-prompt string index < scenario-appendix index <
+    few-shot-block index < 'Document context:' index, all within the SAME
+    outgoing system message -- proving the base prompt is genuinely
+    prepended by build_strategy, not replaced by a later preamble (ordering,
+    not mere membership)."""
+    src_docx = _make_real_docx(tmp_path, "Wafer fab engineering change request for tape-out.")
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    post_bodies: list = []
+
+    def _mock_post(url, **kwargs):
+        post_bodies.append(kwargs.get("json", {}))
+        resp = MagicMock()
+        resp.status_code = 200
+        content = "An engineering change request." if len(post_bodies) == 1 else "ok"
+        resp.json.return_value = {"choices": [{"message": {"content": content}}]}
+        return resp
+
+    def _translate_docx_dispatches_one_segment(src_path, out_path, targets, src_lang, client, **kwargs):
+        client.translate_once("Engineering change request text.", targets[0], src_lang)
+        return False
+
+    with patch("app.backend.config.load_providers_config", return_value=_PANJIT_CFG), \
+         patch("requests.Session.post", side_effect=_mock_post), \
+         patch("app.backend.processors.orchestrator.translate_docx", side_effect=_translate_docx_dispatches_one_segment):
+        result = process_files(
+            files=[src_docx],
+            output_dir=out_dir,
+            targets=["French"],
+            src_lang="English",
+            include_headers_shapes_via_com=False,
+            ollama_model="qwen3.5:9b",
+            model_type="general",
+            system_prompt=_SEMICONDUCTOR_ROLE_DECLARATION,
+            profile_id="semiconductor",
+            provider_id="panjit",
+        )
+
+    _, _, stopped, _client, _term, winning_provider = result
+    assert stopped is False
+    assert winning_provider == "panjit"
+
+    translate_body = post_bodies[-1]
+    messages = translate_body["messages"]
+    system_messages = [m for m in messages if m["role"] == "system"]
+    assert len(system_messages) == 1, f"expected exactly one system message, got {system_messages!r}"
+    content = system_messages[0]["content"]
+
+    base_idx = content.index(_SEMICONDUCTOR_ROLE_DECLARATION)
+    scenario_idx = content.index("Scenario focus: Technical process documentation.")
+    fewshot_idx = content.index("# Translation examples")
+    context_idx = content.index("Document context:")
+
+    assert base_idx < scenario_idx < fewshot_idx < context_idx, (
+        "expected base prompt < scenario appendix < few-shot block < "
+        f"Document context ordering, got base={base_idx} scenario={scenario_idx} "
+        f"fewshot={fewshot_idx} context={context_idx} in: {content!r}"
+    )
+
+
+def test_fallback_chain_client_delivers_profile_base_system_prompt(tmp_path):
+    """AC-5: the fallback-chain construction site (orchestrator.py L560)
+    must also deliver the profile's base system_prompt when it becomes the
+    winning client. The primary provider ("panjit") is disabled in config
+    so primary construction yields no client, forcing process_files to walk
+    fallback_chain; the fallback candidate ("deepseek") passes its health
+    probe and wins."""
+    src_docx = _make_real_docx(tmp_path, "Wafer fab engineering change request for tape-out.")
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    fallback_cfg = {
+        "providers": [
+            {
+                "id": "panjit",
+                "type": "openai",
+                "enabled": False,
+                "base_url": "http://panjit-mock:8080",
+                "api_key": "",
+                "models": {"translate": "gpt-oss:120b"},
+            },
+            {
+                "id": "deepseek",
+                "type": "openai",
+                "enabled": True,
+                "base_url": "http://deepseek-mock:8080",
+                "api_key": "test-key-deepseek",
+                "models": {"translate": "deepseek-v4-flash"},
+            },
+        ],
+        "routing": {"default": {"model": "gpt-oss:120b", "provider": "panjit", "profile": "general"}},
+        "fallback_chain": ["deepseek"],
+    }
+
+    post_bodies: list = []
+
+    def _mock_post(url, **kwargs):
+        post_bodies.append(kwargs.get("json", {}))
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.json.return_value = {"choices": [{"message": {"content": "ok"}}]}
+        return resp
+
+    def _mock_get(url, **kwargs):
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.text = "OK"
+        return resp
+
+    def _translate_docx_dispatches_one_segment(src_path, out_path, targets, src_lang, client, **kwargs):
+        client.translate_once("Engineering change request text.", targets[0], src_lang)
+        return False
+
+    with patch("app.backend.config.load_providers_config", return_value=fallback_cfg), \
+         patch("requests.Session.post", side_effect=_mock_post), \
+         patch("requests.Session.get", side_effect=_mock_get), \
+         patch("app.backend.processors.orchestrator.translate_docx", side_effect=_translate_docx_dispatches_one_segment), \
+         patch("app.backend.processors.orchestrator.DYNAMIC_SCENARIO_STRATEGY_ENABLED", False):
+        result = process_files(
+            files=[src_docx],
+            output_dir=out_dir,
+            targets=["French"],
+            src_lang="English",
+            include_headers_shapes_via_com=False,
+            ollama_model="qwen3.5:9b",
+            model_type="general",
+            system_prompt=_SEMICONDUCTOR_ROLE_DECLARATION,
+            profile_id="semiconductor",
+            provider_id="panjit",
+        )
+
+    _, _, stopped, _client, _term, winning_provider = result
+    assert stopped is False
+    assert winning_provider == "deepseek"
+
+    translate_body = post_bodies[-1]
+    messages = translate_body["messages"]
+    system_messages = [m for m in messages if m["role"] == "system"]
+    assert len(system_messages) == 1, f"expected exactly one system message, got {system_messages!r}"
+    assert _SEMICONDUCTOR_ROLE_DECLARATION in system_messages[0]["content"], (
+        "the fallback-chain client (orchestrator.py L560) must also deliver "
+        "the profile's base system_prompt -- not silently drop it (BR-110)"
+    )

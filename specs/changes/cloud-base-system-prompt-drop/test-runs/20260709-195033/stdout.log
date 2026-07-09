@@ -1,0 +1,17 @@
+F
+=================================== FAILURES ===================================
+_____ test_cloud_client_delivers_profile_base_system_prompt_semiconductor ______
+tests/test_orchestrator_context_detection.py:1045: in test_cloud_client_delivers_profile_base_system_prompt_semiconductor
+    assert _SEMICONDUCTOR_ROLE_DECLARATION in system_messages[0]["content"], (
+E   AssertionError: the profile's base system_prompt must reach the outgoing cloud request -- it must not be silently dropped by an unpopulated OpenAICompatibleClient.system_prompt (BR-110)
+E   assert 'You are a professional semiconductor translator for IC design, packaging, and test content.' in 'Document context: ok'
+=============================== warnings summary ===============================
+../../miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21: DeprecationWarning: PyPDF2 is deprecated. Please move to the pypdf library instead.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_orchestrator_context_detection.py::test_cloud_client_delivers_profile_base_system_prompt_semiconductor
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 1 warning in 0.39s

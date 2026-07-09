@@ -1,0 +1,29 @@
+change-id: cloud-base-system-prompt-drop
+timestamp: 2026-07-09
+agent: contract-reviewer
+status: approved
+summary: >-
+  Overruled the classifier's "amend BR-109" proposal. Added BR-110
+  (llm-client-prompt-parameter-parity) as a distinct invariant; minor bump
+  0.27.2 -> 0.28.0 plus CHANGELOG entry and a BR-109 cross-reference.
+artifacts:
+  - { type: contracts-reviewed, pointer: "contracts/business/business-rules.md" }
+  - { type: contracts-reviewed, pointer: "contracts/CHANGELOG.md" }
+  - { type: version-bumps, pointer: "business 0.27.2 -> 0.28.0 (minor; new rule id, matching the BR-106/107/108/109 precedent)" }
+  - { type: breaking-changes, pointer: "none" }
+  - { type: consumers-impacted, pointer: "no API/env/data-shape consumer surface; runtime cloud translation quality only" }
+notes: >-
+  Key reasoning: BR-109's clauses were never violated by this defect. The empty
+  string was still merged ahead of BR-78 system_context, still delivered via the
+  system channel, never leaked into the user payload. The input to BR-109's
+  mechanism was wrong, not the mechanism. BR-109 had also been amended twice in
+  two days (0.27.0 -> 0.27.1 -> 0.27.2); a fourth graft onto one overloaded rule
+  would degrade what its single test-pointer column can mean. BR-110 states the
+  durable invariant instead — constructor prompt-parameter parity across sibling
+  LLM client classes — which prevents the NEXT provider client from repeating the
+  bug regardless of whether it ever touches document-context summaries. Wording
+  deliberately says conformance is verified at the outgoing request boundary and
+  never on client.system_prompt, so it cannot tempt a future test author into the
+  assignment-without-delivery tautology. Live schema-version re-read from the
+  file by main Claude before bumping. Neither absence-tested token is present.
+next-action: run-test-strategist

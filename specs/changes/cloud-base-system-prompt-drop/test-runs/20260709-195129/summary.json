@@ -1,0 +1,16 @@
+{
+  "change_id": "cloud-base-system-prompt-drop",
+  "phase": "changed-area",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest tests/test_openai_compatible_client.py tests/test_orchestrator_context_detection.py tests/test_ollama_client_dynamic_strategy.py -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195129/junit.xml'",
+  "duration_ms": 944,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195129/summary.json",
+    "stdout": "specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195129/stdout.log",
+    "stderr": "specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195129/stderr.log",
+    "junit": "specs/changes/cloud-base-system-prompt-drop/test-runs/20260709-195129/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

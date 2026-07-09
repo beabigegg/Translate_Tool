@@ -69,6 +69,22 @@ def test_system_context_merged_into_system_field() -> None:
     assert "Segment B." in payload["prompt"]
 
 
+def test_ollama_outgoing_payload_base_system_prompt_unchanged() -> None:
+    """AC-4 (cloud-base-system-prompt-drop): local Ollama's outgoing-payload
+    delivery of the base system_prompt must stay byte-for-byte unchanged by
+    the additive `system_prompt` kwarg added to OpenAICompatibleClient in
+    this change. Captured at the real `_call_ollama` transport-boundary
+    call, not merely re-confirming `OllamaClient.__init__` still accepts the
+    kwarg (which it already did before this change)."""
+    client = OllamaClient(model="qwen3.5:4b", system_prompt="Base prompt for translation.")
+
+    with patch.object(client, "_call_ollama", return_value=(True, "ok")) as mock_call:
+        client.translate_once("Segment text.", "French", "English")
+
+    payload = mock_call.call_args[0][0]
+    assert payload["system"] == "Base prompt for translation."
+
+
 def test_system_context_merged_with_existing_system_prompt() -> None:
     """When the client already carries a self.system_prompt (e.g. glossary),
     system_context is appended rather than overwriting it."""
