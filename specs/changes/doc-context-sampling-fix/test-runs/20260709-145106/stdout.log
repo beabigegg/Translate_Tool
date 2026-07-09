@@ -1,0 +1,20 @@
+tests/test_orchestrator_context_detection.py::test_sample_file_text_reads_legacy_xls_via_conversion
+tests/test_orchestrator_context_detection.py::test_process_files_context_detected_for_legacy_xls
+tests/test_orchestrator_context_detection.py::test_sample_file_text_docx_table_only_includes_cell_text
+tests/test_orchestrator_context_detection.py::test_sample_file_text_pptx_table_includes_cell_text
+tests/test_orchestrator_context_detection.py::test_detect_document_context_logs_info_reason_on_exception
+tests/test_orchestrator_context_detection.py::test_process_files_logs_info_reason_when_sample_empty
+tests/test_orchestrator_context_detection.py::test_detect_document_context_logs_info_on_success
+tests/test_orchestrator_context_detection.py::test_sampling_exception_degrades_to_no_preamble_job_completes[.docx-translate_docx]
+tests/test_orchestrator_context_detection.py::test_sampling_exception_degrades_to_no_preamble_job_completes[.pptx-translate_pptx]
+tests/test_orchestrator_context_detection.py::test_sampling_exception_degrades_to_no_preamble_job_completes[.xls-translate_xlsx_xls]
+tests/test_orchestrator_context_detection.py::test_xls_sampling_does_not_double_convert_via_libreoffice
+tests/test_orchestrator_context_detection.py::test_legacy_xls_and_table_only_docx_both_emit_context_detected
+
+=============================== warnings summary ===============================
+../../miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21: DeprecationWarning: PyPDF2 is deprecated. Please move to the pypdf library instead.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+12 tests collected in 0.28s

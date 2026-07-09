@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import tempfile
 import threading
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
@@ -85,6 +86,21 @@ def _sample_file_text(file_path: Path, max_chars: int = CONTEXT_SAMPLE_CHARS) ->
                 total += len(t)
                 if total >= max_chars:
                     break
+            if total < max_chars:
+                for table in doc.tables:
+                    for row in table.rows:
+                        for cell in row.cells:
+                            t = cell.text.strip()
+                            if not t:
+                                continue
+                            parts.append(t)
+                            total += len(t)
+                            if total >= max_chars:
+                                break
+                        if total >= max_chars:
+                            break
+                    if total >= max_chars:
+                        break
             return "\n".join(parts)[:max_chars]
         elif ext == ".pptx":
             from pptx import Presentation
@@ -93,7 +109,7 @@ def _sample_file_text(file_path: Path, max_chars: int = CONTEXT_SAMPLE_CHARS) ->
             total = 0
             for slide in prs.slides:
                 for shape in slide.shapes:
-                    if shape.has_text_frame:
+                    if getattr(shape, "has_text_frame", False):
                         for para in shape.text_frame.paragraphs:
                             t = para.text.strip()
                             if not t:
@@ -104,10 +120,24 @@ def _sample_file_text(file_path: Path, max_chars: int = CONTEXT_SAMPLE_CHARS) ->
                                 break
                     if total >= max_chars:
                         break
+                    if getattr(shape, "has_table", False):
+                        for row in shape.table.rows:
+                            for cell in row.cells:
+                                t = cell.text.strip()
+                                if not t:
+                                    continue
+                                parts.append(t)
+                                total += len(t)
+                                if total >= max_chars:
+                                    break
+                            if total >= max_chars:
+                                break
+                    if total >= max_chars:
+                        break
                 if total >= max_chars:
                     break
             return "\n".join(parts)[:max_chars]
-        elif ext in (".xlsx", ".xls"):
+        elif ext == ".xlsx":
             from openpyxl import load_workbook
             wb = load_workbook(str(file_path), read_only=True, data_only=True)
             parts = []
@@ -128,6 +158,32 @@ def _sample_file_text(file_path: Path, max_chars: int = CONTEXT_SAMPLE_CHARS) ->
                     break
             wb.close()
             return "\n".join(parts)[:max_chars]
+        elif ext == ".xls":
+            if not is_libreoffice_available():
+                return ""
+            with tempfile.TemporaryDirectory(prefix="ctx_xls_") as tmp_dir:
+                tmp_xlsx = os.path.join(tmp_dir, f"{file_path.stem}.xlsx")
+                xls_to_xlsx(str(file_path), tmp_xlsx)
+                from openpyxl import load_workbook
+                wb = load_workbook(tmp_xlsx, read_only=True, data_only=True)
+                parts = []
+                total = 0
+                for ws in wb.worksheets:
+                    for row in ws.iter_rows(values_only=True):
+                        for cell in row:
+                            if cell is not None:
+                                t = str(cell).strip()
+                                if t:
+                                    parts.append(t)
+                                    total += len(t)
+                                    if total >= max_chars:
+                                        break
+                        if total >= max_chars:
+                            break
+                    if total >= max_chars:
+                        break
+                wb.close()
+                return "\n".join(parts)[:max_chars]
         elif ext == ".pdf":
             import fitz
             doc = fitz.open(str(file_path))
@@ -336,10 +392,23 @@ def _detect_document_context(
         ok, result = client.complete(prompt)
         if ok and result.strip():
             context = result.strip()[:200]
+            # `log` is the job's JobLogger.log callback -- the channel that
+            # actually reaches translator.log (JobLogger.log -> the
+            # "TranslateTool" logger -> its RotatingFileHandler) and the
+            # job's UI queue. The module-level `logger` below is additive
+            # observability only; it is NOT wired to any production handler
+            # (see app/backend/utils/logging_utils.py), so `log` must carry
+            # every outcome for BR-109's "never silently indistinguishable"
+            # requirement to actually hold at runtime.
             log(f"[CONTEXT] Detected: {context}")
+            logger.info("[CONTEXT] Detected: %s", context)
             return context
+        reason = "provider returned an empty summary" if ok else "provider call failed"
+        log(f"[CONTEXT] Skipped: {reason}")
+        logger.info("[CONTEXT] Skipped: %s", reason)
     except Exception as exc:
-        logger.debug(f"Context detection failed: {exc}")
+        log(f"[CONTEXT] Detection failed: {exc}")
+        logger.info("[CONTEXT] Detection failed: %s", exc)
     return ""
 
 
@@ -563,9 +632,15 @@ def process_files(
             CONTEXT_DETECTION_ENABLED
             and QWEN_CONTEXT_FLOW_ENABLED
             and not client._is_translation_dedicated()
-            and sample
         ):
-            doc_context = _detect_document_context(client, sample, log, target_lang=targets[0] if targets else "")
+            if sample:
+                doc_context = _detect_document_context(client, sample, log, target_lang=targets[0] if targets else "")
+            else:
+                # See _detect_document_context above: `log` (not the module
+                # `logger`) is the channel that reaches translator.log.
+                skip_msg = f"[CONTEXT] Skipped context detection for {src.name}: empty sample"
+                log(skip_msg)
+                logger.info(skip_msg)
 
         if DYNAMIC_SCENARIO_STRATEGY_ENABLED:
             scenario = forced_scenario or detect_translation_scenario(src.name, sample_text=sample, detected_context=doc_context)
