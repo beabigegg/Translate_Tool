@@ -1,0 +1,12 @@
+agent: implementation-planner
+change-id: doc-context-sampling-fix
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/doc-context-sampling-fix/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer (IP-1..IP-6), bug-fix-engineer (IP-7), test-strategist (IP-8)" }
+  - { type: scope-summary, pointer: "In: docx-table + pptx-table + legacy-xls sampling, 3 INFO observability sites. Out: xlsx phantom-column defect, BR-109 delivery/ADR-0016 wiring, new env/flags, eliminating in-prod double .xls conversion." }
+  - { type: decision, pointer: ".xls sampling reuses xls_to_xlsx (LibreOffice) into a tempfile.TemporaryDirectory .xlsx read via openpyxl; rejected xlrd direct-read (new dep + breaks the mock-subprocess.Popen test strategy). No committed .xls binary, no xlwt: mocked Popen fake writes a real openpyxl .xlsx carrying the token." }
+notes:
+  - "Verified live source: _sample_file_text (orchestrator.py:71), _detect_document_context (322), context call sites (560/568); xls_to_xlsx(input,output)->None cleans own temp + raises RuntimeError when LO absent; is_libreoffice_available() guard exists; xlsx_processor converts per-file inside translate_xlsx_xls (59-98)."
+  - "FLAGGED contradiction: AC-7 'does not double-convert' is literally violated in production (sampler + processor = 2 conversions per .xls); single shared conversion is forbidden by the 'no change to processor per-file timing' constraint. AC-7 test scope is narrower (Popen==1 with processor stubbed). Recorded under Known Risks."
+  - "FLAGGED test-infra fact: tests/test_libreoffice_helpers.py::_FakePopen writes literal b'converted-bytes' (not a valid .xlsx); the new sampler tests need a Popen fake that writes a genuine openpyxl .xlsx or openpyxl.load_workbook fails."
+  - "Contract already done by contract-reviewer: BR-109 amended (business-rules.md:120), schema-version already 0.27.1 (:6). Plan writes no contract."

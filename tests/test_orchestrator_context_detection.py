@@ -32,6 +32,7 @@ Torch-free: no COMET/QE imports anywhere in this file.
 from __future__ import annotations
 
 import inspect
+import logging
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -39,7 +40,12 @@ import pytest
 
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
-from app.backend.processors.orchestrator import _detect_document_context, process_files
+from app.backend.processors import libreoffice_helpers as lo
+from app.backend.processors.orchestrator import (
+    _detect_document_context,
+    _sample_file_text,
+    process_files,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -471,3 +477,494 @@ def test_no_scope_creep_into_injection_wiring_or_json_io():
     detect_src = inspect.getsource(orch_module._detect_document_context)
     assert "json.loads" not in detect_src
     assert "{\"translation\"" not in detect_src
+
+
+# ---------------------------------------------------------------------------
+# doc-context-sampling-fix (BR-109 valid-sample coverage + INFO observability)
+#
+# Covers AC-1..AC-8 (test-plan.md):
+#   AC-1: legacy .xls sampling reads real text via the LibreOffice conversion.
+#   AC-2: table-only .docx sampling reads doc.tables cell text.
+#   AC-3: table/graphic-frame .pptx sampling reads table cell text.
+#   AC-4: a skipped/failed sample is visible at INFO level with a reason.
+#   AC-5: successful detection is visible at INFO level ([CONTEXT] Detected:).
+#   AC-6: a sampler exception/degradation never aborts the job and never
+#         injects a "Document context:" preamble.
+#   AC-7: the sampler-side .xls conversion does not double-invoke LibreOffice.
+#   AC-8: both a legacy .xls and a table-only .docx emit [CONTEXT] Detected:
+#         in the same job.
+#
+# All new tests must fail RED against the unfixed orchestrator.py (empty-string
+# sampler branches for .docx tables / .pptx tables / .xls, and a
+# logger.debug-only swallow) before IP-1..IP-6 land.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _reset_libreoffice_cache():
+    """Reset the module-level LibreOffice detection cache around every test
+    in this file (harmless for tests that never touch it)."""
+    lo._LIBREOFFICE_BINARY = None
+    lo._DETECTION_DONE = False
+    yield
+    lo._LIBREOFFICE_BINARY = None
+    lo._DETECTION_DONE = False
+
+
+def _make_xlsx_writing_popen(token: str):
+    """Build a Popen-fake class that writes a REAL openpyxl-authored .xlsx
+    (carrying *token*) at the --outdir/<stem>.xlsx path _libreoffice_convert
+    expects to find.
+
+    Unlike tests/test_libreoffice_helpers.py::_FakePopen (which writes literal
+    b"converted-bytes" -- openpyxl cannot open that), this fake produces a
+    genuine workbook so the orchestrator's openpyxl-based .xls sampler branch
+    can actually read the distinctive token back out of it.
+    """
+
+    class _FakeXlsConversionPopen:
+        def __init__(self, cmd, stdout=None, stderr=None, text=None, start_new_session=None):
+            self.cmd = cmd
+            self.pid = 87654
+            self.returncode = 0
+            outdir = cmd[cmd.index("--outdir") + 1]
+            input_path = cmd[-1]
+            target_format = cmd[cmd.index("--convert-to") + 1]
+            stem = Path(input_path).stem
+
+            from openpyxl import Workbook
+
+            wb = Workbook()
+            ws = wb.active
+            ws["A1"] = token
+            wb.save(str(Path(outdir) / f"{stem}.{target_format}"))
+
+        def communicate(self, timeout=None):
+            return ("", "")
+
+    return _FakeXlsConversionPopen
+
+
+def _make_soffice_available_patch():
+    """shutil.which side_effect that reports 'soffice' present on PATH."""
+    return lambda name: "/usr/bin/soffice" if name == "soffice" else None
+
+
+# ---------------------------------------------------------------------------
+# AC-1: legacy .xls sampling reads real text via LibreOffice conversion
+# ---------------------------------------------------------------------------
+
+def test_sample_file_text_reads_legacy_xls_via_conversion(tmp_path):
+    """AC-1 (unit): _sample_file_text's .xls branch converts via the
+    LibreOffice-headless boundary (mocked at subprocess.Popen, never at
+    xls_to_xlsx's own internals) and reads the resulting .xlsx with openpyxl,
+    returning a sample that contains the distinctive token -- not merely a
+    non-empty string."""
+    token = "PANJIT-XLS-TOKEN-771"
+    input_path = tmp_path / "legacy.xls"
+    input_path.write_bytes(b"dummy-xls-bytes-never-read-popen-is-mocked")
+
+    with patch("shutil.which", side_effect=_make_soffice_available_patch()), \
+         patch("subprocess.Popen", side_effect=_make_xlsx_writing_popen(token)):
+        sample = _sample_file_text(input_path)
+
+    assert token in sample, f"expected distinctive xls token in sample, got: {sample!r}"
+
+
+def test_process_files_context_detected_for_legacy_xls(tmp_path, caplog):
+    """AC-1 (integration): a full process_files() run on a real .xls file
+    (LibreOffice mocked at subprocess.Popen) emits [CONTEXT] Detected: through
+    the SAME channel JobLogger.log() uses in production (JobLogger.log -> the
+    "TranslateTool" logger -> the RotatingFileHandler that writes
+    translator.log; app/backend/utils/logging_utils.py). `log` is wired to
+    that real logger here (mirroring JobLogger.log's own behavior) and the
+    assertion is against the "TranslateTool" logger name -- asserting against
+    the module logger alone would pass even if the line never reached
+    translator.log, which is the precise silent-skip failure mode BR-109
+    exists to eliminate."""
+    from app.backend.utils import logging_utils
+
+    src = tmp_path / "legacy.xls"
+    src.write_bytes(b"dummy-xls-bytes-never-read-popen-is-mocked")
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    def _log_via_translate_tool_logger(message: str) -> None:
+        logging_utils.logger.info(message)
+
+    with patch("shutil.which", side_effect=_make_soffice_available_patch()), \
+         patch("subprocess.Popen", side_effect=_make_xlsx_writing_popen("PANJIT-XLS-TOKEN-771")), \
+         patch("app.backend.processors.orchestrator.translate_xlsx_xls", return_value=False), \
+         patch.object(OllamaClient, "_call_ollama", return_value=(True, "A spreadsheet document.")), \
+         patch("app.backend.processors.orchestrator.DYNAMIC_SCENARIO_STRATEGY_ENABLED", False), \
+         caplog.at_level(logging.INFO, logger="TranslateTool"):
+        result = process_files(
+            files=[src],
+            output_dir=out_dir,
+            targets=["French"],
+            src_lang="English",
+            include_headers_shapes_via_com=False,
+            ollama_model="qwen3.5:9b",
+            model_type="general",
+            system_prompt="Base prompt.",
+            profile_id="general",
+            provider_id=None,
+            log=_log_via_translate_tool_logger,
+        )
+
+    _, _, stopped, _client, _term, winning_provider = result
+    assert stopped is False
+    assert winning_provider == "ollama-local"
+    # Filter on r.name: caplog's handler lives on the ROOT logger, so
+    # caplog.at_level(..., logger="TranslateTool") does NOT restrict which
+    # loggers' records land in caplog.records. Without this filter the
+    # orchestrator module logger's additive `logger.info(...)` satisfies the
+    # assertion on its own, and the test stays green even when the line never
+    # reaches translator.log — the exact silent failure BR-109 forbids.
+    assert any(
+        r.name == "TranslateTool" and "[CONTEXT] Detected:" in r.message
+        for r in caplog.records
+    ), "expected a [CONTEXT] Detected: INFO record to reach the TranslateTool logger channel"
+
+
+# ---------------------------------------------------------------------------
+# AC-2: table-only .docx sampling reads doc.tables cell text
+# ---------------------------------------------------------------------------
+
+def test_sample_file_text_docx_table_only_includes_cell_text(tmp_path):
+    """AC-2 (unit): a .docx whose only content lives in a table (no
+    paragraph text) still yields a sample containing the table-cell token --
+    proving the sampler reads doc.tables, not just doc.paragraphs."""
+    import docx as _docx
+
+    token = "PANJIT-TABLE-TOKEN-771"
+    doc = _docx.Document()
+    table = doc.add_table(rows=1, cols=1)
+    table.cell(0, 0).text = token
+    src = tmp_path / "table_only.docx"
+    doc.save(str(src))
+
+    sample = _sample_file_text(src)
+
+    assert token in sample, f"expected table-cell token in sample, got: {sample!r}"
+
+
+# ---------------------------------------------------------------------------
+# AC-3: .pptx table/graphic-frame sampling reads table cell text
+# ---------------------------------------------------------------------------
+
+def test_sample_file_text_pptx_table_includes_cell_text(tmp_path):
+    """AC-3 (unit): a .pptx whose only shape is a table (a GraphicFrame, no
+    has_text_frame shape) still yields a sample containing the table-cell
+    token -- proving the sampler reads table cells, not just text frames."""
+    from pptx import Presentation
+    from pptx.util import Inches
+
+    token = "PANJIT-PPTX-TABLE-TOKEN-556"
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])  # blank layout
+    graphic_frame = slide.shapes.add_table(2, 2, Inches(1), Inches(1), Inches(4), Inches(2))
+    graphic_frame.table.cell(0, 0).text = token
+    src = tmp_path / "table_only.pptx"
+    prs.save(str(src))
+
+    sample = _sample_file_text(src)
+
+    assert token in sample, f"expected table-cell token in sample, got: {sample!r}"
+
+
+# ---------------------------------------------------------------------------
+# AC-4: a skipped/failed sample is visible at INFO level with a reason
+# ---------------------------------------------------------------------------
+
+def test_detect_document_context_logs_info_reason_on_exception():
+    """AC-4 (unit): _detect_document_context's exception handler routes the
+    swallow reason through the `log` callback -- the channel that actually
+    reaches translator.log in production (JobLogger.log -> the
+    "TranslateTool" logger -> its RotatingFileHandler; see
+    app/backend/utils/logging_utils.py). The module-level `logger` alone is
+    NOT wired to any production handler, so asserting only against it (via
+    caplog on "app.backend.processors.orchestrator") would pass even if the
+    message never reached a real user-visible log -- the same
+    wrong-boundary defect this change repairs. Capturing what is actually
+    passed to `log` proves delivery."""
+    client = MagicMock(spec=["complete"])
+    client.complete.side_effect = RuntimeError("cloud provider unreachable")
+    logged: list = []
+
+    result = _detect_document_context(client, "some sample text", log=logged.append)
+
+    assert result == ""
+    assert any("cloud provider unreachable" in m for m in logged), (
+        f"expected the log(...) callback to receive the failure reason, got: {logged!r}"
+    )
+
+
+def test_detect_document_context_logs_info_reason_when_provider_call_fails():
+    """AC-4 (unit): client.complete() returning ok=False (a failed call with
+    NO exception) must not silently fall through to an indistinguishable
+    empty return -- it is a distinct, nameable failure reason routed through
+    `log`."""
+    client = MagicMock(spec=["complete"])
+    client.complete.return_value = (False, "")
+    logged: list = []
+
+    result = _detect_document_context(client, "some sample text", log=logged.append)
+
+    assert result == ""
+    assert any("provider call failed" in m for m in logged), (
+        f"expected log(...) to receive a distinct 'provider call failed' reason, got: {logged!r}"
+    )
+
+
+def test_detect_document_context_logs_info_reason_when_summary_empty():
+    """AC-4 (unit): client.complete() returning ok=True with an
+    empty/whitespace-only summary is a different failure mode than a failed
+    call and must state a distinct reason, routed through `log`."""
+    client = MagicMock(spec=["complete"])
+    client.complete.return_value = (True, "   ")
+    logged: list = []
+
+    result = _detect_document_context(client, "some sample text", log=logged.append)
+
+    assert result == ""
+    assert any("empty summary" in m for m in logged), (
+        f"expected log(...) to receive a distinct 'empty summary' reason, got: {logged!r}"
+    )
+
+
+def test_process_files_logs_info_reason_when_sample_empty(tmp_path, caplog):
+    """AC-4 (unit): when the context-detection gates are open but the sample
+    is falsy, process_files emits an INFO skip line naming the file and
+    reason through the SAME channel JobLogger.log() uses in production
+    (JobLogger.log -> the "TranslateTool" logger -> the RotatingFileHandler
+    that writes translator.log; app/backend/utils/logging_utils.py). This
+    test wires `log` to that real logger (mirroring JobLogger.log's own
+    behavior) and asserts via caplog against the "TranslateTool" logger name
+    -- proving the message reaches the actual production log channel, not
+    merely a module-level logger with no attached handler.
+    _detect_document_context must NOT be called."""
+    from app.backend.utils import logging_utils
+
+    src = tmp_path / "unreadable.docx"
+    src.write_bytes(b"not-a-real-docx-file-corrupt-bytes")
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    def _log_via_translate_tool_logger(message: str) -> None:
+        logging_utils.logger.info(message)
+
+    with patch("app.backend.processors.orchestrator.translate_docx", return_value=False), \
+         patch("app.backend.processors.orchestrator._detect_document_context") as mock_detect, \
+         caplog.at_level(logging.INFO, logger="TranslateTool"):
+        result = process_files(
+            files=[src],
+            output_dir=out_dir,
+            targets=["French"],
+            src_lang="English",
+            include_headers_shapes_via_com=False,
+            ollama_model="qwen3.5:9b",
+            model_type="general",
+            system_prompt="",
+            profile_id="general",
+            provider_id=None,
+            log=_log_via_translate_tool_logger,
+        )
+
+    _, _, stopped, _client, _term, _winning = result
+    assert stopped is False
+    mock_detect.assert_not_called()
+    assert any(
+        record.name == "TranslateTool"
+        and record.levelno == logging.INFO
+        and "unreadable.docx" in record.message
+        and "empty sample" in record.message
+        for record in caplog.records
+    ), "expected the skip line naming the file and reason to reach the TranslateTool logger channel"
+
+
+# ---------------------------------------------------------------------------
+# AC-5: successful detection is visible at INFO level
+# ---------------------------------------------------------------------------
+
+def test_detect_document_context_logs_info_on_success():
+    """AC-5 (unit): a successful detection routes [CONTEXT] Detected: through
+    the `log` callback -- the channel that reaches translator.log in
+    production -- not only a module-level logger call invisible to any real
+    handler."""
+    client = MagicMock(spec=["complete"])
+    client.complete.return_value = (True, "A purchase order document.")
+    logged: list = []
+
+    result = _detect_document_context(client, "some sample text", log=logged.append)
+
+    assert result == "A purchase order document."
+    assert any("[CONTEXT] Detected:" in m for m in logged), (
+        f"expected the log(...) callback to receive the detection line, got: {logged!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# AC-6: graceful degradation -- sampler failure never aborts the job and
+# never injects a "Document context:" preamble
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "ext,translate_attr",
+    [
+        (".docx", "translate_docx"),
+        (".pptx", "translate_pptx"),
+        (".xls", "translate_xlsx_xls"),
+    ],
+)
+def test_sampling_exception_degrades_to_no_preamble_job_completes(tmp_path, ext, translate_attr):
+    """AC-6 (data-boundary): a sampler exception for each of .docx/.pptx/.xls
+    degrades to an empty sample; the job still completes (stopped is False)
+    with no "Document context:" preamble reaching the outgoing request."""
+    src = tmp_path / f"corrupt{ext}"
+    src.write_bytes(b"\x00\x01garbage-not-a-real-office-file-content")
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    captured: dict = {}
+
+    def _stub(src_path, out_path, targets, src_lang, client, **kwargs):
+        captured["system_prompt"] = client.system_prompt
+        return False
+
+    with patch(f"app.backend.processors.orchestrator.{translate_attr}", side_effect=_stub), \
+         patch("app.backend.processors.orchestrator.is_libreoffice_available", return_value=False), \
+         patch("app.backend.processors.orchestrator.DYNAMIC_SCENARIO_STRATEGY_ENABLED", False):
+        result = process_files(
+            files=[src],
+            output_dir=out_dir,
+            targets=["French"],
+            src_lang="English",
+            include_headers_shapes_via_com=False,
+            ollama_model="qwen3.5:9b",
+            model_type="general",
+            system_prompt="Base prompt.",
+            profile_id="general",
+            provider_id=None,
+        )
+
+    _, _, stopped, _client, _term, _winning = result
+    assert stopped is False
+    assert "Document context:" not in captured.get("system_prompt", "")
+
+
+# ---------------------------------------------------------------------------
+# AC-7: sampler-side .xls conversion does not double-invoke LibreOffice
+# ---------------------------------------------------------------------------
+
+def test_xls_sampling_does_not_double_convert_via_libreoffice(tmp_path):
+    """AC-7 (integration): with translate_xlsx_xls stubbed (so the
+    processor-side conversion never fires), a single .xls file through one
+    process_files() run must invoke subprocess.Popen exactly once -- the
+    sampler-side conversion, and only that."""
+    src = tmp_path / "legacy.xls"
+    src.write_bytes(b"dummy-xls-bytes-never-read-popen-is-mocked")
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    fake_popen_cls = _make_xlsx_writing_popen("PANJIT-XLS-TOKEN-909")
+    popen_calls: list = []
+
+    def _counting_popen(cmd, **kwargs):
+        popen_calls.append(cmd)
+        return fake_popen_cls(cmd, **kwargs)
+
+    with patch("shutil.which", side_effect=_make_soffice_available_patch()), \
+         patch("subprocess.Popen", side_effect=_counting_popen), \
+         patch("app.backend.processors.orchestrator.translate_xlsx_xls", return_value=False), \
+         patch.object(OllamaClient, "_call_ollama", return_value=(True, "A spreadsheet document.")), \
+         patch("app.backend.processors.orchestrator.DYNAMIC_SCENARIO_STRATEGY_ENABLED", False):
+        result = process_files(
+            files=[src],
+            output_dir=out_dir,
+            targets=["French"],
+            src_lang="English",
+            include_headers_shapes_via_com=False,
+            ollama_model="qwen3.5:9b",
+            model_type="general",
+            system_prompt="",
+            profile_id="general",
+            provider_id=None,
+        )
+
+    _, _, stopped, _client, _term, _winning = result
+    assert stopped is False
+    assert len(popen_calls) == 1, (
+        f"expected exactly one sampler-side LibreOffice conversion, got {len(popen_calls)}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# AC-8: both a legacy .xls and a table-only .docx emit [CONTEXT] Detected:
+# ---------------------------------------------------------------------------
+
+def test_legacy_xls_and_table_only_docx_both_emit_context_detected(tmp_path, caplog):
+    """AC-8 (integration): a job processing both a legacy .xls and a
+    table-only .docx emits [CONTEXT] Detected: for each file, through the
+    SAME channel JobLogger.log() uses in production (JobLogger.log -> the
+    "TranslateTool" logger -> the RotatingFileHandler that writes
+    translator.log). This is the user's own success condition -- the line
+    they will look for lives in translator.log, not in a module-level
+    logger with no attached handler -- so `log` is wired to the real
+    "TranslateTool" logger here and the assertion targets that logger name."""
+    import docx as _docx
+
+    from app.backend.utils import logging_utils
+
+    xls_src = tmp_path / "legacy.xls"
+    xls_src.write_bytes(b"dummy-xls-bytes-never-read-popen-is-mocked")
+
+    doc = _docx.Document()
+    table = doc.add_table(rows=1, cols=1)
+    table.cell(0, 0).text = "PANJIT-TABLE-TOKEN-321"
+    docx_src = tmp_path / "table_only.docx"
+    doc.save(str(docx_src))
+
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    def _log_via_translate_tool_logger(message: str) -> None:
+        logging_utils.logger.info(message)
+
+    with patch("shutil.which", side_effect=_make_soffice_available_patch()), \
+         patch("subprocess.Popen", side_effect=_make_xlsx_writing_popen("PANJIT-XLS-TOKEN-654")), \
+         patch("app.backend.processors.orchestrator.translate_xlsx_xls", return_value=False), \
+         patch("app.backend.processors.orchestrator.translate_docx", return_value=False), \
+         patch.object(OllamaClient, "_call_ollama", return_value=(True, "A document.")), \
+         patch("app.backend.processors.orchestrator.DYNAMIC_SCENARIO_STRATEGY_ENABLED", False), \
+         caplog.at_level(logging.INFO, logger="TranslateTool"):
+        result = process_files(
+            files=[xls_src, docx_src],
+            output_dir=out_dir,
+            targets=["French"],
+            src_lang="English",
+            include_headers_shapes_via_com=False,
+            ollama_model="qwen3.5:9b",
+            model_type="general",
+            system_prompt="",
+            profile_id="general",
+            provider_id=None,
+            log=_log_via_translate_tool_logger,
+        )
+
+    _, _, stopped, _client, _term, _winning = result
+    assert stopped is False
+    # Count only records on the "TranslateTool" logger — the one that owns the
+    # RotatingFileHandler writing translator.log. This is the channel the user
+    # actually reads, and AC-8 is stated in terms of it. Counting unfiltered
+    # caplog.records would also count the orchestrator module logger's additive
+    # `logger.info(...)`, which reaches no production handler, and AC-8 would
+    # pass even if translator.log never showed the line again.
+    detected_count = sum(
+        1
+        for r in caplog.records
+        if r.name == "TranslateTool" and "[CONTEXT] Detected:" in r.message
+    )
+    assert detected_count == 2, (
+        f"expected both files to emit [CONTEXT] Detected:, got {detected_count}"
+    )

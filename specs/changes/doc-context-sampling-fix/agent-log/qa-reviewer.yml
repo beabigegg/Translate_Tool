@@ -1,0 +1,28 @@
+change-id: doc-context-sampling-fix
+timestamp: 2026-07-09
+agent: qa-reviewer
+status: approved
+summary: >-
+  Approved. All required phases passed with no waivers; the pre-fix RED is a
+  genuine behavioral assertion failure; no surviving tautology after the caplog
+  logger-name filters were added.
+artifacts:
+  - { type: gate-results, pointer: "collect/targeted/changed-area all passed; companion regressions green" }
+  - { type: evidence-quality, pointer: "specs/changes/doc-context-sampling-fix/test-runs/20260709-145117/summary.json" }
+  - { type: decision, pointer: "approved" }
+  - { type: tautology-audit, pointer: "tests/test_orchestrator_context_detection.py" }
+  - { type: failure-routing, pointer: "none" }
+notes: >-
+  Independently re-ran the changed-area file (24 passed) and companion
+  regressions (22 passed) rather than trusting recorded evidence. Confirmed the
+  distinctive-token assertions (PANJIT-XLS-TOKEN-771, PANJIT-TABLE-TOKEN-771,
+  PANJIT-PPTX-TABLE-TOKEN-556) would fail against a stub returning "x".
+  Confirmed the amended AC-7 is proven by Popen call-count == 1 and that the
+  residual production double-conversion is disclosed, not hidden. Confirmed the
+  deferred xlsx phantom-column scope (ws.max_column / table_serializer.parse) is
+  untouched, and that the 12 prior-change tests are unmodified.
+follow-ups:
+  - "Share/cache one .xls->.xlsx conversion across sampler->processor to remove the residual double-conversion."
+  - "Deferred: xlsx ws.max_column=257 / table_serializer.parse() phantom-column defect (JSON structured-I/O change)."
+  - "Future tests in this file must assert against the TranslateTool logger or the log callback, never the orchestrator module logger."
+next-action: gate-then-pr

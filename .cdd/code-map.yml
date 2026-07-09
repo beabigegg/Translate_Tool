@@ -1,6 +1,6 @@
-# generated: 2026-07-09T00:38:11Z by cdd-kit 3.6.0
-# files: 205, src-lines: 59418, map-lines: 5373, compression: 11.1x
-# sources-digest: a0871d009ae18b2a74943d75794c6e22c73de247cf66cd133f42721832c9a065
+# generated: 2026-07-09T06:16:36Z by cdd-kit 3.6.0
+# files: 206, src-lines: 59999, map-lines: 5404, compression: 11.1x
+# sources-digest: 4bd37182d662b4145e1e8cd7236fb5c7b111e113433454d2d15b4750ff833f26
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
@@ -227,7 +227,7 @@ app/backend/clients/ollama_client.py:  # 919 lines
     - { name: _drop_english_preamble, lines: 67-89 }
     - { name: list_ollama_models, lines: 910-919 }
 
-app/backend/clients/openai_compatible_client.py:  # 453 lines
+app/backend/clients/openai_compatible_client.py:  # 466 lines
   imports:
     - { module: __future__, items: [annotations], line: 18 }
     - { module: logging, items: [], line: 20 }
@@ -238,7 +238,7 @@ app/backend/clients/openai_compatible_client.py:  # 453 lines
     - { module: requests, items: [], line: 26 }
   classes:
     - name: OpenAICompatibleClient
-      lines: 44-453
+      lines: 44-466
       methods:
         - { name: __init__, lines: 59-88 }
         - { name: cache_model_key, lines: 91-95 }
@@ -251,18 +251,18 @@ app/backend/clients/openai_compatible_client.py:  # 453 lines
         - { name: _post_completion, lines: 172-230 }
         - { name: embed, lines: 232-263 }
         - { name: _build_table_translate_prompt, lines: 266-286 }
-        - { name: translate_once, lines: 288-318 }
-        - { name: complete, lines: 320-331 }
-        - { name: translate_batch, lines: 333-352 }
-        - { name: health, lines: 354-370 }
-        - { name: list_models, lines: 372-381 }
-        - { name: list_live_models, lines: 383-412 }
-        - { name: unload, lines: 414-420 }
-        - { name: health_check, lines: 436-438 }
-        - { name: _is_translation_dedicated, lines: 440-442 }
-        - { name: _is_translategemma_model, lines: 444-446 }
-        - { name: set_runtime_options_override, lines: 448-449 }
-        - { name: set_cache_variant, lines: 451-453 }
+        - { name: translate_once, lines: 288-327 }
+        - { name: complete, lines: 329-340 }
+        - { name: translate_batch, lines: 342-361 }
+        - { name: health, lines: 363-379 }
+        - { name: list_models, lines: 381-390 }
+        - { name: list_live_models, lines: 392-421 }
+        - { name: unload, lines: 423-429 }
+        - { name: health_check, lines: 449-451 }
+        - { name: _is_translation_dedicated, lines: 453-455 }
+        - { name: _is_translategemma_model, lines: 457-459 }
+        - { name: set_runtime_options_override, lines: 461-462 }
+        - { name: set_cache_variant, lines: 464-466 }
 
 app/backend/config.py:  # 579 lines
   imports:
@@ -3660,7 +3660,7 @@ tests/test_ollama_client_dynamic_strategy.py:  # 87 lines
     - { name: test_system_context_merged_into_system_field, lines: 55-69 }
     - { name: test_system_context_merged_with_existing_system_prompt, lines: 72-87 }
 
-tests/test_openai_compatible_client.py:  # 564 lines
+tests/test_openai_compatible_client.py:  # 659 lines
   imports:
     - { module: __future__, items: [annotations], line: 7 }
     - { module: json, items: [], line: 9 }
@@ -3696,49 +3696,80 @@ tests/test_openai_compatible_client.py:  # 564 lines
       methods:
         - { name: test_system_context_prepended_as_leading_system_message, lines: 202-225 }
         - { name: test_no_system_context_omits_system_message, lines: 227-243 }
+    - name: TestSystemPromptDelivery
+      lines: 256-338
+      methods:
+        - { name: test_system_prompt_merged_ahead_of_segment_context_single_system_message, lines: 257-292 }
+        - { name: test_system_prompt_alone_still_delivered_when_no_segment_context, lines: 294-312 }
+        - { name: test_complete_sends_no_system_message_even_with_system_prompt_set, lines: 314-338 }
     - name: TestTranslateBatch
-      lines: 248-286
+      lines: 343-381
       methods:
-        - { name: test_batch_calls_translate_once_sequentially, lines: 249-267 }
-        - { name: test_batch_partial_failure_returns_ok_false, lines: 269-286 }
+        - { name: test_batch_calls_translate_once_sequentially, lines: 344-362 }
+        - { name: test_batch_partial_failure_returns_ok_false, lines: 364-381 }
     - name: TestHealth
-      lines: 291-321
+      lines: 386-416
       methods:
-        - { name: test_health_probe_reachable_returns_true, lines: 292-307 }
-        - { name: test_health_probe_unreachable_returns_false, lines: 309-321 }
+        - { name: test_health_probe_reachable_returns_true, lines: 387-402 }
+        - { name: test_health_probe_unreachable_returns_false, lines: 404-416 }
     - name: TestListModels
-      lines: 326-338
+      lines: 421-433
       methods:
-        - { name: test_list_models_returns_list_of_strings, lines: 327-338 }
+        - { name: test_list_models_returns_list_of_strings, lines: 422-433 }
     - name: TestUnload
-      lines: 343-354
+      lines: 438-449
       methods:
-        - { name: test_unload_is_noop_returns_true, lines: 344-354 }
+        - { name: test_unload_is_noop_returns_true, lines: 439-449 }
     - name: TestConfigLoading
-      lines: 359-471
+      lines: 454-566
       methods:
-        - { name: test_providers_yml_env_var_interpolation, lines: 360-390 }
-        - { name: test_missing_providers_yml_falls_back_to_ollama, lines: 392-399 }
-        - { name: test_malformed_providers_yml_falls_back_to_ollama, lines: 401-409 }
-        - { name: test_unresolved_env_var_disables_provider, lines: 411-442 }
-        - { name: test_all_providers_disabled_falls_back_to_ollama, lines: 444-471 }
+        - { name: test_providers_yml_env_var_interpolation, lines: 455-485 }
+        - { name: test_missing_providers_yml_falls_back_to_ollama, lines: 487-494 }
+        - { name: test_malformed_providers_yml_falls_back_to_ollama, lines: 496-504 }
+        - { name: test_unresolved_env_var_disables_provider, lines: 506-537 }
+        - { name: test_all_providers_disabled_falls_back_to_ollama, lines: 539-566 }
     - name: TestSecretHandling
-      lines: 476-508
+      lines: 571-603
       methods:
-        - { name: test_literal_api_key_not_emitted_in_request, lines: 477-508 }
+        - { name: test_literal_api_key_not_emitted_in_request, lines: 572-603 }
     - name: TestTotalTimeoutCeilingAdditive
-      lines: 513-543
+      lines: 608-638
       methods:
-        - { name: _client, lines: 516-521 }
-        - { name: test_ceiling_absent_from_per_chunk_timeout_tuple, lines: 523-533 }
-        - { name: test_wellbehaved_call_still_bounded_by_connect_read_tuple, lines: 535-543 }
+        - { name: _client, lines: 611-616 }
+        - { name: test_ceiling_absent_from_per_chunk_timeout_tuple, lines: 618-628 }
+        - { name: test_wellbehaved_call_still_bounded_by_connect_read_tuple, lines: 630-638 }
     - name: TestTotalTimeoutConfig
-      lines: 546-564
+      lines: 641-659
       methods:
-        - { name: test_env_var_parses_positive_float_default, lines: 549-564 }
+        - { name: test_env_var_parses_positive_float_default, lines: 644-659 }
   functions:
     - { name: _make_chat_response, lines: 22-29 }
     - { name: _make_http_error_response, lines: 32-36 }
+
+tests/test_orchestrator_context_detection.py:  # 473 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 32 }
+    - { module: inspect, items: [], line: 34 }
+    - { module: pathlib, items: [Path], line: 35 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 36 }
+    - { module: pytest, items: [], line: 38 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 40 }
+    - { module: app.backend.clients.openai_compatible_client, items: [OpenAICompatibleClient], line: 41 }
+    - { module: app.backend.processors.orchestrator, items: [_detect_document_context, process_files], line: 42 }
+  functions:
+    - { name: _make_real_docx, lines: 73-83 }
+    - { name: _mock_post_with_content, lines: 86-95 }
+    - { name: _make_capturing_translate_docx, lines: 98-113 }
+    - { name: test_cloud_active_client_used_for_summary_not_local_ollama, lines: 120-140 }
+    - { name: test_cloud_summary_generated_without_local_ollama_present, lines: 143-183 }
+    - { name: test_cloud_summary_injected_as_document_context_in_system_prompt, lines: 190-264 }
+    - { name: test_context_detection_disabled_skips_cloud_summary, lines: 271-296 }
+    - { name: test_qwen_context_flow_disabled_skips_cloud_summary, lines: 299-324 }
+    - { name: test_translation_dedicated_cloud_client_skips_summary, lines: 331-356 }
+    - { name: test_detect_document_context_returns_empty_on_cloud_call_exception, lines: 363-372 }
+    - { name: test_job_continues_with_no_preamble_when_cloud_summary_empty, lines: 375-404 }
+    - { name: test_local_ollama_context_detection_unchanged, lines: 411-442 }
+    - { name: test_no_scope_creep_into_injection_wiring_or_json_io, lines: 449-473 }
 
 tests/test_orchestrator_judge.py:  # 386 lines
   imports:

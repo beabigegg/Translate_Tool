@@ -1,0 +1,1 @@
+python -m pytest tests/test_orchestrator_context_detection.py -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/doc-context-sampling-fix/test-runs/20260709-150947/junit.xml'

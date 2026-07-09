@@ -1,0 +1,16 @@
+{
+  "change_id": "doc-context-sampling-fix",
+  "phase": "changed-area",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest tests/test_orchestrator_context_detection.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/doc-context-sampling-fix/test-runs/20260709-151002/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 762,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/doc-context-sampling-fix/test-runs/20260709-151002/summary.json",
+    "stdout": "specs/changes/doc-context-sampling-fix/test-runs/20260709-151002/stdout.log",
+    "stderr": "specs/changes/doc-context-sampling-fix/test-runs/20260709-151002/stderr.log",
+    "junit": "specs/changes/doc-context-sampling-fix/test-runs/20260709-151002/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

@@ -1,0 +1,25 @@
+change-id: doc-context-sampling-fix
+timestamp: 2026-07-09
+agent: contract-reviewer
+status: changes-required-applied
+summary: >-
+  Amended BR-109 in place (no new rule id) to define a valid document-context
+  sample and to require that skip/failure be distinguishable from success at
+  INFO. Patch bump 0.27.0 -> 0.27.1 plus CHANGELOG entry; applied by main Claude.
+artifacts:
+  - { type: contracts-reviewed, pointer: "contracts/business/business-rules.md" }
+  - { type: contracts-reviewed, pointer: "contracts/CHANGELOG.md" }
+  - { type: version-bumps, pointer: "business 0.27.0 -> 0.27.1 (patch; amendment, not a new rule id)" }
+  - { type: breaking-changes, pointer: "none" }
+  - { type: consumers-impacted, pointer: "internal LLM-prompt seam only; no API or UI surface" }
+notes: >-
+  Rejected minting BR-110: the sampling gap and the delivery mechanism are one
+  production-defect story, and repo precedent (context-prefix-bleed-fix amending
+  BR-78 with a patch bump) supports in-place amendment. Live schema-version was
+  re-read from the file by main Claude before bumping, per the known staleness
+  trap. Verified the amendment reintroduces neither absence-tested token
+  ("BR-92", "rescore"). Test-pointer column left at the existing
+  tests/test_orchestrator_context_detection.py; if test-strategist adds a
+  dedicated sampling module, the pointer must be extended before gate.
+  Out of scope and not reviewed: the xlsx phantom-column defect.
+next-action: run-test-strategist

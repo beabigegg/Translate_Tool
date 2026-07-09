@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.324" timestamp="2026-07-09T14:51:17.861562+08:00" hostname="EGG"><testcase classname="tests.test_orchestrator_context_detection" name="test_sample_file_text_reads_legacy_xls_via_conversion" time="0.014"><failure message="AssertionError: expected distinctive xls token in sample, got: ''&#10;assert 'PANJIT-XLS-TOKEN-771' in ''">tests/test_orchestrator_context_detection.py:571: in test_sample_file_text_reads_legacy_xls_via_conversion
+    assert token in sample, f"expected distinctive xls token in sample, got: {sample!r}"
+E   AssertionError: expected distinctive xls token in sample, got: ''
+E   assert 'PANJIT-XLS-TOKEN-771' in ''</failure></testcase></testsuite></testsuites>

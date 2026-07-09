@@ -1,0 +1,21 @@
+change-id: doc-context-sampling-fix
+timestamp: 2026-07-09
+agent: ci-cd-gatekeeper
+status: passed
+summary: >-
+  No workflow edit required. contract-and-fast-tests already runs the blanket
+  `pytest tests/ -x -q` and blocks merge, so every AC in the new tests is proven
+  by a non-skippable, merge-blocking assertion.
+artifacts:
+  - { type: ci-gates, pointer: "specs/changes/doc-context-sampling-fix/ci-gates.md" }
+  - { type: workflow-changes, pointer: "none" }
+notes: >-
+  Verified by main Claude against live workflow: line 134 `pytest tests/ -x -q`
+  is inside job contract-and-fast-tests (declared line 20), and line 161
+  `pytest tests/ -q` is inside full-regression (line 144). Explicitly declined to
+  add test_orchestrator_context_detection.py to libreoffice-conversion-gate:
+  that job installs libreoffice-core with continue-on-error, so a real-binary
+  requirement there could skip silently while all gates report green. The AC-1 /
+  AC-7 assertions therefore mock the LibreOffice process boundary
+  (subprocess.Popen) so they run on every runner.
+next-action: run-implementation-planner
