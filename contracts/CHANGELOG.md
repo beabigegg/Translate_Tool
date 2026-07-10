@@ -8,6 +8,9 @@ While a contract is at 0.x (draft), entries here are optional.
 Once a contract reaches 1.0.0, every schema-version bump must have
 a corresponding entry below.
 
+## [business 0.29.0] — 2026-07-09
+Added: Change Policy paragraph — a defect in which a rule's mechanism behaves correctly on bad or empty input is NOT a violation of that rule and must not be grafted onto it as another amendment; when the durable fix is a distinct invariant, author a new rule instead of amending one already changed twice in the current review cycle. Promoted from a lesson in `cloud-base-system-prompt-drop`, where contract-reviewer refused to amend BR-109 a fourth time: the empty base prompt was merged, delivered, and kept out of the user payload exactly as BR-109 requires, so the population precondition became BR-110. Policy-only; no existing rule row changed. Added in change `cloud-base-system-prompt-drop` (learning promotion).
+
 ## [business 0.28.1] — 2026-07-09
 Fixed: BR-110 (`llm-client-prompt-parameter-parity`) — narrows the rule to match its own conditional clause. As first written it enumerated all seven `OpenAICompatibleClient` construction sites as obligated, which contradicted the rule's opening condition ("instantiated by a caller that supplies a base `system_prompt`"). Verified against live source: the quality judge (`provider_id="judge-panjit"`), the term extractor (`provider_id="panjit-term"`), and the diagnostic provider probes (`model=""`) are not translation dispatch and must NOT receive the translation profile's prompt. Only the orchestrator's primary and fallback-chain clients are obligated. Caught by implementation-planner against live source before any code was written. Fixed in change `cloud-base-system-prompt-drop`.
 

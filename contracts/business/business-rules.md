@@ -3,7 +3,7 @@ contract: business
 summary: Business decision tables, rule inventory, and change policy for behavior updates.
 owner: application-team
 surface: domain-behavior
-schema-version: 0.28.1
+schema-version: 0.29.0
 last-changed: 2026-07-09
 breaking-change-policy: deprecate-2-minors
 ---
@@ -461,6 +461,14 @@ for full behavior and test detail.
 ## Change Policy
 
 Any business logic change must update this file, the relevant decision table, and regression tests.
+
+A defect in which a rule's mechanism behaves correctly on bad or empty input is NOT a violation of that
+rule, and must not be grafted onto it as another amendment. When the durable fix is a distinct invariant
+(for example a sibling class's constructor parity) rather than a correction to one of the existing rule's
+own clauses, author a new rule instead of amending one that has already been changed twice in the current
+review cycle. See BR-109 and BR-110: the empty base prompt was merged, delivered, and kept out of the user
+payload exactly as BR-109 requires, so the population precondition became BR-110 rather than a fourth
+BR-109 clause.
 
 ---
 
