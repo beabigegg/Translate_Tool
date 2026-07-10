@@ -1,0 +1,15 @@
+{
+  "change_id": "docx-nested-table-collection",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "cdd-kit validate --contracts --env --ci",
+  "duration_ms": 454,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/docx-nested-table-collection/test-runs/20260710-221440/summary.json",
+    "stdout": "specs/changes/docx-nested-table-collection/test-runs/20260710-221440/stdout.log",
+    "stderr": "specs/changes/docx-nested-table-collection/test-runs/20260710-221440/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

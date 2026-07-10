@@ -1,0 +1,25 @@
+agent: test-strategist
+change-id: docx-nested-table-collection
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/docx-nested-table-collection/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_docx_nested_tables.py::TestNestedCollectionCharacterParity → app/backend/processors/docx_processor.py::_process_container_content (recursive cell.tables descent)" }
+  - { type: tdd-pairs, pointer: "tests/test_docx_nested_tables.py::TestLayoutFrameReroute → app/backend/processors/docx_processor.py (BR-114 conjunction: cell.tables non-empty AND full-row-width span)" }
+  - { type: tdd-pairs, pointer: "tests/test_docx_nested_tables.py::TestMergedCellDedup → app/backend/processors/docx_processor.py (per-table seen_tc id(cell._tc) dedup guard, BR-81/BR-113)" }
+  - { type: tdd-pairs, pointer: "tests/test_docx_nested_tables.py::TestFrameRerouteFalsePositiveGuard → same BR-114 conjunction, disagreement/never-reroute tie-break" }
+  - { type: tdd-pairs, pointer: "tests/test_docx_nested_tables.py::TestNestingDepthGuard → app/backend/config.py MAX_TABLE_NESTING_DEPTH=3 guard" }
+  - { type: tdd-pairs, pointer: "tests/test_docx_nested_tables.py::TestLegacyPipeGridDegrade → app/backend/processors/docx_processor.py translate_docx legacy serialize()/parse() branch (JSON_STRUCTURED_TRANSLATION_ENABLED=0)" }
+  - { type: coverage-tiers, pointer: "unit, contract, integration, data-boundary, resilience" }
+  - { type: mapping-completeness, pointer: "AC-1..AC-8 all mapped; AC-7 mapped to existing-suite re-run (no new test needed); AC-8 mapped to a structural/no-runtime-node constraint enforced by construction, not a pytest assertion" }
+notes: |
+  Grepped whole tests/ tree for Segment(, _collect_docx_segments,
+  _process_container_content, merge_cells/gridSpan before writing the plan:
+  only tests/test_table_context_translation.py and
+  tests/test_output_mode_processors.py construct Segment directly, and
+  neither builds a merged or nested-table fixture, so no existing test
+  double needs updating in this change (no _StubTableClient-style signature
+  drift risk here, since translate_docx's own signature is unchanged --
+  only the internal _process_container_content walk recurses further).
+  AC-4's fixture set explicitly covers both disagreement directions named in
+  design.md's never-reroute tie-break (full-width w/o nested table; nested
+  table w/o full-width) plus the many-direct-paragraphs data-cell case that
+  must NOT trigger reroute (paragraph count is not a signal per BR-114).

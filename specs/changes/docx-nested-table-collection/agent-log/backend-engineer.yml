@@ -1,0 +1,56 @@
+change-id: docx-nested-table-collection
+agent: backend-engineer
+status: pass
+summary: >-
+  Implemented BR-113 recursive nested-table collection, BR-114 layout-frame
+  reroute, and the BR-81 amended element-identity merged-cell dedup in
+  docx_processor.py's _collect_docx_segments walk. Replaced all id()-keyed
+  collection (table_id counter, seen_par_keys, seen_tc) with element-identity
+  or monotonic-counter keys per the AMENDED-AFTER-MEASUREMENT plan. Added
+  MAX_TABLE_NESTING_DEPTH=3 hardcoded config constant with flatten-and-warn
+  at the depth limit. Authored tests/test_docx_nested_tables.py (13 tests)
+  covering AC-1..AC-6, plus one extra falsifiability test for the depth-limit
+  flatten path's id()-recycling hazard (the true reproducible location for
+  that hazard, since _process_table's own dedup is incidentally masked by
+  Segment.ref retention). All required test-plan falsifiability checks were
+  verified RED-then-GREEN by hand against scratch snapshots (never
+  git checkout/stash). Full AC-7 regression set and full suite both green.
+artifacts:
+  - { type: files-changed, pointer: "app/backend/config.py:128-133 (MAX_TABLE_NESTING_DEPTH)" }
+  - { type: files-changed, pointer: "app/backend/processors/docx_processor.py:189-450 (_collect_docx_segments: _process_table, _flatten_nested_table_text, _cell_direct_text, _process_container_content depth threading)" }
+  - { type: tests-added, pointer: "tests/test_docx_nested_tables.py::TestNestedCollectionCharacterParity::test_nested_table_text_not_dropped_recursive_walk" }
+  - { type: tests-added, pointer: "tests/test_docx_nested_tables.py::TestNestedCollectionCharacterParity::test_seen_tc_survives_id_recycling_60x5" }
+  - { type: tests-added, pointer: "tests/test_docx_nested_tables.py::TestLayoutFrameReroute::test_frame_cell_direct_paragraphs_routed_to_body_path" }
+  - { type: tests-added, pointer: "tests/test_docx_nested_tables.py::TestLayoutFrameReroute::test_nested_table_under_frame_cell_reaches_serializer" }
+  - { type: tests-added, pointer: "tests/test_docx_nested_tables.py::TestMergedCellDedup::test_merged_cell_spanning_columns_emits_single_segment_at_origin" }
+  - { type: tests-added, pointer: "tests/test_docx_nested_tables.py::TestMergedCellDedup::test_49_distinct_tc_not_52_segments" }
+  - { type: tests-added, pointer: "tests/test_docx_nested_tables.py::TestFrameRerouteFalsePositiveGuard::test_multi_column_data_table_many_paragraphs_not_rerouted" }
+  - { type: tests-added, pointer: "tests/test_docx_nested_tables.py::TestFrameRerouteFalsePositiveGuard::test_full_width_cell_without_nested_table_not_rerouted" }
+  - { type: tests-added, pointer: "tests/test_docx_nested_tables.py::TestFrameRerouteFalsePositiveGuard::test_nested_table_cell_not_full_width_not_rerouted" }
+  - { type: tests-added, pointer: "tests/test_docx_nested_tables.py::TestNestingDepthGuard::test_recursion_terminates_at_max_depth_with_single_warning" }
+  - { type: tests-added, pointer: "tests/test_docx_nested_tables.py::TestNestingDepthGuard::test_flatten_at_depth_limit_survives_id_recycling_60x5" }
+  - { type: tests-added, pointer: "tests/test_docx_nested_tables.py::TestLegacyPipeGridDegrade::test_legacy_flag_off_nested_table_own_grid_no_crash" }
+  - { type: tests-added, pointer: "tests/test_docx_nested_tables.py::TestLegacyPipeGridDegrade::test_legacy_flag_off_rerouted_frame_leaves_placeholder" }
+  - { type: test-output, pointer: "full phase: 1375 passed, 4 skipped (pre-existing, unrelated), 0 failed in 136.32s — specs/changes/docx-nested-table-collection/test-runs/20260710-220206/stdout.log" }
+  - { type: contracts-touched, pointer: "none (BR-81/BR-113/BR-114 already written by contract-reviewer; validated via `cdd-kit validate --contracts --env --ci`, passed)" }
+falsifiability-verification:
+  - probe: "seen_tc keyed by id(cell._tc) in _process_table"
+    result: "did NOT reproduce false collisions up to 1000x5=5000 cells — masked because every emitted cell is retained via Segment.ref, which keeps its address alive for the rest of the walk (the same undocumented-invariant class design.md Q3 warns about)"
+  - probe: "seen_tc_local keyed by id(cell._tc) in _flatten_nested_table_text (no Segment retention there)"
+    result: "RED confirmed — 8/300 distinct texts survived (matches evidence/probe_id_recycling.py's measured 8-of-300); this is the genuinely reproducible location and is what tests/test_docx_nested_tables.py::TestNestingDepthGuard::test_flatten_at_depth_limit_survives_id_recycling_60x5 guards"
+  - probe: "cell.tables recursion disabled in _process_table"
+    result: "RED confirmed on AC-1 and both AC-2 tests"
+  - probe: "BR-114 conjunction changed from AND to OR"
+    result: "RED confirmed on both AC-4 false-positive guard tests"
+  - probe: "MAX_TABLE_NESTING_DEPTH bound removed (recurse_nested = has_nested)"
+    result: "RED confirmed on both AC-5 tests (terminated quickly, no hang; table-group count and warning-count assertions failed as expected)"
+  - probe: "seen_tc dedup check disabled entirely (if False and ...) in _process_table"
+    result: "RED confirmed on both AC-3 tests (8 and 52 segments respectively instead of 5 and 49)"
+falsifiability-verification-note: >-
+  All probes executed against a scratch snapshot
+  (/tmp/.../scratchpad/docx_processor.py.orig) and restored via `cp` from
+  that snapshot; git checkout/stash/restore was never used.
+risks:
+  - "AC-6's second test required output_mode='replace' to assert cell text directly (default 'append' inserts alongside original, complicating assertions); no production behavior change from this."
+  - "Design.md's Q4 measured-hazard claim (id() recycling) does not reproduce in _process_table itself due to Segment.ref retention masking it — this is a real, favorable side effect of the current code shape, not a defect, but it means the module-level regression guard for BR-81's id() ban is only reliably falsifiable via the depth-limit flatten path (documented in the test's docstring and this log)."
+next-reviewer: qa-reviewer

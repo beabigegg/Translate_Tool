@@ -1,0 +1,1 @@
+python -m pytest tests/test_docx_nested_tables.py -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-nested-table-collection/test-runs/20260710-221425/junit.xml'

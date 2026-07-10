@@ -192,7 +192,11 @@ class Segment:
     For table cells (kind="cell"):
         col       — 0-based column index (used as tmap dedup key; BR-81)
         row       — 0-based row index (used for serializer grid building)
-        table_id  — id() of the table XML element (used for per-table grouping; AC-1)
+        table_id  — monotonically increasing per-document counter assigned in
+                    document order (top-level and nested tables alike), used
+                    for per-table grouping (BR-113). NOT id() of the table
+                    XML element — see BR-113/BR-81 for the lxml proxy-address
+                    recycling hazard that makes any id()-derived key unsafe.
 
     For non-table segments (kind="para", "txbx"):
         col, row, table_id are all None (tmap key uses col=None; BR-81).
@@ -217,17 +221,6 @@ class Segment:
         self.table_id = table_id
 
 
-def _get_paragraph_key(p: Paragraph) -> int:
-    """Return a key that uniquely identifies a paragraph XML element.
-
-    Uses ``id()`` so that *different* elements with identical content are
-    treated as separate segments (fixes missing translations in repeated
-    table columns), while the *same* element visited twice (e.g. merged
-    cells in a table) is still de-duplicated.
-    """
-    return id(p._p)
-
-
 def _collect_docx_segments(
     doc: Any,
     max_segments: int = MAX_SEGMENTS,
@@ -236,11 +229,13 @@ def _collect_docx_segments(
     segs: List[Segment] = []
     seen_par_keys = set()
     total_text_length = 0
+    next_table_id = 0
+    depth_limit_warned = False
 
     def _add_paragraph(p: Paragraph, ctx: str) -> None:
         nonlocal total_text_length
         try:
-            p_key = _get_paragraph_key(p)
+            p_key = p._p  # element identity dedup (BR-81 amended: never id())
             if p_key in seen_par_keys:
                 return
             txt = _p_text_with_breaks(p)
@@ -251,8 +246,123 @@ def _collect_docx_segments(
         except Exception as exc:
             logger.warning("Paragraph processing error: %s", exc)
 
-    def _process_container_content(container, ctx: str) -> None:
-        nonlocal total_text_length  # needed to update length for table cell segments
+    def _cell_direct_text(cell: _Cell) -> str:
+        """Aggregate a cell's DIRECT paragraph text only (not nested tables)."""
+        parts = []
+        for p in cell.paragraphs:
+            try:
+                txt = _p_text_with_breaks(p)
+                if txt.strip() and not _is_our_insert_block(p):
+                    parts.append(txt)
+            except Exception:
+                pass
+        return "\n".join(parts)
+
+    def _flatten_nested_table_text(table: Table) -> str:
+        """Aggregate ALL text within `table`, recursing into further nested
+        tables without bound. Used only at the MAX_TABLE_NESTING_DEPTH limit
+        (BR-113 flatten-and-warn) to fold over-deep content into the parent
+        cell's ordinary cell text instead of dropping it or emitting a group.
+        Merged `<w:tc>` repeats are deduped by element identity (BR-81).
+        """
+        seen_tc_local = set()
+        parts = []
+        for row in table.rows:
+            for cell in row.cells:
+                if cell._tc in seen_tc_local:
+                    continue
+                seen_tc_local.add(cell._tc)
+                direct_text = _cell_direct_text(cell)
+                if direct_text:
+                    parts.append(direct_text)
+                for nested in cell.tables:
+                    nested_text = _flatten_nested_table_text(nested)
+                    if nested_text:
+                        parts.append(nested_text)
+        return "\n".join(parts)
+
+    def _process_table(table: Table, ctx: str, depth: int) -> None:
+        """Collect one `<w:tbl>` as its own group (own counter-assigned
+        table_id, own private 0-based (row, col) space; BR-113). Handles the
+        BR-81 merged-cell dedup, the BR-114 frame-reroute gate, and bounded
+        recursion into cell.tables with flatten-and-warn at the depth limit.
+        """
+        nonlocal total_text_length, next_table_id, depth_limit_warned
+        next_table_id += 1
+        tid = next_table_id
+        seen_tc: set = set()
+        col_count = table._tbl.col_count
+        for r_idx, row in enumerate(table.rows):  # 0-based
+            for c_idx, cell in enumerate(row.cells):  # 0-based
+                if cell._tc in seen_tc:
+                    # Horizontally-merged <w:tc>: row.cells repeats the SAME
+                    # element once per spanned column — emit once, at origin
+                    # (lowest) column only (BR-81 clarified).
+                    continue
+                seen_tc.add(cell._tc)
+
+                cell_ctx = f"{ctx} > Tbl(r{r_idx},c{c_idx})"
+                has_nested = len(cell.tables) > 0
+                recurse_nested = has_nested and depth < config.MAX_TABLE_NESTING_DEPTH
+                flatten_needed = has_nested and not recurse_nested
+
+                flatten_extra = ""
+                if flatten_needed:
+                    flat_parts = []
+                    for nested in cell.tables:
+                        nested_text = _flatten_nested_table_text(nested)
+                        if nested_text:
+                            flat_parts.append(nested_text)
+                    flatten_extra = "\n".join(flat_parts)
+                    if not depth_limit_warned:
+                        logger.warning(
+                            "DOCX nested table exceeds MAX_TABLE_NESTING_DEPTH=%d "
+                            "at %s; flattening its text into the enclosing cell "
+                            "instead of collecting it as its own table group",
+                            config.MAX_TABLE_NESTING_DEPTH, cell_ctx,
+                        )
+                        depth_limit_warned = True
+
+                # BR-114: reroute a layout-frame cell's DIRECT paragraphs to the
+                # body path iff it has a nested table AND spans the full row
+                # width. Never reroute otherwise (paragraph count is not a
+                # signal).
+                reroute = has_nested and cell.grid_span == col_count
+
+                if reroute:
+                    for p in cell.paragraphs:
+                        _add_paragraph(p, cell_ctx)
+                    # Empty-text placeholder keeps the legacy pipe-grid's
+                    # positional (row, col) slot filled (BR-114 flag-off
+                    # clause); fold in any depth-limit flatten text so nothing
+                    # is silently dropped.
+                    placeholder_text = flatten_extra
+                    segs.append(Segment(
+                        "cell", cell, cell_ctx, placeholder_text,
+                        col=c_idx, row=r_idx, table_id=tid,
+                    ))
+                    total_text_length += len(placeholder_text)
+                else:
+                    cell_text = _cell_direct_text(cell)
+                    if flatten_extra:
+                        cell_text = "\n".join(
+                            part for part in (cell_text, flatten_extra) if part
+                        )
+                    # Collect cell even if empty (positional placeholder for serializer)
+                    segs.append(Segment(
+                        "cell", cell, cell_ctx, cell_text,
+                        col=c_idx, row=r_idx, table_id=tid,
+                    ))
+                    total_text_length += len(cell_text)
+
+                if recurse_nested:
+                    # Reading order within a cell: direct-paragraph content
+                    # first (already emitted above), then nested tables in
+                    # document order (design.md "Recursion / reading order").
+                    for nested in cell.tables:
+                        _process_table(nested, f"{cell_ctx} > Nested", depth + 1)
+
+    def _process_container_content(container, ctx: str, depth: int = 1) -> None:
         if container._element is None:
             return
         for child_element in container._element:
@@ -261,31 +371,8 @@ def _collect_docx_segments(
                 p = Paragraph(child_element, container)
                 _add_paragraph(p, ctx)
             elif qname.endswith("}tbl"):
-                # IP-4: materialize table cells as "cell" segments (one per cell)
-                # rather than recursing into per-paragraph segments.
-                # Each cell carries (row, col, table_id) for per-table grouping
-                # and (tgt, text, col) dedup key (BR-81).
                 table = Table(child_element, container)
-                tid = id(child_element)
-                for r_idx, row in enumerate(table.rows):  # 0-based
-                    for c_idx, cell in enumerate(row.cells):  # 0-based
-                        cell_ctx = f"{ctx} > Tbl(r{r_idx},c{c_idx})"
-                        # Aggregate all paragraph text in this cell
-                        cell_text_parts = []
-                        for p in cell.paragraphs:
-                            try:
-                                txt = _p_text_with_breaks(p)
-                                if txt.strip() and not _is_our_insert_block(p):
-                                    cell_text_parts.append(txt)
-                            except Exception:
-                                pass
-                        cell_text = "\n".join(cell_text_parts)
-                        # Collect cell even if empty (positional placeholder for serializer)
-                        segs.append(Segment(
-                            "cell", cell, cell_ctx, cell_text,
-                            col=c_idx, row=r_idx, table_id=tid,
-                        ))
-                        total_text_length += len(cell_text)
+                _process_table(table, ctx, depth)
             elif qname.endswith("}sdt"):
                 sdt_ctx = f"{ctx} > SDT"
                 ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
@@ -312,9 +399,9 @@ def _collect_docx_segments(
                             self._element = element
                             self._parent = parent
                     sdt_content_wrapper = SdtContentWrapper(sdt_content_element, container)
-                    _process_container_content(sdt_content_wrapper, sdt_ctx)
+                    _process_container_content(sdt_content_wrapper, sdt_ctx, depth)
 
-    _process_container_content(doc._body, "Body")
+    _process_container_content(doc._body, "Body", 1)
 
     for tx, s in _txbx_iter_texts(doc):
         if s.strip() and (has_cjk(s) or should_translate(s, "auto")):
