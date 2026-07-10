@@ -47,5 +47,5 @@ tasks:
   - { id: "6.2", section: Verification, title: "PR required gates", status: done, note: "local run reproduces the required CI checks: cdd-kit validate --contracts green, blanket pytest tests/ -> 1361 passed 4 skipped, and both env-sync grep targets present; PR CI to confirm" }
   - { id: "6.3", section: Verification, title: "Informational gates", status: done, note: "full-regression informational per ci-gates.md" }
   - { id: "6.4", section: Verification, title: "Nightly/weekly/manual gates if required", status: skipped, note: "no nightly/weekly/manual gate added; ci-gates.md adds no promotion policy" }
-  - { id: "7.1", section: Archive, title: "Archive change", status: pending }
-  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: pending }
+  - { id: "7.1", section: Archive, title: "Archive change", status: done }
+  - { id: "7.2", section: Archive, title: "Promote durable learnings to contracts or CLAUDE.md", status: done }

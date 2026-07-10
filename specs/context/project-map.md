@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
 visible-dirs: 59
-visible-files: 238
+visible-files: 240
 omitted-dirs: 12
 truncated-dirs: 1
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -122,6 +122,7 @@ Translate_Tool/
 |   |   |   |-- bbox_utils.py
 |   |   |   |-- exceptions.py
 |   |   |   |-- font_utils.py
+|   |   |   |-- json_translation.py
 |   |   |   |-- logging_utils.py
 |   |   |   |-- resource_utils.py
 |   |   |   |-- table_serializer.py
@@ -204,7 +205,8 @@ Translate_Tool/
 |   |   |-- 0013-bounded-local-table-row-growth-prepass.md
 |   |   |-- 0014-retire-phantom-br-and-inert-env-var.md
 |   |   |-- 0015-layout-qa-metric-core-in-runtime.md
-|   |   \-- 0016-context-out-of-band-system-channel.md
+|   |   |-- 0016-context-out-of-band-system-channel.md
+|   |   \-- 0017-json-structured-translation-seam.md
 |   |-- TEST_DOC/
 |   |   |-- CS2408-0021 信和達(歐朗) P6SMBJ18CA  本體破损 -onepage.pdf
 |   |   |-- EN-P-QC1102-D7 量测系统分析(MSA)程序.docx
@@ -313,6 +315,8 @@ Translate_Tool/
 |   |-- test_job_record_judge.py
 |   |-- test_jobstatus_download_url.py
 |   |-- test_jobstatus_stage_detail.py
+|   |-- test_json_translation_body.py
+|   |-- test_json_translation_prompt.py
 |   |-- test_judge_api.py
 |   |-- test_judge_apply.py
 |   |-- test_layout_detector.py
@@ -332,9 +336,7 @@ Translate_Tool/
 |   |-- test_orchestrator_phase0.py
 |   |-- test_output_mode_api.py
 |   |-- test_output_mode_orchestrator.py
-|   |-- test_output_mode_processors.py
-|   |-- test_pdf_generator.py
-|   \-- ... (33 more entries truncated; cap=50)
+|   \-- ... (35 more entries truncated; cap=50)
 |-- .env
 |-- .gitignore
 |-- AGENTS.md

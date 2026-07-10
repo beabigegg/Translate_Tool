@@ -52,3 +52,4 @@
 | cloud-doc-context-summary | 2026 | 2026-07-09 | specs/archive/2026/cloud-doc-context-summary/ |
 | doc-context-sampling-fix | 2026 | 2026-07-09 | specs/archive/2026/doc-context-sampling-fix/ |
 | cloud-base-system-prompt-drop | 2026 | 2026-07-10 | specs/archive/2026/cloud-base-system-prompt-drop/ |
+| json-structured-translation-io | 2026 | 2026-07-10 | specs/archive/2026/json-structured-translation-io/ |

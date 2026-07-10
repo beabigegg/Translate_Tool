@@ -3,7 +3,7 @@ contract: ci
 summary: CI gate inventory, artifact retention, and rollback requirements.
 owner: platform-team
 surface: delivery-pipeline
-schema-version: 0.6.0
+schema-version: 0.7.0
 last-changed: 2026-07-06
 breaking-change-policy: deprecate-2-minors
 ---
@@ -122,5 +122,21 @@ The `cdd-kit validate --contracts` gate requires Python packages beyond the appl
 **Invariant**: `jsonschema>=4.0.0` must remain in `app/backend/requirements.txt` as long as `tests/contract/response-samples.json` exists. If `response-samples.json` is removed, the package may be dropped if no other consumer requires it.
 
 ## Artifact Retention Policy
+
+## Known Validator Gaps
+
+These are gaps in `cdd-kit`'s own validators, not in this project's gates. Until
+each is closed in the tool, the named reviewer MUST check it by hand, and a
+finding here is gate-blocking regardless of the tool's exit code.
+
+| gap | consequence | who checks |
+|---|---|---|
+| `cdd-kit validate --contracts` does not verify that a contract's `schema-version` bump is paired with a matching `contracts/CHANGELOG.md` entry. Confirmed by deleting an entry: exit 0, "All validations passed", no mention of the changelog. | A version bump can ship with no changelog record of what changed. | contract-reviewer, before approving any bump |
+| The gate validates `test-evidence.yml`'s phases and waivers but never compares its recorded timestamp against the mtimes of the source and test files it claims to cover. Stale evidence — recorded before a later test or production-file edit — passes. | A green evidence bundle can describe bytes that are not the bytes being merged. | qa-reviewer, before approving any change |
+
+Both gaps were found by execution, not by reading: the first while writing three
+CHANGELOG entries by hand for `json-structured-translation-io`, the second when
+`qa-reviewer` blocked that change because its recorded `full` junit contained zero
+of the 24 resilience tests that had landed 13 minutes after the run.
 
 ## Rollback Policy
