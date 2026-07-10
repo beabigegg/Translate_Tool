@@ -14,6 +14,7 @@ from docx.shared import Pt
 from docx.table import Table, _Cell
 from docx.text.paragraph import Paragraph
 
+from app.backend import config
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import (
     DEFAULT_MAX_BATCH_CHARS,
@@ -23,9 +24,10 @@ from app.backend.config import (
 )
 from app.backend.processors.com_helpers import is_win32com_available, postprocess_docx_shapes_with_word
 from app.backend.services.translation_service import translate_texts
+from app.backend.utils import json_translation
 from app.backend.utils.exceptions import ApiError, check_document_size_limits
 from app.backend.utils.logging_utils import logger
-from app.backend.utils.text_utils import has_cjk, normalize_text, should_translate
+from app.backend.utils.text_utils import has_cjk, is_numeric_cell, normalize_text, should_translate
 
 if TYPE_CHECKING:
     from docx.document import Document as DocxDocument
@@ -833,41 +835,88 @@ def translate_docx(
 
             # Include ALL grid positions (including empty cells as positional placeholders)
             cells_by_pos: Dict = {(s.row, s.col): s.text for s in t_segs}
-            proxy_cells = [
-                _CellProxy(row=r, col=c, content=cells_by_pos.get((r, c), ""))
-                for r in range(num_rows) for c in range(num_cols)
-            ]
 
             for tgt in targets:
                 if stop_flag and stop_flag.is_set():
                     stopped = True
                     break
                 src_for_prompt = src_lang or "auto"
-                serialized = table_serializer.serialize(proxy_cells)
-                prompt = client._build_table_translate_prompt(serialized, src_for_prompt, tgt)
-                # grid stays None on any error → fallback always runs (BR-82)
-                grid = None
-                try:
-                    ok, response = client.translate_once(prompt, tgt, src_lang)
-                    if ok:
-                        grid = table_serializer.parse(response, num_rows, num_cols)
-                        if grid is None:
+                translated_by_pos: Optional[Dict[Tuple[int, int], str]] = None
+
+                if config.JSON_STRUCTURED_TRANSLATION_ENABLED:
+                    # IP-5: coordinate JSON envelope (BR-79/BR-80/BR-82) — content-cells only.
+                    content_cells = [
+                        _CellProxy(row=r, col=c, content=text)
+                        for (r, c), text in cells_by_pos.items()
+                        if text.strip() and not is_numeric_cell(text)
+                    ]
+                    if not content_cells:
+                        translated_by_pos = {}
+                    else:
+                        sent_cells = {(c.row, c.col): c.content for c in content_cells}
+                        payload = json_translation.build_table_payload(content_cells, src_for_prompt, tgt)
+                        try:
+                            ok, response = client.translate_json(payload, system_context=None)
+                            if ok:
+                                translated_by_pos, reason = table_serializer.parse_json(response, sent_cells)
+                                if translated_by_pos is None:
+                                    logger.warning(
+                                        "[DOCX] Table group %s: parse_json() rejected reply for target=%s "
+                                        "(%s); falling back to per-cell batch",
+                                        table_id, tgt, reason,
+                                    )
+                                    log(f"[DOCX] Table group {table_id}: JSON table fallback ({reason})")
+                            else:
+                                logger.warning(
+                                    "[DOCX] Table group %s translate_json failed (target=%s): %s; "
+                                    "falling back to per-cell batch",
+                                    table_id, tgt, response,
+                                )
+                                log(f"[DOCX] Table group {table_id}: JSON table fallback (translate_json failed)")
+                        except Exception as exc:
                             logger.warning(
-                                "[DOCX] Table group %s: parse() returned None (expected %d×%d); "
-                                "falling back to per-cell batch for target=%s",
-                                table_id, num_rows, num_cols, tgt,
+                                "[DOCX] Table group %s whole-table JSON call raised (target=%s): %s; "
+                                "falling back to per-cell batch",
+                                table_id, tgt, exc,
                             )
-                except Exception as exc:
-                    logger.warning(
-                        "[DOCX] Table group %s translate_once failed (target=%s): %s; "
-                        "falling back to per-cell batch",
-                        table_id, tgt, exc,
-                    )
-                if grid is not None:
+                            log(f"[DOCX] Table group {table_id}: JSON table fallback (exception: {exc})")
+                else:
+                    # Flag-OFF: retained legacy pipe-grid block, unchanged (Resolution A).
+                    proxy_cells = [
+                        _CellProxy(row=r, col=c, content=cells_by_pos.get((r, c), ""))
+                        for r in range(num_rows) for c in range(num_cols)
+                    ]
+                    serialized = table_serializer.serialize(proxy_cells)
+                    prompt = client._build_table_translate_prompt(serialized, src_for_prompt, tgt)
+                    # grid stays None on any error → fallback always runs (BR-82)
+                    grid = None
+                    try:
+                        ok, response = client.translate_once(prompt, tgt, src_lang)
+                        if ok:
+                            grid = table_serializer.parse(response, num_rows, num_cols)
+                            if grid is None:
+                                logger.warning(
+                                    "[DOCX] Table group %s: parse() returned None (expected %d×%d); "
+                                    "falling back to per-cell batch for target=%s",
+                                    table_id, num_rows, num_cols, tgt,
+                                )
+                    except Exception as exc:
+                        logger.warning(
+                            "[DOCX] Table group %s translate_once failed (target=%s): %s; "
+                            "falling back to per-cell batch",
+                            table_id, tgt, exc,
+                        )
+                    if grid is not None:
+                        translated_by_pos = {
+                            (r, c): grid[r][c]
+                            for r in range(num_rows) for c in range(num_cols)
+                        }
+
+                if translated_by_pos is not None:
                     for s in t_segs:
                         r, c = s.row, s.col
-                        if s.text.strip() and 0 <= r < num_rows and 0 <= c < num_cols:
-                            final_tmap[(tgt, s.text, c)] = grid[r][c]
+                        if s.text.strip() and (r, c) in translated_by_pos:
+                            final_tmap[(tgt, s.text, c)] = translated_by_pos[(r, c)]
                 else:
                     if stop_flag and stop_flag.is_set():
                         # Table groups processed after the stop signal fires never reach

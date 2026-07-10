@@ -1,0 +1,59 @@
+........................................................................ [  5%]
+........................................................................ [ 10%]
+........................................................................ [ 16%]
+............................................................ss.......... [ 21%]
+........................................................................ [ 27%]
+........................................................................ [ 32%]
+........................................................................ [ 37%]
+........................................................................ [ 43%]
+........................................................................ [ 48%]
+........................................................................ [ 54%]
+............................................................s........... [ 59%]
+........................................................................ [ 64%]
+........................................................................ [ 70%]
+.........................................s.............................. [ 75%]
+........................................................................ [ 81%]
+........................................................................ [ 86%]
+........................................................................ [ 92%]
+........................................................................ [ 97%]
+..................................                                       [100%]
+=============================== warnings summary ===============================
+../../miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21: DeprecationWarning: PyPDF2 is deprecated. Please move to the pypdf library instead.
+    warnings.warn(
+
+tests/test_doc_chunker.py::TestDoc2DocPath::test_translate_document_returns_translated_document
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/torchmetrics/utilities/imports.py:23: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+    from pkg_resources import DistributionNotFound, get_distribution
+
+tests/test_doc_chunker.py::TestDoc2DocPath::test_translate_document_returns_translated_document
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+tests/test_doc_chunker.py::TestDoc2DocPath::test_translate_document_returns_translated_document
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+tests/test_doc_chunker.py::TestDoc2DocPath::test_translate_document_returns_translated_document
+tests/test_sentence_mode_consistency.py::test_sentence_mode_done_count_incremented_per_segment
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/pytorch_lightning/core/saving.py:197: Found keys that are not in the model state dict but in the checkpoint: ['encoder.model.embeddings.position_ids']
+
+tests/test_doc_chunker.py: 129 warnings
+tests/test_fewshot_glossary.py: 5 warnings
+tests/test_glossary_enforcement.py: 6 warnings
+tests/test_sentence_mode_consistency.py: 3 warnings
+tests/test_translation_strategy.py: 192 warnings
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/pytorch_lightning/trainer/setup.py:175: GPU available but not used. You can set it by doing `Trainer(accelerator='gpu')`.
+
+tests/test_doc_chunker.py: 129 warnings
+tests/test_fewshot_glossary.py: 5 warnings
+tests/test_glossary_enforcement.py: 6 warnings
+tests/test_sentence_mode_consistency.py: 3 warnings
+tests/test_translation_strategy.py: 192 warnings
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_golden_regression.py:172: No DOCX fixtures available yet
+SKIPPED [1] tests/test_golden_regression.py:193: No PPTX fixtures available yet
+SKIPPED [1] tests/test_pdf_parser.py:513: TABLE region-level element emission via find_tables() not yet implemented for this fixture; will be addressed in p2-layout-detection
+SKIPPED [1] tests/test_table_border_protection.py:596: test.pdf page 0 has no vector drawings — cannot test border preservation. Add a PDF with table lines to tests/fixtures/test.pdf or use a dedicated fixture.
+1326 passed, 4 skipped, 676 warnings in 128.62s (0:02:08)

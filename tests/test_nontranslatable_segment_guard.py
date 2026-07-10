@@ -22,6 +22,7 @@ Mock boundary: a fake `LLMClient` implementing only `translate_once`
 
 from __future__ import annotations
 
+import json
 import threading
 from typing import Dict, List, Optional, Tuple
 
@@ -52,8 +53,23 @@ ASK_BACK_REPLY = "Could you please provide the text you'd like translated?"
 # ---------------------------------------------------------------------------
 # Fakes
 # ---------------------------------------------------------------------------
+def _extract_body_text(user_payload: str) -> str:
+    """Recover the original segment from a `json_translation.build_body_payload`
+    string (the `{"text": ...}` envelope is always the last `\\n\\n`-separated
+    part — see json_translation.py)."""
+    return json.loads(user_payload.rsplit("\n\n", 1)[1])["text"]
+
+
 class FakeLLMClient:
-    """Call-counting LLMClient double: always returns the same scripted reply."""
+    """Call-counting LLMClient double: always returns the same scripted reply.
+
+    Implements BOTH `translate_once` (flag-OFF plain-text path) and
+    `translate_json` (flag-ON default path, BR-111/BR-112) so this fake drives
+    whichever path `translate_merged_paragraphs` takes under the default
+    `JSON_STRUCTURED_TRANSLATION_ENABLED=True`. Both methods share the same
+    `call_count`/`calls` bookkeeping so every existing assertion (call count,
+    which text was/wasn't sent) holds regardless of which path fires.
+    """
 
     def __init__(self, reply: str = "TRANSLATED", ok: bool = True) -> None:
         self.reply = reply
@@ -73,9 +89,25 @@ class FakeLLMClient:
         self.calls.append(text)
         return self.ok, self.reply
 
+    def translate_json(
+        self,
+        user_payload: str,
+        cancel_event: Optional[threading.Event] = None,
+        system_context: Optional[str] = None,
+    ) -> Tuple[bool, str]:
+        self.call_count += 1
+        self.calls.append(_extract_body_text(user_payload))
+        if not self.ok:
+            return False, ""
+        return True, json.dumps({"translation": self.reply})
+
 
 class ScriptedLLMClient:
-    """Call-counting LLMClient double: reply depends on the input segment."""
+    """Call-counting LLMClient double: reply depends on the input segment.
+
+    See `FakeLLMClient` docstring — implements both methods for the same
+    reason.
+    """
 
     def __init__(self, script: Dict[str, str], default_reply: str = "TRANSLATED") -> None:
         self.script = script
@@ -94,6 +126,17 @@ class ScriptedLLMClient:
         self.call_count += 1
         self.calls.append(text)
         return True, self.script.get(text, self.default_reply)
+
+    def translate_json(
+        self,
+        user_payload: str,
+        cancel_event: Optional[threading.Event] = None,
+        system_context: Optional[str] = None,
+    ) -> Tuple[bool, str]:
+        text = _extract_body_text(user_payload)
+        self.call_count += 1
+        self.calls.append(text)
+        return True, json.dumps({"translation": self.script.get(text, self.default_reply)})
 
 
 # ---------------------------------------------------------------------------
@@ -166,6 +209,22 @@ class TestRefusalOutputGuard:
         assert results == [(True, ALREADY_ENGLISH_LABEL_SEGMENT)]
         assert reply not in [translated for _, translated in results]
 
+    def test_meta_refusal_inside_schema_valid_json_still_caught(self) -> None:
+        """BR-108 widened by BR-112: a meta/refusal reply wrapped in
+        schema-valid, non-echoed JSON (`{"translation": "..."}`) satisfies
+        every BR-112 structural check yet MUST still be caught here — the
+        FakeLLMClient's `translate_json` wraps `reply` in a valid envelope,
+        exercising the default JSON-ON path directly (not just the
+        plain-text `translate_once` path the other cases in this class use)."""
+        reply = "I need more context to translate this"
+        client = FakeLLMClient(reply=reply)
+        results = translate_merged_paragraphs(
+            [ALREADY_ENGLISH_LABEL_SEGMENT], "zh-TW", "en", client
+        )
+        assert client.call_count == 1
+        assert results == [(True, ALREADY_ENGLISH_LABEL_SEGMENT)]
+        assert reply not in [translated for _, translated in results]
+
 
 # ---------------------------------------------------------------------------
 # AC-3 (MANDATORY negative): genuine translation is NOT misclassified/suppressed
@@ -180,6 +239,28 @@ class TestRefusalDetectorNegative:
 
     def test_genuine_translation_reading_like_a_note_is_not_suppressed(self) -> None:
         genuine = "Note: this describes the corrective action taken for the failure mode."
+        client = FakeLLMClient(reply=genuine)
+        results = translate_merged_paragraphs([CJK_SENTENCE_SEGMENT], "en", "zh-CN", client)
+        assert client.call_count == 1
+        assert results == [(True, genuine)]
+
+    def test_genuine_translation_need_more_context_short_form_is_not_suppressed(self) -> None:
+        """"需要更多上下文" translates verbatim to "Need more context." — an
+        UNANCHORED "need more context" pattern would misclassify this
+        legitimate translation as a refusal and discard it in favor of the
+        (wrong-language) source. The anchored "more context to translate"
+        pattern must NOT match this reply."""
+        genuine = "Need more context."
+        client = FakeLLMClient(reply=genuine)
+        results = translate_merged_paragraphs([CJK_SENTENCE_SEGMENT], "en", "zh-CN", client)
+        assert client.call_count == 1
+        assert results == [(True, genuine)]
+
+    def test_genuine_translation_need_more_context_in_a_sentence_is_not_suppressed(self) -> None:
+        """A genuine, ordinary sentence that happens to contain "need more
+        context" — not a self-referential ask-back about the ACT of
+        translating — must survive as the translation."""
+        genuine = "The reviewer will need more context."
         client = FakeLLMClient(reply=genuine)
         results = translate_merged_paragraphs([CJK_SENTENCE_SEGMENT], "en", "zh-CN", client)
         assert client.call_count == 1
@@ -271,3 +352,38 @@ class TestIsMetaRefusalHelperDirect:
 
     def test_empty_reply_is_not_a_refusal(self) -> None:
         assert is_meta_refusal("", CJK_SENTENCE_SEGMENT) is False
+
+    def test_br108_json_example_is_detected(self) -> None:
+        """The exact meta-refusal example quoted in business-rules.md BR-108
+        (`{"translation": "I need more context to translate this"}`) must be
+        caught — the anchored "i need more context to translate" pattern."""
+        assert is_meta_refusal("I need more context to translate this", "制作日期") is True
+
+    def test_translation_domain_prose_is_not_a_refusal(self) -> None:
+        """A document ABOUT translation can legitimately contain the phrase
+        "more context to translate". A meta-refusal is always the model speaking
+        about ITSELF, so the pattern is anchored on the first-person frame.
+
+        Both strings below are correct translations, not ask-backs. Before the
+        anchor was added they were suppressed and replaced by their source —
+        BR-108's precision mandate forbids exactly that.
+        """
+        assert is_meta_refusal(
+            "The translator needs more context to translate this document.",
+            "譯者需要更多上下文才能翻譯這份文件",
+        ) is False
+        assert is_meta_refusal(
+            "Please provide more context to translate the remaining terms.",
+            "請提供更多上下文以便翻譯其餘術語",
+        ) is False
+
+    def test_need_more_context_short_form_is_not_a_refusal(self) -> None:
+        """"Need more context." is a genuine, correct translation (of e.g.
+        Chinese "需要更多上下文") — NOT a self-referential ask-back — and
+        must NOT be classified as a refusal."""
+        assert is_meta_refusal("Need more context.", "需要更多上下文") is False
+
+    def test_need_more_context_in_ordinary_sentence_is_not_a_refusal(self) -> None:
+        """An ordinary sentence containing "need more context" that is not
+        about the act of translating must NOT be classified as a refusal."""
+        assert is_meta_refusal("The reviewer will need more context.", "審查者需要更多背景") is False

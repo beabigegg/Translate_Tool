@@ -78,6 +78,14 @@ class _FakeEchoClient:
 def _run_fixture(monkeypatch):
     monkeypatch.setattr(config, "CONTEXT_WINDOW_SEGMENTS", 2)
     monkeypatch.setattr(config, "CONTEXT_MAX_CHARS", 300)
+    # json-structured-translation-io: this fixture's `_FakeEchoClient` echoes
+    # the exact source text back as the "translation" — under the JSON-ON
+    # default that is BY DEFINITION an echoed-source reply (BR-112), which
+    # would trigger the plain-text fallback and double-record each call. This
+    # test's actual subject (BR-78 system_context routing) is orthogonal to
+    # the wire-format flag, so it is pinned to the plain-text `translate_once`
+    # path it was written against.
+    monkeypatch.setattr(config, "JSON_STRUCTURED_TRANSLATION_ENABLED", False)
     client = _FakeEchoClient()
     results = translate_merged_paragraphs([SEG1, SEG2, SEG3], "vi", "zh-CN", client)
     return client, results

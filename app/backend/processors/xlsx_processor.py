@@ -11,14 +11,16 @@ import openpyxl
 from openpyxl.comments import Comment
 from openpyxl.styles import Alignment
 
+from app.backend import config
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import DEFAULT_MAX_BATCH_CHARS, EXCEL_FORMULA_MODE, MAX_SEGMENTS, MAX_TEXT_LENGTH
 from app.backend.processors.com_helpers import excel_convert, is_win32com_available
 from app.backend.processors.libreoffice_helpers import is_libreoffice_available, xls_to_xlsx
 from app.backend.services.translation_service import translate_texts
+from app.backend.utils import json_translation
 from app.backend.utils.exceptions import check_document_size_limits
 from app.backend.utils.logging_utils import logger
-from app.backend.utils.text_utils import normalize_text, should_translate
+from app.backend.utils.text_utils import is_numeric_cell, normalize_text, should_translate
 
 
 def _get_display_text_for_translation(ws: Any, ws_vals: Optional[Any], r: int, c: int) -> Optional[str]:
@@ -193,41 +195,89 @@ def translate_xlsx_xls(
             # Map (r-1, c-1) → text for non-formula cells
             cells_by_pos = {(seg[1] - 1, seg[2] - 1): seg[3] for seg in s_segs if not seg[4]}
 
-            proxy_cells = [
-                _XlCellProxy(row=r0, col=c0, content=cells_by_pos.get((r0, c0), ""))
-                for r0 in range(num_rows) for c0 in range(num_cols)
-            ]
-
             for tgt in targets:
                 if stop_flag and stop_flag.is_set():
                     stopped = True
                     break
                 src_for_prompt = src_lang or "auto"
-                serialized = table_serializer.serialize(proxy_cells)
-                prompt = client._build_table_translate_prompt(serialized, src_for_prompt, tgt)
-                # grid stays None on any error → fallback always runs (BR-82)
-                grid = None
-                try:
-                    ok, response = client.translate_once(prompt, tgt, src_lang)
-                    if ok:
-                        grid = table_serializer.parse(response, num_rows, num_cols)
-                        if grid is None:
+                translated_by_pos: Optional[Dict[Tuple[int, int], str]] = None
+
+                if config.JSON_STRUCTURED_TRANSLATION_ENABLED:
+                    # IP-5: coordinate JSON envelope (BR-79/BR-80/BR-82) — content-cells
+                    # only, no 9x257-style phantom grid shape is ever built or sent.
+                    content_cells = [
+                        _XlCellProxy(row=r0, col=c0, content=text)
+                        for (r0, c0), text in cells_by_pos.items()
+                        if text and not is_numeric_cell(text)
+                    ]
+                    if not content_cells:
+                        translated_by_pos = {}
+                    else:
+                        sent_cells = {(c.row, c.col): c.content for c in content_cells}
+                        payload = json_translation.build_table_payload(content_cells, src_for_prompt, tgt)
+                        try:
+                            ok, response = client.translate_json(payload, system_context=None)
+                            if ok:
+                                translated_by_pos, reason = table_serializer.parse_json(response, sent_cells)
+                                if translated_by_pos is None:
+                                    logger.warning(
+                                        "[Excel] Sheet '%s': parse_json() rejected reply for target=%s "
+                                        "(%s); falling back to per-cell batch",
+                                        sheet_name, tgt, reason,
+                                    )
+                                    log(f"[Excel] Sheet '{sheet_name}': JSON table fallback ({reason})")
+                            else:
+                                logger.warning(
+                                    "[Excel] Sheet '%s' translate_json failed (target=%s): %s; "
+                                    "falling back to per-cell batch",
+                                    sheet_name, tgt, response,
+                                )
+                                log(f"[Excel] Sheet '{sheet_name}': JSON table fallback (translate_json failed)")
+                        except Exception as exc:
                             logger.warning(
-                                "[Excel] Sheet '%s': parse() returned None (expected %d×%d); "
-                                "falling back to per-cell batch for target=%s",
-                                sheet_name, num_rows, num_cols, tgt,
+                                "[Excel] Sheet '%s' whole-table JSON call raised (target=%s): %s; "
+                                "falling back to per-cell batch",
+                                sheet_name, tgt, exc,
                             )
-                except Exception as exc:
-                    logger.warning(
-                        "[Excel] Sheet '%s' translate_once failed (target=%s): %s; "
-                        "falling back to per-cell batch",
-                        sheet_name, tgt, exc,
-                    )
-                if grid is not None:
+                            log(f"[Excel] Sheet '{sheet_name}': JSON table fallback (exception: {exc})")
+                else:
+                    # Flag-OFF: retained legacy pipe-grid block, unchanged (Resolution A).
+                    proxy_cells = [
+                        _XlCellProxy(row=r0, col=c0, content=cells_by_pos.get((r0, c0), ""))
+                        for r0 in range(num_rows) for c0 in range(num_cols)
+                    ]
+                    serialized = table_serializer.serialize(proxy_cells)
+                    prompt = client._build_table_translate_prompt(serialized, src_for_prompt, tgt)
+                    # grid stays None on any error → fallback always runs (BR-82)
+                    grid = None
+                    try:
+                        ok, response = client.translate_once(prompt, tgt, src_lang)
+                        if ok:
+                            grid = table_serializer.parse(response, num_rows, num_cols)
+                            if grid is None:
+                                logger.warning(
+                                    "[Excel] Sheet '%s': parse() returned None (expected %d×%d); "
+                                    "falling back to per-cell batch for target=%s",
+                                    sheet_name, num_rows, num_cols, tgt,
+                                )
+                    except Exception as exc:
+                        logger.warning(
+                            "[Excel] Sheet '%s' translate_once failed (target=%s): %s; "
+                            "falling back to per-cell batch",
+                            sheet_name, tgt, exc,
+                        )
+                    if grid is not None:
+                        translated_by_pos = {
+                            (r0, c0): grid[r0][c0]
+                            for r0 in range(num_rows) for c0 in range(num_cols)
+                        }
+
+                if translated_by_pos is not None:
                     for ws_name, r, c, src_text, is_formula in s_segs:
                         if not is_formula:
                             r0, c0 = r - 1, c - 1
-                            tmap[(tgt, src_text, c0)] = grid[r0][c0]
+                            if (r0, c0) in translated_by_pos:
+                                tmap[(tgt, src_text, c0)] = translated_by_pos[(r0, c0)]
                 else:
                     # Fallback: per-cell batch (BR-82)
                     fallback_texts = list(dict.fromkeys(

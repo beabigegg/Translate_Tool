@@ -333,6 +333,41 @@ class OpenAICompatibleClient:
         )
         return ok, result
 
+    def translate_json(
+        self,
+        user_payload: str,
+        cancel_event=None,
+        system_context: Optional[str] = None,
+    ) -> Tuple[bool, str]:
+        """JSON-structured translation seam (BR-111): table/body JSON envelope.
+
+        Deliberately NOT part of the LLMClient Protocol (base_llm_client.py
+        pins an exactly-five-method surface; matches the `complete()`
+        precedent). `user_payload` is the FULLY-BUILT string from
+        `json_translation.build_body_payload`/`build_table_payload` (already
+        carrying the pinned instruction + JSON envelope) and is sent AS-IS —
+        never re-wrapped by `translate_once`'s "Translate the following
+        text... Output only the translation" framing, which is the exact
+        double-wrap that made a reasoning model return empty `content`.
+
+        Reuses `translate_once`'s system-channel merge order: `self.system_prompt`
+        (BR-109/BR-110 preamble) ahead of the per-call `system_context` (BR-78),
+        merged into ONE leading system message — never concatenated into
+        `user_payload`.
+
+        `response_format` is not sent: accepted-but-inert on PANJIT (Finding 3);
+        the pinned phrasing is the sole mechanism (BR-111).
+
+        Returns:
+            (ok, content) — ok=False (empty/parse-error/HTTP-error) surfaces
+            exactly as `_post_completion` already does; the caller's JSON
+            validator treats any non-ok or malformed content as a fallback
+            trigger (BR-82/BR-112), never a job failure.
+        """
+        parts = [p for p in ((self.system_prompt or "").strip(), (system_context or "").strip()) if p]
+        merged_system_context = "\n\n".join(parts) or None
+        return self._post_completion(user_payload, cancel_event=cancel_event, system_context=merged_system_context)
+
     def complete(self, prompt: str) -> Tuple[bool, str]:
         """Raw single-turn completion, no translate framing, no system prompt.
 

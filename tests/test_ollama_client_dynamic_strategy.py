@@ -101,3 +101,60 @@ def test_system_context_merged_with_existing_system_prompt() -> None:
     payload = mock_call.call_args[0][0]
     assert "Glossary: 切弯脚 -> trim & form" in payload["system"]
     assert reference_block in payload["system"]
+
+
+# ---------------------------------------------------------------------------
+# translate_json system-channel delivery (json-structured-translation-io,
+# BR-111). Delivery tests at the real `_call_ollama` transport boundary, not
+# signature-only acceptance of the system_context kwarg — an accepted-but-
+# discarded kwarg is the exact assignment-without-delivery hazard that
+# shipped the cloud-doc-context-summary / cloud-base-system-prompt-drop
+# defects. Symmetry with OpenAICompatibleClient is NOT assumed here.
+# ---------------------------------------------------------------------------
+
+def test_translate_json_merges_system_prompt_ahead_of_system_context() -> None:
+    """BR-111: translate_json must reuse translate_once's merge order —
+    system_prompt (BR-109/BR-110) ahead of system_context (BR-78) — asserted
+    by ORDER within payload["system"], not mere presence."""
+    client = OllamaClient(model="qwen3.5:4b", system_prompt="PROFILE_PROMPT_TOKEN base prompt.")
+    segment_context = "SEGMENT_CONTEXT_TOKEN reference-only neighbor block."
+    json_payload = '{"text": "Segment B."}'
+
+    with patch.object(client, "_call_ollama", return_value=(True, '{"translation": "x"}')) as mock_call:
+        client.translate_json(json_payload, system_context=segment_context)
+
+    payload = mock_call.call_args[0][0]
+    assert "system" in payload, "translate_json dropped the system channel entirely"
+    merged = payload["system"]
+    assert "PROFILE_PROMPT_TOKEN" in merged, f"system_prompt token missing: {merged!r}"
+    assert "SEGMENT_CONTEXT_TOKEN" in merged, f"system_context token missing: {merged!r}"
+    assert merged.index("PROFILE_PROMPT_TOKEN") < merged.index("SEGMENT_CONTEXT_TOKEN"), (
+        "system_prompt must precede system_context in the merged payload['system']"
+    )
+    assert payload["prompt"] == json_payload, (
+        "translate_json must send the JSON envelope AS-IS via the prompt field"
+    )
+
+
+def test_translate_json_system_prompt_alone_still_delivered() -> None:
+    """When there is no per-call system_context, client.system_prompt alone
+    must still reach payload["system"] on the JSON seam."""
+    client = OllamaClient(model="qwen3.5:4b", system_prompt="PROFILE_PROMPT_TOKEN base prompt.")
+
+    with patch.object(client, "_call_ollama", return_value=(True, '{"translation": "x"}')) as mock_call:
+        client.translate_json('{"text": "Hello world"}')
+
+    payload = mock_call.call_args[0][0]
+    assert payload.get("system") == "PROFILE_PROMPT_TOKEN base prompt."
+
+
+def test_translate_json_no_system_prompt_or_context_omits_system_key() -> None:
+    """When both channels are empty, payload["system"] must be absent
+    entirely (parity with _build_no_system_payload's base shape)."""
+    client = OllamaClient(model="qwen3.5:4b")
+
+    with patch.object(client, "_call_ollama", return_value=(True, '{"translation": "x"}')) as mock_call:
+        client.translate_json('{"text": "Hello world"}')
+
+    payload = mock_call.call_args[0][0]
+    assert "system" not in payload

@@ -151,6 +151,22 @@ _META_REFUSAL_PATTERNS: tuple = (
     "no text provided",
     "i don't see any text",
     "i do not see any text",
+    # Anchored on "...to translate" (self-referential about the ACT of
+    # translating), not the bare phrase "need more context" — a plain
+    # sentence anyone might legitimately say, and in fact the correct
+    # English translation of common source phrasings (e.g. Chinese
+    # "需要更多上下文" -> "Need more context."). An unanchored pattern here
+    # would suppress and discard that genuine translation (BR-108 forbids
+    # exactly this: "a genuine translation ... MUST NOT be misclassified as
+    # a refusal and suppressed"). See TestRefusalDetectorNegative's
+    # "need_more_context" cases (tests/test_nontranslatable_segment_guard.py).
+    # Anchored on the first-person refusal frame, not the bare phrase.
+    # "more context to translate" alone is a false positive on any document
+    # ABOUT translation: "The translator needs more context to translate this
+    # document." and "Please provide more context to translate the remaining
+    # terms." are both legitimate translations. The refusal is always the model
+    # speaking about itself. See BR-108's precision mandate.
+    "i need more context to translate",
 )
 
 

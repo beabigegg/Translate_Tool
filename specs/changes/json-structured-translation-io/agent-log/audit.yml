@@ -1,0 +1,17 @@
+- type: tier-floor-override
+  change-id: json-structured-translation-io
+  timestamp: '2026-07-10T04:29:21.101Z'
+  declared-tier: 1
+  floor-tier: 0
+  label: critical surface (auth / payments / data migration / concurrency / secrets)
+  matched:
+    - index
+    - sessions
+  reason: >-
+    False positive. The gate matched the literal tokens "index" and "sessions". In this change
+    "index" means a JSON array index and a string index used to assert prompt-ordering in tests;
+    "sessions" appears only as requests.Session, the mocked HTTP transport. There is no auth, no
+    payment, no secret, no data migration, no DDL and no concurrency surface. Tier 1 is correct and
+    is justified in change-classification.md section Tier: the change carries a mandatory never-fail
+    fallback to the pre-change pipeline plus a kill-switch env var that reverts both paths
+    byte-for-byte, which is what distinguishes it from Tier 0.

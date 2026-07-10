@@ -3,7 +3,7 @@ contract: env
 summary: Environment variable inventory, secret handling, and deployment sync policy.
 owner: platform-team
 surface: runtime-config
-schema-version: 0.18.0
+schema-version: 0.19.0
 last-changed: 2026-07-09
 breaking-change-policy: deprecate-2-minors
 ---
@@ -31,6 +31,7 @@ breaking-change-policy: deprecate-2-minors
 | LAYOUT_DETECTOR_MODEL_PATH | backend | all | no | no | (none) | /opt/models/heron-101 | platform-team | non-empty string (valid local directory path) | yes | Local path to the Docling heron-101 ONNX weights directory. When unset, falls back to HuggingFace auto-download of `docling-project/docling-layout-heron-onnx`. Set for air-gapped / Docker-preloaded deployments. Not a secret. |
 | LAYOUT_DETECTOR_ENABLED | backend | all | no | no | true | false | platform-team | boolean (true/false or 1/0) | yes | Enable or disable the layout detector. When false (or 0), `round(y0,10pt)` reading-order heuristic is used for all pages. Rollback switch — set to 0 to revert to pre-p2-layout-detection parse path without a code change. |
 | CRITIQUE_LOOP_ENABLED | backend | all | no | no | 1 | 1 | application-team | boolean (1/0 or true/false) | no | When false (or 0), translate-then-critique self-refinement loop is skipped; initial draft returned without critique pass. Glossary substitution (BR-41) still runs. Rollback switch for p2-prompt-fewshot-glossary. |
+| JSON_STRUCTURED_TRANSLATION_ENABLED | backend | all | no | no | 1 | 1 | application-team | boolean (1/0 or true/false) | no | When false (or 0), the table and body translation paths both use the legacy Markdown pipe-grid / plain-text pipeline unconditionally — byte-for-byte pre-change behavior. The per-request malformed-JSON fallback (BR-111/BR-112) is automatic regardless of this flag; the flag exists because a systemic quality regression on well-formed-but-wrong JSON is NOT caught by that per-request fallback. Rollback switch for json-structured-translation-io. |
 | CRITIQUE_MAX_ITERATIONS | backend | all | no | no | 3 | 3 | application-team | positive integer | no | Maximum translate-then-critique loop iterations per translatable segment. Loop terminates at this count even if critique suggests further revision. See BR-44. |
 | CRITIQUE_TIMEOUT_SECONDS | backend | all | no | no | 60 | 60 | application-team | positive float (seconds) | no | Per-segment critique loop wall-clock timeout. On timeout, loop degrades to last valid draft; job does not fail. See BR-44. |
 | OPENAI_TOTAL_TIMEOUT_SECONDS | backend | all | no | no | 480 | 480 | application-team | positive float (seconds) | no | Wall-clock total-duration ceiling on every OpenAICompatibleClient completion (translate + judge + the BR-109 document-context summary via `complete()`), additive on top of the per-chunk (connect, read) tuple — bounds a provider that dribbles keep-alive bytes so a single call cannot hang indefinitely. On expiry the call degrades (returns ok=False; does not crash the job), matching CRITIQUE_TIMEOUT_SECONDS. Default 480 is a generous placeholder above the ~420s worst case of a healthy (120 connect + 300 read) call — calibrate for the longest legitimate cloud generation; set very high to effectively disable. See BR-100. |

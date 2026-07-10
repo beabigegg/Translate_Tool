@@ -6,6 +6,7 @@ import logging
 import time
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
+from app.backend import config
 from app.backend.clients.base_llm_client import LLMClient
 from app.backend.config import (
     CHUNK_OVERLAP_TOKENS,
@@ -26,6 +27,7 @@ from app.backend.services.metrics import (
     set_glossary_match_rate,
 )
 from app.backend.services.translation_cache import get_cache
+from app.backend.utils import json_translation
 from app.backend.utils.translation_helpers import translate_blocks_batch
 
 if TYPE_CHECKING:
@@ -895,44 +897,82 @@ def translate_table_cells(
             # All-numeric or all-empty — no LLM call needed
             log(f"[CELL-BATCH] element {element.element_id}: no translatable cells for {tgt}")
         else:
-            # IP-3: Whole-table serialization → single translate_once call (BR-79/BR-80/BR-82)
-            # grid stays None on any error → fallback always runs (BR-82).
             from app.backend.utils import table_serializer
-            serialized = table_serializer.serialize(ts.cells)
+
             src_for_prompt = src_lang or "auto"
-            prompt = client._build_table_translate_prompt(serialized, src_for_prompt, tgt)
-            grid = None
-            try:
-                ok, response = client.translate_once(prompt, tgt, src_lang)
-                if ok:
-                    grid = table_serializer.parse(response, ts.num_rows, ts.num_cols)
-                    if grid is None:
+            translated_by_pos: Optional[Dict[Tuple[int, int], str]] = None
+
+            if config.JSON_STRUCTURED_TRANSLATION_ENABLED:
+                # IP-6: coordinate JSON envelope (BR-79/BR-80/BR-82/BR-83) —
+                # content-cells only, no grid shape echoed.
+                sent_cells = {(c.row, c.col): c.content for c in translatable_cells}
+                payload = json_translation.build_table_payload(translatable_cells, src_for_prompt, tgt)
+                try:
+                    ok, response = client.translate_json(payload, system_context=None)
+                    if ok:
+                        translated_by_pos, reason = table_serializer.parse_json(response, sent_cells)
+                        if translated_by_pos is None:
+                            logger.warning(
+                                "[CELL-BATCH] element %s: parse_json() rejected reply for target=%s "
+                                "(%s); falling back to per-cell SEG batch (BR-82).",
+                                element.element_id, tgt, reason,
+                            )
+                            log(f"[CELL-BATCH] element {element.element_id}: JSON table fallback ({reason})")
+                    else:
                         logger.warning(
-                            "[CELL-BATCH] element %s: parse() returned None for target=%s "
-                            "(expected %d×%d); falling back to per-cell SEG batch (BR-82). "
-                            "Response excerpt: %s",
-                            element.element_id,
-                            tgt,
-                            ts.num_rows,
-                            ts.num_cols,
-                            response[:120] if response else "",
+                            "[CELL-BATCH] element %s whole-table JSON call failed (target=%s): %s; "
+                            "falling back to per-cell SEG batch (BR-82)",
+                            element.element_id, tgt, response,
                         )
-            except Exception as exc:
-                logger.warning(
-                    "[CELL-BATCH] element %s whole-table call failed (target=%s): %s; "
-                    "falling back to per-cell SEG batch (BR-82)",
-                    element.element_id,
-                    tgt,
-                    exc,
-                )
-            if grid is not None:
-                # Assign grid[r][c] to each non-numeric, non-empty cell
+                        log(f"[CELL-BATCH] element {element.element_id}: JSON table fallback (translate_json failed)")
+                except Exception as exc:
+                    logger.warning(
+                        "[CELL-BATCH] element %s whole-table JSON call raised (target=%s): %s; "
+                        "falling back to per-cell SEG batch (BR-82)",
+                        element.element_id, tgt, exc,
+                    )
+                    log(f"[CELL-BATCH] element {element.element_id}: JSON table fallback (exception: {exc})")
+            else:
+                # Flag-OFF: retained legacy pipe-grid block, unchanged (Resolution A).
+                serialized = table_serializer.serialize(ts.cells)
+                prompt = client._build_table_translate_prompt(serialized, src_for_prompt, tgt)
+                grid = None
+                try:
+                    ok, response = client.translate_once(prompt, tgt, src_lang)
+                    if ok:
+                        grid = table_serializer.parse(response, ts.num_rows, ts.num_cols)
+                        if grid is None:
+                            logger.warning(
+                                "[CELL-BATCH] element %s: parse() returned None for target=%s "
+                                "(expected %d×%d); falling back to per-cell SEG batch (BR-82). "
+                                "Response excerpt: %s",
+                                element.element_id,
+                                tgt,
+                                ts.num_rows,
+                                ts.num_cols,
+                                response[:120] if response else "",
+                            )
+                except Exception as exc:
+                    logger.warning(
+                        "[CELL-BATCH] element %s whole-table call failed (target=%s): %s; "
+                        "falling back to per-cell SEG batch (BR-82)",
+                        element.element_id,
+                        tgt,
+                        exc,
+                    )
+                if grid is not None:
+                    translated_by_pos = {}
+                    for cell in ts.cells:
+                        r, c = cell.row, cell.col
+                        if cell.content and not cell.is_numeric and 0 <= r < ts.num_rows and 0 <= c < ts.num_cols:
+                            translated_by_pos[(r, c)] = grid[r][c]
+
+            if translated_by_pos is not None:
                 for cell in ts.cells:
                     r, c = cell.row, cell.col
-                    if cell.content and not cell.is_numeric:
-                        if 0 <= r < ts.num_rows and 0 <= c < ts.num_cols:
-                            cell.translated_content = grid[r][c]
-                            cell.translation_status = "translated"
+                    if cell.content and not cell.is_numeric and (r, c) in translated_by_pos:
+                        cell.translated_content = translated_by_pos[(r, c)]
+                        cell.translation_status = "translated"
             else:
                 # Fallback: per-cell SEG batch (BR-82) — preserves 1:1 mapping (AC-8)
                 batch_texts = [c.content for c in translatable_cells]

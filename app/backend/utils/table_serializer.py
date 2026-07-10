@@ -1,17 +1,28 @@
-"""Shared table serialization utility (table-context-translation).
+"""Shared table serialization utility (table-context-translation;
+json-structured-translation-io, ADR-0017).
 
-Converts a recognized table's cells to/from a Markdown pipe-grid string for
-whole-table LLM translation. This is the single source of truth for the
-wire format used by both Ollama and OpenAI-compatible clients, and the PDF
-translation_service cell-batch path.
+Two wire formats coexist here, gated by `config.JSON_STRUCTURED_TRANSLATION_ENABLED`
+(Resolution A, see specs/changes/json-structured-translation-io/implementation-plan.md):
 
-See contracts/data/data-shape-contract.md §Table Serialization Wire Format.
+- ``serialize()`` / ``parse()``: the legacy Markdown pipe-grid, positional and
+  shape-counted. RETAINED and FROZEN — reachable only when the flag is false.
+  No new caller may use these two functions.
+- ``serialize_json()`` / ``parse_json()``: the coordinate-carrying JSON cell
+  list (BR-79, BR-82, BR-83) that replaces the pipe-grid on the flag-ON path.
+  Sends only content-bearing, non-numeric cells at their ORIGINAL `(row, col)`
+  coordinate — no grid shape is echoed, so the phantom-column defect (a sheet
+  reporting a 9x257 shape when only 47 cells hold content) cannot recur.
+
+See contracts/data/data-shape-contract.md §Table Serialization Wire Format
+(normative for both the request/response envelope and the reject/tolerate
+rules of the JSON path).
 """
 
 from __future__ import annotations
 
+import json
 import re
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 def serialize(cells: Any) -> str:
@@ -110,3 +121,104 @@ def parse(text: str, num_rows: int, num_cols: int) -> Optional[List[List[str]]]:
         grid.append(cells)
 
     return grid
+
+
+# ---------------------------------------------------------------------------
+# JSON coordinate wire format (json-structured-translation-io, BR-79/BR-82/BR-83)
+# ---------------------------------------------------------------------------
+
+def serialize_json(cells: Any) -> str:
+    """Serialize a list of table cells to the coordinate JSON request envelope.
+
+    Per data-shape-contract.md §Table Serialization Wire Format: only
+    content-bearing (``content != ""``), non-numeric (``is_numeric=False``)
+    cells are included, each carrying its ORIGINAL ``(row, col)`` coordinate.
+    Numeric and empty cells are excluded defensively even if the caller failed
+    to partition them out first (BR-68/BR-79) — never included as
+    placeholders, at any position. No grid shape (``num_rows``/``num_cols``)
+    is emitted.
+
+    Args:
+        cells: Iterable of cell objects with row/col/content/is_numeric attrs.
+
+    Returns:
+        JSON string: ``{"cells": [{"row": R, "col": C, "text": T}, ...]}``.
+        ``cells`` is ``[]`` when no cell qualifies.
+    """
+    items = []
+    for cell in cells:
+        content = cell.content or ""
+        if not content:
+            continue
+        if getattr(cell, "is_numeric", False):
+            continue
+        items.append({"row": cell.row, "col": cell.col, "text": content})
+    return json.dumps({"cells": items}, ensure_ascii=False)
+
+
+def parse_json(
+    content: str, sent_cells: Dict[Tuple[int, int], str]
+) -> Tuple[Optional[Dict[Tuple[int, int], str]], str]:
+    """Parse and validate an LLM JSON table reply against the sent coordinates.
+
+    Per data-shape-contract.md §Table Serialization Wire Format:
+
+    - Coordinate remap: assignment is by ``(row, col)`` lookup, never by
+      position or order within the array.
+    - Reject — missing coordinate: if any coordinate in ``sent_cells`` has no
+      matching reply entry, the WHOLE reply is rejected (never partially
+      assigned).
+    - Reject — malformed: unparseable JSON, empty content, a missing/non-list
+      ``cells`` key, or any cell object lacking ``row``/``col``/``translation``
+      or carrying a non-integer coordinate.
+    - Tolerated — extra coordinates: a reply entry whose ``(row, col)`` was
+      never sent is ignored, not an error.
+    - Echoed-source rejection: a reply in which EVERY sent coordinate's
+      translation is byte-identical to its source is untranslated and MUST be
+      rejected. A single unchanged cell (proper noun, number, product code)
+      is legitimate and MUST NOT trigger this.
+
+    Args:
+        content: Raw LLM reply string.
+        sent_cells: Mapping of every ``(row, col)`` coordinate that was sent
+            to its source text, for the echoed-source check.
+
+    Returns:
+        ``(translations, "")`` on success — a dict of every sent ``(row,
+        col)`` -> its reply translation (extras dropped). ``(None, reason)``
+        on any reject condition above.
+    """
+    if not content:
+        return None, "empty content"
+    try:
+        data = json.loads(content)
+    except (ValueError, TypeError):
+        return None, "unparseable JSON"
+    if not isinstance(data, dict):
+        return None, "reply is not a JSON object"
+
+    reply_cells = data.get("cells")
+    if not isinstance(reply_cells, list):
+        return None, "missing or non-list 'cells' key"
+
+    reply_map: Dict[Tuple[int, int], str] = {}
+    for item in reply_cells:
+        if not isinstance(item, dict):
+            return None, "malformed cell entry (not an object)"
+        row = item.get("row")
+        col = item.get("col")
+        translation = item.get("translation")
+        if isinstance(row, bool) or isinstance(col, bool) or not isinstance(row, int) or not isinstance(col, int):
+            return None, "cell entry has a non-integer row/col coordinate"
+        if not isinstance(translation, str):
+            return None, "cell entry missing or non-string 'translation'"
+        reply_map[(row, col)] = translation
+
+    missing = [pos for pos in sent_cells if pos not in reply_map]
+    if missing:
+        return None, f"reply omits {len(missing)} sent coordinate(s): {missing[:3]}"
+
+    if sent_cells and all(reply_map[pos] == sent_cells[pos] for pos in sent_cells):
+        return None, "echoed source (whole-grid unchanged, untranslated reply)"
+
+    return {pos: reply_map[pos] for pos in sent_cells}, ""

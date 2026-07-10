@@ -3,7 +3,7 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.17.4
+schema-version: 0.18.0
 last-changed: 2026-07-08
 breaking-change-policy: deprecate-2-minors
 ---
@@ -446,43 +446,66 @@ A serialized IR lacking `metadata["table_structure"]` on a `table`-typed element
 | `app/backend/parsers/table_recognizer.py` | producer | creates `TableStructure`; attaches to parent `TranslatableElement.metadata`; lazy-loads ML model; falls back gracefully when unavailable |
 | `app/backend/parsers/pdf_parser.py` | mediator | passes `table`-typed elements to `table_recognizer.py`; attaches result to element metadata |
 | `app/backend/services/translation_service.py` (cell-batch path) | consumer | reads `TableStructure`; invokes `table_serializer.serialize()` (BR-79); sends one whole-table LLM call (BR-69); validates response shape (BR-82); falls back to per-cell SEG batch on mismatch; writes `translated_content` and `translation_status` per cell |
-| `app/backend/utils/table_serializer.py` | utility (table-context-translation) | NEW — shared `serialize(cells) -> str` and `parse(text, num_rows, num_cols) -> grid\|None`; single source of truth for Markdown pipe-grid format; consumed by `ollama_client.py`, `openai_compatible_client.py`, and `translation_service.py` (PDF cell path) |
+| `app/backend/utils/table_serializer.py` | utility (table-context-translation) | shared JSON cell-list serializer (ADR-0017); see §Table Serialization Wire Format. Formerly `serialize(cells) -> str` / `parse(text, num_rows, num_cols) -> grid\|None`; single source of truth for Markdown pipe-grid format; consumed by `ollama_client.py`, `openai_compatible_client.py`, and `translation_service.py` (PDF cell path) |
 | `tests/test_table_recognizer.py` | test consumer | asserts `TableStructure` shape, `is_numeric` classification, batch coalescing, numeric passthrough, degenerate-table handling |
 
 ### Table Serialization Wire Format
 
-**Added in table-context-translation. Source of truth: `app/backend/utils/table_serializer.py`.**
+**Rewritten in json-structured-translation-io. Source of truth: `app/backend/utils/table_serializer.py`. Supersedes the Markdown pipe-grid format (ADR-0006) — see ADR-0017.**
 
 This subsection is normative. The implementation MUST conform to this format on both the serialize and parse paths.
 
-#### Serialization (input to LLM)
+#### Request envelope (input to LLM)
+
+| field | type | notes |
+|---|---|---|
+| `cells` | array of cell objects | top-level object, not a bare array — leaves room for future non-cell fields without a shape change |
+| `cells[].row` | integer | 0-based ORIGINAL grid coordinate, as already carried on `TableCell`. NEVER renumbered or compacted when other cells are excluded |
+| `cells[].col` | integer | 0-based; same origin-coordinate rule as `row` |
+| `cells[].text` | string | source content; always non-empty |
 
 | rule | detail |
 |---|---|
-| Row delimiter | `\n` (newline) between rows; no trailing newline |
-| Cell delimiter | `\|` (pipe) between cells within a row; no leading or trailing `\|` |
-| Pipe escape | Literal `\|` in cell content MUST be escaped as `\\\|` before serialization |
-| Newline normalization | Embedded `\n` in cell content MUST be replaced by a single space |
-| Placeholder cells | Numeric (`is_numeric=True`) and empty cells are serialized unchanged as positional placeholders; their content is not sent for translation but occupies the correct grid position |
+| Cell inclusion | ONLY content-bearing, non-numeric cells (`is_numeric=False` per BR-68, `content != ""`) are sent. Numeric and empty cells are NOT sent at all — not as placeholders, not at any position. BR-68 partitions them out before `serialize` is called. |
+| No positional grid | There is no `num_rows`/`num_cols` shape for the model to echo. A table holding 47 content-bearing cells sends exactly 47 cell objects, whatever `ws.max_row`/`ws.max_column` report. This is what makes the phantom-column failure mode structurally impossible. |
+| Degenerate tables | Unchanged from BR-68: zero content-bearing cells means no LLM call; an empty `cells` array is never constructed or sent. |
 
-#### Parse / Shape Validation (remap contract)
+#### Response envelope (output from LLM) and validation
+
+| field | type | notes |
+|---|---|---|
+| `cells` | array of cell objects | same top-level shape as the request |
+| `cells[].row`, `cells[].col` | integer | MUST match a coordinate that was actually sent |
+| `cells[].translation` | string | the translated text for that cell |
 
 | rule | detail |
 |---|---|
-| Strip separator lines | Lines consisting entirely of `---` (Markdown header-separator) are stripped before validation |
-| Keep pipe lines | Only lines containing at least one `\|` are counted as data rows |
-| Shape acceptance | Accepted iff `len(data_lines) == num_rows` AND `all(len(split_row) == num_cols)` for every row |
-| Split on unescaped `\|` only | `\\\|` is a literal cell character, not a delimiter |
-| Unescape after split | Replace `\\\|` → `\|` in each cell value after splitting |
-| Trim | Strip leading/trailing whitespace from each cell value after splitting and unescaping |
-| Accept outcome | For each non-numeric, non-empty cell at origin `(r, c)`: `translated_content = grid[r][c]`; `translation_status = "translated"`. Numeric → `passthrough`; empty → `skipped` (BR-68). |
-| Reject outcome | Any shape mismatch (row count, col count, or no `\|` found) → return `None`; caller falls back to per-cell SEG batch (BR-82) |
-| Spanning cells | Origin cell `(r, c)` is assigned from `grid[r][c]`; spanned positions are empty placeholders and are not re-assigned |
+| Coordinate remap | Assignment is by `(row, col)` lookup against the SENT set — never by position or order within the array |
+| Reject — missing coordinate | If any sent `(row, col)` has no matching reply entry, the WHOLE reply is rejected. Partial assignment is forbidden. Caller falls back to per-cell SEG batch (BR-82) |
+| Reject — malformed | Unparseable JSON, empty `content`, a missing `cells` key, or a cell object lacking `row`/`col`/`translation` or carrying a non-integer coordinate → reject; same fallback |
+| Tolerated — extra coordinates | A reply entry whose `(row, col)` was never sent is IGNORED, not an error. Strict on omission, lenient on hallucinated extras |
+| Echoed-source rejection | A reply in which every returned cell is byte-identical to its source is untranslated and MUST be rejected. A single unchanged cell is legitimate. This is a business rule, not a shape check — see business-rules.md BR-82 |
+| Accept outcome | For each sent cell at origin `(r, c)`: `translated_content = reply[(r, c)].translation`; `translation_status = "translated"`. Numeric → `passthrough`; empty → `skipped` (BR-68, unchanged) |
+| Spanning cells | The origin cell `(r, c)` is sent and assigned; spanned positions are not sent and are not assigned |
 
 #### Round-trip guarantee
 
-`serialize(cells)` → LLM echoes the grid unchanged → `parse(response, num_rows, num_cols)` MUST restore each cell's content exactly (modulo whitespace trimming).
+For every cell sent in the request, the parsed response MUST supply a `translation` addressable at the identical `(row, col)`. There is no shape or count guarantee to satisfy — only coordinate completeness.
 
+#### Known consumers of the Table Serialization Wire Format
+
+Before this change the wire-format section had NO consumers table. That absence is why `docx_processor.py` was invisible both to this contract and to the change-classifier. A change to this format requires updating every row below in the same change; grep the call sites, do not trust archive status.
+
+| consumer | surface | impact |
+|---|---|---|
+| `app/backend/utils/table_serializer.py` | implementation | sole source of truth for the JSON build/parse functions. The legacy pipe-grid `serialize()`/`parse()` are RETAINED alongside them, reachable only when `JSON_STRUCTURED_TRANSLATION_ENABLED=0`, so that the kill switch is a true revert rather than a degradation to per-cell translation. They are frozen: no new caller may use them. |
+| `app/backend/processors/xlsx_processor.py` | caller | builds the content-bearing cell list; the site that previously logged `expected 9×257` |
+| `app/backend/processors/pptx_processor.py` | caller | same call pattern |
+| `app/backend/processors/docx_processor.py` | caller | same call pattern; previously unlisted anywhere |
+| `app/backend/processors/pdf_processor.py` | caller | same call pattern |
+| `app/backend/services/translation_service.py` | caller | the PDF `TableCell` cell-batch path (BR-83) |
+| `app/backend/clients/ollama_client.py` | seam host | hosts the BR-111 JSON-translation seam; hands cells to the shared instruction builder |
+| `app/backend/clients/openai_compatible_client.py` | seam host | same |
 ### Office Processor Cell Dedup Key (DOCX/XLSX/PPTX)
 
 **Added in table-context-translation.**

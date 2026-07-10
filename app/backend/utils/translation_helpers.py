@@ -15,6 +15,7 @@ from app.backend.config import (
     TRANSLATION_GRANULARITY,
 )
 from app.backend.services.context_prompts import build_context_prefix
+from app.backend.utils import json_translation
 from app.backend.utils.logging_utils import logger
 from app.backend.utils.text_utils import (
     is_cjk_language,
@@ -135,6 +136,37 @@ def _parse_merged_response(response: str, expected_count: int) -> List[str]:
     return results
 
 
+def _translate_body_json(
+    text: str,
+    tgt: str,
+    src_lang: Optional[str],
+    client: LLMClient,
+    system_ctx: Optional[str],
+    log: Optional[Callable[[str], None]],
+) -> Tuple[bool, str]:
+    """Body-path JSON envelope call (BR-112), with plain-text fallback.
+
+    Sends ``{"text": text}`` via the BR-111 `translate_json` seam and parses
+    ``{"translation": ...}``. Any structural or echoed-source reject (BR-112)
+    falls back to the retained plain-text `client.translate_once` call for
+    this segment — the job never fails for this reason — and emits ONE INFO
+    line via `log(...)` (IP-9), which in production reaches the `TranslateTool`
+    logger through `JobLogger.log` (BR-109).
+    """
+    payload = json_translation.build_body_payload(text, src_lang, tgt)
+    ok, content = client.translate_json(payload, system_context=system_ctx)
+    if ok:
+        translation, reason = json_translation.parse_body_reply(content, text)
+        if translation is not None:
+            return True, translation
+        if log:
+            log(f"[JSON-BODY] fallback to plain-text translate_once: {reason}")
+    else:
+        if log:
+            log(f"[JSON-BODY] fallback to plain-text translate_once: translate_json failed ({content})")
+    return client.translate_once(text, tgt, src_lang, system_context=system_ctx)
+
+
 def translate_merged_paragraphs(
     texts: List[str],
     tgt: str,
@@ -193,7 +225,10 @@ def translate_merged_paragraphs(
         # concatenated onto `text` — the translatable payload for segment i is
         # always exactly `text`, never `text` glued with a neighbor's content.
         system_ctx = ctx if (ctx and len(text.strip()) > 4) else None
-        ok, translated = client.translate_once(text, tgt, src_lang, system_context=system_ctx)
+        if config.JSON_STRUCTURED_TRANSLATION_ENABLED:
+            ok, translated = _translate_body_json(text, tgt, src_lang, client, system_ctx, log)
+        else:
+            ok, translated = client.translate_once(text, tgt, src_lang, system_context=system_ctx)
         if ok:
             if is_meta_refusal(translated, text):
                 # BR-108 output guard: reply is a meta/refusal (ask-back for

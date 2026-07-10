@@ -11,11 +11,12 @@ import logging
 import os
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 import docx
 from PyPDF2 import PdfReader
 
+from app.backend import config
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import (
     LAYOUT_QA_ENABLED,
@@ -30,7 +31,9 @@ from app.backend.config import (
 from app.backend.processors.com_helpers import is_win32com_available, word_convert
 from app.backend.processors.docx_processor import translate_docx
 from app.backend.services.layout_qa import run_layout_qa
+from app.backend.utils import json_translation
 from app.backend.utils.exceptions import check_document_size_limits
+from app.backend.utils.text_utils import is_numeric_cell
 from app.backend.utils.translation_helpers import translate_blocks_batch
 
 if TYPE_CHECKING:
@@ -158,49 +161,101 @@ def _translate_pdf_tables_with_context(
 
         num_rows = max(r for r, _ in by_cell) + 1
         num_cols = max(c for _, c in by_cell) + 1
-        proxy_cells = [
-            _CellProxy(
-                row=r,
-                col=c,
-                content=" ".join(
-                    el.content.strip() for el in by_cell.get((r, c), [])
-                ).strip(),
-            )
-            for r in range(num_rows)
-            for c in range(num_cols)
-        ]
+        translated_by_pos: Optional[Dict[Tuple[int, int], str]] = None
 
-        serialized = table_serializer.serialize(proxy_cells)
-        prompt = client._build_table_translate_prompt(serialized, src_lang or "auto", tgt)
-        grid = None
-        try:
-            ok, response = client.translate_once(prompt, tgt, src_lang)
-            if ok:
-                grid = table_serializer.parse(response, num_rows, num_cols)
-                if grid is None:
+        if config.JSON_STRUCTURED_TRANSLATION_ENABLED:
+            # IP-5: coordinate JSON envelope (BR-79/BR-80/BR-82) — content-cells only.
+            content_cells = [
+                _CellProxy(
+                    row=r, col=c,
+                    content=" ".join(el.content.strip() for el in cell_elems).strip(),
+                )
+                for (r, c), cell_elems in by_cell.items()
+            ]
+            content_cells = [c for c in content_cells if c.content and not is_numeric_cell(c.content)]
+            if not content_cells:
+                translated_by_pos = {}
+            else:
+                sent_cells = {(c.row, c.col): c.content for c in content_cells}
+                payload = json_translation.build_table_payload(content_cells, src_lang or "auto", tgt)
+                try:
+                    ok, response = client.translate_json(payload, system_context=None)
+                    if ok:
+                        translated_by_pos, reason = table_serializer.parse_json(response, sent_cells)
+                        if translated_by_pos is None:
+                            logger.warning(
+                                "[PDF] table %s: parse_json() rejected reply for target=%s "
+                                "(%s); cells fall back to flatten path.",
+                                tid, tgt, reason,
+                            )
+                            log(f"[PDF] table {tid}: JSON table fallback ({reason})")
+                    else:
+                        logger.warning(
+                            "[PDF] table %s translate_json failed (target=%s): %s; "
+                            "cells fall back to flatten path",
+                            tid, tgt, response,
+                        )
+                        log(f"[PDF] table {tid}: JSON table fallback (translate_json failed)")
+                except Exception as exc:
                     logger.warning(
-                        "[PDF] table %s: parse() returned None for target=%s "
-                        "(expected %d×%d); cells fall back to flatten path. "
-                        "Response excerpt: %s",
-                        tid, tgt, num_rows, num_cols,
-                        response[:120] if response else "",
+                        "[PDF] table %s whole-table JSON call raised (target=%s): %s; "
+                        "cells fall back to flatten path",
+                        tid, tgt, exc,
                     )
-        except Exception as exc:
-            logger.warning(
-                "[PDF] table %s whole-table call failed (target=%s): %s; "
-                "cells fall back to flatten path",
-                tid, tgt, exc,
-            )
+                    log(f"[PDF] table {tid}: JSON table fallback (exception: {exc})")
+        else:
+            # Flag-OFF: retained legacy pipe-grid block, unchanged (Resolution A).
+            proxy_cells = [
+                _CellProxy(
+                    row=r,
+                    col=c,
+                    content=" ".join(
+                        el.content.strip() for el in by_cell.get((r, c), [])
+                    ).strip(),
+                )
+                for r in range(num_rows)
+                for c in range(num_cols)
+            ]
 
-        if grid is None:
+            serialized = table_serializer.serialize(proxy_cells)
+            prompt = client._build_table_translate_prompt(serialized, src_lang or "auto", tgt)
+            grid = None
+            try:
+                ok, response = client.translate_once(prompt, tgt, src_lang)
+                if ok:
+                    grid = table_serializer.parse(response, num_rows, num_cols)
+                    if grid is None:
+                        logger.warning(
+                            "[PDF] table %s: parse() returned None for target=%s "
+                            "(expected %d×%d); cells fall back to flatten path. "
+                            "Response excerpt: %s",
+                            tid, tgt, num_rows, num_cols,
+                            response[:120] if response else "",
+                        )
+            except Exception as exc:
+                logger.warning(
+                    "[PDF] table %s whole-table call failed (target=%s): %s; "
+                    "cells fall back to flatten path",
+                    tid, tgt, exc,
+                )
+
+            if grid is not None:
+                translated_by_pos = {
+                    (r, c): grid[r][c]
+                    for r in range(num_rows) for c in range(num_cols)
+                }
+
+        if translated_by_pos is None:
             continue
 
         mapped = 0
         for (r, c), cell_elems in by_cell.items():
             if len(cell_elems) != 1:
                 continue  # cannot split one cell translation across element bboxes
+            if (r, c) not in translated_by_pos:
+                continue
             src_text = cell_elems[0].content.strip()
-            translated = grid[r][c].strip()
+            translated = translated_by_pos[(r, c)].strip()
             if src_text and translated:
                 out[src_text] = translated
                 mapped += 1

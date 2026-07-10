@@ -1,0 +1,16 @@
+{
+  "change_id": "json-structured-translation-io",
+  "phase": "changed-area",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest tests/test_json_translation_prompt.py tests/test_json_translation_body.py tests/test_table_serialization.py tests/test_table_context_translation.py tests/test_nontranslatable_segment_guard.py tests/test_openai_compatible_client.py tests/test_ollama_client_dynamic_strategy.py tests/test_pdf_layout_table_fixes.py tests/test_context_prefix_bleed.py tests/test_env_contract.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/json-structured-translation-io/test-runs/20260710-123536/junit.xml' -q --maxfail=1 --tb=short -ra",
+  "duration_ms": 1560,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/json-structured-translation-io/test-runs/20260710-123536/summary.json",
+    "stdout": "specs/changes/json-structured-translation-io/test-runs/20260710-123536/stdout.log",
+    "stderr": "specs/changes/json-structured-translation-io/test-runs/20260710-123536/stderr.log",
+    "junit": "specs/changes/json-structured-translation-io/test-runs/20260710-123536/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

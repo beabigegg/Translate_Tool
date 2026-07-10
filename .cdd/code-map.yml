@@ -1,6 +1,6 @@
-# generated: 2026-07-09T11:22:08Z by cdd-kit 3.6.0
-# files: 206, src-lines: 60571, map-lines: 5422, compression: 11.2x
-# sources-digest: 5c38c11fe522e65fa16083591ca25459db5cc021ff625826a93bba8f358c0355
+# generated: 2026-07-10T01:03:15Z by cdd-kit 3.6.0
+# files: 206, src-lines: 60870, map-lines: 5431, compression: 11.2x
+# sources-digest: 5b5d869f54743e4e41ac1359fd82b73b8a1d8875c94e8a3ccdf58a6db32ba18a
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
@@ -227,7 +227,7 @@ app/backend/clients/ollama_client.py:  # 919 lines
     - { name: _drop_english_preamble, lines: 67-89 }
     - { name: list_ollama_models, lines: 910-919 }
 
-app/backend/clients/openai_compatible_client.py:  # 466 lines
+app/backend/clients/openai_compatible_client.py:  # 473 lines
   imports:
     - { module: __future__, items: [annotations], line: 18 }
     - { module: logging, items: [], line: 20 }
@@ -238,31 +238,31 @@ app/backend/clients/openai_compatible_client.py:  # 466 lines
     - { module: requests, items: [], line: 26 }
   classes:
     - name: OpenAICompatibleClient
-      lines: 44-466
+      lines: 44-473
       methods:
-        - { name: __init__, lines: 59-88 }
-        - { name: cache_model_key, lines: 91-95 }
-        - { name: _timeout, lines: 98-100 }
-        - { name: _chat_completions_url, lines: 102-103 }
-        - { name: _embeddings_url, lines: 105-106 }
-        - { name: _models_url, lines: 108-109 }
-        - { name: _build_messages, lines: 111-116 }
-        - { name: _run_bounded_post, lines: 118-170 }
-        - { name: _post_completion, lines: 172-230 }
-        - { name: embed, lines: 232-263 }
-        - { name: _build_table_translate_prompt, lines: 266-286 }
-        - { name: translate_once, lines: 288-327 }
-        - { name: complete, lines: 329-340 }
-        - { name: translate_batch, lines: 342-361 }
-        - { name: health, lines: 363-379 }
-        - { name: list_models, lines: 381-390 }
-        - { name: list_live_models, lines: 392-421 }
-        - { name: unload, lines: 423-429 }
-        - { name: health_check, lines: 449-451 }
-        - { name: _is_translation_dedicated, lines: 453-455 }
-        - { name: _is_translategemma_model, lines: 457-459 }
-        - { name: set_runtime_options_override, lines: 461-462 }
-        - { name: set_cache_variant, lines: 464-466 }
+        - { name: __init__, lines: 64-95 }
+        - { name: cache_model_key, lines: 98-102 }
+        - { name: _timeout, lines: 105-107 }
+        - { name: _chat_completions_url, lines: 109-110 }
+        - { name: _embeddings_url, lines: 112-113 }
+        - { name: _models_url, lines: 115-116 }
+        - { name: _build_messages, lines: 118-123 }
+        - { name: _run_bounded_post, lines: 125-177 }
+        - { name: _post_completion, lines: 179-237 }
+        - { name: embed, lines: 239-270 }
+        - { name: _build_table_translate_prompt, lines: 273-293 }
+        - { name: translate_once, lines: 295-334 }
+        - { name: complete, lines: 336-347 }
+        - { name: translate_batch, lines: 349-368 }
+        - { name: health, lines: 370-386 }
+        - { name: list_models, lines: 388-397 }
+        - { name: list_live_models, lines: 399-428 }
+        - { name: unload, lines: 430-436 }
+        - { name: health_check, lines: 456-458 }
+        - { name: _is_translation_dedicated, lines: 460-462 }
+        - { name: _is_translategemma_model, lines: 464-466 }
+        - { name: set_runtime_options_override, lines: 468-469 }
+        - { name: set_cache_variant, lines: 471-473 }
 
 app/backend/config.py:  # 579 lines
   imports:
@@ -759,7 +759,7 @@ app/backend/processors/libreoffice_helpers.py:  # 226 lines
     - { name: xls_to_xlsx, lines: 199-211 }
     - { name: ppt_to_pptx, lines: 214-226 }
 
-app/backend/processors/orchestrator.py:  # 989 lines
+app/backend/processors/orchestrator.py:  # 991 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: logging, items: [], line: 5 }
@@ -788,7 +788,7 @@ app/backend/processors/orchestrator.py:  # 989 lines
     - { name: _extract_all_segments, lines: 272-375 }
     - { name: _detect_document_context, lines: 378-412 }
     - { name: _output_name, lines: 415-441 }
-    - { name: process_files, lines: 444-989 }
+    - { name: process_files, lines: 444-991 }
 
 app/backend/processors/pdf_processor.py:  # 1223 lines
   imports:
@@ -3648,7 +3648,7 @@ tests/test_nontranslatable_segment_guard.py:  # 273 lines
         - { name: test_long_genuine_translation_is_not_detected_length_gate, lines: 267-270 }
         - { name: test_empty_reply_is_not_a_refusal, lines: 272-273 }
 
-tests/test_ollama_client_dynamic_strategy.py:  # 87 lines
+tests/test_ollama_client_dynamic_strategy.py:  # 103 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: unittest.mock, items: [patch], line: 5 }
@@ -3659,9 +3659,10 @@ tests/test_ollama_client_dynamic_strategy.py:  # 87 lines
     - { name: test_cache_model_key_includes_variant_when_set, lines: 26-34 }
     - { name: test_translation_dedicated_payload_uses_system_prompt_when_present, lines: 37-52 }
     - { name: test_system_context_merged_into_system_field, lines: 55-69 }
-    - { name: test_system_context_merged_with_existing_system_prompt, lines: 72-87 }
+    - { name: test_ollama_outgoing_payload_base_system_prompt_unchanged, lines: 72-85 }
+    - { name: test_system_context_merged_with_existing_system_prompt, lines: 88-103 }
 
-tests/test_openai_compatible_client.py:  # 659 lines
+tests/test_openai_compatible_client.py:  # 707 lines
   imports:
     - { module: __future__, items: [annotations], line: 7 }
     - { module: json, items: [], line: 9 }
@@ -3703,51 +3704,56 @@ tests/test_openai_compatible_client.py:  # 659 lines
         - { name: test_system_prompt_merged_ahead_of_segment_context_single_system_message, lines: 257-292 }
         - { name: test_system_prompt_alone_still_delivered_when_no_segment_context, lines: 294-312 }
         - { name: test_complete_sends_no_system_message_even_with_system_prompt_set, lines: 314-338 }
+    - name: TestSystemPromptConstruction
+      lines: 352-386
+      methods:
+        - { name: test_default_construction_without_system_prompt_stays_empty, lines: 353-365 }
+        - { name: test_constructor_system_prompt_kwarg_delivered_to_outgoing_payload, lines: 367-386 }
     - name: TestTranslateBatch
-      lines: 343-381
+      lines: 391-429
       methods:
-        - { name: test_batch_calls_translate_once_sequentially, lines: 344-362 }
-        - { name: test_batch_partial_failure_returns_ok_false, lines: 364-381 }
+        - { name: test_batch_calls_translate_once_sequentially, lines: 392-410 }
+        - { name: test_batch_partial_failure_returns_ok_false, lines: 412-429 }
     - name: TestHealth
-      lines: 386-416
+      lines: 434-464
       methods:
-        - { name: test_health_probe_reachable_returns_true, lines: 387-402 }
-        - { name: test_health_probe_unreachable_returns_false, lines: 404-416 }
+        - { name: test_health_probe_reachable_returns_true, lines: 435-450 }
+        - { name: test_health_probe_unreachable_returns_false, lines: 452-464 }
     - name: TestListModels
-      lines: 421-433
+      lines: 469-481
       methods:
-        - { name: test_list_models_returns_list_of_strings, lines: 422-433 }
+        - { name: test_list_models_returns_list_of_strings, lines: 470-481 }
     - name: TestUnload
-      lines: 438-449
+      lines: 486-497
       methods:
-        - { name: test_unload_is_noop_returns_true, lines: 439-449 }
+        - { name: test_unload_is_noop_returns_true, lines: 487-497 }
     - name: TestConfigLoading
-      lines: 454-566
+      lines: 502-614
       methods:
-        - { name: test_providers_yml_env_var_interpolation, lines: 455-485 }
-        - { name: test_missing_providers_yml_falls_back_to_ollama, lines: 487-494 }
-        - { name: test_malformed_providers_yml_falls_back_to_ollama, lines: 496-504 }
-        - { name: test_unresolved_env_var_disables_provider, lines: 506-537 }
-        - { name: test_all_providers_disabled_falls_back_to_ollama, lines: 539-566 }
+        - { name: test_providers_yml_env_var_interpolation, lines: 503-533 }
+        - { name: test_missing_providers_yml_falls_back_to_ollama, lines: 535-542 }
+        - { name: test_malformed_providers_yml_falls_back_to_ollama, lines: 544-552 }
+        - { name: test_unresolved_env_var_disables_provider, lines: 554-585 }
+        - { name: test_all_providers_disabled_falls_back_to_ollama, lines: 587-614 }
     - name: TestSecretHandling
-      lines: 571-603
+      lines: 619-651
       methods:
-        - { name: test_literal_api_key_not_emitted_in_request, lines: 572-603 }
+        - { name: test_literal_api_key_not_emitted_in_request, lines: 620-651 }
     - name: TestTotalTimeoutCeilingAdditive
-      lines: 608-638
+      lines: 656-686
       methods:
-        - { name: _client, lines: 611-616 }
-        - { name: test_ceiling_absent_from_per_chunk_timeout_tuple, lines: 618-628 }
-        - { name: test_wellbehaved_call_still_bounded_by_connect_read_tuple, lines: 630-638 }
+        - { name: _client, lines: 659-664 }
+        - { name: test_ceiling_absent_from_per_chunk_timeout_tuple, lines: 666-676 }
+        - { name: test_wellbehaved_call_still_bounded_by_connect_read_tuple, lines: 678-686 }
     - name: TestTotalTimeoutConfig
-      lines: 641-659
+      lines: 689-707
       methods:
-        - { name: test_env_var_parses_positive_float_default, lines: 644-659 }
+        - { name: test_env_var_parses_positive_float_default, lines: 692-707 }
   functions:
     - { name: _make_chat_response, lines: 22-29 }
     - { name: _make_http_error_response, lines: 32-36 }
 
-tests/test_orchestrator_context_detection.py:  # 970 lines
+tests/test_orchestrator_context_detection.py:  # 1196 lines
   imports:
     - { module: __future__, items: [annotations], line: 32 }
     - { module: inspect, items: [], line: 34 }
@@ -3788,6 +3794,9 @@ tests/test_orchestrator_context_detection.py:  # 970 lines
     - { name: test_sampling_exception_degrades_to_no_preamble_job_completes, lines: 820-853 }  # @pytest.mark.parametrize('ext,translate_attr', [('.docx', 'translate_docx'), ('.p...
     - { name: test_xls_sampling_does_not_double_convert_via_libreoffice, lines: 860-899 }
     - { name: test_legacy_xls_and_table_only_docx_both_emit_context_detected, lines: 906-970 }
+    - { name: test_cloud_client_delivers_profile_base_system_prompt_semiconductor, lines: 992-1049 }
+    - { name: test_base_prompt_precedes_document_context_preamble_in_composition, lines: 1052-1111 }
+    - { name: test_fallback_chain_client_delivers_profile_base_system_prompt, lines: 1114-1196 }
 
 tests/test_orchestrator_judge.py:  # 386 lines
   imports:

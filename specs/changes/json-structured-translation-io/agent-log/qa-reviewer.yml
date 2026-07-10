@@ -1,0 +1,31 @@
+change-id: json-structured-translation-io
+timestamp: 2026-07-10
+agent: qa-reviewer
+status: approved
+summary: >-
+  Approved after blocking once, correctly, on stale test evidence. The recorded
+  green run predated both the 24 resilience tests and the reconstruction of two
+  production files; evidence was regenerated against the shipped bytes.
+artifacts:
+  - { type: gate-results, pointer: "collect/targeted/changed-area/contract/full all passed; zero waivers" }
+  - { type: evidence-quality, pointer: "specs/changes/json-structured-translation-io/test-runs/20260710-122120" }
+  - { type: decision, pointer: "approved" }
+  - { type: tautology-audit, pointer: "tests/test_table_context_translation.py" }
+  - { type: failure-routing, pointer: "none blocking" }
+notes: >-
+  The block main Claude missed: test-evidence.yml was written 11:43:40, while
+  tests/test_table_context_translation.py changed 11:56:13, tests/test_json_translation_body.py
+  11:56:49, app/backend/utils/table_serializer.py 12:07:43 and
+  app/backend/utils/translation_helpers.py 12:08:00. The recorded full junit
+  contained zero TestHostileTableJsonReplies testcases. Evidence regenerated;
+  the new full junit contains all 12, and test-evidence.yml (12:24) now postdates
+  every source file it covers.
+  Reconstruction risk from the e2e agent's `git checkout -- table_serializer.py`
+  (which destroyed uncommitted serialize_json/parse_json) is closed three ways:
+  a recorded green full run over the current bytes; main Claude's independent
+  nine-rule exercise of parse_json; and the agent-log falsifiability record.
+  qa-reviewer verdict: approved, not approved-with-risk.
+follow-ups:
+  - "test_fallback_logs_warning_on_parse_failure (~L432) asserts levelno >= WARNING with no record.name filter; that WARNING goes to a module logger that never reaches translator.log. Pre-existing, redundant, not a coverage hole."
+  - "Durable rule: falsifiability toggles must mutate in place with a scratch backup; never git checkout/stash/restore, which silently destroy uncommitted work."
+next-action: spec-architect-second-signoff

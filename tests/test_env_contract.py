@@ -182,6 +182,53 @@ class TestEnvContractDeclared:
         assert isinstance(config.TERM_EXTRACTION_MODEL, str)
         assert config.TERM_EXTRACTION_MODEL  # non-empty
 
+    def test_json_structured_translation_enabled_declared(self):
+        """json-structured-translation-io: JSON_STRUCTURED_TRANSLATION_ENABLED
+        must be declared in env-contract.md (BR-111/BR-112 kill switch)."""
+        text = _contract_text()
+        assert "JSON_STRUCTURED_TRANSLATION_ENABLED" in text, (
+            "JSON_STRUCTURED_TRANSLATION_ENABLED is not declared in "
+            f"{ENV_CONTRACT_PATH}."
+        )
+
+
+class TestJsonStructuredTranslationDefault:
+    """json-structured-translation-io: JSON_STRUCTURED_TRANSLATION_ENABLED
+    default is true (Resolution A — flag-OFF is the explicit opt-out)."""
+
+    def test_json_structured_translation_enabled_default_true_in_contract(self):
+        text = _contract_text()
+        lines = [
+            ln for ln in text.splitlines()
+            if "JSON_STRUCTURED_TRANSLATION_ENABLED" in ln and "|" in ln
+        ]
+        assert lines, "JSON_STRUCTURED_TRANSLATION_ENABLED row not found in env-contract.md table"
+        assert "1" in lines[0] or "true" in lines[0].lower(), (
+            f"JSON_STRUCTURED_TRANSLATION_ENABLED row must default to true/1; row: {lines[0]!r}"
+        )
+
+    def test_json_structured_translation_enabled_default_true_in_config(self):
+        """Mirrors test_qe_enabled_default_true_in_config's importlib.reload
+        pattern — this only asserts the DEFAULT (no env override); the flag's
+        runtime BEHAVIOR (flag-OFF routes to the legacy path) is tested via
+        monkeypatch.setattr(config, ...) in test_table_context_translation.py
+        and test_json_translation_body.py (Test Update Contract)."""
+        import os
+        from importlib import reload
+
+        prev = os.environ.pop("JSON_STRUCTURED_TRANSLATION_ENABLED", None)
+        try:
+            import app.backend.config as cfg
+            reload(cfg)
+            assert cfg.JSON_STRUCTURED_TRANSLATION_ENABLED is True, (
+                f"JSON_STRUCTURED_TRANSLATION_ENABLED default must be True; "
+                f"got {cfg.JSON_STRUCTURED_TRANSLATION_ENABLED}"
+            )
+        finally:
+            if prev is not None:
+                os.environ["JSON_STRUCTURED_TRANSLATION_ENABLED"] = prev
+            reload(cfg)
+
 
 class TestQeDefault:
     """quality-metrics-gating: AC-3 (QE_ENABLED default true)."""

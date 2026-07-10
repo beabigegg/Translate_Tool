@@ -1,0 +1,11 @@
+agent: implementation-planner
+change-id: json-structured-translation-io
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/json-structured-translation-io/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer (IP-1..IP-9), test-strategist + e2e-resilience-engineer (IP-10/IP-11)" }
+  - { type: scope-summary, pointer: "flag-ON JSON path + flag-OFF retained-legacy path both fully specified; 5 table sites + body path get if/else flag branch; new seam + shared module; two live wire paths" }
+  - { type: decision, pointer: "flag-OFF = Resolution A (coordinator, with live PANJIT pipe-grid probe proving clean tables round-trip): RETAIN frozen legacy serialize/parse + _build_table_translate_prompt behind JSON_STRUCTURED_TRANSLATION_ENABLED=0; ADD serialize_json/parse_json + translate_json. My earlier Resolution R (delete pipe-grid) was overturned — deletion would degrade clean tables to per-cell." }
+  - { type: decision, pointer: "config flag: define like QE_ENABLED (module constant, os.environ read once at import); consumers READ via config.<FLAG> attribute access (NOT 'from config import', the CRITIQUE_LOOP_ENABLED import-bound pattern) so runtime tests toggle via monkeypatch.setattr(config,...); test_env_contract default test uses importlib.reload. Value is module-load-cached (restart to change env), same as its 3 sibling flags all marked 'no' in the restart column." }
+notes:
+  - "First shell-capable agent: verified all 5 serialize/parse call sites, both client seams, _post_completion empty-content=ok=False, translate_once system-merge order, Protocol 5-method count, is_numeric_cell/should_translate/is_meta_refusal, and log(...) scope at every fallback site against live source."
+  - "Plan updated for Resolution A after coordinator overturned Resolution R with live pipe-grid probe evidence. Flagged one test-plan correction: test_table_serialization.py legacy cases are RETAINED not replaced (test-plan Test Update Contract said replace)."
