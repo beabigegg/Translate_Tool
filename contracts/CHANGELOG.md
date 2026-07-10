@@ -8,6 +8,9 @@ While a contract is at 0.x (draft), entries here are optional.
 Once a contract reaches 1.0.0, every schema-version bump must have
 a corresponding entry below.
 
+## [ci 0.7.0] — 2026-07-10
+Added: `## Known Validator Gaps` — two gaps in cdd-kit's own validators, each found by execution rather than by reading, each assigned a named human check until the tool closes it. (1) `cdd-kit validate --contracts` does not verify that a `schema-version` bump has a paired `contracts/CHANGELOG.md` entry: deleting an entry leaves it at exit 0 with "All validations passed". (2) The gate validates `test-evidence.yml`'s phases and waivers but never compares its timestamp against the mtimes of the files it covers, so a green evidence bundle can describe bytes that are not the bytes being merged — `qa-reviewer` blocked `json-structured-translation-io` for exactly this, its recorded full junit containing zero of the 24 resilience tests that landed 13 minutes later. Documentation only; no gate definition or promotion policy changed. Added in change `json-structured-translation-io` (learning promotion).
+
 ## [data 0.18.0] — 2026-07-10
 Changed: §Table Serialization Wire Format rewritten — the Markdown pipe-grid (ADR-0006) is replaced by a coordinate-carrying JSON cell list. Only content-bearing, non-numeric cells are sent; numeric and empty cells are excluded entirely rather than sent as positional placeholders (BR-68 partitions them out upstream). Round-trip is now per-`(row, col)` coordinate lookup rather than positional grid reconstruction, which makes the phantom-column failure mode (`ws.max_column` = 257 against 47 real cells) structurally impossible. The section also GAINS a consumers table naming all eight files; it previously had none, which is why `docx_processor.py` was invisible to both this contract and the change-classifier. See ADR-0017. Changed in change `json-structured-translation-io`.
 
