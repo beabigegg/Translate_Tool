@@ -338,6 +338,96 @@ class TestSystemPromptDelivery:
         )
 
 
+# ── translate_json system-channel delivery (json-structured-translation-io, BR-111) ──
+#
+# Delivery tests, not signature-only acceptance: a fake client that merely
+# *accepts* a system_context kwarg without asserting it reached the outgoing
+# transport payload is the exact assignment-without-delivery hazard that
+# shipped the cloud-doc-context-summary (discarded write) and
+# cloud-base-system-prompt-drop (write that never happened) defects. These
+# tests mock requests.Session.post and assert on the captured `json=` kwarg.
+
+class TestTranslateJsonSystemChannelDelivery:
+    def test_system_prompt_and_system_context_both_delivered_in_order(self):
+        """BR-111 reuses translate_once's merge order: system_prompt
+        (BR-109/BR-110) ahead of system_context (BR-78), in ONE leading
+        system message — asserted by ORDER, not mere presence (presence alone
+        would still pass if one token replaced the other)."""
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        client = OpenAICompatibleClient(
+            base_url="http://fake-host:8080", api_key="test-key", model="gpt-oss:120b",
+        )
+        client.system_prompt = "PROFILE_PROMPT_TOKEN Document context: an engineering change request."
+        segment_context = (
+            "SEGMENT_CONTEXT_TOKEN Previous segments — reference only, do NOT translate or repeat."
+        )
+        json_payload = '{"text": "Segment B."}'
+
+        with patch("requests.Session.post", return_value=_make_chat_response('{"translation": "x"}')) as mock_post:
+            client.translate_json(json_payload, system_context=segment_context)
+
+        _, kwargs = mock_post.call_args
+        messages = kwargs["json"]["messages"]
+        system_messages = [m for m in messages if m["role"] == "system"]
+        assert len(system_messages) == 1, (
+            f"system_prompt + system_context must merge into ONE system message, got {system_messages!r}"
+        )
+        merged = system_messages[0]["content"]
+        assert "PROFILE_PROMPT_TOKEN" in merged, f"system_prompt token missing from delivered system message: {merged!r}"
+        assert "SEGMENT_CONTEXT_TOKEN" in merged, f"system_context token missing from delivered system message: {merged!r}"
+        assert merged.index("PROFILE_PROMPT_TOKEN") < merged.index("SEGMENT_CONTEXT_TOKEN"), (
+            "system_prompt (BR-109/BR-110) must precede system_context (BR-78) in the merged message"
+        )
+
+        user_messages = [m for m in messages if m["role"] == "user"]
+        assert len(user_messages) == 1
+        assert user_messages[0]["content"] == json_payload, (
+            "translate_json must send the JSON envelope AS-IS in the user message"
+        )
+        assert "Translate the following text from" not in user_messages[0]["content"], (
+            "the JSON payload must NOT be re-wrapped by translate_once's framing"
+        )
+
+    def test_system_prompt_alone_still_delivered_on_json_seam(self):
+        """When there is no per-call system_context, client.system_prompt
+        alone must still reach the model as the leading system message on
+        the JSON seam (parity with translate_once's equivalent guard)."""
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        client = OpenAICompatibleClient(
+            base_url="http://fake-host:8080", api_key="test-key", model="gpt-oss:120b",
+        )
+        client.system_prompt = "PROFILE_PROMPT_TOKEN Document context: a purchase order document."
+
+        with patch("requests.Session.post", return_value=_make_chat_response('{"translation": "x"}')) as mock_post:
+            client.translate_json('{"text": "Hello world"}')
+
+        _, kwargs = mock_post.call_args
+        messages = kwargs["json"]["messages"]
+        assert messages[0] == {"role": "system", "content": client.system_prompt}, (
+            f"system_prompt must be delivered alone when no system_context is given, got {messages!r}"
+        )
+
+    def test_no_system_prompt_or_context_omits_system_message(self):
+        """When both channels are empty, no system message is emitted at all
+        (parity with the plain-text seam's TestSystemContextChannel guard)."""
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        client = OpenAICompatibleClient(
+            base_url="http://fake-host:8080", api_key="test-key", model="gpt-oss:120b",
+        )
+
+        with patch("requests.Session.post", return_value=_make_chat_response('{"translation": "x"}')) as mock_post:
+            client.translate_json('{"text": "Hello world"}')
+
+        _, kwargs = mock_post.call_args
+        messages = kwargs["json"]["messages"]
+        assert not any(m["role"] == "system" for m in messages)
+        assert len(messages) == 1
+        assert messages[0]["role"] == "user"
+
+
 # ── constructor system_prompt kwarg (cloud-base-system-prompt-drop, BR-110) ────
 #
 # BR-110: OpenAICompatibleClient must accept and populate `system_prompt` at

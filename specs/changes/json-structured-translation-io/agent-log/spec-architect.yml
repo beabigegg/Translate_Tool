@@ -1,0 +1,47 @@
+change-id: json-structured-translation-io
+timestamp: 2026-07-10
+agent: spec-architect
+status: approved-with-risk
+summary: >-
+  Tier 1 second sign-off. All five design decisions landed faithfully; Resolution A
+  is an improvement over the original design. Named one residual risk: the BR-108
+  substring meta-refusal pattern remained false-positive-prone on documents about
+  translation. Main Claude fixed that residual before merge.
+artifacts:
+  - { type: design, pointer: "specs/changes/json-structured-translation-io/design.md" }
+  - { type: adr, pointer: "docs/adr/0017-json-structured-translation-seam.md" }
+  - { type: decision, pointer: "approved-with-risk (residual since remediated)" }
+notes: >-
+  Verified against the current tree, not the plan. (1) Resolution A: flag-OFF is a
+  genuine whole-table revert at all five sites, not a per-cell degradation; both
+  branches converge on one coordinate dict and per-cell is reached only when it is
+  None. (2) Protocol option (b) held: base_llm_client.py untouched, five methods,
+  and test_both_prompt_builders_delegate_to_shared_module asserts BOTH clients
+  expose translate_json with matching signatures via inspect.signature. (3) The
+  phrasing pin asserts on the BUILT payload; the banned strings in the module
+  docstring cannot fool it because no test reads the source. (4) The double-wrap is
+  gone on both JSON paths; it survives only on the frozen flag-OFF pipe-grid, where
+  it is the pre-existing shipped behavior. (5) Echoed-source granularity is at the
+  right grain: whole-grid in parse_json, per-segment in parse_body_reply.
+  Sharpened one point main Claude got half-right: index-ordering ALONE would be an
+  insufficient delivery invariant. The shipped test is stronger — it also asserts
+  `user_messages[0]["content"] == json_payload` exactly, which is the
+  collision-immune, ADR-0016 leak-proof assertion. A future refactor must not
+  reduce it to an index-order-only check.
+residual-risk-remediated: >-
+  The architect demonstrated that the narrowed pattern "more context to translate"
+  was STILL an unanchored substring: "The translator needs more context to translate
+  this document." is a legitimate translation and was being suppressed. Main Claude
+  reproduced it, plus a third case ("Please provide more context to translate the
+  remaining terms."), and anchored the pattern on the first-person refusal frame
+  ("i need more context to translate"). All five cases now behave correctly; the
+  BR-108 quoted example is still caught. Falsifiability run with a scratch backup
+  (not git checkout): un-anchoring turns the new negative test RED with an assertion
+  failure; restoring returns green. Test evidence regenerated across all five phases
+  afterwards, and verified to postdate every file it covers.
+follow-ups:
+  - "Durable rule (endorsed by qa-reviewer and spec-architect, generalized by the architect): any temporary revert-and-restore verification technique — falsifiability toggles AND the bug-fix RED recipe that does `git show main:<file> > <file>` — must use scratch copies, never git checkout/stash/restore, which silently destroy uncommitted working-tree work. After any such destruction, a reconstruction is untrusted until a fresh full cdd-kit test run covers the current bytes."
+  - "BR-108's substring meta-refusal detector is architecturally the wrong shape. A refusal is a property of the WHOLE reply standing in place of a translation, so the detector should match reply-dominant patterns rather than substrings that can legitimately appear inside a genuine translation. Anchoring is a patch, not the fix. Its own change."
+  - "The ADR-0016 no-leak guarantee on the JSON seam rides on the `user content == envelope` equality assertion in TestTranslateJsonSystemChannelDelivery. Do not let a future refactor reduce it to index-order only."
+  - "test_fallback_logs_warning_on_parse_failure (~L432) asserts levelno >= WARNING with no record.name filter; pre-existing, redundant, not a coverage hole."
+next-action: commit-and-pr

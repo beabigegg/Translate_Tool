@@ -488,6 +488,36 @@ class OllamaClient:
         # Smart retry: detect error type and apply appropriate strategy
         return self._smart_retry(text, tgt, src_lang, str(last))
 
+    def translate_json(
+        self,
+        user_payload: str,
+        cancel_event=None,
+        system_context: Optional[str] = None,
+    ) -> Tuple[bool, str]:
+        """JSON-structured translation seam (BR-111): table/body JSON envelope.
+
+        Deliberately NOT part of the LLMClient Protocol (matches the
+        `complete()` precedent; base_llm_client.py pins exactly five methods).
+        `user_payload` is the FULLY-BUILT string from
+        `json_translation.build_body_payload`/`build_table_payload` and is
+        sent AS-IS via the prompt field — never re-wrapped by any
+        "Translate the following text..." framing.
+
+        Mirrors `translate_once`'s system-channel merge (L460-466): a
+        no-system base payload, then `self.system_prompt` (BR-109/BR-110)
+        merged ahead of the per-call `system_context` (BR-78) into
+        `payload["system"]` — never concatenated into `user_payload`.
+        """
+        if cancel_event is not None and cancel_event.is_set():
+            return False, "cancelled"
+        payload = self._build_no_system_payload(user_payload)
+        merged_system = "\n\n".join(
+            p for p in ((self.system_prompt or "").strip(), (system_context or "").strip()) if p
+        )
+        if merged_system:
+            payload["system"] = merged_system
+        return self._call_ollama(payload)
+
     def translate_merged_text(
         self, merged_text: str, segment_count: int, tgt: str, src_lang: Optional[str],
     ) -> Tuple[bool, str]:

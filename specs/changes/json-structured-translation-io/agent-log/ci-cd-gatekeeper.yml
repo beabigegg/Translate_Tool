@@ -1,0 +1,26 @@
+change-id: json-structured-translation-io
+timestamp: 2026-07-10
+agent: ci-cd-gatekeeper
+status: passed
+summary: >-
+  Added one env-sync grep step for JSON_STRUCTURED_TRANSLATION_ENABLED to the
+  merge-blocking contract-and-fast-tests job. No other workflow edit; the blanket
+  `pytest tests/ -x -q` already sweeps every new and extended test file.
+artifacts:
+  - { type: ci-gates, pointer: "specs/changes/json-structured-translation-io/ci-gates.md" }
+  - { type: workflow-changes, pointer: ".github/workflows/contract-driven-gates.yml" }
+notes: >-
+  Verified by main Claude: the workflow still parses (9 jobs), the new step mirrors
+  the existing JUDGE_MAX_ITERATIONS pattern, and both grep targets already exist on
+  disk so the step is enforcement of a satisfied obligation, not a new one.
+  Gatekeeper's claim that `cdd-kit validate --contracts` does NOT enforce a paired
+  CHANGELOG entry for a schema-version bump was tested and CONFIRMED, overruling
+  contract-reviewer's contrary assertion: deleting the [business 0.30.0] entry
+  leaves validate at exit 0 with "All validations passed" and no mention of the
+  changelog. That is a pre-existing gap in the toolchain, out of scope here, and
+  is why the three CHANGELOG entries for this change were written by hand and
+  verified by reading, not by relying on the gate.
+  Accepted risk recorded: no CI gate catches a systemic quality regression on
+  well-formed-but-wrong JSON. The kill-switch flag is the only mitigation and it
+  is operator-triggered, not CI-triggered.
+next-action: run-implementation-planner

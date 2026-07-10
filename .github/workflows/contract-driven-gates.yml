@@ -77,6 +77,15 @@ jobs:
           grep -q "JUDGE_MAX_ITERATIONS" contracts/env/env.schema.json || \
             { echo "JUDGE_MAX_ITERATIONS missing from env.schema.json"; exit 1; }
 
+      - name: Env schema sync — JSON_STRUCTURED_TRANSLATION_ENABLED in .env.example.template and env.schema.json (Tier 1 — blocks merge)
+        # json-structured-translation-io: kill-switch flag must be present in both deployment sync artefacts.
+        # Deployment Sync Policy: contracts/env/env-contract.md §Deployment Sync Policy
+        run: |
+          grep -q "JSON_STRUCTURED_TRANSLATION_ENABLED" contracts/env/.env.example.template || \
+            { echo "JSON_STRUCTURED_TRANSLATION_ENABLED missing from .env.example.template"; exit 1; }
+          grep -q "JSON_STRUCTURED_TRANSLATION_ENABLED" contracts/env/env.schema.json || \
+            { echo "JSON_STRUCTURED_TRANSLATION_ENABLED missing from env.schema.json"; exit 1; }
+
       - name: Dead-import assertion — no vector-DB packages in term_extractor.py (Tier 1 — blocks merge)
         # AC-6: only in-process NumPy cosine is permitted; no pgvector/chromadb/faiss/hnswlib.
         run: |

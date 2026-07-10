@@ -1,0 +1,15 @@
+{
+  "change_id": "json-structured-translation-io",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "cdd-kit validate --contracts",
+  "duration_ms": 480,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/json-structured-translation-io/test-runs/20260710-112246/summary.json",
+    "stdout": "specs/changes/json-structured-translation-io/test-runs/20260710-112246/stdout.log",
+    "stderr": "specs/changes/json-structured-translation-io/test-runs/20260710-112246/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

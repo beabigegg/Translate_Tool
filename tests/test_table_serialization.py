@@ -14,6 +14,7 @@ Collection-time module imports (CLAUDE.md mock.patch learning):
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import List, Optional
 
@@ -316,3 +317,173 @@ class TestRoundTrip:
                 assert grid[r][c] == f"cell_{r}_{c}", (
                     f"Position ({r},{c}) mismatch: expected cell_{r}_{c}, got {grid[r][c]!r}"
                 )
+
+
+# ---------------------------------------------------------------------------
+# json-structured-translation-io: serialize_json / parse_json (ADR-0017,
+# Resolution A — these coordinate-JSON functions are NEW additions ALONGSIDE
+# the frozen legacy serialize()/parse() tested above; the legacy cases are
+# retained unmodified per the Test Update Contract.
+# ---------------------------------------------------------------------------
+
+class TestSerializeContentCellsOnly:
+    """AC-1: serialize_json emits ONLY content-bearing, non-numeric cells —
+    no grid shape, so a phantom-column sheet cannot produce a shape echo."""
+
+    def test_47_content_cells_against_257_phantom_columns_no_grid_shape(self):
+        """A sheet reporting a 9x257 shape (phantom columns) but holding only
+        47 real content cells must serialize to exactly 47 cell objects."""
+        content_positions = [(r, c) for r in range(9) for c in range(257)][:47]
+        cells = [_make_cell(r, c, f"cell_{r}_{c}") for (r, c) in content_positions]
+        # Fill the rest of the phantom 9x257 grid with empty placeholder cells,
+        # exactly mirroring how xlsx_processor builds its full-grid proxy list
+        # today (data-shape §Table Serialization Wire Format).
+        all_positions = {(r, c) for r in range(9) for c in range(257)}
+        empty_cells = [_make_cell(r, c, "") for (r, c) in all_positions - set(content_positions)]
+
+        result = _ts.serialize_json(cells + empty_cells)
+        parsed = json.loads(result)
+
+        assert "cells" in parsed
+        assert len(parsed["cells"]) == 47, (
+            f"Expected exactly 47 content cell objects, got {len(parsed['cells'])}"
+        )
+        assert "num_rows" not in parsed and "num_cols" not in parsed, (
+            "No grid shape may be echoed in the request envelope"
+        )
+
+    def test_numeric_cells_excluded(self):
+        cells = [
+            _make_cell(0, 0, "Name"),
+            _make_cell(0, 1, "100", is_numeric=True),
+        ]
+        result = json.loads(_ts.serialize_json(cells))
+        assert len(result["cells"]) == 1
+        assert result["cells"][0]["text"] == "Name"
+
+    def test_empty_cells_excluded(self):
+        cells = [_make_cell(0, 0, "Name"), _make_cell(0, 1, "")]
+        result = json.loads(_ts.serialize_json(cells))
+        assert len(result["cells"]) == 1
+        assert result["cells"][0]["text"] == "Name"
+
+    def test_original_row_col_never_renumbered(self):
+        """A sparse cell list (rows 3 and 9, not 0 and 1) keeps its ORIGINAL
+        coordinates — never compacted to 0/1."""
+        cells = [_make_cell(3, 9, "Sparse"), _make_cell(3, 12, "Cell")]
+        result = json.loads(_ts.serialize_json(cells))
+        positions = {(c["row"], c["col"]) for c in result["cells"]}
+        assert positions == {(3, 9), (3, 12)}
+
+    def test_empty_cell_list_produces_empty_cells_array(self):
+        result = json.loads(_ts.serialize_json([]))
+        assert result == {"cells": []}
+
+
+class TestParseCoordinateRemap:
+    """AC-2: parse_json assigns by (row, col) lookup against the SENT set,
+    never by position or order within the reply array."""
+
+    def test_valid_reply_restores_translations_by_row_col(self):
+        sent_cells = {(0, 0): "Name", (0, 1): "Value", (1, 0): "Apple"}
+        reply = json.dumps({
+            "cells": [
+                {"row": 1, "col": 0, "translation": "苹果"},
+                {"row": 0, "col": 0, "translation": "名字"},
+                {"row": 0, "col": 1, "translation": "价值"},
+            ]
+        })
+        result, reason = _ts.parse_json(reply, sent_cells)
+        assert result == {(0, 0): "名字", (0, 1): "价值", (1, 0): "苹果"}
+        assert reason == ""
+
+    def test_reject_missing_sent_coordinate(self):
+        sent_cells = {(0, 0): "Name", (0, 1): "Value"}
+        reply = json.dumps({"cells": [{"row": 0, "col": 0, "translation": "名字"}]})
+        result, reason = _ts.parse_json(reply, sent_cells)
+        assert result is None
+        assert reason
+
+    def test_extra_coordinate_is_ignored_not_an_error(self):
+        sent_cells = {(0, 0): "Name"}
+        reply = json.dumps({
+            "cells": [
+                {"row": 0, "col": 0, "translation": "名字"},
+                {"row": 5, "col": 5, "translation": "hallucinated extra"},
+            ]
+        })
+        result, reason = _ts.parse_json(reply, sent_cells)
+        assert result == {(0, 0): "名字"}
+        assert reason == ""
+
+    def test_reject_unparseable_json(self):
+        result, reason = _ts.parse_json("not json at all", {(0, 0): "Name"})
+        assert result is None
+        assert reason
+
+    def test_reject_empty_content(self):
+        result, reason = _ts.parse_json("", {(0, 0): "Name"})
+        assert result is None
+        assert reason
+
+    def test_reject_missing_cells_key(self):
+        result, reason = _ts.parse_json(json.dumps({"foo": "bar"}), {(0, 0): "Name"})
+        assert result is None
+        assert reason
+
+    def test_reject_non_integer_coordinate(self):
+        sent_cells = {(0, 0): "Name"}
+        reply = json.dumps({"cells": [{"row": "0", "col": 0, "translation": "名字"}]})
+        result, reason = _ts.parse_json(reply, sent_cells)
+        assert result is None
+        assert reason
+
+    def test_echoed_whole_grid_rejected(self):
+        """Every returned cell byte-identical to its source -> untranslated,
+        must be rejected (BR-82)."""
+        sent_cells = {(0, 0): "Name", (0, 1): "Value"}
+        reply = json.dumps({
+            "cells": [
+                {"row": 0, "col": 0, "translation": "Name"},
+                {"row": 0, "col": 1, "translation": "Value"},
+            ]
+        })
+        result, reason = _ts.parse_json(reply, sent_cells)
+        assert result is None
+        assert "echo" in reason.lower()
+
+    def test_single_unchanged_cell_is_legitimate_not_rejected(self):
+        """A single unchanged cell (proper noun / product code / number) is
+        legitimate and MUST NOT trigger the echoed-source rejection —
+        asserting WHICH condition fired, not a changed-cell count."""
+        sent_cells = {(0, 0): "ACME-Corp", (0, 1): "Value"}
+        reply = json.dumps({
+            "cells": [
+                {"row": 0, "col": 0, "translation": "ACME-Corp"},  # legitimate proper noun
+                {"row": 0, "col": 1, "translation": "价值"},
+            ]
+        })
+        result, reason = _ts.parse_json(reply, sent_cells)
+        assert result == {(0, 0): "ACME-Corp", (0, 1): "价值"}
+        assert reason == ""
+
+
+class TestJsonRoundTrip:
+    def test_serialize_parse_json_round_trip_preserves_coordinates(self):
+        cells = [
+            _make_cell(0, 0, "Name"),
+            _make_cell(0, 1, "Value"),
+            _make_cell(1, 0, "Apple"),
+        ]
+        serialized = _ts.serialize_json(cells)
+        sent_cells = {(c.row, c.col): c.content for c in cells}
+        translated = json.dumps({
+            "cells": [
+                {"row": c.row, "col": c.col, "translation": f"T_{c.content}"}
+                for c in cells
+            ]
+        })
+        result, reason = _ts.parse_json(translated, sent_cells)
+        assert reason == ""
+        for c in cells:
+            assert result[(c.row, c.col)] == f"T_{c.content}"

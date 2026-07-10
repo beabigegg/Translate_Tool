@@ -1,0 +1,16 @@
+{
+  "change_id": "json-structured-translation-io",
+  "phase": "full",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest tests/ -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/json-structured-translation-io/test-runs/20260710-112525/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 130714,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/json-structured-translation-io/test-runs/20260710-112525/summary.json",
+    "stdout": "specs/changes/json-structured-translation-io/test-runs/20260710-112525/stdout.log",
+    "stderr": "specs/changes/json-structured-translation-io/test-runs/20260710-112525/stderr.log",
+    "junit": "specs/changes/json-structured-translation-io/test-runs/20260710-112525/junit.xml"
+  },
+  "next_action": "all phases green"
+}

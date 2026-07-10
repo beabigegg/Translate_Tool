@@ -1,0 +1,1 @@
+python -m pytest tests/ -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/json-structured-translation-io/test-runs/20260710-112525/junit.xml' --maxfail=1 --tb=short -ra

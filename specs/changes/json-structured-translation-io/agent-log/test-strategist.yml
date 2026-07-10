@@ -1,0 +1,8 @@
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/json-structured-translation-io/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_json_translation_prompt.py -> app/backend/utils/json_translation.py (new shared builder, design.md)" }
+  - { type: tdd-pairs, pointer: "tests/test_json_translation_body.py -> app/backend/utils/translation_helpers.py::translate_merged_paragraphs" }
+  - { type: tdd-pairs, pointer: "tests/test_table_serialization.py -> app/backend/utils/table_serializer.py::serialize,parse" }
+  - { type: tdd-pairs, pointer: "tests/test_table_context_translation.py -> app/backend/processors/{xlsx,pptx,docx,pdf}_processor.py, app/backend/services/translation_service.py" }
+  - { type: coverage-tiers, pointer: "unit, contract, integration, data-boundary, resilience" }
+  - { type: mapping-completeness, pointer: "AC-1..AC-8 all mapped; AC-8 realized via cdd-kit validate --contracts, not pytest" }

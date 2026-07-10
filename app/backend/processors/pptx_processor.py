@@ -13,11 +13,13 @@ import pptx
 from pptx.table import _Cell
 from pptx.util import Pt as PPTPt
 
+from app.backend import config
 from app.backend.clients.ollama_client import OllamaClient
 from app.backend.config import DEFAULT_MAX_BATCH_CHARS, MAX_SEGMENTS, MAX_TEXT_LENGTH
 from app.backend.services.translation_service import translate_texts
+from app.backend.utils import json_translation
 from app.backend.utils.exceptions import check_document_size_limits
-from app.backend.utils.text_utils import normalize_text, should_translate
+from app.backend.utils.text_utils import is_numeric_cell, normalize_text, should_translate
 
 
 # Segment types for tracking
@@ -344,43 +346,91 @@ def translate_pptx(
             num_cols = max(seg[4] for seg in t_segs) + 1  # seg[4] = col
 
             cells_by_pos = {(seg[3], seg[4]): seg[2] for seg in t_segs}
-            proxy_cells = [
-                _PptCellProxy(row=r, col=c, content=cells_by_pos.get((r, c), ""))
-                for r in range(num_rows) for c in range(num_cols)
-            ]
 
             for tgt in targets:
                 if stop_flag and stop_flag.is_set():
                     stopped = True
                     break
                 src_for_prompt = src_lang or "auto"
-                serialized = table_serializer.serialize(proxy_cells)
-                prompt = client._build_table_translate_prompt(serialized, src_for_prompt, tgt)
-                # grid stays None on any error → fallback always runs (BR-82)
-                grid = None
-                try:
-                    ok, response = client.translate_once(prompt, tgt, src_lang)
-                    if ok:
-                        grid = table_serializer.parse(response, num_rows, num_cols)
-                        if grid is None:
-                            from app.backend.utils.logging_utils import logger as _log
+                translated_by_pos: Optional[Dict[Tuple[int, int], str]] = None
+
+                if config.JSON_STRUCTURED_TRANSLATION_ENABLED:
+                    # IP-5: coordinate JSON envelope (BR-79/BR-80/BR-82) — content-cells only.
+                    content_cells = [
+                        _PptCellProxy(row=r, col=c, content=text)
+                        for (r, c), text in cells_by_pos.items()
+                        if text.strip() and not is_numeric_cell(text)
+                    ]
+                    if not content_cells:
+                        translated_by_pos = {}
+                    else:
+                        sent_cells = {(c.row, c.col): c.content for c in content_cells}
+                        payload = json_translation.build_table_payload(content_cells, src_for_prompt, tgt)
+                        from app.backend.utils.logging_utils import logger as _log
+                        try:
+                            ok, response = client.translate_json(payload, system_context=None)
+                            if ok:
+                                translated_by_pos, reason = table_serializer.parse_json(response, sent_cells)
+                                if translated_by_pos is None:
+                                    _log.warning(
+                                        "[PPTX] Table %s: parse_json() rejected reply for target=%s "
+                                        "(%s); falling back to per-cell batch",
+                                        table_id, tgt, reason,
+                                    )
+                                    log(f"[PPTX] Table {table_id}: JSON table fallback ({reason})")
+                            else:
+                                _log.warning(
+                                    "[PPTX] Table %s translate_json failed (target=%s): %s; "
+                                    "falling back to per-cell batch",
+                                    table_id, tgt, response,
+                                )
+                                log(f"[PPTX] Table {table_id}: JSON table fallback (translate_json failed)")
+                        except Exception as exc:
                             _log.warning(
-                                "[PPTX] Table %s: parse() returned None (expected %d×%d); "
-                                "falling back to per-cell batch for target=%s",
-                                table_id, num_rows, num_cols, tgt,
+                                "[PPTX] Table %s whole-table JSON call raised (target=%s): %s; "
+                                "falling back to per-cell batch",
+                                table_id, tgt, exc,
                             )
-                except Exception as exc:
-                    from app.backend.utils.logging_utils import logger as _log
-                    _log.warning(
-                        "[PPTX] Table %s translate_once failed (target=%s): %s; "
-                        "falling back to per-cell batch",
-                        table_id, tgt, exc,
-                    )
-                if grid is not None:
+                            log(f"[PPTX] Table {table_id}: JSON table fallback (exception: {exc})")
+                else:
+                    # Flag-OFF: retained legacy pipe-grid block, unchanged (Resolution A).
+                    proxy_cells = [
+                        _PptCellProxy(row=r, col=c, content=cells_by_pos.get((r, c), ""))
+                        for r in range(num_rows) for c in range(num_cols)
+                    ]
+                    serialized = table_serializer.serialize(proxy_cells)
+                    prompt = client._build_table_translate_prompt(serialized, src_for_prompt, tgt)
+                    # grid stays None on any error → fallback always runs (BR-82)
+                    grid = None
+                    try:
+                        ok, response = client.translate_once(prompt, tgt, src_lang)
+                        if ok:
+                            grid = table_serializer.parse(response, num_rows, num_cols)
+                            if grid is None:
+                                from app.backend.utils.logging_utils import logger as _log
+                                _log.warning(
+                                    "[PPTX] Table %s: parse() returned None (expected %d×%d); "
+                                    "falling back to per-cell batch for target=%s",
+                                    table_id, num_rows, num_cols, tgt,
+                                )
+                    except Exception as exc:
+                        from app.backend.utils.logging_utils import logger as _log
+                        _log.warning(
+                            "[PPTX] Table %s translate_once failed (target=%s): %s; "
+                            "falling back to per-cell batch",
+                            table_id, tgt, exc,
+                        )
+                    if grid is not None:
+                        translated_by_pos = {
+                            (r, c): grid[r][c]
+                            for r in range(num_rows) for c in range(num_cols)
+                        }
+
+                if translated_by_pos is not None:
                     for seg in t_segs:
                         r, c, txt = seg[3], seg[4], seg[2]
-                        if txt.strip():
-                            final_tmap[(tgt, txt, c)] = grid[r][c]
+                        if txt.strip() and (r, c) in translated_by_pos:
+                            final_tmap[(tgt, txt, c)] = translated_by_pos[(r, c)]
                 else:
                     # Fallback: per-cell batch (BR-82)
                     fallback_texts = list(dict.fromkeys(

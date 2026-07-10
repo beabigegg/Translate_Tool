@@ -147,6 +147,17 @@ CRITIQUE_LOOP_ENABLED: bool = os.environ.get("CRITIQUE_LOOP_ENABLED", "1").lower
 CRITIQUE_MAX_ITERATIONS: int = int(os.environ.get("CRITIQUE_MAX_ITERATIONS", "3"))
 CRITIQUE_TIMEOUT_SECONDS: float = float(os.environ.get("CRITIQUE_TIMEOUT_SECONDS", "60"))
 
+# JSON-structured translation I/O (json-structured-translation-io, BR-79..BR-83,
+# BR-111, BR-112). Kill switch: when false, both the table and body paths use the
+# legacy Markdown pipe-grid / plain-text pipeline unconditionally (Resolution A).
+# Read as `config.JSON_STRUCTURED_TRANSLATION_ENABLED` (module-attribute access) at
+# every call site, NEVER via `from app.backend.config import ...` — the import-bound
+# form freezes the value at first import and defeats `monkeypatch.setattr(config, ...)`
+# in tests (see CRITIQUE_LOOP_ENABLED above for the pattern to avoid).
+JSON_STRUCTURED_TRANSLATION_ENABLED: bool = os.environ.get(
+    "JSON_STRUCTURED_TRANSLATION_ENABLED", "1"
+).lower() in ("1", "true", "yes")
+
 # Few-shot example injection (p2-prompt-fewshot-glossary, BR-42)
 # When enabled, build_strategy() appends scenario-specific source→target example
 # pairs into the system prompt so every translation call carries ≥1 few-shot pair.

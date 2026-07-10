@@ -18,11 +18,14 @@ Covers two defect clusters:
 
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 import unicodedata
 
 import pytest
+
+from app.backend import config
 
 try:
     import fitz  # noqa: F401
@@ -340,7 +343,15 @@ TABLE_TRANSLATIONS = {
 
 
 class _StubTableClient:
-    """Echoes the pipe-grid back translated via TABLE_TRANSLATIONS."""
+    """Echoes the pipe-grid back translated via TABLE_TRANSLATIONS.
+
+    KEEPS `_build_table_translate_prompt` + `translate_once` (drives the
+    flag-OFF legacy pipe-grid path exercised by `TestWholeTableTranslation`
+    below) and ADDS `translate_json` (json-structured-translation-io, IP-10) —
+    the BR-111 seam used by both the table JSON path AND the body path
+    (`translate_merged_paragraphs`) when `JSON_STRUCTURED_TRANSLATION_ENABLED`
+    is left at its default (True).
+    """
 
     cache_model_key = "stub"
 
@@ -369,6 +380,43 @@ class _StubTableClient:
             return True, "\n".join(rows)
         self.flatten_texts.append(prompt)
         return True, "翻譯內容"
+
+    def translate_json(self, user_payload, cancel_event=None, system_context=None):
+        """BR-111 seam: dispatches on the appended JSON envelope shape —
+        `{"cells": [...]}` for the table path, `{"text": ...}` for the body
+        path — echoing translated content via TABLE_TRANSLATIONS for the
+        former, a fixed translation for the latter (mirrors `translate_once`
+        above)."""
+        appended = user_payload.rsplit("\n\n", 1)[1]
+        data = json.loads(appended)
+        if "cells" in data:
+            self.table_prompts.append(user_payload)
+            translated_cells = [
+                {
+                    "row": cell["row"],
+                    "col": cell["col"],
+                    "translation": TABLE_TRANSLATIONS.get(cell["text"], cell["text"]),
+                }
+                for cell in data["cells"]
+            ]
+            return True, json.dumps({"cells": translated_cells})
+        self.flatten_texts.append(user_payload)
+        return True, json.dumps({"translation": "翻譯內容"})
+
+
+class _FailingClient:
+    """Always returns an unparseable reply on EITHER wire path — drives the
+    BR-82 fallback-to-flatten assertion regardless of the flag value."""
+
+    @staticmethod
+    def _build_table_translate_prompt(serialized, src, tgt):
+        return "TABLE:\n" + serialized
+
+    def translate_once(self, prompt, tgt, src):
+        return True, "not a grid at all"
+
+    def translate_json(self, user_payload, cancel_event=None, system_context=None):
+        return True, "not a grid at all"
 
 
 @pytest.mark.skipif(not HAS_PYMUPDF, reason="PyMuPDF not installed")
@@ -475,11 +523,17 @@ class TestTableDetectionFallbackIntegration:
 
 @pytest.mark.skipif(not HAS_PYMUPDF, reason="PyMuPDF not installed")
 class TestWholeTableTranslation:
-    def test_one_llm_call_per_table_with_full_grid(self):
+    """Drives the frozen, flag-OFF legacy pipe-grid path directly — forced via
+    monkeypatch since `JSON_STRUCTURED_TRANSLATION_ENABLED` now defaults to
+    True (Resolution A, json-structured-translation-io). This proves the
+    kill-switch is a true revert (coordinator's 2×2 pipe-grid probe)."""
+
+    def test_one_llm_call_per_table_with_full_grid(self, monkeypatch):
         from app.backend.processors.pdf_processor import (
             _group_table_elements,
             _translate_pdf_tables_with_context,
         )
+        monkeypatch.setattr(config, "JSON_STRUCTURED_TRANSLATION_ENABLED", False)
 
         src = _make_table_pdf()
         try:
@@ -505,11 +559,12 @@ class TestWholeTableTranslation:
         finally:
             os.unlink(src)
 
-    def test_failed_table_call_falls_back_to_flatten(self):
+    def test_failed_table_call_falls_back_to_flatten(self, monkeypatch):
         from app.backend.processors.pdf_processor import (
             _group_table_elements,
             _translate_pdf_tables_with_context,
         )
+        monkeypatch.setattr(config, "JSON_STRUCTURED_TRANSLATION_ENABLED", False)
 
         src = _make_table_pdf()
         try:
@@ -517,22 +572,15 @@ class TestWholeTableTranslation:
             translatable = [e for e in doc.elements if e.should_translate and e.content.strip()]
             groups = _group_table_elements(translatable)
 
-            class _FailingClient:
-                @staticmethod
-                def _build_table_translate_prompt(serialized, src, tgt):
-                    return "TABLE:\n" + serialized
-
-                def translate_once(self, prompt, tgt, src):
-                    return True, "not a grid at all"
-
             tmap = _translate_pdf_tables_with_context(groups, "zh-TW", "en", _FailingClient())
             assert tmap == {}, "unparseable grid → no mappings; cells stay in flatten path"
         finally:
             os.unlink(src)
 
-    def test_end_to_end_pdf_output_uses_table_context(self):
+    def test_end_to_end_pdf_output_uses_table_context(self, monkeypatch):
         """Full _translate_pdf_to_pdf: table translated via grid, rendered in place."""
         from app.backend.processors.pdf_processor import _translate_pdf_to_pdf
+        monkeypatch.setattr(config, "JSON_STRUCTURED_TRANSLATION_ENABLED", False)
 
         src = _make_table_pdf()
         out = tempfile.mktemp(suffix=".pdf")
@@ -557,6 +605,64 @@ class TestWholeTableTranslation:
             for p in (src, out):
                 if os.path.exists(p):
                     os.unlink(p)
+
+
+@pytest.mark.skipif(not HAS_PYMUPDF, reason="PyMuPDF not installed")
+class TestWholeTableTranslationJsonPath:
+    """AC-7: the PDF table call site (`_translate_pdf_tables_with_context`)
+    exercises the JSON-ON path — `JSON_STRUCTURED_TRANSLATION_ENABLED`'s
+    default (True), not forced OFF like `TestWholeTableTranslation` above."""
+
+    def test_one_json_call_per_table_content_cells_only(self, monkeypatch):
+        from app.backend.processors.pdf_processor import (
+            _group_table_elements,
+            _translate_pdf_tables_with_context,
+        )
+        monkeypatch.setattr(config, "JSON_STRUCTURED_TRANSLATION_ENABLED", True)
+
+        src = _make_table_pdf()
+        try:
+            doc = _parse(src)
+            translatable = [e for e in doc.elements if e.should_translate and e.content.strip()]
+            groups = _group_table_elements(translatable)
+            assert len(groups) == 1
+
+            stub = _StubTableClient()
+            tmap = _translate_pdf_tables_with_context(groups, "zh-TW", "en", stub)
+
+            assert len(stub.table_prompts) == 1, (
+                "the whole table must be ONE JSON LLM call, not one call per cell"
+            )
+            payload = stub.table_prompts[0]
+            appended = json.loads(payload.rsplit("\n\n", 1)[1])
+            sent_texts = {cell["text"] for cell in appended["cells"]}
+            for row in TABLE_DATA:
+                for cell_text in row:
+                    assert cell_text in sent_texts, (
+                        f"cell {cell_text!r} missing from the sent JSON cell list"
+                    )
+            for src_text, tgt_text in TABLE_TRANSLATIONS.items():
+                assert tmap.get(src_text) == tgt_text
+        finally:
+            os.unlink(src)
+
+    def test_unparseable_json_reply_falls_back_to_flatten(self, monkeypatch):
+        from app.backend.processors.pdf_processor import (
+            _group_table_elements,
+            _translate_pdf_tables_with_context,
+        )
+        monkeypatch.setattr(config, "JSON_STRUCTURED_TRANSLATION_ENABLED", True)
+
+        src = _make_table_pdf()
+        try:
+            doc = _parse(src)
+            translatable = [e for e in doc.elements if e.should_translate and e.content.strip()]
+            groups = _group_table_elements(translatable)
+
+            tmap = _translate_pdf_tables_with_context(groups, "zh-TW", "en", _FailingClient())
+            assert tmap == {}, "unparseable JSON reply → no mappings; cells stay in flatten path"
+        finally:
+            os.unlink(src)
 
 
 # ---------------------------------------------------------------------------
