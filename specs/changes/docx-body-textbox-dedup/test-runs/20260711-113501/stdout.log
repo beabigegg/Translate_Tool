@@ -1,0 +1,13 @@
+F
+=================================== FAILURES ===================================
+____ TestBodyTextboxCollectedOnce.test_body_paragraph_excludes_textbox_text ____
+tests/test_docx_body_textbox_dedup.py:127: in test_body_paragraph_excludes_textbox_text
+    assert body_seg.text == "BODY_PLAIN"
+E   AssertionError: assert 'BODY_PLAINTB_TEXT' == 'BODY_PLAIN'
+E     
+E     - BODY_PLAIN
+E     + BODY_PLAINTB_TEXT
+=========================== short test summary info ============================
+FAILED tests/test_docx_body_textbox_dedup.py::TestBodyTextboxCollectedOnce::test_body_paragraph_excludes_textbox_text
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 0.24s

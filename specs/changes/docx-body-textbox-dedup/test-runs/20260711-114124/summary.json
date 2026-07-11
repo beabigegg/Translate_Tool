@@ -1,0 +1,15 @@
+{
+  "change_id": "docx-body-textbox-dedup",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "cdd-kit validate --contracts --env --ci",
+  "duration_ms": 463,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/docx-body-textbox-dedup/test-runs/20260711-114124/summary.json",
+    "stdout": "specs/changes/docx-body-textbox-dedup/test-runs/20260711-114124/stdout.log",
+    "stderr": "specs/changes/docx-body-textbox-dedup/test-runs/20260711-114124/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

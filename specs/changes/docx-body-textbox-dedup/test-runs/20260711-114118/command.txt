@@ -1,0 +1,1 @@
+python -m pytest tests/test_docx_body_textbox_dedup.py -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-body-textbox-dedup/test-runs/20260711-114118/junit.xml'

@@ -1,0 +1,47 @@
+change-id: docx-body-textbox-dedup
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+  - contract
+  - full
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      python -m pytest tests/test_docx_body_textbox_dedup.py --collect-only -q
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-body-textbox-dedup/test-runs/20260711-114117/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/docx-body-textbox-dedup/test-runs/20260711-114117/summary.json
+    junit: specs/changes/docx-body-textbox-dedup/test-runs/20260711-114117/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      python -m pytest tests/test_docx_body_textbox_dedup.py -q --maxfail=1 --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-body-textbox-dedup/test-runs/20260711-114118/junit.xml'
+    summary: specs/changes/docx-body-textbox-dedup/test-runs/20260711-114118/summary.json
+    junit: specs/changes/docx-body-textbox-dedup/test-runs/20260711-114118/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      python -m pytest tests/test_docx_body_textbox_dedup.py tests/test_docx_header_footer.py tests/test_docx_parser.py
+      tests/test_docx_nested_tables.py -q --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-body-textbox-dedup/test-runs/20260711-114120/junit.xml'
+      --maxfail=1
+    summary: specs/changes/docx-body-textbox-dedup/test-runs/20260711-114120/summary.json
+    junit: specs/changes/docx-body-textbox-dedup/test-runs/20260711-114120/junit.xml
+  - phase: contract
+    status: passed
+    command: cdd-kit validate --contracts --env --ci
+    summary: specs/changes/docx-body-textbox-dedup/test-runs/20260711-114124/summary.json
+  - phase: full
+    status: passed
+    command: >-
+      python -m pytest -q --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-body-textbox-dedup/test-runs/20260711-114144/junit.xml'
+      --maxfail=1
+    summary: specs/changes/docx-body-textbox-dedup/test-runs/20260711-114144/summary.json
+    junit: specs/changes/docx-body-textbox-dedup/test-runs/20260711-114144/junit.xml
+final-status: passed

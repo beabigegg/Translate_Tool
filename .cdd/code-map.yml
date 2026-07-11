@@ -1,6 +1,6 @@
-# generated: 2026-07-11T02:39:49Z by cdd-kit 3.6.0
-# files: 212, src-lines: 64640, map-lines: 5797, compression: 11.2x
-# sources-digest: 945defb905a3e5c4ecc1139d849f2ffc160d0aff17f0de1242c5e8ca9128610d
+# generated: 2026-07-11T03:49:06Z by cdd-kit 3.6.0
+# files: 214, src-lines: 65033, map-lines: 5847, compression: 11.1x
+# sources-digest: 94f1e296ea2e2d10d608b0ac4ae3b060d6aa5a141b70314040b4bea85db35344
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
@@ -700,7 +700,7 @@ app/backend/processors/com_helpers.py:  # 145 lines
     - { name: excel_convert, lines: 50-66 }
     - { name: postprocess_docx_shapes_with_word, lines: 69-145 }
 
-app/backend/processors/docx_processor.py:  # 1155 lines
+app/backend/processors/docx_processor.py:  # 1157 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: os, items: [], line: 5 }
@@ -726,23 +726,23 @@ app/backend/processors/docx_processor.py:  # 1155 lines
     - { name: INSERT_MARKER, line: 35 }
   classes:
     - name: Segment
-      lines: 212-244
+      lines: 214-246
       methods:
-        - { name: __init__, lines: 228-244 }
+        - { name: __init__, lines: 230-246 }
   functions:
     - { name: _p_text_with_breaks, lines: 38-48 }
-    - { name: _p_text_no_txbx, lines: 51-71 }
-    - { name: _append_after, lines: 74-92 }
-    - { name: _is_our_insert_block, lines: 95-96 }
-    - { name: _find_last_inserted_after, lines: 99-112 }
-    - { name: _scan_our_tail_texts, lines: 115-128 }
-    - { name: _txbx_iter_texts, lines: 131-167 }
-    - { name: _txbx_append_paragraph, lines: 170-194 }
-    - { name: _txbx_tail_equals, lines: 197-209 }
-    - { name: _collect_docx_segments, lines: 247-469 }
-    - { name: _insert_docx_translations, lines: 472-769 }
-    - { name: _translate_docx_via_doc2doc, lines: 772-835 }
-    - { name: translate_docx, lines: 838-1155 }
+    - { name: _p_text_no_txbx, lines: 51-73 }
+    - { name: _append_after, lines: 76-94 }
+    - { name: _is_our_insert_block, lines: 97-98 }
+    - { name: _find_last_inserted_after, lines: 101-114 }
+    - { name: _scan_our_tail_texts, lines: 117-130 }
+    - { name: _txbx_iter_texts, lines: 133-169 }
+    - { name: _txbx_append_paragraph, lines: 172-196 }
+    - { name: _txbx_tail_equals, lines: 199-211 }
+    - { name: _collect_docx_segments, lines: 249-471 }
+    - { name: _insert_docx_translations, lines: 474-771 }
+    - { name: _translate_docx_via_doc2doc, lines: 774-837 }
+    - { name: translate_docx, lines: 840-1157 }
 
 app/backend/processors/libreoffice_helpers.py:  # 226 lines
   imports:
@@ -2261,6 +2261,13 @@ scripts/e2e_smoke.py:  # 154 lines
   functions:
     - { name: section, lines: 55-56 }
 
+specs/changes/docx-body-textbox-dedup/evidence/probe_paracell_delta.py:  # 11 lines
+  imports:
+    - { module: sys, items: [], line: 1 }
+    - { module: glob, items: [], line: 1 }
+    - { module: docx, items: [], line: 2 }
+    - { module: app.backend.processors.docx_processor, items: [_collect_docx_segments, _txbx_iter_texts], line: 3 }
+
 tests/__init__.py:  # 1 lines
 
 tests/conftest.py:  # 25 lines
@@ -2638,7 +2645,50 @@ tests/test_doc_chunker.py:  # 795 lines
     - { name: _make_element, lines: 27-39 }
     - { name: _make_doc, lines: 42-49 }
 
-tests/test_docx_header_footer.py:  # 399 lines
+tests/test_docx_body_textbox_dedup.py:  # 376 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 38 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 40 }
+    - { module: docx, items: [], line: 42 }
+    - { module: pytest, items: [], line: 43 }
+    - { module: docx.oxml, items: [OxmlElement], line: 44 }
+    - { module: app.backend.processors.docx_processor, items: [], line: 46 }
+    - { module: app.backend.processors.docx_processor, items: [Segment], line: 47 }
+    - { module: tests.test_docx_header_footer, items: [_add_textbox_to_paragraph], line: 48 }
+  classes:
+    - name: TestBodyTextboxCollectedOnce
+      lines: 111-150
+      methods:
+        - { name: test_body_paragraph_excludes_textbox_text, lines: 112-132 }
+        - { name: test_cell_paragraph_excludes_textbox_text, lines: 134-150 }
+    - name: TestRestoreIsolatesTextboxTranslation
+      lines: 157-225
+      methods:
+        - { name: test_body_textbox_translation_isolated_from_paragraph_body, lines: 158-186 }
+        - { name: test_cell_textbox_translation_isolated_from_cell_body, lines: 188-225 }
+    - name: TestExtractorFamilyConsistency
+      lines: 232-337
+      methods:
+        - { name: test_body_collection_invokes_stripping_extractor, lines: 233-247 }
+        - { name: test_sdt_restore_reread_invokes_stripping_extractor, lines: 249-283 }
+        - { name: test_cell_restore_reread_invokes_stripping_extractor, lines: 285-313 }
+        - { name: test_tail_scan_restore_reread_invokes_stripping_extractor, lines: 315-337 }
+    - name: TestTextboxFreeBodyUnchanged
+      lines: 344-359
+      methods:
+        - { name: test_textbox_free_body_and_cell_segments_unchanged, lines: 345-359 }
+    - name: TestTextboxOwnContentUnaffected
+      lines: 366-376
+      methods:
+        - { name: test_txbx_iter_texts_extracts_full_multiparagraph_textbox_content, lines: 367-376 }
+  functions:
+    - { name: _make_client_mock, lines: 55-65 }
+    - { name: _fake_translate_texts, lines: 68-75 }
+    - { name: _add_multi_paragraph_textbox, lines: 78-94 }
+    - { name: _txt_nodes_outside_txbx, lines: 97-100 }
+    - { name: _txt_nodes_inside_txbx, lines: 103-104 }
+
+tests/test_docx_header_footer.py:  # 403 lines
   imports:
     - { module: __future__, items: [annotations], line: 39 }
     - { module: unittest.mock, items: [MagicMock, patch], line: 41 }
@@ -2659,34 +2709,34 @@ tests/test_docx_header_footer.py:  # 399 lines
       methods:
         - { name: test_header_table_and_nested_table_cells_collected, lines: 143-161 }
     - name: TestTxbxContentStrippedFromHeader
-      lines: 168-191
+      lines: 168-195
       methods:
         - { name: test_header_paragraph_excludes_textbox_text, lines: 169-179 }
-        - { name: test_body_paragraph_textbox_fold_in_unchanged, lines: 181-191 }
+        - { name: test_body_paragraph_textbox_fold_in_unchanged, lines: 181-195 }
     - name: TestComCallSiteUnchanged
-      lines: 194-214
+      lines: 198-218
       methods:
-        - { name: test_include_headers_kwarg_still_true_at_com_boundary, lines: 195-214 }
+        - { name: test_include_headers_kwarg_still_true_at_com_boundary, lines: 199-218 }
     - name: TestLinkedPartCollectedOnce
-      lines: 221-272
+      lines: 225-276
       methods:
-        - { name: test_linked_header_collected_exactly_once, lines: 222-233 }
-        - { name: test_linked_header_translated_exactly_once_in_output, lines: 235-253 }
-        - { name: test_linked_header_table_cell_collected_exactly_once, lines: 255-272 }
+        - { name: test_linked_header_collected_exactly_once, lines: 226-237 }
+        - { name: test_linked_header_translated_exactly_once_in_output, lines: 239-257 }
+        - { name: test_linked_header_table_cell_collected_exactly_once, lines: 259-276 }
     - name: TestAllSixSlotsTraversed
-      lines: 279-295
+      lines: 283-299
       methods:
-        - { name: test_each_slot_distinct_marker_text_collected, lines: 280-295 }
+        - { name: test_each_slot_distinct_marker_text_collected, lines: 284-299 }
     - name: TestBodyIndicesUnaffectedByHeaderCollection
-      lines: 302-365
+      lines: 306-369
       methods:
-        - { name: test_body_segment_order_and_text_identical_with_and_without_header, lines: 303-319 }
-        - { name: test_absolute_segment_zero_is_first_body_paragraph_not_header, lines: 321-336 }
-        - { name: test_post_translate_hook_block_ids_index_body_paragraphs_only, lines: 338-365 }
+        - { name: test_body_segment_order_and_text_identical_with_and_without_header, lines: 307-323 }
+        - { name: test_absolute_segment_zero_is_first_body_paragraph_not_header, lines: 325-340 }
+        - { name: test_post_translate_hook_block_ids_index_body_paragraphs_only, lines: 342-369 }
     - name: TestWriteBackPersistsAcrossSave
-      lines: 372-399
+      lines: 376-403
       methods:
-        - { name: test_reopened_file_contains_translated_header_and_footer_text, lines: 373-399 }
+        - { name: test_reopened_file_contains_translated_header_and_footer_text, lines: 377-403 }
   functions:
     - { name: _make_client_mock, lines: 56-66 }
     - { name: _add_textbox_to_paragraph, lines: 69-86 }

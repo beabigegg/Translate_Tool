@@ -1,0 +1,9 @@
+agent: ci-cd-gatekeeper
+status: pass
+summary: >
+  No workflow edit, no CI/CD contract change. New test file covered by the blanket sweep;
+  AC-5 covered by golden-sample-regression + test_docx_parser. One intentionally-updated
+  assertion in test_docx_header_footer.py (body-strip now in scope). Fresh drift check clean.
+artifacts:
+  - { type: ci-gates, pointer: "specs/changes/docx-body-textbox-dedup/ci-gates.md" }
+  - { type: workflow-diff, pointer: "none — contract-driven-gates.yml unchanged" }

@@ -50,11 +50,13 @@ def _p_text_with_breaks(p: Paragraph) -> str:
 
 def _p_text_no_txbx(p: Paragraph) -> str:
     """Same as `_p_text_with_breaks` but excludes text under `<w:txbxContent>`
-    (BR-115 Option C). Used ONLY for header/footer paragraph/cell extraction so
-    a header-anchored textbox stays exclusively owned by the Windows COM shapes
-    pass (`postprocess_docx_shapes_with_word`) instead of being folded into the
-    native paragraph segment and translated twice. Must NOT be used for the
-    body walk (AC-6) — `_p_text_with_breaks` stays byte-for-byte unchanged.
+    (BR-115, amended). This is the uniform extractor for the whole native DOCX
+    collection surface — header/footer, body, and table-cell paragraph/cell
+    extraction — so a paragraph or cell hosting a textbox stays exclusively
+    owned by its dedicated `_txbx_iter_texts` collection path instead of being
+    folded into the enclosing paragraph/cell segment and translated twice.
+    Header-anchored textboxes additionally stay exclusively owned by the
+    Windows COM shapes pass (`postprocess_docx_shapes_with_word`) on that OS.
     """
     parts = []
     for node in p._p.xpath(
@@ -120,7 +122,7 @@ def _scan_our_tail_texts(p: Paragraph, limit: int = 8) -> List[str]:
         if ptr.tag.endswith("}p"):
             q = Paragraph(ptr, p._parent)
             if _is_our_insert_block(q):
-                out.append(_p_text_with_breaks(q))
+                out.append(_p_text_no_txbx(q))
                 steps += 1
                 ptr = ptr.getnext()
                 continue
@@ -424,7 +426,7 @@ def _collect_docx_segments(
                     sdt_content_wrapper = SdtContentWrapper(sdt_content_element, container)
                     _process_container_content(sdt_content_wrapper, sdt_ctx, depth, text_extractor)
 
-    _process_container_content(doc._body, "Body", 1)
+    _process_container_content(doc._body, "Body", 1, text_extractor=_p_text_no_txbx)
 
     for tx, s in _txbx_iter_texts(doc):
         if s.strip() and (has_cjk(s) or should_translate(s, "auto")):
@@ -547,7 +549,7 @@ def _insert_docx_translations(
                     for ep in existing_paras:
                         p_obj = Paragraph(ep, None)
                         if _is_our_insert_block(p_obj):
-                            existing_texts.append(_p_text_with_breaks(p_obj))
+                            existing_texts.append(_p_text_no_txbx(p_obj))
                     if len(existing_texts) >= len(translations):
                         if all(normalize_text(e) == normalize_text(t) for e, t in zip(existing_texts[:len(translations)], translations)):
                             skip_cnt += 1
@@ -593,7 +595,7 @@ def _insert_docx_translations(
                     check_limit = min(p_index + 1 + len(translations), len(cell_paragraphs))
                     for idx in range(p_index + 1, check_limit):
                         if _is_our_insert_block(cell_paragraphs[idx]):
-                            existing_texts.append(_p_text_with_breaks(cell_paragraphs[idx]))
+                            existing_texts.append(_p_text_no_txbx(cell_paragraphs[idx]))
                     if len(existing_texts) >= len(translations):
                         if all(normalize_text(e) == normalize_text(t) for e, t in zip(existing_texts[:len(translations)], translations)):
                             skip_cnt += 1

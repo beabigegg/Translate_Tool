@@ -1,0 +1,44 @@
+change-id: docx-body-textbox-dedup
+timestamp: 2026-07-11T11:36:00Z
+agent: bug-fix-engineer
+status: complete
+files-read:
+  - specs/changes/docx-body-textbox-dedup/implementation-plan.md
+  - specs/changes/docx-body-textbox-dedup/test-plan.md
+  - contracts/business/business-rules.md
+  - app/backend/processors/docx_processor.py
+  - tests/test_docx_header_footer.py
+  - tests/test_docx_nested_tables.py
+artifacts:
+  - { type: root-cause, pointer: "app/backend/processors/docx_processor.py:429 _process_container_content(doc._body, ...) threaded the default _p_text_with_breaks instead of _p_text_no_txbx" }
+  - { type: files-changed, pointer: "app/backend/processors/docx_processor.py, tests/test_docx_header_footer.py, tests/test_docx_body_textbox_dedup.py (new)" }
+bug-fix:
+  schema-version: 0.1.0
+  symptom: "A DOCX body paragraph (or table cell) hosting a <w:txbxContent> textbox has the textbox text folded into the enclosing paragraph/cell segment, so the textbox's text is collected and translated twice: once folded into the body/cell segment, once again via the dedicated textbox (_txbx_iter_texts) segment."
+  expected_behavior: "Per amended BR-115, the body/table-cell paragraph extraction must use the same txbxContent-stripping extractor as header/footer, so a body or cell paragraph hosting a textbox collects that textbox's text EXACTLY ONCE (via the txbx segment), never folded into the para/cell segment."
+  actual_behavior: "Before the fix, _collect_docx_segments's body walk call (_process_container_content(doc._body, 'Body', 1)) used the default text_extractor=_p_text_with_breaks, which does NOT exclude txbxContent text, so a body paragraph 'BODY_PLAIN' hosting a textbox 'TB_TEXT' collected as one para segment with text 'BODY_PLAINTB_TEXT' -- the textbox text folded in AND separately collected again via _txbx_iter_texts."
+  observed_surface: "DOCX native collection/translation pipeline (docx_processor.py _collect_docx_segments / _insert_docx_translations); no UI surface."
+  reproduction:
+    status: test-reproduced
+    command: "python -m pytest tests/test_docx_body_textbox_dedup.py::TestBodyTextboxCollectedOnce::test_body_paragraph_excludes_textbox_text -q --maxfail=1 --tb=short -ra"
+    failing_before_fix: true
+    summary: "specs/changes/docx-body-textbox-dedup/test-runs/20260711-113501/summary.json"
+  hypotheses:
+    - { id: H1, candidate: "app/backend/processors/docx_processor.py::_collect_docx_segments body call at L429 (_process_container_content(doc._body, 'Body', 1))", reason: "implementation-plan.md identified this as the sole correctness-bearing call site defaulting to the non-stripping extractor", result: confirmed }
+    - { id: H2, candidate: "app/backend/processors/docx_processor.py::_p_text_with_breaks itself", reason: "could the shared extractor have been mutated to include txbxContent by accident", result: rejected }
+    - { id: H3, candidate: "app/backend/processors/docx_processor.py::_txbx_iter_texts", reason: "could the textbox-own-content path double-yield instead of the para path folding it in", result: rejected }
+  root_cause:
+    pointer: "app/backend/processors/docx_processor.py:429"
+    summary: "the body-walk collection call omitted text_extractor=_p_text_no_txbx, so both _add_paragraph (body paragraphs) and _cell_direct_text/_process_table (table cells) — which thread the same text_extractor parameter down from this single call site — used the non-stripping _p_text_with_breaks default and folded txbxContent text into the para/cell segment in addition to its own txbx segment."
+  fix:
+    files_changed:
+      - app/backend/processors/docx_processor.py
+      - tests/test_docx_header_footer.py
+      - tests/test_docx_body_textbox_dedup.py
+    summary: "Threaded text_extractor=_p_text_no_txbx into the body call at L429 (sole correctness-bearing edit; propagates through _add_paragraph/_cell_direct_text/_process_table). Swapped the three restore-time existing-translation re-reads (SDT branch, cell-parent-paragraph branch, and _scan_our_tail_texts) from _p_text_with_breaks to _p_text_no_txbx for extractor-family consistency (inert to output, hygiene only). Corrected the _p_text_no_txbx docstring to describe it as the uniform native-collection extractor. Flipped the pinning test in test_docx_header_footer.py that asserted the old fold-in behavior to assert the corrected stripped behavior. Added tests/test_docx_body_textbox_dedup.py covering AC-1..AC-6 (collection isolation for body+cell, full collect->translate->restore round trip, extractor-family spy across a resume-idempotency pass, textbox-free baseline, and _txbx_iter_texts's own multi-paragraph extraction unaffected)."
+  regression:
+    status: passed
+    command: "python -m pytest tests/test_docx_body_textbox_dedup.py tests/test_docx_header_footer.py::TestTxbxContentStrippedFromHeader::test_body_paragraph_textbox_fold_in_unchanged -q --maxfail=1 --tb=short -ra"
+    summary: "specs/changes/docx-body-textbox-dedup/test-runs/20260711-113511/summary.json"
+  residual_risk: "none — rollback is a plain git revert of the four extractor-threading edits (no flag, no migration, no wire-format change); textbox-free output is byte-for-byte unchanged (verified via tests/test_golden_regression.py and tests/test_docx_parser.py, run unmodified); header-anchored textboxes remain a pre-existing, unwidened Linux/COM gap outside this change's scope."
+next-action: "qa-reviewer release-readiness review"

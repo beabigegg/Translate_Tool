@@ -1,0 +1,19 @@
+agent: implementation-planner
+change-id: docx-body-textbox-dedup
+summary: >
+  Wrote execution packet. All seams verified against live docx_processor.py.
+  Contract-reviewer's three corrections confirmed accurate. No blockers.
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/docx-body-textbox-dedup/implementation-plan.md" }
+  - { type: owner-map, pointer: "bug-fix-engineer" }
+  - { type: scope-summary, pointer: "4 extractor swaps (L427 correctness-bearing; L550/L596/L123 hygiene) + docstring L52-57 + flip pinning test L181-191 + new test module" }
+verified-seams:
+  - "_p_text_with_breaks L38; _p_text_no_txbx L51 (docstring L52-57 says 'Must NOT be used for body walk' — now false)"
+  - "body call L427 uses DEFAULT extractor (correctness-bearing edit); header call L456-459 already passes _p_text_no_txbx"
+  - "_process_container_content sig L388 text_extractor defaults to _p_text_with_breaks"
+  - "restore reads: SDT L550, cell L596, _scan_our_tail_texts internal L123 (called at L664)"
+  - "_scan_our_tail_texts mechanism: change internal L123 call directly (single call site, inert, module-global resolves for AC-4 spy)"
+  - "pinning test test_docx_header_footer.py::TestTxbxContentStrippedFromHeader::test_body_paragraph_textbox_fold_in_unchanged L181-191 asserts BODY_PLAINTB_TEXT — must flip to BODY_PLAIN"
+notes:
+  - "Fixture helper _add_textbox_to_paragraph emits 'TB_TEXT' (fold => 'BODY_PLAINTB_TEXT'), not 'TEXTBOX_TEXT' as prose loosely states; bug-fix-engineer must align assertions."
+  - "BR-115 amendment already landed (business-rules.md schema-version 0.33.1); do not re-edit contract."

@@ -1,0 +1,16 @@
+{
+  "change_id": "docx-body-textbox-dedup",
+  "phase": "full",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest -q --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-body-textbox-dedup/test-runs/20260711-114144/junit.xml' --maxfail=1",
+  "duration_ms": 141359,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/docx-body-textbox-dedup/test-runs/20260711-114144/summary.json",
+    "stdout": "specs/changes/docx-body-textbox-dedup/test-runs/20260711-114144/stdout.log",
+    "stderr": "specs/changes/docx-body-textbox-dedup/test-runs/20260711-114144/stderr.log",
+    "junit": "specs/changes/docx-body-textbox-dedup/test-runs/20260711-114144/junit.xml"
+  },
+  "next_action": "all phases green"
+}

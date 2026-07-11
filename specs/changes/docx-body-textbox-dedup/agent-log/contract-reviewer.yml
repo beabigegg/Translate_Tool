@@ -1,0 +1,20 @@
+agent: contract-reviewer
+status: approved
+summary: >
+  Amended BR-115 in place (not a new BR) — same txbxContent-strip mechanism, closes
+  BR-115's own documented body carve-out. Corrected three of main Claude's facts (L123 is
+  in _scan_our_tail_texts not _txbx_iter_texts; a THIRD restore site at L664; the tmap key
+  is fixed at collection so only L427 is correctness-bearing). schema 0.33.0 -> 0.33.1.
+artifacts:
+  - { type: contracts-reviewed, pointer: "contracts/business/business-rules.md" }
+  - { type: version-bumps, pointer: "business-rules 0.33.0 -> 0.33.1 (patch, BR-115 scope fix)" }
+  - { type: breaking-changes, pointer: "none" }
+notes: |
+  Verified against live source: body call L427 (default extractor), header call L458
+  (_p_text_no_txbx), restore sites L550 (SDT), L596 (cell), and the THIRD site
+  _scan_our_tail_texts at L664. _txbx_iter_texts (L131) has a private _p_text_flags
+  closure, does NOT call _p_text_with_breaks. tmap key (tgt, seg.text, seg.col) fixed at
+  collection so L427 is the sole correctness-bearing site; restore-site swaps are
+  extractor-family hygiene (inert — pipeline-created paragraphs never contain textboxes).
+  The _p_text_no_txbx docstring "Must NOT be used for the body walk" becomes false and
+  must be updated by the implementer. AC-4/AC-6 corrected in change-classification.md.
