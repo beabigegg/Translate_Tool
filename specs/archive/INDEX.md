@@ -57,3 +57,4 @@
 | docx-header-footer-collection | 2026 | 2026-07-11 | specs/archive/2026/docx-header-footer-collection/ |
 | pptx-group-shape-collection | 2026 | 2026-07-11 | specs/archive/2026/pptx-group-shape-collection/ |
 | docx-body-textbox-dedup | 2026 | 2026-07-11 | specs/archive/2026/docx-body-textbox-dedup/ |
+| truncation-length-guard | 2026 | 2026-07-11 | specs/archive/2026/truncation-length-guard/ |
