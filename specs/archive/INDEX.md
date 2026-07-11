@@ -58,3 +58,4 @@
 | pptx-group-shape-collection | 2026 | 2026-07-11 | specs/archive/2026/pptx-group-shape-collection/ |
 | docx-body-textbox-dedup | 2026 | 2026-07-11 | specs/archive/2026/docx-body-textbox-dedup/ |
 | truncation-length-guard | 2026 | 2026-07-11 | specs/archive/2026/truncation-length-guard/ |
+| cloud-reasoning-stall-hardening | 2026 | 2026-07-11 | specs/archive/2026/cloud-reasoning-stall-hardening/ |
