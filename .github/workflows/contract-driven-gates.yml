@@ -93,51 +93,12 @@ jobs:
             { echo "Forbidden vector-DB import found in term_extractor.py"; exit 1; }
 
 
-      - name: Targeted tests — term_extractor + term_db + env_contract (Tier 1 — blocks merge)
-        # AC-1..AC-8: fast-fail before full suite.
-        run: pytest tests/test_term_extractor.py tests/test_term_db.py tests/test_env_contract.py -x -q --tb=short
-
-      - name: Targeted tests — provider_fallback (Tier 1 — blocks merge)
-        # Regression guard: fallback-chain changes must not break.
-        run: pytest tests/test_provider_fallback.py -x -q --tb=short
-
       - name: Secret scan — no literal API keys in source (Tier 1 — blocks merge)
         run: |
           ! grep -rn \
             --include="*.py" --include="*.yml" --include="*.yaml" \
             -E "(PANJIT_API|DEEPSEEK_API)\s*[:=]\s*[A-Za-z0-9+/]{20,}" \
             . --exclude-dir=.git
-
-      - name: Targeted tests — table_recognizer (Tier 1 — blocks merge)
-        # AC-1..AC-6: fast-fail on table structure recognition tests before full suite.
-        # Covers unit (IR shape, numeric predicate), contract (round-trip), integration
-        # (cell-batch wiring, no-flatten invariant, numeric passthrough wiring),
-        # and data-boundary (model unavailable, degenerate tables) test families.
-        # See test-plan.md (p3-table-structure) for the full AC → test mapping.
-        run: pytest tests/test_table_recognizer.py -x -q --tb=short
-
-      - name: Targeted tests — quality_judge + judge_api + orchestrator_judge + judge_apply + job_record_judge (Tier 1 — blocks merge)
-        # AC-1..AC-5, AC-7, AC-8, AC-10: fast-fail before full suite.
-        # Covers unit (score parsing, iteration cap, graceful degradation), contract (GET /judge + POST /apply
-        # shapes/codes), integration (hook wires to all 4 formats, QE/CRITIQUE_LOOP coexistence, temp-swap),
-        # and data-boundary (JobRecord serialization, apply status transitions) test families.
-        # See test-plan.md (p3-llm-judge) for the full AC → test mapping.
-        run: >
-          pytest
-          tests/test_quality_judge.py
-          tests/test_judge_api.py
-          tests/test_orchestrator_judge.py
-          tests/test_judge_apply.py
-          tests/test_job_record_judge.py
-          -x -q --tb=short
-
-      - name: Targeted tests — pdf_render_warnings (Tier 1 — blocks merge)
-        # AC-1..AC-6 (pdf-renderer-fallback-warn): fast-fail before full suite.
-        # Covers unit (fitz-fallback exact warning, DOCX-routing exact warning, no-degradation),
-        # data-boundary (warnings field type: Optional[List[str]]), and contract
-        # (GET /api/jobs/{id} warnings propagation) test families.
-        # See test-plan.md (pdf-renderer-fallback-warn) for the full AC → test mapping.
-        run: pytest tests/test_pdf_render_warnings.py -x -q --tb=short
 
       - name: Unit, contract, integration, resilience, data-boundary tests (Tier 1 — blocks merge)
         run: pytest tests/ -x -q --tb=short --junitxml=test-results/junit.xml
@@ -353,8 +314,8 @@ jobs:
           path: test-results/libreoffice-conversion-gate.xml
           retention-days: 14
 
-  expose-output-mode-ui-gate:
-    name: expose-output-mode-ui-gate
+  frontend-tests:
+    name: frontend-tests
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
@@ -381,11 +342,11 @@ jobs:
         working-directory: app/frontend
         run: npm install
 
-      - name: Frontend component tests — output-mode selector (Tier 1 — blocks merge)
-        # AC-1: selector renders labeled options "原文在下方" (value append) and "原地取代/覆蓋原文" (value replace)
-        # AC-2: default selection is append; translation-start payload contains output_mode: "append"
-        # AC-3: selecting replace causes payload to contain output_mode: "replace"
-        # Requires vitest + @testing-library/react in devDependencies and a "test" script in package.json.
-        # Test file authored by test-strategist; see test-plan.md AC-1..AC-3 for full mapping.
+      - name: Frontend component tests — full vitest suite (Tier 1 — blocks merge)
+        # Runs the whole frontend test suite (`vitest run`), not a single change's
+        # tests. Generalized from the former expose-output-mode-ui-gate: `npm test`
+        # already covers every *.test.jsx (output-mode selector, translation
+        # progress, and any future component), and this is the ONLY frontend test
+        # invocation in CI — deleting it would silently drop all frontend coverage.
         working-directory: app/frontend
         run: npm test
