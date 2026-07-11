@@ -1,0 +1,5 @@
+artifacts:
+  - { type: adr-written, pointer: "docs/adr/0021-reasoning-suppression-harmony-system-directive.md" }
+  - { type: affected-areas, pointer: "cloud LLM client (reasoning prefix, embed bound), config constants, translation_service critique loop" }
+  - { type: decision-summary, pointer: "item4 = default-off flag skipping critique for Phase-1 base-cache-HIT segments; item1 = harmony Reasoning:low in system channel (ADR-0021 amends ADR-0016); item2 = ceiling 480->120; item3 = embed() via _run_bounded_post" }
+  - { type: risks-noted, pointer: "0 high, 3 medium (constant re-sourcing REQUIRES-VERIFICATION, env-contract sync REQUIRES-VERIFICATION, 120s ceiling brushes 120s connect timeout)" }

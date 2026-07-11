@@ -1,0 +1,37 @@
+agent: e2e-resilience-engineer
+change-id: cloud-reasoning-stall-hardening
+task: IP-7 resilience tests for lowered wall-clock ceiling + bounded embed()
+
+artifacts:
+  - { type: test-files, pointer: "tests/test_cloud_total_timeout.py" }
+  - { type: scenarios-covered, pointer: "stalled/dribbled session.post aborted by ceiling (not 480s legacy) -> ok=False degrade; stalled embed() session.post aborted by same ceiling -> [] degrade" }
+  - { type: mutation-checks, pointer: "none" }
+  - { type: trace-artifacts, pointer: "n/a (no browser E2E in this change; pytest-only resilience tests, no trace/video artifacts)" }
+
+notes: |
+  Per launch-task instruction, simulated the stall with a fake/slow
+  requests.Session.post blocked on a threading.Event (release.wait(timeout=10.0)
+  inside a patched Session.post side_effect), NOT the file's existing real-socket
+  _DribbleServer pattern and NOT any live network call. Ceiling patched to 0.5s via
+  monkeypatch of app.backend.config.OPENAI_TOTAL_TIMEOUT_SECONDS (read at call time
+  inside _run_bounded_post) so both tests run sub-second while still proving the
+  ceiling -- not the 480s legacy default -- governs the abort. Event released in a
+  `finally` so the abandoned daemon worker inside _run_bounded_post unblocks
+  promptly instead of leaking for the test process's lifetime. Assertions are on
+  the real boundary: the returned (ok, msg) / vectors value and measured wall-clock
+  elapsed -- never on a mock call-kwarg.
+
+  Two tests added (module-level functions, matching the existing file's
+  no-class convention and the exact node-ids named in implementation-plan.md
+  IP-7 / test-plan.md AC-3 / AC-4 rows):
+    - tests/test_cloud_total_timeout.py::test_stalled_dribble_aborts_within_120s_ceiling_not_480s
+    - tests/test_cloud_total_timeout.py::test_embed_stalled_post_aborts_within_ceiling_degrades_to_empty_list
+
+  Result: conda run -n translate-tool python -m pytest tests/test_cloud_total_timeout.py -q
+  -> 5 passed in 3.59s (3 pre-existing real-socket dribble tests + 2 new fake-session
+  stall tests). Both new node-ids individually collected and passed
+  (2 passed in 1.09s). Did not run the full suite (scope: test_cloud_total_timeout.py
+  only, per launch-task instruction). Did not touch
+  tests/test_openai_compatible_client.py -- no shared helper was needed; the fake
+  Session.post + threading.Event pattern was self-contained in
+  test_cloud_total_timeout.py. Did not read docs/TEST_DOC/.

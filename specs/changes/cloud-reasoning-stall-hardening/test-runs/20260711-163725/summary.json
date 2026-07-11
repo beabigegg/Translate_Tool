@@ -1,0 +1,15 @@
+{
+  "change_id": "cloud-reasoning-stall-hardening",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "cdd-kit validate --contracts --env --ci",
+  "duration_ms": 553,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-163725/summary.json",
+    "stdout": "specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-163725/stdout.log",
+    "stderr": "specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-163725/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

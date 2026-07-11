@@ -46,6 +46,14 @@ class _FakeEchoClient:
     whatever is inside the user payload. Records `system_context`
     separately (per call) so tests can assert WHICH text landed in WHICH
     channel — an anti-tautology selection assertion, not a count/length one.
+
+    cloud-reasoning-stall-hardening (BR-118/ADR-0021): mirrors
+    `OpenAICompatibleClient._post_completion`'s composition by prepending the
+    harmony `Reasoning: <level>` directive (sourced from
+    `config.OPENAI_TRANSLATION_REASONING`) to the recorded `system_context`,
+    the SAME way the real client does ahead of the base prompt / neighbor
+    context — so this fixture continues to exercise the real no-leak
+    invariant now that a directive is composed into the system channel.
     """
 
     def __init__(self) -> None:
@@ -59,7 +67,11 @@ class _FakeEchoClient:
         cancel_event=None,
         system_context: Optional[str] = None,
     ) -> Tuple[bool, str]:
-        self.calls.append({"text": text, "system_context": system_context})
+        directive = f"Reasoning: {config.OPENAI_TRANSLATION_REASONING}"
+        merged_system_context = (
+            f"{directive}\n\n{system_context}" if system_context else directive
+        )
+        self.calls.append({"text": text, "system_context": merged_system_context})
         return True, text  # echo: whatever is in `text` is what gets "translated"
 
     def translate_batch(self, texts, tgt, src_lang):
@@ -175,3 +187,31 @@ def test_context_window_segments_and_max_chars_constants_unchanged() -> None:
     change the window/cap configuration."""
     assert config.CONTEXT_WINDOW_SEGMENTS == 2
     assert config.CONTEXT_MAX_CHARS == 300
+
+
+# ---------------------------------------------------------------------------
+# cloud-reasoning-stall-hardening (BR-118/ADR-0021) — Reasoning directive
+# no-leak extension: the directive is EXPECTED in the system channel, and
+# must still never appear in any user-role `text=` payload.
+# ---------------------------------------------------------------------------
+
+def test_reasoning_directive_present_in_system_context_never_in_user_text(monkeypatch) -> None:
+    """The `Reasoning: <level>` directive (BR-118) is present in every call's
+    system_context (composed the way the real client composes it) and is
+    absent from every call's translatable `text=` payload — an EXPECTED
+    presence-in-system / absence-in-user update, not a regression."""
+    client, results = _run_fixture(monkeypatch)
+    directive = f"Reasoning: {config.OPENAI_TRANSLATION_REASONING}"
+
+    assert client.calls, "fixture must produce at least one call"
+    for call in client.calls:
+        assert directive in call["system_context"], (
+            "Reasoning directive must be present in the system channel"
+        )
+        assert directive not in call["text"], (
+            "Reasoning directive must NEVER leak into the translatable user payload"
+        )
+
+    for ok, translated in results:
+        assert ok is True
+        assert directive not in translated

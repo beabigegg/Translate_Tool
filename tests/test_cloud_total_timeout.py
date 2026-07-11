@@ -135,3 +135,102 @@ def test_dribbling_socket_regression_repro_matches_live_incident():
     assert ok is False and elapsed < 5.0, (
         f"regression: dribbling response not bounded by the ceiling ({elapsed:.1f}s)"
     )
+
+
+# ── cloud-reasoning-stall-hardening: lowered ceiling (480→120) + bounded embed() ──
+#
+# AC-3 (BR-100 ceiling): the wall-clock ceiling itself — not the specific 480s vs
+# 120s literal — is what's under test here (the literal default is covered by
+# TestTotalTimeoutConfig::test_env_var_parses_positive_float_default in
+# test_openai_compatible_client.py). These two resilience tests prove: (1) a
+# `_post_completion` whose `session.post` never returns is aborted by whatever the
+# ceiling is set to, in a small bounded multiple of it — never anywhere close to
+# the legacy 480s — and degrades to ok=False; (2) embed()'s POST, now routed
+# through the SAME `_run_bounded_post` wrapper (BR-100/AC-4), is aborted the same
+# way and degrades to `[]` instead of hanging or raising.
+#
+# Per launch-task instruction (not the real-socket _DribbleServer pattern above):
+# simulate the stall with a fake/slow `requests.Session.post` blocked on a
+# threading.Event — no live network call, no real socket. The Event is released in
+# a `finally` so the abandoned daemon worker inside `_run_bounded_post` unblocks
+# promptly instead of leaking for the test process's lifetime.
+
+
+def _blocking_client() -> OpenAICompatibleClient:
+    return OpenAICompatibleClient(
+        base_url="http://fake-host:8080",
+        api_key="test-key",
+        model="gpt-oss:120b",
+        provider_id="stall-probe",
+    )
+
+
+def test_stalled_dribble_aborts_within_120s_ceiling_not_480s():
+    """AC-3/BR-100: a stalled session.post is aborted by the ceiling, not the
+    legacy 480s default — proven by patching the ceiling to a small value and
+    asserting the call returns in a small bounded multiple of THAT value, never
+    anywhere near 480s.
+    """
+    release = threading.Event()
+
+    def _blocking_post(*_args, **_kwargs):
+        # Simulate a Cloudflare-cut CLOSE-WAIT dribble: session.post never
+        # returns on its own. The worker thread stays blocked here until the
+        # test releases it in `finally`; the ceiling must abort the CALLER
+        # long before that release happens.
+        release.wait(timeout=10.0)
+        raise RuntimeError("fake session.post must not complete inside this test")
+
+    client = _blocking_client()
+    ceiling = 0.5
+    try:
+        with patch("requests.Session.post", side_effect=_blocking_post), \
+             patch("app.backend.config.OPENAI_TOTAL_TIMEOUT_SECONDS", ceiling):
+            t0 = time.monotonic()
+            ok, msg = client._post_completion("hello")
+            elapsed = time.monotonic() - t0
+    finally:
+        release.set()  # unblock the abandoned daemon worker so it doesn't linger
+
+    assert ok is False, f"a stalled post must degrade to ok=False, got ok=True msg={msg!r}"
+    assert elapsed < ceiling * 5, (
+        f"ceiling ({ceiling}s) — not the 480s legacy default — must govern; "
+        f"took {elapsed:.2f}s, expected well under {ceiling * 5:.2f}s"
+    )
+    assert elapsed >= ceiling * 0.5, (
+        f"call returned suspiciously fast ({elapsed:.2f}s) for a {ceiling}s ceiling; "
+        "the ceiling wait loop may not actually be governing the abort"
+    )
+
+
+def test_embed_stalled_post_aborts_within_ceiling_degrades_to_empty_list():
+    """AC-4/BR-100: embed(), now routed through the same _run_bounded_post ceiling
+    as completions, aborts a stalled session.post within the ceiling and degrades
+    to [] — never a hang, never an unhandled exception.
+    """
+    release = threading.Event()
+
+    def _blocking_post(*_args, **_kwargs):
+        release.wait(timeout=10.0)
+        raise RuntimeError("fake session.post must not complete inside this test")
+
+    client = _blocking_client()
+    ceiling = 0.5
+    try:
+        with patch("requests.Session.post", side_effect=_blocking_post), \
+             patch("app.backend.config.OPENAI_TOTAL_TIMEOUT_SECONDS", ceiling):
+            t0 = time.monotonic()
+            vectors = client.embed(["hello"], "text-embedding-test")
+            elapsed = time.monotonic() - t0
+    finally:
+        release.set()  # unblock the abandoned daemon worker so it doesn't linger
+
+    assert vectors == [], f"a stalled embed() POST must degrade to [], got {vectors!r}"
+    assert elapsed < ceiling * 5, (
+        f"ceiling ({ceiling}s) must bound embed(); took {elapsed:.2f}s, "
+        f"expected well under {ceiling * 5:.2f}s"
+    )
+    assert elapsed >= ceiling * 0.5, (
+        f"call returned suspiciously fast ({elapsed:.2f}s) for a {ceiling}s ceiling; "
+        "the ceiling wait loop may not actually be governing the abort"
+    )

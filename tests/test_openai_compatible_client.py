@@ -36,6 +36,15 @@ def _make_http_error_response(status_code: int) -> MagicMock:
     return resp
 
 
+def _reasoning_directive() -> str:
+    """The BR-118 harmony directive prefix every translation call now carries,
+    sourced from the live config constant (never a hardcoded "low" literal),
+    so these composition tests stay correct if the default ever changes."""
+    from app.backend.config import OPENAI_TRANSLATION_REASONING
+
+    return f"Reasoning: {OPENAI_TRANSLATION_REASONING}"
+
+
 # ── Protocol Conformance ──────────────────────────────────────────────────────
 
 class TestProtocolConformance:
@@ -201,7 +210,8 @@ class TestMaxTokensPayload:
 class TestSystemContextChannel:
     def test_system_context_prepended_as_leading_system_message(self):
         """When `system_context` is set, `translate_once` must emit a leading
-        `role:"system"` message carrying it verbatim, and the user message must
+        `role:"system"` message carrying it (prefixed by the BR-118 reasoning
+        directive, cloud-reasoning-stall-hardening), and the user message must
         keep the unchanged "Translate the following text..." wrapper — context
         must never be concatenated into the translatable user content."""
         from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
@@ -219,14 +229,20 @@ class TestSystemContextChannel:
 
         _, kwargs = mock_post.call_args
         messages = kwargs["json"]["messages"]
-        assert messages[0] == {"role": "system", "content": reference_block}
+        assert messages[0] == {
+            "role": "system", "content": f"{_reasoning_directive()}\n\n{reference_block}"
+        }
         assert messages[-1]["role"] == "user"
         assert "Segment B." in messages[-1]["content"]
         assert reference_block not in messages[-1]["content"]
+        assert _reasoning_directive() not in messages[-1]["content"]
 
     def test_no_system_context_omits_system_message(self):
-        """When `system_context` is None (default), the message list is the
-        unchanged single user message — no leading system message is added."""
+        """When `system_context` is None (default) and no `system_prompt` is
+        set, the leading system message carries ONLY the BR-118 reasoning
+        directive — the directive is now unconditional on every translation
+        call (cloud-reasoning-stall-hardening); no other system content is
+        added."""
         from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
 
         client = OpenAICompatibleClient(
@@ -239,8 +255,9 @@ class TestSystemContextChannel:
 
         _, kwargs = mock_post.call_args
         messages = kwargs["json"]["messages"]
-        assert len(messages) == 1
-        assert messages[0]["role"] == "user"
+        assert len(messages) == 2
+        assert messages[0] == {"role": "system", "content": _reasoning_directive()}
+        assert messages[1]["role"] == "user"
 
 
 # ── system_prompt delivery (cloud-doc-context-summary, BR-109 / ADR-0016) ──────
@@ -282,14 +299,22 @@ class TestSystemPromptDelivery:
             f"preamble + segment context must merge into ONE system message, got {system_messages!r}"
         )
         merged_content = system_messages[0]["content"]
-        assert merged_content == f"{client.system_prompt}\n\n{segment_context}"
-        assert merged_content.index(client.system_prompt) < merged_content.index(segment_context), (
-            "the document-context preamble must come BEFORE the per-segment BR-78 context"
+        assert merged_content == (
+            f"{_reasoning_directive()}\n\n{client.system_prompt}\n\n{segment_context}"
+        )
+        assert (
+            merged_content.index(_reasoning_directive())
+            < merged_content.index(client.system_prompt)
+            < merged_content.index(segment_context)
+        ), (
+            "BR-118 reasoning directive must come first, then the document-context "
+            "preamble, then the per-segment BR-78 context"
         )
 
         user_messages = [m for m in messages if m["role"] == "user"]
         assert client.system_prompt not in user_messages[-1]["content"]
         assert segment_context not in user_messages[-1]["content"]
+        assert _reasoning_directive() not in user_messages[-1]["content"]
 
     def test_system_prompt_alone_still_delivered_when_no_segment_context(self):
         """When there is no per-segment BR-78 context, client.system_prompt
@@ -309,7 +334,10 @@ class TestSystemPromptDelivery:
 
         _, kwargs = mock_post.call_args
         messages = kwargs["json"]["messages"]
-        assert messages[0] == {"role": "system", "content": client.system_prompt}
+        assert messages[0] == {
+            "role": "system",
+            "content": f"{_reasoning_directive()}\n\n{client.system_prompt}",
+        }
 
     def test_complete_sends_no_system_message_even_with_system_prompt_set(self):
         """BR-109: complete() (the document-context summary seam) must never
@@ -405,13 +433,19 @@ class TestTranslateJsonSystemChannelDelivery:
 
         _, kwargs = mock_post.call_args
         messages = kwargs["json"]["messages"]
-        assert messages[0] == {"role": "system", "content": client.system_prompt}, (
-            f"system_prompt must be delivered alone when no system_context is given, got {messages!r}"
+        assert messages[0] == {
+            "role": "system",
+            "content": f"{_reasoning_directive()}\n\n{client.system_prompt}",
+        }, (
+            f"system_prompt (prefixed by the BR-118 reasoning directive) must be "
+            f"delivered alone when no system_context is given, got {messages!r}"
         )
 
     def test_no_system_prompt_or_context_omits_system_message(self):
-        """When both channels are empty, no system message is emitted at all
-        (parity with the plain-text seam's TestSystemContextChannel guard)."""
+        """When both channels are empty, the leading system message carries
+        ONLY the BR-118 reasoning directive — unconditional on every
+        translation call (cloud-reasoning-stall-hardening); parity with the
+        plain-text seam's TestSystemContextChannel guard."""
         from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
 
         client = OpenAICompatibleClient(
@@ -423,9 +457,9 @@ class TestTranslateJsonSystemChannelDelivery:
 
         _, kwargs = mock_post.call_args
         messages = kwargs["json"]["messages"]
-        assert not any(m["role"] == "system" for m in messages)
-        assert len(messages) == 1
-        assert messages[0]["role"] == "user"
+        assert len(messages) == 2
+        assert messages[0] == {"role": "system", "content": _reasoning_directive()}
+        assert messages[1]["role"] == "user"
 
 
 # ── constructor system_prompt kwarg (cloud-base-system-prompt-drop, BR-110) ────
@@ -473,7 +507,10 @@ class TestSystemPromptConstruction:
 
         _, kwargs = mock_post.call_args
         messages = kwargs["json"]["messages"]
-        assert messages[0] == {"role": "system", "content": client.system_prompt}
+        assert messages[0] == {
+            "role": "system",
+            "content": f"{_reasoning_directive()}\n\n{client.system_prompt}",
+        }
 
 
 # ── translate_batch ───────────────────────────────────────────────────────────
@@ -757,19 +794,19 @@ class TestTotalTimeoutCeilingAdditive:
         """session.post still gets the (connect, read) tuple; the ceiling is NOT folded into it."""
         client = self._client()
         with patch("requests.Session.post", return_value=_make_chat_response("hi")) as mock_post, \
-             patch("app.backend.config.OPENAI_TOTAL_TIMEOUT_SECONDS", 480.0):
+             patch("app.backend.config.OPENAI_TOTAL_TIMEOUT_SECONDS", 120.0):
             ok, _out = client._post_completion("x")
 
         assert ok is True
         _, kwargs = mock_post.call_args
         assert kwargs["timeout"] == (client._connect_timeout, client._read_timeout)
-        assert kwargs["timeout"][1] != 480.0, "the 480s ceiling must not become the read timeout"
+        assert kwargs["timeout"][1] != 120.0, "the 120s ceiling must not become the read timeout"
 
     def test_wellbehaved_call_still_bounded_by_connect_read_tuple(self):
         """A normal fast call still passes the explicit 2-tuple (connect, read) to requests."""
         client = self._client()
         with patch("requests.Session.post", return_value=_make_chat_response("ok")) as mock_post, \
-             patch("app.backend.config.OPENAI_TOTAL_TIMEOUT_SECONDS", 480.0):
+             patch("app.backend.config.OPENAI_TOTAL_TIMEOUT_SECONDS", 120.0):
             client.translate_once("Hello", "French", "English")
 
         _, kwargs = mock_post.call_args
@@ -777,7 +814,8 @@ class TestTotalTimeoutCeilingAdditive:
 
 
 class TestTotalTimeoutConfig:
-    """AC-7: OPENAI_TOTAL_TIMEOUT_SECONDS parses to a positive float with default 480."""
+    """AC-3: OPENAI_TOTAL_TIMEOUT_SECONDS parses to a positive float with default 120
+    (cloud-reasoning-stall-hardening, BR-100 — lowered from 480)."""
 
     def test_env_var_parses_positive_float_default(self):
         import os
@@ -788,10 +826,191 @@ class TestTotalTimeoutConfig:
             import app.backend.config as cfg
             reload(cfg)
             assert isinstance(cfg.OPENAI_TOTAL_TIMEOUT_SECONDS, float)
-            assert cfg.OPENAI_TOTAL_TIMEOUT_SECONDS == 480.0
+            assert cfg.OPENAI_TOTAL_TIMEOUT_SECONDS == 120.0
             assert cfg.OPENAI_TOTAL_TIMEOUT_SECONDS > 0
         finally:
             if prev is not None:
                 os.environ["OPENAI_TOTAL_TIMEOUT_SECONDS"] = prev
             import app.backend.config as cfg2
             reload(cfg2)
+
+
+# ── Reasoning directive composition (cloud-reasoning-stall-hardening, BR-118) ──
+#
+# AC-1: every cloud TRANSLATION call (translate_once, translate_json) composes
+# a harmony `Reasoning: <level>` directive ahead of the base/scenario
+# `system_prompt` (BR-109/BR-110) and the BR-78 neighbor `system_context`, in
+# ONE leading system message, sourced from `config.OPENAI_TRANSLATION_REASONING`
+# at call time — never a hardcoded literal, never leaked into user content.
+
+class TestReasoningDirectiveComposition:
+    def _client(self):
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        return OpenAICompatibleClient(
+            base_url="http://fake-host:8080", api_key="test-key", model="gpt-oss:120b",
+        )
+
+    def test_translate_once_system_message_exact_equals_directive_plus_base_prompt_plus_neighbor_context(self):
+        client = self._client()
+        client.system_prompt = "You are a professional semiconductor translator."
+        neighbor_context = "Previous segments — reference only, do NOT translate or repeat:\nSegment A."
+
+        with patch("requests.Session.post", return_value=_make_chat_response("ok")) as mock_post:
+            client.translate_once(
+                "Segment B.", "French", "English", system_context=neighbor_context,
+            )
+
+        _, kwargs = mock_post.call_args
+        messages = kwargs["json"]["messages"]
+        system_messages = [m for m in messages if m["role"] == "system"]
+        assert len(system_messages) == 1, (
+            f"directive + base prompt + neighbor context must merge into ONE system message, got {system_messages!r}"
+        )
+        assert system_messages[0]["content"] == (
+            f"{_reasoning_directive()}\n\n{client.system_prompt}\n\n{neighbor_context}"
+        )
+
+    def test_reasoning_directive_absent_from_every_user_message(self):
+        client = self._client()
+        client.system_prompt = "You are a professional semiconductor translator."
+        neighbor_context = "Previous segments — reference only, do NOT translate or repeat:\nSegment A."
+
+        with patch("requests.Session.post", return_value=_make_chat_response("ok")) as mock_post:
+            client.translate_once(
+                "Segment B.", "French", "English", system_context=neighbor_context,
+            )
+
+        _, kwargs = mock_post.call_args
+        messages = kwargs["json"]["messages"]
+        user_messages = [m for m in messages if m["role"] == "user"]
+        assert user_messages, "translate_once must still emit a user message"
+        for m in user_messages:
+            assert _reasoning_directive() not in m["content"], (
+                "the BR-118 reasoning directive must never leak into a user-role message"
+            )
+
+    def test_translate_json_system_message_carries_directive_ahead_of_base_prompt_and_neighbor_context(self):
+        client = self._client()
+        client.system_prompt = "PROFILE_PROMPT_TOKEN"
+        neighbor_context = "SEGMENT_CONTEXT_TOKEN"
+        json_payload = '{"text": "Segment B."}'
+
+        with patch("requests.Session.post", return_value=_make_chat_response('{"translation": "x"}')) as mock_post:
+            client.translate_json(json_payload, system_context=neighbor_context)
+
+        _, kwargs = mock_post.call_args
+        messages = kwargs["json"]["messages"]
+        system_messages = [m for m in messages if m["role"] == "system"]
+        assert len(system_messages) == 1
+        merged = system_messages[0]["content"]
+        assert (
+            merged.index(_reasoning_directive())
+            < merged.index("PROFILE_PROMPT_TOKEN")
+            < merged.index("SEGMENT_CONTEXT_TOKEN")
+        ), "order must be: reasoning directive, then base prompt, then neighbor context"
+
+        user_messages = [m for m in messages if m["role"] == "user"]
+        assert len(user_messages) == 1
+        assert user_messages[0]["content"] == json_payload, (
+            "translate_json must send the JSON envelope AS-IS; the directive must never enter it"
+        )
+        assert _reasoning_directive() not in user_messages[0]["content"]
+
+    def test_directive_value_sourced_from_openai_translation_reasoning_config_constant(self, monkeypatch):
+        """Proves the directive is READ from config.OPENAI_TRANSLATION_REASONING
+        at call time, not a hardcoded literal — patching the constant changes
+        the outgoing directive."""
+        import app.backend.config as cfg_module
+
+        monkeypatch.setattr(cfg_module, "OPENAI_TRANSLATION_REASONING", "high")
+        client = self._client()
+
+        with patch("requests.Session.post", return_value=_make_chat_response("ok")) as mock_post:
+            client.translate_once("Hello", "French", "English")
+
+        _, kwargs = mock_post.call_args
+        messages = kwargs["json"]["messages"]
+        system_messages = [m for m in messages if m["role"] == "system"]
+        assert system_messages[0]["content"] == "Reasoning: high"
+
+
+# ── Outline reasoning exemption (cloud-reasoning-stall-hardening, BR-118) ──────
+#
+# AC-2: complete() — the sole outline/document-context summary seam (BR-109)
+# — passes an explicit reasoning=None, which is NEVER overridden by the
+# config-sourced translation default; it must keep full reasoning.
+
+class TestOutlineReasoningExemption:
+    def test_complete_passes_reasoning_none_no_directive_in_system_message(self):
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        client = OpenAICompatibleClient(
+            base_url="http://fake-host:8080", api_key="test-key", model="gpt-oss:120b",
+        )
+        client.system_prompt = "leftover preamble should not matter"
+
+        with patch("requests.Session.post", return_value=_make_chat_response("A summary.")) as mock_post:
+            ok, _result = client.complete("Summarize this document in one sentence: ...")
+
+        assert ok is True
+        _, kwargs = mock_post.call_args
+        messages = kwargs["json"]["messages"]
+        assert not any(m["role"] == "system" for m in messages), (
+            "complete() must never emit a system message, including the reasoning directive"
+        )
+        assert not any("Reasoning:" in m.get("content", "") for m in messages), (
+            "complete() must never carry the BR-118 reasoning directive"
+        )
+
+
+# ── embed() wall-clock bound (cloud-reasoning-stall-hardening, BR-100) ────────
+#
+# AC-4: embed()'s POST must be routed through self._run_bounded_post — not a
+# raw self._session.post call — so a stalled embedding aborts within
+# OPENAI_TOTAL_TIMEOUT_SECONDS exactly like a completion call.
+
+class TestEmbedBounded:
+    def _client(self):
+        from app.backend.clients.openai_compatible_client import OpenAICompatibleClient
+
+        return OpenAICompatibleClient(
+            base_url="http://fake-host:8080", api_key="test-key", model="gpt-oss:120b",
+        )
+
+    def test_embed_invokes_run_bounded_post_wrapper_not_raw_session_post(self):
+        client = self._client()
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.raise_for_status.return_value = None
+        resp.json.return_value = {"data": [{"embedding": [0.1, 0.2]}]}
+
+        def _bounded_side_effect(fn, cancel_event=None):
+            return fn()
+
+        with patch.object(
+            client, "_run_bounded_post", side_effect=_bounded_side_effect
+        ) as mock_bounded, patch("requests.Session.post", return_value=resp) as mock_post:
+            vectors = client.embed(["hello"], "text-embedding-test")
+
+        assert vectors == [[0.1, 0.2]]
+        assert mock_bounded.called, (
+            "embed() must route its POST through self._run_bounded_post, not call session.post directly"
+        )
+        assert mock_post.called, "the bounded wrapper's fn must still ultimately call session.post"
+
+    def test_embed_never_calls_raw_session_post_when_run_bounded_post_is_bypassed(self):
+        """Anti-tautology companion: if _run_bounded_post is stubbed out
+        entirely (never delegating to `fn`), raw session.post must NOT still
+        fire — proving embed() has no direct/unbounded fallback call path."""
+        client = self._client()
+
+        with patch.object(client, "_run_bounded_post", return_value=None) as mock_bounded, \
+             patch("requests.Session.post") as mock_post:
+            client.embed(["hello"], "text-embedding-test")
+
+        assert mock_bounded.called
+        assert not mock_post.called, (
+            "embed() must not call requests.Session.post directly — it must go "
+            "through _run_bounded_post so the wall-clock ceiling actually bounds it"
+        )

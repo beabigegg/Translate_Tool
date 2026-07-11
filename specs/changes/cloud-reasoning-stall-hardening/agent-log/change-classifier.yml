@@ -1,0 +1,12 @@
+change-id: cloud-reasoning-stall-hardening
+agent: change-classifier
+status: done
+summary: >
+  Tier 1, feature lane, high risk, cross-module. No atomic split. design.md=yes
+  + qa-report.md=yes. Architecture Review required. 7 agents. 5 ACs (one per
+  hardening item + outline carve-out).
+artifacts:
+  - { type: tier, pointer: "Tier 1" }
+  - { type: lane, pointer: "feature" }
+  - { type: required-artifacts, pointer: "7 standard + design.md + qa-report.md" }
+next-action: spec-architect writes design.md (critique mechanism + ADR-0016 composition + BR-100/embed bound) before contract-reviewer/planner

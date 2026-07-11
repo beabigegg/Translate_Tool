@@ -1,6 +1,6 @@
-# generated: 2026-07-11T05:47:41Z by cdd-kit 3.6.0
-# files: 215, src-lines: 66064, map-lines: 5971, compression: 11.1x
-# sources-digest: 4f03f958213a590f2b021a0eaf97318db80d9aa9a61832a0199564331b37b87a
+# generated: 2026-07-11T07:49:36Z by cdd-kit 3.6.0
+# files: 215, src-lines: 66086, map-lines: 5971, compression: 11.1x
+# sources-digest: 27eea92e6fdfba9cf85c76d3695479b4587df333904567318a46e816c1883b2a
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
@@ -228,7 +228,7 @@ app/backend/clients/ollama_client.py:  # 949 lines
     - { name: _drop_english_preamble, lines: 67-89 }
     - { name: list_ollama_models, lines: 940-949 }
 
-app/backend/clients/openai_compatible_client.py:  # 508 lines
+app/backend/clients/openai_compatible_client.py:  # 530 lines
   imports:
     - { module: __future__, items: [annotations], line: 18 }
     - { module: logging, items: [], line: 20 }
@@ -239,7 +239,7 @@ app/backend/clients/openai_compatible_client.py:  # 508 lines
     - { module: requests, items: [], line: 26 }
   classes:
     - name: OpenAICompatibleClient
-      lines: 44-508
+      lines: 44-530
       methods:
         - { name: __init__, lines: 64-95 }
         - { name: cache_model_key, lines: 98-102 }
@@ -249,22 +249,22 @@ app/backend/clients/openai_compatible_client.py:  # 508 lines
         - { name: _models_url, lines: 115-116 }
         - { name: _build_messages, lines: 118-123 }
         - { name: _run_bounded_post, lines: 125-177 }
-        - { name: _post_completion, lines: 179-237 }
-        - { name: embed, lines: 239-270 }
-        - { name: _build_table_translate_prompt, lines: 273-293 }
-        - { name: translate_once, lines: 295-334 }
-        - { name: translate_json, lines: 336-369 }
-        - { name: complete, lines: 371-382 }
-        - { name: translate_batch, lines: 384-403 }
-        - { name: health, lines: 405-421 }
-        - { name: list_models, lines: 423-432 }
-        - { name: list_live_models, lines: 434-463 }
-        - { name: unload, lines: 465-471 }
-        - { name: health_check, lines: 491-493 }
-        - { name: _is_translation_dedicated, lines: 495-497 }
-        - { name: _is_translategemma_model, lines: 499-501 }
-        - { name: set_runtime_options_override, lines: 503-504 }
-        - { name: set_cache_variant, lines: 506-508 }
+        - { name: _post_completion, lines: 179-255 }
+        - { name: embed, lines: 257-288 }
+        - { name: _build_table_translate_prompt, lines: 291-311 }
+        - { name: translate_once, lines: 313-352 }
+        - { name: translate_json, lines: 354-387 }
+        - { name: complete, lines: 389-404 }
+        - { name: translate_batch, lines: 406-425 }
+        - { name: health, lines: 427-443 }
+        - { name: list_models, lines: 445-454 }
+        - { name: list_live_models, lines: 456-485 }
+        - { name: unload, lines: 487-493 }
+        - { name: health_check, lines: 513-515 }
+        - { name: _is_translation_dedicated, lines: 517-519 }
+        - { name: _is_translategemma_model, lines: 521-523 }
+        - { name: set_runtime_options_override, lines: 525-526 }
+        - { name: set_cache_variant, lines: 528-530 }
 
 app/backend/config.py:  # 612 lines
   imports:

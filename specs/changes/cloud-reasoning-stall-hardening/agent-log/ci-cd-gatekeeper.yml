@@ -1,0 +1,13 @@
+change-id: cloud-reasoning-stall-hardening
+agent: ci-cd-gatekeeper
+status: done
+summary: >
+  Wrote ci-gates.md (79 lines). Change rides EXISTING gates (contract-and-fast-tests,
+  full-regression, golden-sample-regression, renderer-equivalence, frontend-tests);
+  no new workflow step, no per-change cdd-kit gate line (matches json-structured
+  precedent). Live PANJIT E2E marked manual/informational-only, never gated, never
+  reads docs/TEST_DOC/. Confirmed contract bumps + CHANGELOG entries + validate
+  --contracts pass. No OpenAPI export needed.
+artifacts:
+  - { type: ci-gates, pointer: "specs/changes/cloud-reasoning-stall-hardening/ci-gates.md" }
+next-action: implementation-planner writes implementation-plan.md; note tasks.yml needs a tier-floor-override rationale (cache/timeout/endpoint vocab false-positive)

@@ -146,6 +146,45 @@ def test_cloud_active_client_used_for_summary_not_local_ollama():
     assert result == "This document is a purchase order."
 
 
+# ---------------------------------------------------------------------------
+# AC-2 (cloud-reasoning-stall-hardening, BR-118 exemption): the outline/
+# document-context summary seam keeps full reasoning and still yields a
+# non-empty summary even though the sibling translation calls now suppress
+# reasoning via a Reasoning: <level> system-channel directive.
+# ---------------------------------------------------------------------------
+
+def test_detect_document_context_returns_nonempty_summary_when_translation_calls_suppress_reasoning():
+    """AC-2 (integration): calling _detect_document_context against the REAL
+    OpenAICompatibleClient (not a MagicMock stand-in) still yields a
+    non-empty summary, and the outgoing complete() request carries NO
+    'Reasoning:' directive -- proving BR-118's translation-path reasoning
+    suppression does not bleed into or break the BR-109 outline seam."""
+    client = OpenAICompatibleClient(
+        base_url="http://fake-host:8080", api_key="test-key", model="gpt-oss:120b",
+    )
+    # A leftover translation-call preamble on system_prompt must not matter --
+    # complete() never reads it (BR-109).
+    client.system_prompt = "leftover translation-call preamble"
+
+    with patch(
+        "requests.Session.post",
+        side_effect=_mock_post_with_content("A purchase order document."),
+    ) as mock_post:
+        result = _detect_document_context(
+            client, "PO number 12345, widget parts, quantity 500.", log=lambda s: None, target_lang="en"
+        )
+
+    assert result == "A purchase order document."
+    assert result != ""
+
+    _, kwargs = mock_post.call_args
+    messages = kwargs["json"]["messages"]
+    assert not any(m["role"] == "system" for m in messages), (
+        "the outline summary call must never carry a system message, including the BR-118 directive"
+    )
+    assert not any("Reasoning:" in m.get("content", "") for m in messages)
+
+
 def test_cloud_summary_generated_without_local_ollama_present(tmp_path):
     """AC-1 (integration): the document-context summary is produced via the
     active cloud client's HTTP path; the local OllamaClient's raw-completion

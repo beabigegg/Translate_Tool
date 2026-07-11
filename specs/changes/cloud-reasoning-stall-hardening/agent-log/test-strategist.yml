@@ -1,0 +1,13 @@
+change-id: cloud-reasoning-stall-hardening
+agent: test-strategist
+status: done
+summary: >
+  Wrote test-plan.md (78 lines) mapping AC-1..AC-5 to named unit/contract/
+  integration/resilience tests grounded in live seams. Flagged required existing-
+  test updates: stale 480.0 literals in test_openai_compatible_client.py and the
+  test_context_prefix_bleed.py no-leak extension for the new Reasoning: prefix.
+  Anti-tautology section covers assignment-without-delivery, order-without-location,
+  selection-not-count, caplog root-logger bleed, kwarg-acceptance-without-delivery.
+artifacts:
+  - { type: test-plan, pointer: "specs/changes/cloud-reasoning-stall-hardening/test-plan.md" }
+next-action: ci-cd-gatekeeper writes ci-gates.md; then implementation-planner

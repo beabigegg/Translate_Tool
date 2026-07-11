@@ -1,0 +1,50 @@
+change-id: cloud-reasoning-stall-hardening
+agent: backend-engineer
+status: done
+summary: >-
+  Implemented IP-1..IP-6: config-sourced BR-118 reasoning directive on
+  OpenAICompatibleClient._post_completion, OPENAI_TOTAL_TIMEOUT_SECONDS
+  default 480->120, embed() routed through _run_bounded_post (BR-100), and
+  a default-off BR-119 critique-loop skip of Phase-1 cache-HIT segments in
+  translation_service.py. Updated stale 480.0 literals, extended
+  test_context_prefix_bleed.py for the Reasoning no-leak invariant, fixed 7
+  pre-existing composition tests that regressed once the already-in-tree
+  reference edit's directive became config-sourced and unconditional on
+  every translate_once/translate_json call, and added new unit/integration
+  coverage per test-plan.md AC-1..AC-5. IP-7 (test_cloud_total_timeout.py
+  resilience tests) intentionally left to e2e-resilience-engineer; the two
+  test-plan-listed node-ids for AC-3/AC-4 resilience did not exist yet at
+  run time, so the bounded ladder substituted the file's 3 existing
+  resilience tests (which still pass against the new 120s default) as
+  evidence for this agent's own scope.
+artifacts:
+  - { type: files-changed, pointer: "app/backend/config.py:90-178 (OPENAI_TOTAL_TIMEOUT_SECONDS default 480->120, OPENAI_TRANSLATION_REASONING added, CRITIQUE_SKIP_CACHED_SEGMENTS added)" }
+  - { type: files-changed, pointer: "app/backend/clients/openai_compatible_client.py:37-43,179-231,270-305 (reasoning sentinel + config-sourced default; embed() routed through _run_bounded_post)" }
+  - { type: files-changed, pointer: "app/backend/services/translation_service.py:464-474 (BR-119 cached_keys exclusion clause in the critique pre-filter)" }
+  - { type: files-changed, pointer: "tests/test_openai_compatible_client.py (480.0->120.0 literals; 7 pre-existing composition tests updated for the now-unconditional Reasoning directive; new TestReasoningDirectiveComposition, TestOutlineReasoningExemption, TestEmbedBounded classes)" }
+  - { type: files-changed, pointer: "tests/test_context_prefix_bleed.py (_FakeEchoClient now composes the Reasoning directive like the real client; new no-leak test)" }
+  - { type: files-changed, pointer: "tests/test_orchestrator_context_detection.py (new AC-2 integration test: outline summary non-empty with translation reasoning suppressed)" }
+  - { type: files-changed, pointer: "tests/test_critique_loop_batching.py (3 new BR-119 selection/no-drop tests)" }
+  - { type: files-changed, pointer: "tests/test_critique_gate.py (1 new BR-119 gate-unaffected test)" }
+  - { type: tests-added, pointer: "tests/test_openai_compatible_client.py::TestReasoningDirectiveComposition::test_translate_once_system_message_exact_equals_directive_plus_base_prompt_plus_neighbor_context" }
+  - { type: tests-added, pointer: "tests/test_openai_compatible_client.py::TestReasoningDirectiveComposition::test_reasoning_directive_absent_from_every_user_message" }
+  - { type: tests-added, pointer: "tests/test_openai_compatible_client.py::TestReasoningDirectiveComposition::test_translate_json_system_message_carries_directive_ahead_of_base_prompt_and_neighbor_context" }
+  - { type: tests-added, pointer: "tests/test_openai_compatible_client.py::TestReasoningDirectiveComposition::test_directive_value_sourced_from_openai_translation_reasoning_config_constant" }
+  - { type: tests-added, pointer: "tests/test_openai_compatible_client.py::TestOutlineReasoningExemption::test_complete_passes_reasoning_none_no_directive_in_system_message" }
+  - { type: tests-added, pointer: "tests/test_openai_compatible_client.py::TestEmbedBounded::test_embed_invokes_run_bounded_post_wrapper_not_raw_session_post" }
+  - { type: tests-added, pointer: "tests/test_openai_compatible_client.py::TestEmbedBounded::test_embed_never_calls_raw_session_post_when_run_bounded_post_is_bypassed" }
+  - { type: tests-added, pointer: "tests/test_context_prefix_bleed.py::test_reasoning_directive_present_in_system_context_never_in_user_text" }
+  - { type: tests-added, pointer: "tests/test_orchestrator_context_detection.py::test_detect_document_context_returns_nonempty_summary_when_translation_calls_suppress_reasoning" }
+  - { type: tests-added, pointer: "tests/test_critique_loop_batching.py::test_critique_skip_cached_segments_default_false_every_segment_still_enters_pending_keys" }
+  - { type: tests-added, pointer: "tests/test_critique_loop_batching.py::test_critique_skip_cached_segments_true_excludes_phase1_cache_hit_keys_from_pending_keys" }
+  - { type: tests-added, pointer: "tests/test_critique_loop_batching.py::test_critique_skip_cached_segments_true_keeps_excluded_segments_draft_present_in_tmap" }
+  - { type: tests-added, pointer: "tests/test_critique_gate.py::test_critique_skip_cached_flag_does_not_alter_max_iterations_timeout_or_gate_for_segments_still_in_loop" }
+  - { type: tests-added, pointer: "tests/test_openai_compatible_client.py (7 pre-existing tests updated: TestSystemContextChannel x2, TestSystemPromptDelivery x2, TestTranslateJsonSystemChannelDelivery x2, TestSystemPromptConstruction x1 -- now assert the Reasoning directive prefix)" }
+  - { type: test-output, pointer: "targeted phase (16 node-ids): 1 passed suite via test-runs/20260711-163651 -- exit 0" }
+  - { type: test-output, pointer: "changed-area phase (9 files): passed via test-runs/20260711-163703 -- exit 0" }
+  - { type: test-output, pointer: "contract phase: cdd-kit validate --contracts --env --ci passed via test-runs/20260711-163725 -- exit 0" }
+  - { type: contracts-touched, pointer: "none (backend did not edit contracts/**; env-contract.md/.env.example.template already synced by contract-reviewer per plan)" }
+risks:
+  - "IP-7 (tests/test_cloud_total_timeout.py new resilience tests test_stalled_dribble_aborts_within_120s_ceiling_not_480s / test_embed_stalled_post_aborts_within_ceiling_degrades_to_empty_list) not yet added -- owned by e2e-resilience-engineer, explicitly out of this agent's scope per launch task. cdd-kit test select still lists these two node-ids under targeted; they must be added before that phase can be re-run with the full test-plan-listed set."
+  - "7 pre-existing tests in tests/test_openai_compatible_client.py (TestSystemContextChannel, TestSystemPromptDelivery, TestTranslateJsonSystemChannelDelivery, TestSystemPromptConstruction) were RED before this session's edits, caused by the already-in-tree reference edit (reasoning=\"low\" literal default) predating this agent's work; updated to account for the now-unconditional, config-sourced Reasoning directive -- this was outside the plan's explicit Test Update Contract table but required for FINAL-bytes green per the launch task."
+next-reviewer: qa-reviewer

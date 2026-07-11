@@ -301,3 +301,84 @@ def test_batched_adopt_empty_pairs_returns_empty_list_without_calling_score_bloc
     assert result == []
     mock_load.assert_not_called()
     mock_sb.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# BR-119 (cloud-reasoning-stall-hardening, AC-5 gate-unaffected): the
+# CRITIQUE_SKIP_CACHED_SEGMENTS flag only removes Phase-1 cache-HIT segments
+# from entering the loop — it must not alter CRITIQUE_MAX_ITERATIONS's round
+# cap, CRITIQUE_TIMEOUT_SECONDS's degrade-to-last-valid-draft, or the BR-89
+# strict-greater-than adoption gate for segments that DO enter the loop.
+# ---------------------------------------------------------------------------
+
+def test_critique_skip_cached_flag_does_not_alter_max_iterations_timeout_or_gate_for_segments_still_in_loop():
+    """With CRITIQUE_SKIP_CACHED_SEGMENTS=true and one Phase-1 cache-HIT
+    segment excluded ("Cached Seg"), the two segments that DO enter the loop
+    ("Slow Seg", "Fast Seg") still obey the round cap (CRITIQUE_MAX_ITERATIONS),
+    the timeout degrade-to-draft (CRITIQUE_TIMEOUT_SECONDS), and the BR-89
+    strict-greater-than gate — exactly as they would with the flag off."""
+    import time
+    from unittest.mock import MagicMock, patch
+    from app.backend.services.translation_service import translate_texts
+
+    client = MagicMock()
+    client.cache_model_key = "test-model"
+
+    def _translate_once_side_effect(prompt, tgt, src_lang):
+        if "Source: Slow Seg" in prompt:
+            time.sleep(0.15)  # exceeds the patched CRITIQUE_TIMEOUT_SECONDS
+            return (True, "Revised Slow")
+        if "Source: Fast Seg" in prompt:
+            return (True, "Revised Fast")
+        raise AssertionError(f"Unexpected critique prompt: {prompt!r}")
+
+    client.translate_once.side_effect = _translate_once_side_effect
+
+    cache = MagicMock()
+
+    def _get_batch_side_effect(texts, tgt, src_lang, model_key):
+        if model_key.endswith(":c"):
+            return {}
+        return {t: v for t, v in {"Cached Seg": "Cached Draft"}.items() if t in texts}
+
+    cache.get_batch.side_effect = _get_batch_side_effect
+
+    with patch(
+        "app.backend.services.translation_service.translate_blocks_batch",
+        return_value=[(True, "Draft Slow"), (True, "Draft Fast")],
+    ), patch(
+        "app.backend.services.translation_service.get_cache", return_value=cache,
+    ), patch(
+        "app.backend.services.translation_service.CRITIQUE_LOOP_ENABLED", True,
+    ), patch(
+        "app.backend.services.translation_service.CRITIQUE_MAX_ITERATIONS", 1,
+    ), patch(
+        "app.backend.services.translation_service.CRITIQUE_TIMEOUT_SECONDS", 0.05,
+    ), patch(
+        "app.backend.config.CRITIQUE_SKIP_CACHED_SEGMENTS", True,
+    ), patch.object(
+        _qe_mod, "load_model", return_value=MagicMock(),
+    ), patch.object(
+        _qe_mod, "score_blocks", return_value=[0.1, 0.9],
+    ) as mock_sb:
+        tmap, _done, fail_cnt, stopped = translate_texts(
+            texts=["Cached Seg", "Slow Seg", "Fast Seg"],
+            targets=["fr"],
+            src_lang="en",
+            client=client,
+        )
+
+    assert not stopped
+    assert fail_cnt == 0
+    # BR-119 exclusion: the Phase-1 cache-HIT segment's draft is untouched.
+    assert tmap[("fr", "Cached Seg")] == "Cached Draft"
+    # CRITIQUE_TIMEOUT_SECONDS degrade-to-draft is unmodified: Slow Seg keeps its draft.
+    assert tmap[("fr", "Slow Seg")] == "Draft Slow"
+    # BR-89 gate unmodified: Fast Seg's revised(0.9) > draft(0.1) -> adopted.
+    assert tmap[("fr", "Fast Seg")] == "Revised Fast"
+    # CRITIQUE_MAX_ITERATIONS=1 round cap respected: exactly one score_blocks() call,
+    # containing ONLY Fast Seg's pair (Cached Seg excluded by BR-119, Slow Seg
+    # excluded by its own timeout — neither is a round-cap effect).
+    assert mock_sb.call_count == 1
+    blocks = mock_sb.call_args[0][1]
+    assert blocks == [("Fast Seg", "Draft Fast"), ("Fast Seg", "Revised Fast")]

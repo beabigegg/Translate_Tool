@@ -1,0 +1,1 @@
+python -m pytest -q tests/ --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164545/junit.xml' --maxfail=1 --tb=short -ra
