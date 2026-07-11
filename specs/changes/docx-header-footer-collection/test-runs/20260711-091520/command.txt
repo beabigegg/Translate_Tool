@@ -1,0 +1,1 @@
+python -m pytest tests/test_docx_header_footer.py -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-header-footer-collection/test-runs/20260711-091520/junit.xml'

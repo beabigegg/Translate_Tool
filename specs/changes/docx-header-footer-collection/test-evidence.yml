@@ -1,0 +1,46 @@
+change-id: docx-header-footer-collection
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+  - contract
+  - full
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      python -m pytest tests/test_docx_header_footer.py --collect-only -q
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-header-footer-collection/test-runs/20260711-092330/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/docx-header-footer-collection/test-runs/20260711-092330/summary.json
+    junit: specs/changes/docx-header-footer-collection/test-runs/20260711-092330/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      python -m pytest tests/test_docx_header_footer.py -q --maxfail=1 --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-header-footer-collection/test-runs/20260711-092332/junit.xml'
+    summary: specs/changes/docx-header-footer-collection/test-runs/20260711-092332/summary.json
+    junit: specs/changes/docx-header-footer-collection/test-runs/20260711-092332/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      python -m pytest tests/test_docx_header_footer.py tests/test_docx_nested_tables.py tests/test_docx_parser.py
+      tests/test_output_mode_processors.py tests/test_ir_pipeline_decoupling.py -q --maxfail=1 --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-header-footer-collection/test-runs/20260711-092334/junit.xml'
+    summary: specs/changes/docx-header-footer-collection/test-runs/20260711-092334/summary.json
+    junit: specs/changes/docx-header-footer-collection/test-runs/20260711-092334/junit.xml
+  - phase: contract
+    status: passed
+    command: cdd-kit validate --contracts --env --ci
+    summary: specs/changes/docx-header-footer-collection/test-runs/20260711-092340/summary.json
+  - phase: full
+    status: passed
+    command: >-
+      python -m pytest -q --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-header-footer-collection/test-runs/20260711-092348/junit.xml'
+      --maxfail=1
+    summary: specs/changes/docx-header-footer-collection/test-runs/20260711-092348/summary.json
+    junit: specs/changes/docx-header-footer-collection/test-runs/20260711-092348/junit.xml
+final-status: passed

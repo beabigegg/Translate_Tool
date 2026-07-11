@@ -1,0 +1,5 @@
+artifacts:
+  - { type: adr-written, pointer: "docs/adr/0019-native-header-footer-com-shape-boundary.md" }
+  - { type: affected-areas, pointer: "docx_processor header/footer collection, com_helpers (unchanged), business-rules" }
+  - { type: decision-summary, pointer: "native owns header/footer paragraph-text+tables both OSes (txbxContent stripped); COM owns header-anchored shapes only; disjoint domains, exactly-once by construction, no switch" }
+  - { type: risks-noted, pointer: "2 medium (given-fact correction: COM is shapes-only; txbxContent-strip load-bearing for AC-3 to avoid Windows double-translate); 0 high" }

@@ -1,6 +1,6 @@
-# generated: 2026-07-10T14:24:16Z by cdd-kit 3.6.0
-# files: 211, src-lines: 63767, map-lines: 5698, compression: 11.2x
-# sources-digest: c7f1688f21f9a379028dd2396dd82665827132e4f8758297634c90d83db9639e
+# generated: 2026-07-11T01:34:13Z by cdd-kit 3.6.0
+# files: 217, src-lines: 64293, map-lines: 5788, compression: 11.1x
+# sources-digest: 37d4febbdda826f392b32ff3be0a77867523b50d2a9cffb2eff5110d97e26064
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
@@ -699,7 +699,7 @@ app/backend/processors/com_helpers.py:  # 145 lines
     - { name: excel_convert, lines: 50-66 }
     - { name: postprocess_docx_shapes_with_word, lines: 69-145 }
 
-app/backend/processors/docx_processor.py:  # 1105 lines
+app/backend/processors/docx_processor.py:  # 1155 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: os, items: [], line: 5 }
@@ -725,22 +725,23 @@ app/backend/processors/docx_processor.py:  # 1105 lines
     - { name: INSERT_MARKER, line: 35 }
   classes:
     - name: Segment
-      lines: 189-221
+      lines: 212-244
       methods:
-        - { name: __init__, lines: 205-221 }
+        - { name: __init__, lines: 228-244 }
   functions:
     - { name: _p_text_with_breaks, lines: 38-48 }
-    - { name: _append_after, lines: 51-69 }
-    - { name: _is_our_insert_block, lines: 72-73 }
-    - { name: _find_last_inserted_after, lines: 76-89 }
-    - { name: _scan_our_tail_texts, lines: 92-105 }
-    - { name: _txbx_iter_texts, lines: 108-144 }
-    - { name: _txbx_append_paragraph, lines: 147-171 }
-    - { name: _txbx_tail_equals, lines: 174-186 }
-    - { name: _collect_docx_segments, lines: 224-419 }
-    - { name: _insert_docx_translations, lines: 422-719 }
-    - { name: _translate_docx_via_doc2doc, lines: 722-785 }
-    - { name: translate_docx, lines: 788-1105 }
+    - { name: _p_text_no_txbx, lines: 51-71 }
+    - { name: _append_after, lines: 74-92 }
+    - { name: _is_our_insert_block, lines: 95-96 }
+    - { name: _find_last_inserted_after, lines: 99-112 }
+    - { name: _scan_our_tail_texts, lines: 115-128 }
+    - { name: _txbx_iter_texts, lines: 131-167 }
+    - { name: _txbx_append_paragraph, lines: 170-194 }
+    - { name: _txbx_tail_equals, lines: 197-209 }
+    - { name: _collect_docx_segments, lines: 247-469 }
+    - { name: _insert_docx_translations, lines: 472-769 }
+    - { name: _translate_docx_via_doc2doc, lines: 772-835 }
+    - { name: translate_docx, lines: 838-1155 }
 
 app/backend/processors/libreoffice_helpers.py:  # 226 lines
   imports:
@@ -2257,11 +2258,46 @@ scripts/e2e_smoke.py:  # 154 lines
   functions:
     - { name: section, lines: 55-56 }
 
-specs/changes/docx-nested-table-collection/evidence/probe_id_recycling.py:  # 44 lines
+specs/changes/docx-header-footer-collection/evidence/probe_body_txbx_preexisting_dup.py:  # 17 lines
   imports:
-    - { module: docx, items: [], line: 1 }
-  functions:
-    - { name: build, lines: 3-9 }
+    - { module: sys, items: [], line: 1 }
+    - { module: docx, items: [], line: 2 }
+    - { module: lxml, items: [etree], line: 3 }
+    - { module: app.backend.processors.docx_processor, items: [_collect_docx_segments, _txbx_iter_texts], line: 4 }
+
+specs/changes/docx-header-footer-collection/evidence/probe_hf_coverage.py:  # 27 lines
+  imports:
+    - { module: sys, items: [], line: 1 }
+    - { module: re, items: [], line: 1 }
+    - { module: glob, items: [], line: 1 }
+    - { module: docx, items: [], line: 2 }
+    - { module: app.backend.processors.docx_processor, items: [_collect_docx_segments], line: 3 }
+
+specs/changes/docx-header-footer-collection/evidence/probe_r1_slots_and_linking.py:  # 16 lines
+  imports:
+    - { module: sys, items: [], line: 1 }
+    - { module: docx, items: [], line: 2 }
+    - { module: docx.enum.section, items: [WD_SECTION], line: 12 }
+
+specs/changes/docx-header-footer-collection/evidence/probe_real_header_shape.py:  # 22 lines
+  imports:
+    - { module: sys, items: [], line: 1 }
+    - { module: docx, items: [], line: 2 }
+    - { module: glob, items: [], line: 2 }
+
+specs/changes/docx-header-footer-collection/evidence/probe_txbx_overlap.py:  # 15 lines
+  imports:
+    - { module: sys, items: [], line: 1 }
+    - { module: docx, items: [], line: 2 }
+    - { module: lxml, items: [etree], line: 3 }
+    - { module: app.backend.processors.docx_processor, items: [_p_text_with_breaks], line: 4 }
+
+specs/changes/docx-header-footer-collection/evidence/probe_writeback_feasibility.py:  # 24 lines
+  imports:
+    - { module: sys, items: [], line: 1 }
+    - { module: docx, items: [], line: 2 }
+    - { module: tempfile, items: [], line: 20 }
+    - { module: os, items: [], line: 20 }
 
 tests/__init__.py:  # 1 lines
 
@@ -2639,6 +2675,60 @@ tests/test_doc_chunker.py:  # 795 lines
   functions:
     - { name: _make_element, lines: 27-39 }
     - { name: _make_doc, lines: 42-49 }
+
+tests/test_docx_header_footer.py:  # 399 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 39 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 41 }
+    - { module: docx, items: [], line: 43 }
+    - { module: pytest, items: [], line: 44 }
+    - { module: docx.enum.section, items: [WD_SECTION], line: 45 }
+    - { module: docx.oxml, items: [OxmlElement], line: 46 }
+    - { module: docx.shared, items: [Emu], line: 47 }
+    - { module: app.backend.processors.docx_processor, items: [], line: 49 }
+  classes:
+    - name: TestNativeCollectionLeavesNoSourceText
+      lines: 103-135
+      methods:
+        - { name: test_header_and_footer_paragraph_text_collected_as_segments, lines: 104-114 }
+        - { name: test_header_footer_segments_flow_through_translate_docx, lines: 116-135 }
+    - name: TestHeaderTableAndNestedTableCollected
+      lines: 142-161
+      methods:
+        - { name: test_header_table_and_nested_table_cells_collected, lines: 143-161 }
+    - name: TestTxbxContentStrippedFromHeader
+      lines: 168-191
+      methods:
+        - { name: test_header_paragraph_excludes_textbox_text, lines: 169-179 }
+        - { name: test_body_paragraph_textbox_fold_in_unchanged, lines: 181-191 }
+    - name: TestComCallSiteUnchanged
+      lines: 194-214
+      methods:
+        - { name: test_include_headers_kwarg_still_true_at_com_boundary, lines: 195-214 }
+    - name: TestLinkedPartCollectedOnce
+      lines: 221-272
+      methods:
+        - { name: test_linked_header_collected_exactly_once, lines: 222-233 }
+        - { name: test_linked_header_translated_exactly_once_in_output, lines: 235-253 }
+        - { name: test_linked_header_table_cell_collected_exactly_once, lines: 255-272 }
+    - name: TestAllSixSlotsTraversed
+      lines: 279-295
+      methods:
+        - { name: test_each_slot_distinct_marker_text_collected, lines: 280-295 }
+    - name: TestBodyIndicesUnaffectedByHeaderCollection
+      lines: 302-365
+      methods:
+        - { name: test_body_segment_order_and_text_identical_with_and_without_header, lines: 303-319 }
+        - { name: test_absolute_segment_zero_is_first_body_paragraph_not_header, lines: 321-336 }
+        - { name: test_post_translate_hook_block_ids_index_body_paragraphs_only, lines: 338-365 }
+    - name: TestWriteBackPersistsAcrossSave
+      lines: 372-399
+      methods:
+        - { name: test_reopened_file_contains_translated_header_and_footer_text, lines: 373-399 }
+  functions:
+    - { name: _make_client_mock, lines: 56-66 }
+    - { name: _add_textbox_to_paragraph, lines: 69-86 }
+    - { name: _fake_translate_texts, lines: 89-96 }
 
 tests/test_docx_nested_tables.py:  # 587 lines
   imports:

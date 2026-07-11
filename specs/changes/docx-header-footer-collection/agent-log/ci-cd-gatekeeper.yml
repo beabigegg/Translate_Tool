@@ -1,0 +1,10 @@
+agent: ci-cd-gatekeeper
+status: pass
+summary: >
+  No workflow edit, no CI/CD contract change. New test file covered by the existing
+  blanket pytest sweep and full-regression; AC-6 covered by golden-sample-regression.
+  Fresh drift check confirms the prior close-out's cleanup holds (no stale targeted
+  steps, no expose-output-mode-ui-gate job, zero cdd-kit gate <id> lines).
+artifacts:
+  - { type: ci-gates, pointer: "specs/changes/docx-header-footer-collection/ci-gates.md" }
+  - { type: workflow-diff, pointer: "none — contract-driven-gates.yml unchanged" }
