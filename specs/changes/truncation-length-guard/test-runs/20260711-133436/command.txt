@@ -1,0 +1,1 @@
+python -m pytest -q --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/truncation-length-guard/test-runs/20260711-133436/junit.xml' --maxfail=1

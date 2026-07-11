@@ -1,0 +1,37 @@
+agent: backend-engineer
+change-id: truncation-length-guard
+status: complete
+summary: >
+  Implemented a pure composition-aware truncation length guard
+  (app/backend/utils/length_guard.py) and wired it into the DOCX table-cell
+  acceptance seam (docx_processor.py L1054-1058, per implementation-plan.md's
+  verified seam), covering both the whole-table JSON path and the legacy
+  pipe-grid path. Confirmed the live target string is the full name
+  "Vietnamese" (grep-verified in ollama_client.py:36 and config.py:327) and
+  seeded config.TRUNCATION_GUARD_COEFFICIENTS with normalized key
+  "vietnamese". Verified via snapshot-sabotage (scratch backup + in-place
+  edit + sha256 restore-check, never git checkout/stash/restore) that the
+  three load-bearing lines are genuinely falsifiable: reversing the
+  `< k*E` comparison turns test_flags_recorded_bug_ratio RED; removing the
+  MIN_SOURCE_CHARS fail-safe early-return turns test_failsafe_short_source_
+  below_min_chars RED; changing keep-longest to keep-source turns
+  test_cell_seam_flags_and_recovers_truncated_reply RED. (Note: removing the
+  "target not in coefficient table" fail-safe alone does NOT turn its test
+  RED, because expected_length()'s own membership check independently
+  returns 0.0 for an unlisted target, which the E==0 fail-safe then backstops
+  — this is the intentional defense-in-depth BR-117 describes as "the
+  backstop for any slip", not a gap.)
+artifacts:
+  - { type: files-changed, pointer: "app/backend/utils/length_guard.py (new)" }
+  - { type: files-changed, pointer: "app/backend/utils/text_utils.py:55-75 (count_composition)" }
+  - { type: files-changed, pointer: "app/backend/config.py:139-149 (TRUNCATION_GUARD_* constants)" }
+  - { type: files-changed, pointer: "app/backend/processors/docx_processor.py:29 (import), :843-877 (_recover_truncated_cell), :1092-1119 (guard wiring at the acceptance loop)" }
+  - { type: tests-added, pointer: "tests/test_length_guard.py (new, 14 tests: pure model, zero-FP calibration table, 3 independent fail-safes, BR-68 numeric, recovery integration x3, AC-7 no-op)" }
+  - { type: tests-added, pointer: "tests/test_docx_nested_tables.py::TestTruncationGuardCellSeam::test_layout_cell_truncated_reply_flagged_and_recovered (AC-1, parametrized json_enabled=[True, False] for both wire formats)" }
+  - { type: tests-added, pointer: "tests/test_json_translation_body.py::TestLengthGuardOutOfScope::test_body_path_unaffected_by_length_guard (AC-7 out-of-scope confirmation, D1)" }
+  - { type: test-output, pointer: "full phase: 1424 passed, 4 skipped (pre-existing, unrelated fixtures), 143.75s — specs/changes/truncation-length-guard/test-runs/20260711-125257/stdout.log" }
+  - { type: contracts-touched, pointer: "none (BR-117 already present in contracts/business/business-rules.md; env/API/data-shape untouched per plan)" }
+known-risks:
+  - "Calibration rests on ONE language pair (Vietnamese); fail-safe on any unlisted target is load-bearing and intentionally unguarded for other pairs (ADR-0020 open risk)."
+  - "PPTX/XLSX table cells and the body/segment path remain unguarded (D1 scope); out of scope for this change per implementation-plan.md."
+next-reviewer: monkey-test-engineer (adds FP-boundary fuzz per IP-7), then qa-reviewer (regression-report.md)

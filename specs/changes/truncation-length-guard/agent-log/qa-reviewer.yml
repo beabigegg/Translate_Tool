@@ -1,0 +1,21 @@
+agent: qa-reviewer
+status: approved-with-risk
+summary: >
+  Release-ready with one contained residual. Independently reproduced the load-bearing
+  zero-FP property (342/342 real cache triples, 0 flagged) and the never-source invariant
+  (sabotage -> RED, restored byte-identical). BR-117 conformance verified (guard at the
+  acceptance write site, non-re-entrant recovery, DOCX-cell scope, no data-shape change).
+  The bare-acronym FP is accepted: contained by keep-longest+never-source (0 content
+  loss), 0/342 real, xfail(strict)-tracked.
+artifacts:
+  - { type: gate-results, pointer: "non-strict gate pass; --strict pending-tasks-only (5.4,6.1-6.4)" }
+  - { type: evidence-quality, pointer: "repro — re-ran 342-pair 0-FP + never-source sabotage; docx sha 850da78 restored byte-identical" }
+  - { type: decision, pointer: "approved-with-risk" }
+  - { type: failure-routing, pointer: "acronym-shape exemption follow-up -> application-team, dated tracked residual" }
+notes: |
+  Full junit: 1466 passed, 4 skipped, 1 xfailed, 0 failed. Evidence mtime postdates all
+  covered files. AC-2 asserts the written final_tmap value; AC-7 filters
+  record.name=="TranslateTool"; AC-3 asserts boolean per pair. Fail-safes each
+  independently falsifiable; config constants carry the "not an env var" comment. Guard
+  wired at L1092-1119 (JSON happy path), not the BR-82 else-branch. QA requested a
+  second-reviewer (spec-architect) co-sign for the high-risk Tier-1 change.

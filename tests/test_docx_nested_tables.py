@@ -585,3 +585,79 @@ class TestLegacyPipeGridDegrade:
         assert result_nested.cell(0, 1).text == "N01_TR"
         assert result_nested.cell(1, 0).text == "N10_TR"
         assert result_nested.cell(1, 1).text == "N11_TR"
+
+
+# ---------------------------------------------------------------------------
+# truncation-length-guard (BR-117, ADR-0020): AC-1 integration — the guard
+# and its BR-82-reuse recovery must wire into BOTH the whole-table JSON path
+# and the legacy pipe-grid path (a single acceptance-write seam, L1054-1058).
+# ---------------------------------------------------------------------------
+
+# A merged "layout" cell holding several document-section paragraphs, joined
+# with "\n" — the design.md-recorded hazard (a 4827->370-char truncation).
+_TRUNCATION_CELL_LINES = [
+    "系統版本編號與相關文件說明內容",
+    "測試環境設定與參數調整說明文字",
+    "產品規格書內容摘要與注意事項",
+]
+_TRUNCATION_CELL_TEXT = "\n".join(_TRUNCATION_CELL_LINES)
+
+
+@pytest.mark.parametrize("json_enabled", [True, False])
+class TestTruncationGuardCellSeam:
+    def test_layout_cell_truncated_reply_flagged_and_recovered(self, tmp_path, monkeypatch, json_enabled):
+        """A well-formed, shape-valid, but suspiciously short whole-table
+        reply must be flagged and recovered on BOTH wire formats (the JSON
+        envelope AND the legacy pipe-grid), since both populate
+        `translated_by_pos` and reach the SAME acceptance-write seam
+        (docx_processor.py L1054-1058). The WRITTEN final_tmap cell value
+        must be the recovered (longer) reassembly, never the source text
+        nor a BR-25 placeholder."""
+        monkeypatch.setattr(config, "JSON_STRUCTURED_TRANSLATION_ENABLED", json_enabled)
+
+        doc = docx.Document()
+        t = doc.add_table(rows=1, cols=1)
+        t.cell(0, 0).text = _TRUNCATION_CELL_TEXT
+        in_path = tmp_path / "in.docx"
+        doc.save(str(in_path))
+        out_path = tmp_path / "out.docx"
+
+        short_translation = "Nội dung ngắn"
+        recovered_lines = [
+            "Số phiên bản hệ thống và tài liệu liên quan được mô tả chi tiết ở đây",
+            "Thiết lập môi trường thử nghiệm và điều chỉnh tham số được giải thích rõ ràng",
+            "Tóm tắt nội dung quy cách sản phẩm và các lưu ý quan trọng cần biết",
+        ]
+
+        mock_client = _make_client_mock()
+        mock_client.translate_json.return_value = (True, _json_grid_response({(0, 0): short_translation}))
+        mock_client.translate_once.return_value = (True, _grid_response([[short_translation]]))
+
+        def fake_translate_texts(texts, targets, src_lang, client, **kwargs):
+            if not texts:
+                return {}, 0, 0, False  # unconditional empty body-path call, not a recovery call
+            tgt = targets[0]
+            tmap = {(tgt, line): recovered for line, recovered in zip(texts, recovered_lines)}
+            return tmap, len(texts), 0, False
+
+        with patch.object(_docx_proc, "translate_texts", side_effect=fake_translate_texts) as tt_mock, \
+             patch.object(_docx_proc, "_insert_docx_translations") as insert_mock:
+            _docx_proc.translate_docx(
+                str(in_path), str(out_path),
+                targets=["Vietnamese"], src_lang="zh",
+                client=mock_client,
+                include_headers_shapes_via_com=False,
+            )
+
+        assert insert_mock.call_count == 1
+        final_tmap = insert_mock.call_args[0][2]
+        kept = final_tmap[("Vietnamese", _TRUNCATION_CELL_TEXT, 0)]
+
+        assert kept == "\n".join(recovered_lines), (
+            "expected the recovered reassembly to be written for the "
+            f"flagged cell (json_enabled={json_enabled})"
+        )
+        assert kept != _TRUNCATION_CELL_TEXT, "must never write the source text"
+        assert not kept.startswith("[Translation failed|"), "must never write the BR-25 placeholder"
+        recovery_calls = [c for c in tt_mock.call_args_list if c.args[0]]
+        assert len(recovery_calls) == 1, "recovery must fire exactly once for the one flagged cell"

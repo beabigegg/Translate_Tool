@@ -1,0 +1,1 @@
+python -m pytest tests/test_docx_nested_tables.py tests/test_json_translation_body.py tests/test_length_guard.py -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/truncation-length-guard/test-runs/20260711-125033/junit.xml'

@@ -52,6 +52,30 @@ def has_cjk(text: str) -> bool:
     return any("\u4e00" <= ch <= "\u9fff" for ch in (text or ""))
 
 
+def count_composition(text: str) -> tuple[int, int]:
+    """Count CJK characters and non-CJK alphabetic characters in `text`.
+
+    Used by the truncation-length-guard (BR-117) expected-length model
+    `E = a*cjk + b*latin_alpha`. Digits, punctuation, and whitespace are
+    excluded (BR-68 numeric-passthrough backstop). Reuses the SAME CJK
+    predicate as `has_cjk` above rather than redeclaring the range.
+
+    Args:
+        text: Already whitespace-normalized text (caller's responsibility).
+
+    Returns:
+        `(cjk_count, latin_alpha_count)`.
+    """
+    cjk_count = 0
+    latin_count = 0
+    for ch in text or "":
+        if "\u4e00" <= ch <= "\u9fff":
+            cjk_count += 1
+        elif ch.isalpha():
+            latin_count += 1
+    return cjk_count, latin_count
+
+
 def is_cjk_language(lang: Optional[str]) -> bool:
     """Check if language code indicates CJK (Chinese/Japanese/Korean).
 

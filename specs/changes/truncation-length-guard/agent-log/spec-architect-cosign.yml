@@ -1,0 +1,18 @@
+agent: spec-architect
+status: co-sign
+summary: >
+  Second-reviewer architectural co-sign (unconditional) for the high-risk Tier-1 change.
+  Implementation matches ratified D1-D6; both ADR-0020 reversal-guarded invariants intact
+  (never-source sabotage-verified). The bare-acronym residual is outside invariant-1's
+  domain (target calibration, not content-shape), contained by never-source+keep-longest
+  (zero content loss), 0/342 real, xfail+dated-follow-up tracked. Clear to merge.
+artifacts:
+  - { type: cosign, pointer: "specs/changes/truncation-length-guard/design.md" }
+  - { type: decision, pointer: "co-sign (unconditional)" }
+notes: |
+  Verified against live source: guard at L1092-1119 (JSON happy path, not BR-82 else),
+  3 fail-safes ordered in is_suspiciously_short, _recover_truncated_cell non-re-entrant
+  bound=1, keep-longest L1110, config "not an env var" comment, no data-shape change.
+  Load-bearing observation (already guarded by design Open Risks + ADR invariant-1's
+  requires-own-calibration clause): adding a 2nd coefficient target multiplies the
+  acronym-FP surface — scaffold the acronym-exemption change BEFORE any new target.

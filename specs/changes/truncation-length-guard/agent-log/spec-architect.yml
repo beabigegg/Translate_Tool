@@ -1,0 +1,19 @@
+agent: spec-architect
+status: approved-with-correction
+summary: >
+  D1 guard at DOCX table-cell seam only (body/pptx/xlsx follow-ups); D2 per-target
+  coefficients (Vietnamese a=3.51 b=0.75) k=0.3, fail-safe on unlisted target / source
+  <15 / E==0; D3 reuse BR-82 split-and-retranslate bound=1 non-re-entrant, keep-longest
+  + WARNING, never source/BR-25; D4 cjk + non-cjk isalpha, numeric excluded; D5 no IR
+  field; D6 ordering. New BR-117, bump 0.33.1 -> 0.34.0. ADR-0020.
+artifacts:
+  - { type: design, pointer: "specs/changes/truncation-length-guard/design.md" }
+  - { type: adr, pointer: "docs/adr/0020-truncation-length-guard.md" }
+notes: |
+  Main Claude corrected a PHANTOM consumer in D5: the design named
+  tests/metrics/truncation_rate.py as consuming the new WARNING, but
+  compute_truncation_rate (layout_qa.py L98) counts el.render_truncated (a render-time
+  bbox concept) and parses no log. Corrected in design.md L23/D5 and ADR-0020: the
+  WARNING is observability-only with NO automated consumer; truncation_rate.py is
+  unrelated and is NOT this change's regression metric. D5's core "no IR field" call
+  stands (avoids a dead write). data-shape-contract.md untouched (task 2.4 skipped).

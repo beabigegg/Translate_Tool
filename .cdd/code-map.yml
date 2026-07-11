@@ -1,6 +1,6 @@
-# generated: 2026-07-11T03:49:06Z by cdd-kit 3.6.0
-# files: 214, src-lines: 65033, map-lines: 5847, compression: 11.1x
-# sources-digest: 94f1e296ea2e2d10d608b0ac4ae3b060d6aa5a141b70314040b4bea85db35344
+# generated: 2026-07-11T05:47:41Z by cdd-kit 3.6.0
+# files: 215, src-lines: 66064, map-lines: 5971, compression: 11.1x
+# sources-digest: 4f03f958213a590f2b021a0eaf97318db80d9aa9a61832a0199564331b37b87a
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
@@ -266,7 +266,7 @@ app/backend/clients/openai_compatible_client.py:  # 508 lines
         - { name: set_runtime_options_override, lines: 503-504 }
         - { name: set_cache_variant, lines: 506-508 }
 
-app/backend/config.py:  # 600 lines
+app/backend/config.py:  # 612 lines
   imports:
     - { module: __future__, items: [annotations], line: 5 }
     - { module: logging, items: [], line: 7 }
@@ -311,91 +311,95 @@ app/backend/config.py:  # 600 lines
     - { name: CONTEXT_SAMPLE_CHARS, line: 129 }
     - { name: MAX_TABLE_NESTING_DEPTH, line: 134 }
     - { name: MAX_GROUP_NESTING_DEPTH, line: 139 }
-    - { name: CHUNK_OVERLAP_TOKENS, line: 145 }
-    - { name: QE_ENABLED, line: 151 }
-    - { name: QE_MODEL_NAME, line: 152 }
-    - { name: QE_DEVICE, line: 153 }
-    - { name: CRITIQUE_LOOP_ENABLED, line: 156 }
-    - { name: CRITIQUE_MAX_ITERATIONS, line: 157 }
-    - { name: CRITIQUE_TIMEOUT_SECONDS, line: 158 }
-    - { name: JSON_STRUCTURED_TRANSLATION_ENABLED, line: 167 }
-    - { name: FEWSHOT_INJECTION_ENABLED, line: 174 }
-    - { name: DYNAMIC_SCENARIO_STRATEGY_ENABLED, line: 180 }
-    - { name: QWEN_CONTEXT_FLOW_ENABLED, line: 181 }
-    - { name: SCENARIO_CACHE_VARIANT_ENABLED, line: 182 }
-    - { name: EXCEL_FORMULA_MODE, line: 184 }
-    - { name: MAX_SHAPE_CHARS, line: 185 }
-    - { name: PDF_PARSER_ENGINE, line: 188 }
-    - { name: PDF_SKIP_HEADER_FOOTER, line: 189 }
-    - { name: PDF_HEADER_FOOTER_MARGIN_PT, line: 190 }
-    - { name: LAYOUT_DETECTOR_MODEL_PATH, line: 195 }
-    - { name: LAYOUT_DETECTOR_ENABLED, line: 197 }
-    - { name: LAYOUT_QA_ENABLED, line: 204 }
-    - { name: LAYOUT_QA_MAX_BOXES_PER_PAGE, line: 210 }
-    - { name: PDF_RENDER_DPI, line: 215 }
-    - { name: OCR_ENABLED, line: 220 }
-    - { name: PDF_TABLE_ROW_GROWTH_ENABLED, line: 229 }
-    - { name: TABLE_RECOGNITION_MODEL_PATH, line: 234 }
-    - { name: TABLE_RECOGNITION_ENABLED, line: 237 }
-    - { name: JUDGE_ENABLED, line: 242 }
-    - { name: JUDGE_PROVIDER, line: 247 }
-    - { name: JUDGE_MODEL, line: 251 }
-    - { name: JUDGE_LAYOUT_MODEL, line: 254 }
-    - { name: JUDGE_CLOUD_PROVIDER_ID, line: 257 }
-    - { name: JUDGE_MAX_ITERATIONS, line: 259 }
-    - { name: LAYOUT_PRESERVATION_MODE, line: 262 }
-    - { name: DEFAULT_FONT_FAMILY, line: 263 }
-    - { name: MIN_READABLE_FONT_PT, line: 264 }
-    - { name: MIN_FONT_SIZE_PT, line: 265 }
-    - { name: MAX_FONT_SIZE_PT, line: 266 }
-    - { name: FONT_SIZE_SHRINK_FACTOR, line: 267 }
-    - { name: PDF_DRAW_MASK, line: 268 }
-    - { name: PDF_MASK_MARGIN_PT, line: 269 }
-    - { name: PDF_SHOW_MISSING_PLACEHOLDER, line: 270 }
-    - { name: FONT_SIZE_CONFIG, line: 274 }
-    - { name: MAX_SEGMENTS, line: 287 }
-    - { name: MAX_TEXT_LENGTH, line: 288 }
-    - { name: MAX_JOBS_IN_MEMORY, line: 291 }
-    - { name: JOB_TTL_HOURS, line: 292 }
-    - { name: CLEANUP_INTERVAL_MINUTES, line: 293 }
-    - { name: HTTP_POOL_CONNECTIONS, line: 296 }
-    - { name: HTTP_POOL_MAXSIZE, line: 297 }
-    - { name: ENV_CONNECT_TIMEOUT, line: 299 }
-    - { name: ENV_READ_TIMEOUT, line: 300 }
-    - { name: LIBREOFFICE_PATH, line: 303 }
-    - { name: LIBREOFFICE_TIMEOUT, line: 304 }
-    - { name: VERIFY_MAX_RETRIES, line: 306 }
-    - { name: TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED, line: 309 }
-    - { name: TERM_INJECT_CONF_THRESHOLD, line: 310 }
-    - { name: TERM_EMBEDDING_MODEL, line: 313 }
-    - { name: TERM_EMBEDDING_THRESHOLD, line: 314 }
-    - { name: TERM_EXTRACTION_MODEL, line: 315 }
-    - { name: SUPPORTED_EXTENSIONS, line: 317 }
-    - { name: LANG_CODE_MAP, line: 319 }
-    - { name: DATA_DIR, line: 391 }
-    - { name: JOBS_DIR, line: 392 }
-    - { name: LOG_DIR, line: 393 }
-    - { name: TRANSLATION_CACHE_ENABLED, line: 394 }
-    - { name: CACHE_DIR, line: 395 }
-    - { name: DEFAULT_HOST, line: 397 }
-    - { name: DEFAULT_PORT, line: 398 }
-    - { name: ALLOWED_ORIGINS, line: 400 }
+    - { name: TRUNCATION_GUARD_K, line: 146 }
+    - { name: TRUNCATION_GUARD_COEFFICIENTS, line: 147 }
+    - { name: TRUNCATION_GUARD_MIN_SOURCE_CHARS, line: 150 }
+    - { name: TRUNCATION_GUARD_MAX_RECOVERY_ATTEMPTS, line: 151 }
+    - { name: CHUNK_OVERLAP_TOKENS, line: 157 }
+    - { name: QE_ENABLED, line: 163 }
+    - { name: QE_MODEL_NAME, line: 164 }
+    - { name: QE_DEVICE, line: 165 }
+    - { name: CRITIQUE_LOOP_ENABLED, line: 168 }
+    - { name: CRITIQUE_MAX_ITERATIONS, line: 169 }
+    - { name: CRITIQUE_TIMEOUT_SECONDS, line: 170 }
+    - { name: JSON_STRUCTURED_TRANSLATION_ENABLED, line: 179 }
+    - { name: FEWSHOT_INJECTION_ENABLED, line: 186 }
+    - { name: DYNAMIC_SCENARIO_STRATEGY_ENABLED, line: 192 }
+    - { name: QWEN_CONTEXT_FLOW_ENABLED, line: 193 }
+    - { name: SCENARIO_CACHE_VARIANT_ENABLED, line: 194 }
+    - { name: EXCEL_FORMULA_MODE, line: 196 }
+    - { name: MAX_SHAPE_CHARS, line: 197 }
+    - { name: PDF_PARSER_ENGINE, line: 200 }
+    - { name: PDF_SKIP_HEADER_FOOTER, line: 201 }
+    - { name: PDF_HEADER_FOOTER_MARGIN_PT, line: 202 }
+    - { name: LAYOUT_DETECTOR_MODEL_PATH, line: 207 }
+    - { name: LAYOUT_DETECTOR_ENABLED, line: 209 }
+    - { name: LAYOUT_QA_ENABLED, line: 216 }
+    - { name: LAYOUT_QA_MAX_BOXES_PER_PAGE, line: 222 }
+    - { name: PDF_RENDER_DPI, line: 227 }
+    - { name: OCR_ENABLED, line: 232 }
+    - { name: PDF_TABLE_ROW_GROWTH_ENABLED, line: 241 }
+    - { name: TABLE_RECOGNITION_MODEL_PATH, line: 246 }
+    - { name: TABLE_RECOGNITION_ENABLED, line: 249 }
+    - { name: JUDGE_ENABLED, line: 254 }
+    - { name: JUDGE_PROVIDER, line: 259 }
+    - { name: JUDGE_MODEL, line: 263 }
+    - { name: JUDGE_LAYOUT_MODEL, line: 266 }
+    - { name: JUDGE_CLOUD_PROVIDER_ID, line: 269 }
+    - { name: JUDGE_MAX_ITERATIONS, line: 271 }
+    - { name: LAYOUT_PRESERVATION_MODE, line: 274 }
+    - { name: DEFAULT_FONT_FAMILY, line: 275 }
+    - { name: MIN_READABLE_FONT_PT, line: 276 }
+    - { name: MIN_FONT_SIZE_PT, line: 277 }
+    - { name: MAX_FONT_SIZE_PT, line: 278 }
+    - { name: FONT_SIZE_SHRINK_FACTOR, line: 279 }
+    - { name: PDF_DRAW_MASK, line: 280 }
+    - { name: PDF_MASK_MARGIN_PT, line: 281 }
+    - { name: PDF_SHOW_MISSING_PLACEHOLDER, line: 282 }
+    - { name: FONT_SIZE_CONFIG, line: 286 }
+    - { name: MAX_SEGMENTS, line: 299 }
+    - { name: MAX_TEXT_LENGTH, line: 300 }
+    - { name: MAX_JOBS_IN_MEMORY, line: 303 }
+    - { name: JOB_TTL_HOURS, line: 304 }
+    - { name: CLEANUP_INTERVAL_MINUTES, line: 305 }
+    - { name: HTTP_POOL_CONNECTIONS, line: 308 }
+    - { name: HTTP_POOL_MAXSIZE, line: 309 }
+    - { name: ENV_CONNECT_TIMEOUT, line: 311 }
+    - { name: ENV_READ_TIMEOUT, line: 312 }
+    - { name: LIBREOFFICE_PATH, line: 315 }
+    - { name: LIBREOFFICE_TIMEOUT, line: 316 }
+    - { name: VERIFY_MAX_RETRIES, line: 318 }
+    - { name: TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED, line: 321 }
+    - { name: TERM_INJECT_CONF_THRESHOLD, line: 322 }
+    - { name: TERM_EMBEDDING_MODEL, line: 325 }
+    - { name: TERM_EMBEDDING_THRESHOLD, line: 326 }
+    - { name: TERM_EXTRACTION_MODEL, line: 327 }
+    - { name: SUPPORTED_EXTENSIONS, line: 329 }
+    - { name: LANG_CODE_MAP, line: 331 }
+    - { name: DATA_DIR, line: 403 }
+    - { name: JOBS_DIR, line: 404 }
+    - { name: LOG_DIR, line: 405 }
+    - { name: TRANSLATION_CACHE_ENABLED, line: 406 }
+    - { name: CACHE_DIR, line: 407 }
+    - { name: DEFAULT_HOST, line: 409 }
+    - { name: DEFAULT_PORT, line: 410 }
+    - { name: ALLOWED_ORIGINS, line: 412 }
   classes:
     - name: ModelType
       lines: 18-22
     - name: TimeoutConfig
-      lines: 407-460
+      lines: 419-472
       methods:
-        - { name: set_from_config, lines: 415-417 }
-        - { name: set_timeouts, lines: 419-421 }
-        - { name: clear_runtime_overrides, lines: 423-425 }
-        - { name: connect_timeout, lines: 428-441 }
-        - { name: read_timeout, lines: 444-457 }
-        - { name: get_timeout_tuple, lines: 459-460 }
+        - { name: set_from_config, lines: 427-429 }
+        - { name: set_timeouts, lines: 431-433 }
+        - { name: clear_runtime_overrides, lines: 435-437 }
+        - { name: connect_timeout, lines: 440-453 }
+        - { name: read_timeout, lines: 456-469 }
+        - { name: get_timeout_tuple, lines: 471-472 }
   functions:
-    - { name: _expand_env_vars, lines: 474-501 }
-    - { name: _expand_node, lines: 504-531 }
-    - { name: load_providers_config, lines: 534-600 }
+    - { name: _expand_env_vars, lines: 486-513 }
+    - { name: _expand_node, lines: 516-543 }
+    - { name: load_providers_config, lines: 546-612 }
 
 app/backend/main.py:  # 64 lines
   imports:
@@ -700,7 +704,7 @@ app/backend/processors/com_helpers.py:  # 145 lines
     - { name: excel_convert, lines: 50-66 }
     - { name: postprocess_docx_shapes_with_word, lines: 69-145 }
 
-app/backend/processors/docx_processor.py:  # 1157 lines
+app/backend/processors/docx_processor.py:  # 1218 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: os, items: [], line: 5 }
@@ -720,29 +724,31 @@ app/backend/processors/docx_processor.py:  # 1157 lines
     - { module: app.backend.services.translation_service, items: [translate_texts], line: 26 }
     - { module: app.backend.utils, items: [json_translation], line: 27 }
     - { module: app.backend.utils.exceptions, items: [ApiError, check_document_size_limits], line: 28 }
-    - { module: app.backend.utils.logging_utils, items: [logger], line: 29 }
-    - { module: app.backend.utils.text_utils, items: [has_cjk, is_numeric_cell, normalize_text, should_translate], line: 30 }
+    - { module: app.backend.utils.length_guard, items: [is_suspiciously_short], line: 29 }
+    - { module: app.backend.utils.logging_utils, items: [logger], line: 30 }
+    - { module: app.backend.utils.text_utils, items: [has_cjk, is_numeric_cell, normalize_text, should_translate], line: 31 }
   constants:
-    - { name: INSERT_MARKER, line: 35 }
+    - { name: INSERT_MARKER, line: 36 }
   classes:
     - name: Segment
-      lines: 214-246
+      lines: 215-247
       methods:
-        - { name: __init__, lines: 230-246 }
+        - { name: __init__, lines: 231-247 }
   functions:
-    - { name: _p_text_with_breaks, lines: 38-48 }
-    - { name: _p_text_no_txbx, lines: 51-73 }
-    - { name: _append_after, lines: 76-94 }
-    - { name: _is_our_insert_block, lines: 97-98 }
-    - { name: _find_last_inserted_after, lines: 101-114 }
-    - { name: _scan_our_tail_texts, lines: 117-130 }
-    - { name: _txbx_iter_texts, lines: 133-169 }
-    - { name: _txbx_append_paragraph, lines: 172-196 }
-    - { name: _txbx_tail_equals, lines: 199-211 }
-    - { name: _collect_docx_segments, lines: 249-471 }
-    - { name: _insert_docx_translations, lines: 474-771 }
-    - { name: _translate_docx_via_doc2doc, lines: 774-837 }
-    - { name: translate_docx, lines: 840-1157 }
+    - { name: _p_text_with_breaks, lines: 39-49 }
+    - { name: _p_text_no_txbx, lines: 52-74 }
+    - { name: _append_after, lines: 77-95 }
+    - { name: _is_our_insert_block, lines: 98-99 }
+    - { name: _find_last_inserted_after, lines: 102-115 }
+    - { name: _scan_our_tail_texts, lines: 118-131 }
+    - { name: _txbx_iter_texts, lines: 134-170 }
+    - { name: _txbx_append_paragraph, lines: 173-197 }
+    - { name: _txbx_tail_equals, lines: 200-212 }
+    - { name: _collect_docx_segments, lines: 250-472 }
+    - { name: _insert_docx_translations, lines: 475-772 }
+    - { name: _translate_docx_via_doc2doc, lines: 775-838 }
+    - { name: _recover_truncated_cell, lines: 841-875 }
+    - { name: translate_docx, lines: 878-1218 }
 
 app/backend/processors/libreoffice_helpers.py:  # 226 lines
   imports:
@@ -1537,6 +1543,15 @@ app/backend/utils/json_translation.py:  # 120 lines
     - { name: build_table_payload, lines: 72-91 }
     - { name: parse_body_reply, lines: 94-120 }
 
+app/backend/utils/length_guard.py:  # 62 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 11 }
+    - { module: app.backend, items: [config], line: 13 }
+    - { module: app.backend.utils.text_utils, items: [count_composition, normalize_text], line: 14 }
+  functions:
+    - { name: expected_length, lines: 17-35 }
+    - { name: is_suspiciously_short, lines: 38-62 }
+
 app/backend/utils/logging_utils.py:  # 82 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
@@ -1591,26 +1606,27 @@ app/backend/utils/table_serializer.py:  # 224 lines
     - { name: serialize_json, lines: 130-156 }
     - { name: parse_json, lines: 159-224 }
 
-app/backend/utils/text_utils.py:  # 314 lines
+app/backend/utils/text_utils.py:  # 338 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: re, items: [], line: 5 }
     - { module: typing, items: [Any, List, Optional], line: 6 }
     - { module: app.backend.utils.logging_utils, items: [logger], line: 8 }
   constants:
-    - { name: META_REFUSAL_MAX_CHARS, line: 136 }
+    - { name: META_REFUSAL_MAX_CHARS, line: 160 }
   functions:
     - { name: is_numeric_cell, lines: 23-43 }
     - { name: normalize_text, lines: 46-47 }
     - { name: has_cjk, lines: 50-52 }
-    - { name: is_cjk_language, lines: 55-72 }
-    - { name: should_translate, lines: 75-133 }
-    - { name: is_meta_refusal, lines: 173-201 }
-    - { name: _is_cjk_lang, lines: 204-210 }
-    - { name: _get_pysbd_lang, lines: 213-237 }
-    - { name: split_sentences, lines: 240-281 }
-    - { name: _split_cjk_sentences, lines: 284-300 }
-    - { name: _split_by_punctuation, lines: 303-314 }
+    - { name: count_composition, lines: 55-76 }
+    - { name: is_cjk_language, lines: 79-96 }
+    - { name: should_translate, lines: 99-157 }
+    - { name: is_meta_refusal, lines: 197-225 }
+    - { name: _is_cjk_lang, lines: 228-234 }
+    - { name: _get_pysbd_lang, lines: 237-261 }
+    - { name: split_sentences, lines: 264-305 }
+    - { name: _split_cjk_sentences, lines: 308-324 }
+    - { name: _split_by_punctuation, lines: 327-338 }
 
 app/backend/utils/translation_helpers.py:  # 544 lines
   imports:
@@ -2261,13 +2277,6 @@ scripts/e2e_smoke.py:  # 154 lines
   functions:
     - { name: section, lines: 55-56 }
 
-specs/changes/docx-body-textbox-dedup/evidence/probe_paracell_delta.py:  # 11 lines
-  imports:
-    - { module: sys, items: [], line: 1 }
-    - { module: glob, items: [], line: 1 }
-    - { module: docx, items: [], line: 2 }
-    - { module: app.backend.processors.docx_processor, items: [_collect_docx_segments, _txbx_iter_texts], line: 3 }
-
 tests/__init__.py:  # 1 lines
 
 tests/conftest.py:  # 25 lines
@@ -2742,7 +2751,7 @@ tests/test_docx_header_footer.py:  # 403 lines
     - { name: _add_textbox_to_paragraph, lines: 69-86 }
     - { name: _fake_translate_texts, lines: 89-96 }
 
-tests/test_docx_nested_tables.py:  # 587 lines
+tests/test_docx_nested_tables.py:  # 663 lines
   imports:
     - { module: __future__, items: [annotations], line: 27 }
     - { module: json, items: [], line: 29 }
@@ -2788,6 +2797,10 @@ tests/test_docx_nested_tables.py:  # 587 lines
       methods:
         - { name: test_legacy_flag_off_nested_table_own_grid_no_crash, lines: 482-532 }
         - { name: test_legacy_flag_off_rerouted_frame_leaves_placeholder, lines: 534-587 }
+    - name: TestTruncationGuardCellSeam
+      lines: 607-663
+      methods:
+        - { name: test_layout_cell_truncated_reply_flagged_and_recovered, lines: 608-663 }
   functions:
     - { name: _make_client_mock, lines: 49-59 }
     - { name: _grid_response, lines: 62-64 }
@@ -3297,7 +3310,7 @@ tests/test_jobstatus_stage_detail.py:  # 214 lines
     - { name: _make_job, lines: 21-59 }
     - { name: _get_test_client, lines: 62-64 }
 
-tests/test_json_translation_body.py:  # 315 lines
+tests/test_json_translation_body.py:  # 348 lines
   imports:
     - { module: __future__, items: [annotations], line: 13 }
     - { module: json, items: [], line: 15 }
@@ -3345,6 +3358,10 @@ tests/test_json_translation_body.py:  # 315 lines
       lines: 306-315
       methods:
         - { name: test_flag_off_never_calls_translate_json, lines: 307-315 }
+    - name: TestLengthGuardOutOfScope
+      lines: 324-348
+      methods:
+        - { name: test_body_path_unaffected_by_length_guard, lines: 325-348 }
   functions:
     - { name: _sent_body_json, lines: 49-51 }
 
@@ -3631,6 +3648,113 @@ tests/test_layout_qa.py:  # 527 lines
     - { name: _blank_pdf, lines: 93-97 }
     - { name: test_br_106_documented_in_business_rules, lines: 507-511 }
     - { name: test_office_processors_do_not_import_run_layout_qa, lines: 518-527 }
+
+tests/test_length_guard.py:  # 774 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 34 }
+    - { module: json, items: [], line: 36 }
+    - { module: logging, items: [], line: 37 }
+    - { module: math, items: [], line: 38 }
+    - { module: random, items: [], line: 39 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 40 }
+    - { module: docx, items: [], line: 42 }
+    - { module: pytest, items: [], line: 43 }
+    - { module: app.backend, items: [config], line: 45 }
+    - { module: app.backend.processors.docx_processor, items: [], line: 46 }
+    - { module: app.backend.utils.length_guard, items: [expected_length, is_suspiciously_short], line: 47 }
+    - { module: app.backend.utils.text_utils, items: [count_composition, normalize_text], line: 48 }
+  constants:
+    - { name: CELL_LINES, line: 56 }
+    - { name: CELL_TEXT, line: 61 }
+    - { name: TARGET, line: 63 }
+  classes:
+    - name: TestPureCompositionModel
+      lines: 127-149
+      methods:
+        - { name: test_flags_recorded_bug_ratio, lines: 128-135 }
+        - { name: test_mixed_composition_excludes_numeric, lines: 137-149 }
+    - name: TestZeroFalsePositives
+      lines: 156-186
+      methods:
+        - { name: test_zero_false_positives_calibration_fixtures, lines: 181-186 }
+    - name: TestFailSafe
+      lines: 193-217
+      methods:
+        - { name: test_failsafe_unknown_target, lines: 194-200 }
+        - { name: test_failsafe_short_source_below_min_chars, lines: 202-208 }
+        - { name: test_failsafe_zero_expected_length_numeric_source, lines: 210-217 }
+    - name: TestNumericCellNeverFlagged
+      lines: 224-234
+      methods:
+        - { name: test_numeric_cell_never_reaches_guard, lines: 225-234 }
+    - name: TestRecoveryIntegration
+      lines: 241-340
+      methods:
+        - { name: test_cell_seam_flags_and_recovers_truncated_reply, lines: 242-276 }
+        - { name: test_recovery_bounded_single_attempt_no_reentry, lines: 278-308 }
+        - { name: test_recovery_keeps_longest_on_exhaustion_never_source, lines: 310-340 }
+    - name: TestNormalReplyUnaffected
+      lines: 347-380
+      methods:
+        - { name: test_normal_length_reply_unaffected_no_recovery_no_warning, lines: 348-380 }
+    - name: TestFPBoundaryRealisticLegitShort
+      lines: 401-434
+      methods:
+        - { name: test_realistic_legit_short_not_flagged, lines: 433-434 }
+    - name: TestFPBoundaryExtremeCompression
+      lines: 437-466
+      methods:
+        - { name: test_extreme_acronym_shrink_currently_flagged_tracked_gap, lines: 463-466 }
+    - name: TestExactBoundaryComparison
+      lines: 469-490
+      methods:
+        - { name: test_strict_less_than_not_less_or_equal, lines: 470-490 }
+    - name: TestFailSafeAdversarialBoundaries
+      lines: 493-547
+      methods:
+        - { name: test_source_length_boundary_one_char_either_side, lines: 494-504 }
+        - { name: test_e_zero_fail_safe_regardless_of_translation_length, lines: 512-516 }
+        - { name: test_uncalibrated_target_never_flags_real_long_source, lines: 526-533 }
+        - { name: test_target_key_normalization_is_case_and_whitespace_tolerant, lines: 538-547 }
+    - name: TestDegenerateInputs
+      lines: 550-587
+      methods:
+        - { name: test_empty_translation_of_long_source_flags_true_positive, lines: 551-557 }
+        - { name: test_empty_source_fails_safe, lines: 559-560 }
+        - { name: test_whitespace_only_source_fails_safe, lines: 562-563 }
+        - { name: test_whitespace_only_translation_of_real_source_flags, lines: 565-570 }
+        - { name: test_single_char_source_below_min_fails_safe, lines: 572-573 }
+        - { name: test_single_char_translation_of_moderate_source_flags, lines: 575-577 }
+        - { name: test_none_translation_treated_as_empty_no_crash, lines: 579-581 }
+        - { name: test_none_source_no_crash_fails_safe, lines: 583-584 }
+        - { name: test_none_target_no_crash_fails_safe, lines: 586-587 }
+    - name: TestMixedScriptAndUnicodeComposition
+      lines: 590-663
+      methods:
+        - { name: test_mixed_cjk_latin_digit_punct_emoji_proportional_translation_not_flagged, lines: 595-604 }
+        - { name: test_fullwidth_digits_not_miscounted_as_latin_alpha, lines: 606-614 }
+        - { name: test_cjk_punctuation_excluded_does_not_inflate_expected_length, lines: 616-627 }
+        - { name: test_combining_marks_counted_as_latin_alpha_no_crash, lines: 629-638 }
+        - { name: test_rtl_arabic_zwj_and_surrogate_emoji_no_crash, lines: 640-653 }
+        - { name: test_bom_prefix_does_not_miscount_or_crash, lines: 655-663 }
+    - name: TestInjectionLikeStringsAsTranslationContent
+      lines: 666-690
+      methods:
+        - { name: test_sql_injection_like_short_translation_flags_no_crash, lines: 673-676 }
+        - { name: test_script_tag_like_short_translation_flags_no_crash, lines: 678-681 }
+        - { name: test_sql_like_string_as_source_no_crash, lines: 683-690 }
+    - name: TestSeededPropertyFuzz
+      lines: 693-774
+      methods:
+        - { name: _random_string, lines: 726-727 }
+        - { name: test_uncalibrated_target_never_flags_across_random_inputs, lines: 729-740 }
+        - { name: test_never_raises_and_always_returns_bool_across_random_inputs, lines: 742-758 }
+        - { name: test_translation_at_least_double_source_length_never_flags, lines: 760-774 }
+  functions:
+    - { name: _make_client_mock, lines: 66-75 }
+    - { name: _make_docx_with_one_cell, lines: 78-84 }
+    - { name: _json_cell_reply, lines: 87-88 }
+    - { name: _run_translate_docx_capture, lines: 91-120 }
 
 tests/test_libreoffice_helpers.py:  # 259 lines
   imports:

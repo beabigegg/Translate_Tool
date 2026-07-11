@@ -1,0 +1,12 @@
+agent: contract-reviewer
+status: approved
+summary: >
+  Approved BR-117 (docx-cell-truncation-length-guard) encoding the composition length
+  model, the 3 fail-safe conditions, the BR-82-reuse bounded recovery (keep-longest,
+  never source, never BR-25), config-constant (not env) coefficients, DOCX-cell-only
+  scope, and observability-only WARNING. No Table T row, no data-shape change. Verified
+  all seams. schema 0.33.1 -> 0.34.0.
+artifacts:
+  - { type: contracts-reviewed, pointer: "contracts/business/business-rules.md" }
+  - { type: version-bumps, pointer: "business-rules 0.33.1 -> 0.34.0 (additive BR-117)" }
+  - { type: breaking-changes, pointer: "none" }

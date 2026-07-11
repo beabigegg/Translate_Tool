@@ -1,0 +1,92 @@
+
+[36mℹ[0m  Validating contracts…
+All required contract files are present.
+[32m✓[0m  contracts passed.
+
+[36mℹ[0m  Validating API semantic…
+API semantic validation passed (31 endpoint(s) checked).
+[32m✓[0m  API semantic passed.
+
+[36mℹ[0m  Validating API conformance…
+API conformance: contract=31 endpoint(s), backend=40 route(s), frontend=3 call(s) across roots: app
+API conformance warnings:
+  backend route DELETE /api/cache is not in the API contract
+  backend route GET /api/cache/stats is not in the API contract
+  backend route GET /api/health is not in the API contract
+  backend route GET /api/jobs/{} is not in the API contract
+  backend route GET /api/jobs/{}/audit is not in the API contract
+  backend route GET /api/jobs/{}/download is not in the API contract
+  backend route GET /api/jobs/{}/judge is not in the API contract
+  backend route GET /api/jobs/{}/layout is not in the API contract
+  backend route GET /api/jobs/{}/layout/page/{}/{} is not in the API contract
+  backend route GET /api/jobs/{}/quality is not in the API contract
+  backend route GET /api/model-config is not in the API contract
+  backend route GET /api/models is not in the API contract
+  backend route GET /api/profiles is not in the API contract
+  backend route GET /api/providers/models is not in the API contract
+  backend route GET /api/route-info is not in the API contract
+  backend route GET /api/stats is not in the API contract
+  backend route GET /api/terms/approved is not in the API contract
+  backend route GET /api/terms/export is not in the API contract
+  backend route GET /api/terms/stats is not in the API contract
+  backend route GET /api/terms/unverified is not in the API contract
+  backend route PATCH /api/terms/edit is not in the API contract
+  backend route POST /api/jobs is not in the API contract
+  backend route POST /api/jobs/{}/cancel is not in the API contract
+  backend route POST /api/jobs/{}/judge/apply is not in the API contract
+  backend route POST /api/providers/test-translation is not in the API contract
+  backend route POST /api/terms/approve is not in the API contract
+  backend route POST /api/terms/flag-needs-review is not in the API contract
+  backend route POST /api/terms/reject is not in the API contract
+  backend route POST /api/terms/wikidata/import is not in the API contract
+  backend route POST /api/terms/wikidata/search is not in the API contract
+  contract endpoint DELETE /cache has no backend route in scanned source
+  contract endpoint GET /cache/stats has no backend route in scanned source
+  contract endpoint GET /jobs/{} has no backend route in scanned source
+  contract endpoint GET /jobs/{}/download has no backend route in scanned source
+  contract endpoint GET /jobs/{}/judge has no backend route in scanned source
+  contract endpoint GET /jobs/{}/quality has no backend route in scanned source
+  contract endpoint GET /model-config has no backend route in scanned source
+  contract endpoint GET /models has no backend route in scanned source
+  contract endpoint GET /profiles has no backend route in scanned source
+  contract endpoint GET /providers/health has no backend route in scanned source
+  contract endpoint GET /providers/models has no backend route in scanned source
+  contract endpoint GET /route-info has no backend route in scanned source
+  contract endpoint GET /stats has no backend route in scanned source
+  contract endpoint GET /terms/approved has no backend route in scanned source
+  contract endpoint GET /terms/export has no backend route in scanned source
+  contract endpoint GET /terms/stats has no backend route in scanned source
+  contract endpoint GET /terms/unverified has no backend route in scanned source
+  contract endpoint PATCH /terms/edit has no backend route in scanned source
+  contract endpoint POST /jobs has no backend route in scanned source
+  contract endpoint POST /jobs/{}/cancel has no backend route in scanned source
+  contract endpoint POST /jobs/{}/judge/apply has no backend route in scanned source
+  contract endpoint POST /providers/test-translation has no backend route in scanned source
+  contract endpoint POST /terms/approve has no backend route in scanned source
+  contract endpoint POST /terms/flag-needs-review has no backend route in scanned source
+  contract endpoint POST /terms/import has no backend route in scanned source
+  contract endpoint POST /terms/reject has no backend route in scanned source
+  contract endpoint POST /terms/wikidata/import has no backend route in scanned source
+  contract endpoint POST /terms/wikidata/search has no backend route in scanned source
+API conformance validation passed.
+[32m✓[0m  API conformance passed.
+
+[36mℹ[0m  Validating response shape…
+Response-shape: checked 1 sampled endpoint(s) against contracts/api/openapi.json.
+Response-shape validation passed.
+[32m✓[0m  response shape passed.
+
+[36mℹ[0m  Validating Env semantic…
+Env semantic validation passed (47 variable(s) checked).
+[32m✓[0m  Env semantic passed.
+
+[36mℹ[0m  Validating env contract…
+Env contract basic validation passed.
+[32m✓[0m  env contract passed.
+
+[36mℹ[0m  Validating CI gates…
+CI gates basic validation passed: specs/changes/truncation-length-guard/ci-gates.md
+[32m✓[0m  CI gates passed.
+
+[32m✓[0m  All validations passed.
+
