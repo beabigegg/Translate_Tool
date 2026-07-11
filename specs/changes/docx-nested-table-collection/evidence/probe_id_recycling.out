@@ -1,0 +1,4 @@
+A) id() key, no explicit gc  -> distinct: 8  false collisions: 292
+B) element key               -> distinct: 300  false collisions: 0
+C) emitted: [(0, 0, 'FRAME'), (1, 0, 'd0'), (1, 1, 'd1'), (1, 2, 'd2'), (1, 3, 'd3')]
+C) emitted count: 5 (want 5: 1 merged at col0 + 4 data)

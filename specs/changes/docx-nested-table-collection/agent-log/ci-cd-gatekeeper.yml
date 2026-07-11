@@ -1,0 +1,44 @@
+agent: ci-cd-gatekeeper
+status: pass
+summary: >
+  No new CI gate, no CI/CD contract change, and no workflow-file edit. The agent's
+  drafted targeted-test step was withdrawn by main Claude; the blanket sweep already
+  collects the new test file. The agent's whole-workflow audit found six stale
+  targeted-test steps for already-archived changes.
+
+artifacts:
+  - { type: ci-gates, pointer: "specs/changes/docx-nested-table-collection/ci-gates.md" }
+  - { type: workflow-diff, pointer: "none — .github/workflows/contract-driven-gates.yml is byte-for-byte unchanged" }
+
+notes: |
+  The agent added a `Targeted tests — docx_nested_tables` step to
+  .github/workflows/contract-driven-gates.yml. Main Claude reverted it and verified
+  the file is unchanged against HEAD.
+
+  Reason: line 151 of that workflow already runs `pytest tests/ -x -q --tb=short`,
+  which collects tests/test_docx_nested_tables.py. The step bought no coverage. In
+  the same reply the agent reported that the workflow already carries SIX
+  targeted-test steps whose only purpose was fast-failing a since-archived change.
+  Adding a seventh for zero coverage gain would deepen a documented, thrice-recurring
+  drift. tasks.yml 4.4 stays `skipped`, consistent with the classification.
+
+  Verified by main Claude: `git diff --quiet .github/workflows/contract-driven-gates.yml`
+  exits clean.
+
+ci-drift-report:
+  vector-clean: "no `cdd-kit gate <id>` line exists anywhere in the workflow (grep: 0 matches)"
+  stale-targeted-steps:
+    - { step: "Targeted tests — term_extractor + term_db + env_contract", change-id: term-extraction-db-first, archived: true }
+    - { step: "Targeted tests — provider_fallback", change-id: fallback-chain-cloud-providers, archived: true }
+    - { step: "Targeted tests — table_recognizer", change-id: p3-table-structure, archived: true }
+    - { step: "Targeted tests — quality_judge + judge_api + orchestrator_judge + judge_apply + job_record_judge", change-id: p3-llm-judge, archived: true }
+    - { step: "Targeted tests — pdf_render_warnings", change-id: pdf-renderer-fallback-warn, archived: true }
+    - { step: "job expose-output-mode-ui-gate (Frontend component tests — output-mode selector)", change-id: expose-output-mode-ui, archived: true, note: "a full separate job with no Gate Inventory row; its permanence was never decided" }
+  not-drift:
+    - "The three `Env schema sync` grep steps and the `Dead-import assertion` step name archived change-ids in comments but permanently enforce contracts/env/env-contract.md §Deployment Sync Policy."
+    - "The five gates promoted into contracts/ci/ci-gate-contract.md §Gate Inventory (golden-sample-regression, layout-detector-dependency-gate, renderer-equivalence, text-expansion-benchmark, libreoffice-conversion-gate) are correctly retained regardless of their originating change's archived status."
+  disposition: >
+    Not removed here — removal is /cdd-close's job, and these belong to OTHER changes'
+    close-outs that missed them. Carried forward as a cleanup item for this change's
+    /cdd-close, per the CLAUDE.md rule to grep the ENTIRE workflow for every
+    already-archived change, not only the one being closed.

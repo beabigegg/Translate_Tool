@@ -1,0 +1,16 @@
+{
+  "change_id": "docx-nested-table-collection",
+  "phase": "collect",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest tests/test_docx_nested_tables.py --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-nested-table-collection/test-runs/20260710-221424/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 373,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/docx-nested-table-collection/test-runs/20260710-221424/summary.json",
+    "stdout": "specs/changes/docx-nested-table-collection/test-runs/20260710-221424/stdout.log",
+    "stderr": "specs/changes/docx-nested-table-collection/test-runs/20260710-221424/stderr.log",
+    "junit": "specs/changes/docx-nested-table-collection/test-runs/20260710-221424/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

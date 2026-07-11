@@ -1,0 +1,46 @@
+change-id: docx-nested-table-collection
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+  - contract
+  - full
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      python -m pytest tests/test_docx_nested_tables.py --collect-only -q
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-nested-table-collection/test-runs/20260710-221424/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/docx-nested-table-collection/test-runs/20260710-221424/summary.json
+    junit: specs/changes/docx-nested-table-collection/test-runs/20260710-221424/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      python -m pytest tests/test_docx_nested_tables.py -q --maxfail=1 --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-nested-table-collection/test-runs/20260710-221425/junit.xml'
+    summary: specs/changes/docx-nested-table-collection/test-runs/20260710-221425/summary.json
+    junit: specs/changes/docx-nested-table-collection/test-runs/20260710-221425/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      python -m pytest tests/test_docx_nested_tables.py tests/test_table_context_translation.py
+      tests/test_table_serialization.py tests/test_output_mode_processors.py tests/test_translatable_document.py -q
+      --maxfail=1 --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-nested-table-collection/test-runs/20260710-221436/junit.xml'
+    summary: specs/changes/docx-nested-table-collection/test-runs/20260710-221436/summary.json
+    junit: specs/changes/docx-nested-table-collection/test-runs/20260710-221436/junit.xml
+  - phase: contract
+    status: passed
+    command: cdd-kit validate --contracts --env --ci
+    summary: specs/changes/docx-nested-table-collection/test-runs/20260710-221440/summary.json
+  - phase: full
+    status: passed
+    command: >-
+      python -m pytest -q --maxfail=1 --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-nested-table-collection/test-runs/20260710-221447/junit.xml'
+    summary: specs/changes/docx-nested-table-collection/test-runs/20260710-221447/summary.json
+    junit: specs/changes/docx-nested-table-collection/test-runs/20260710-221447/junit.xml
+final-status: passed

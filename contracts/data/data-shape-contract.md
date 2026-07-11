@@ -3,7 +3,7 @@ contract: data
 summary: Data schema, invalid-data handling, and row-level compatibility rules.
 owner: application-team
 surface: data
-schema-version: 0.18.0
+schema-version: 0.18.1
 last-changed: 2026-07-08
 breaking-change-policy: deprecate-2-minors
 ---
@@ -492,6 +492,12 @@ This subsection is normative. The implementation MUST conform to this format on 
 
 For every cell sent in the request, the parsed response MUST supply a `translation` addressable at the identical `(row, col)`. There is no shape or count guarantee to satisfy — only coordinate completeness.
 
+#### Nested-table identity and payload boundaries
+
+A DOCX `<w:tbl>` nested inside a table cell is collected as its own independent segment group, keyed by its own `table_id` (a monotonically increasing per-document counter in document order, never `id(<w:tbl>)` — see BR-81), with its own private 0-based `(row, col)` coordinate space — never merged into the parent table's coordinate space or cell list. Because the envelope above carries no grid-shape constraint (see *No positional grid*), a nested table's cell list is sent as its own independent JSON payload with no dependency on the parent table's dimensions. That property is what makes nested-table translation tractable under this wire format. See business-rules.md BR-113.
+
+**Legacy pipe-grid degrade (`JSON_STRUCTURED_TRANSLATION_ENABLED=0`).** Each nested table is serialized as its own small, independent, dense `num_rows × num_cols` Markdown pipe-grid through the unchanged, frozen legacy `serialize()`/`parse()` functions. It is never folded into the parent table's grid, so no phantom-shape defect arises from nesting. A table cell rerouted to the body/paragraph path by BR-114 leaves an empty positional placeholder at its `(row, col)` in the parent's legacy grid — `serialize()` sizes the grid from `max(row)`/`max(col)` and fills it with empty strings — so the cell's content is not lost; it simply is not present at that grid position, because its text now travels the paragraph path. Both flag states degrade sanely; neither crashes nor silently drops nested-table or rerouted-cell content.
+
 #### Known consumers of the Table Serialization Wire Format
 
 Before this change the wire-format section had NO consumers table. That absence is why `docx_processor.py` was invisible both to this contract and to the change-classifier. A change to this format requires updating every row below in the same change; grep the call sites, do not trust archive status.
@@ -501,7 +507,7 @@ Before this change the wire-format section had NO consumers table. That absence 
 | `app/backend/utils/table_serializer.py` | implementation | sole source of truth for the JSON build/parse functions. The legacy pipe-grid `serialize()`/`parse()` are RETAINED alongside them, reachable only when `JSON_STRUCTURED_TRANSLATION_ENABLED=0`, so that the kill switch is a true revert rather than a degradation to per-cell translation. They are frozen: no new caller may use them. |
 | `app/backend/processors/xlsx_processor.py` | caller | builds the content-bearing cell list; the site that previously logged `expected 9×257` |
 | `app/backend/processors/pptx_processor.py` | caller | same call pattern |
-| `app/backend/processors/docx_processor.py` | caller | same call pattern; previously unlisted anywhere |
+| `app/backend/processors/docx_processor.py` | caller | same call pattern; previously unlisted anywhere. Also the collection site for BR-113 nested-table recursion (each nested `<w:tbl>` is sent as its own payload under its own `table_id`) and for the BR-114 layout-frame reroute gate |
 | `app/backend/processors/pdf_processor.py` | caller | same call pattern |
 | `app/backend/services/translation_service.py` | caller | the PDF `TableCell` cell-batch path (BR-83) |
 | `app/backend/clients/ollama_client.py` | seam host | hosts the BR-111 JSON-translation seam; hands cells to the shared instruction builder |

@@ -1,0 +1,44 @@
+agent: qa-reviewer
+status: approved
+summary: >
+  Release-ready. All 8 acceptance criteria map to real assertions at real boundaries;
+  evidence postdates every file it covers; no id()-keyed collection remains; the two
+  corrections in regression-report.md §4 were independently re-verified by sabotage.
+
+artifacts:
+  - { type: gate-results, pointer: "non-strict gate passes (contracts, API conformance, response shape, env, CI gates, contract versions); --strict reports 5 pending tasks (5.4 QA, 6.1-6.4 verification) — expected at the QA step" }
+  - { type: evidence-freshness, pointer: "specs/changes/docx-nested-table-collection/test-evidence.yml" }
+  - { type: evidence-quality, pointer: "repro — independent sabotage, snapshot -> edit -> run -> restore; md5 byte-identical after restore" }
+  - { type: falsifiability, pointer: "specs/changes/docx-nested-table-collection/evidence/id-key-hazard.md" }
+  - { type: decision, pointer: "approved" }
+  - { type: failure-routing, pointer: "none" }
+
+notes: |
+  Verified rather than trusted:
+    - test-evidence.yml (22:16:57) postdates docx_processor.py (22:13:12),
+      config.py, test_docx_nested_tables.py, business-rules.md (22:14:04) and
+      data-shape-contract.md. The recorded `full` junit contains all 13 nested-table
+      cases: 1375 passed, 4 pre-existing skips, 0 failures. This is the exact
+      staleness gap that blocked json-structured-translation-io.
+    - AC-2 asserts on the captured `translate_json` payload (exact-equality on the
+      sent cell map), not on a Segment attribute. AC-3 asserts WHICH text sits at
+      WHICH (row, col). The caplog depth test filters `r.name == "TranslateTool"`.
+    - No test reads docs/TEST_DOC/; `git ls-files docs/TEST_DOC/` is empty.
+    - docx_processor.py contains no id()-keyed collection; the remaining `id(`
+      occurrences are comments warning against it.
+    - BR-114's source predicate is exactly `has_nested and cell.grid_span == col_count`
+      — no paragraph-count term. MAX_TABLE_NESTING_DEPTH is a hardcoded config.py
+      constant with the required "NOT an env var" comment; no env-contract row exists.
+
+  Independently reproduced the regression-report §4 asymmetry by sabotage:
+    - `_flatten_nested_table_text` -> id() keys: RED (294 of 300 texts dropped).
+    - `_process_table` -> id() keys: 13/13 GREEN (masked; every cell is retained by
+      its emitted Segment before the next lookup).
+  Concurs that the prohibition should stand anyway, and that the corrected drop
+  figures (7.3% / 25.2%, document-text ratio) supersede the emitted-character
+  17.1% / 35.8%.
+
+residual-risks:
+  - { risk: "Both wire formats accept a complete-but-shortened cell translation; no per-cell length-ratio guard", owner: "separate change", blocking: false }
+  - { risk: "BR-109 doc-context sampler walks only top-level doc.tables; a nested-only document samples thin (affects the summary, not output text)", owner: "separate change", blocking: false }
+  - { risk: "tmap key omits table_id; identical (text, col) across two tables shares one translation", owner: "pre-existing, benign, now stated in BR-81 and Table T", blocking: false }

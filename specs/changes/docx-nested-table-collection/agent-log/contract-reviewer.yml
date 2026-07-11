@@ -1,0 +1,40 @@
+agent: contract-reviewer
+status: approved
+summary: >
+  Approved two new business rules (BR-113 nested-table-collection, BR-114
+  layout-frame-cell-reroute), a one-sentence BR-81 clarification that leaves the
+  (tgt, src_text, col) key shape unchanged, two Table T companion rows, and
+  behaviour-only notes in the data-shape wire-format section. No env, API, CSS or
+  CI/CD contract touched.
+
+artifacts:
+  - { type: contracts-reviewed, pointer: "contracts/business/business-rules.md" }
+  - { type: contracts-reviewed, pointer: "contracts/data/data-shape-contract.md" }
+  - { type: contracts-reviewed, pointer: "contracts/CHANGELOG.md" }
+  - { type: version-bumps, pointer: "business-rules 0.30.0 -> 0.31.0; data-shape 0.18.0 -> 0.18.1" }
+  - { type: breaking-changes, pointer: "none" }
+
+notes: |
+  Reviewer corrected change-classification.md: the data-shape consumers table names
+  docx_processor.py ONCE as a table row (L504), not twice. The second occurrence
+  (L497) is adjacent prose. No ratified decision depends on it; the one real row was
+  updated.
+
+  Main Claude independently verified before writing, rather than trusting the
+  proposal:
+    - tests/test_docx_nested_tables.py does not exist (new file, as claimed).
+    - MAX_TABLE_NESTING_DEPTH appears nowhere in source.
+    - env-contract.md L86 forbids an env row for a non-os.environ config.py
+      constant and requires a business-rules "not an env var" note. tasks.yml 4.3
+      set to skipped on that basis.
+    - table_serializer.serialize() sizes the grid from max(row)/max(col) and fills
+      with empty strings, so the contract's claim that a rerouted cell "leaves an
+      empty positional placeholder" in the legacy grid is true, not inferred.
+
+  One correction applied to the reviewer's proposed prose: it described the
+  pipe-grid as "retired". It is RETAINED and FROZEN (Resolution A of
+  json-structured-translation-io) and reachable at flag-OFF; deleting it would make
+  the kill switch a degradation. Reworded to "frozen legacy".
+
+  Rule-count decision (two rules, not one) accepted: collection+depth and
+  frame-reroute fail independently and carry separate acceptance criteria.

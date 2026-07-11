@@ -54,3 +54,6 @@ app/backend/fonts/NotoSansTC-Regular-NEW.ttf
 
 # cdd-kit runtime state (do not commit)
 .cdd/runtime/
+
+# User test documents — must never be committed (see CLAUDE.md / change constraints)
+docs/TEST_DOC/

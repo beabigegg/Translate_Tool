@@ -128,6 +128,11 @@ CONTEXT_MAX_CHARS = 300  # Max total chars for context (truncate if longer)
 CONTEXT_DETECTION_ENABLED = True
 CONTEXT_SAMPLE_CHARS = 500  # Max chars to sample from file for context detection
 
+# DOCX nested-table recursion bound (docx-nested-table-collection, BR-113).
+# Hardcoded constant, NOT an env var (mirrors CONTEXT_DETECTION_ENABLED above;
+# env-contract.md forbids an env row for this value).
+MAX_TABLE_NESTING_DEPTH = 3
+
 # Long-document chunking overlap (p2-long-doc-chunking, BR-47, BR-49)
 # Number of tokens of overlap shared between adjacent chunks.
 # Must be a positive integer and must be < num_ctx (enforced at chunker init).
