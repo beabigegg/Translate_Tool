@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
 visible-dirs: 59
-visible-files: 240
+visible-files: 241
 omitted-dirs: 12
 truncated-dirs: 1
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -206,7 +206,8 @@ Translate_Tool/
 |   |   |-- 0014-retire-phantom-br-and-inert-env-var.md
 |   |   |-- 0015-layout-qa-metric-core-in-runtime.md
 |   |   |-- 0016-context-out-of-band-system-channel.md
-|   |   \-- 0017-json-structured-translation-seam.md
+|   |   |-- 0017-json-structured-translation-seam.md
+|   |   \-- 0018-nested-table-frame-routing.md
 |   |-- TEST_DOC/
 |   |   |-- CS2408-0021 信和達(歐朗) P6SMBJ18CA  本體破损 -onepage.pdf
 |   |   |-- EN-P-QC1102-D7 量测系统分析(MSA)程序.docx
@@ -302,6 +303,7 @@ Translate_Tool/
 |   |-- test_critique_loop_batching.py
 |   |-- test_dead_references.py
 |   |-- test_doc_chunker.py
+|   |-- test_docx_nested_tables.py
 |   |-- test_docx_parser.py
 |   |-- test_env_contract.py
 |   |-- test_eta_multi_phase_heuristic.py
@@ -335,8 +337,7 @@ Translate_Tool/
 |   |-- test_orchestrator_judge.py
 |   |-- test_orchestrator_phase0.py
 |   |-- test_output_mode_api.py
-|   |-- test_output_mode_orchestrator.py
-|   \-- ... (35 more entries truncated; cap=50)
+|   \-- ... (36 more entries truncated; cap=50)
 |-- .env
 |-- .gitignore
 |-- AGENTS.md
