@@ -463,9 +463,18 @@ def translate_texts(
 
         # Pre-filter (unchanged, AC-4): skip failure placeholders and cached
         # segments before ANY round runs — they never enter a round's batch.
+        # BR-119 (cloud-reasoning-stall-hardening): when
+        # config.CRITIQUE_SKIP_CACHED_SEGMENTS is enabled (default off — this
+        # branch then matches current behavior byte-for-byte), also exclude
+        # segments whose base translation was a Phase-1 cache HIT
+        # (`cached_keys`, same `(tgt, src_text)` key shape as `_key`). The
+        # excluded segment's Phase-1 draft stays in `tmap` untouched — no drop,
+        # just no live critique call for it.
         _pending_keys: List[Tuple[str, str]] = [
             _key for _key in list(tmap.keys())
-            if _key not in _critiqued_keys and not tmap[_key].startswith("[Translation failed|")
+            if _key not in _critiqued_keys
+            and not tmap[_key].startswith("[Translation failed|")
+            and not (config.CRITIQUE_SKIP_CACHED_SEGMENTS and _key in cached_keys)
         ]
         _segments_to_critique = len(_pending_keys)
         _critique_done = 0

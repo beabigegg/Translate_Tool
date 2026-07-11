@@ -1,0 +1,14 @@
+change-id: cloud-reasoning-stall-hardening
+agent: qa-reviewer
+status: done
+summary: >
+  APPROVED. Full suite 1481 passed / 0 failed; test-evidence final-status passed,
+  all required phases + full smoke green, no waivers, evidence mtime after source.
+  All 5 ACs verified at the outgoing-payload/real-selection boundary (AC-1 & AC-4
+  additionally main-Claude sabotage-verified). BR-118 no-leak holds; BR-119
+  default-off byte-identical + no-drop on opt-in. Breaking default 480→120
+  disclosed. Contracts validate; versions + CHANGELOG consistent.
+artifacts:
+  - { type: decision, pointer: "approved" }
+  - { type: qa-report, pointer: "specs/changes/cloud-reasoning-stall-hardening/qa-report.md" }
+next-action: run cdd-kit gate; commit; PR

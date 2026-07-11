@@ -1,0 +1,56 @@
+change-id: cloud-reasoning-stall-hardening
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+  - contract
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      python -m pytest --collect-only -q tests/test_openai_compatible_client.py tests/test_context_prefix_bleed.py
+      tests/test_orchestrator_context_detection.py tests/test_critique_loop_batching.py tests/test_critique_gate.py
+      tests/test_cloud_total_timeout.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164458/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164458/summary.json
+    junit: specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164458/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      python -m pytest -q tests/test_openai_compatible_client.py tests/test_context_prefix_bleed.py
+      tests/test_orchestrator_context_detection.py tests/test_critique_loop_batching.py tests/test_critique_gate.py
+      tests/test_cloud_total_timeout.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164509/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164509/summary.json
+    junit: specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164509/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      python -m pytest -q tests/test_openai_compatible_client.py tests/test_cloud_total_timeout.py
+      tests/test_critique_loop_batching.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164516/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164516/summary.json
+    junit: specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164516/junit.xml
+  - phase: contract
+    status: passed
+    command: >-
+      python -m pytest -q tests/test_context_prefix_bleed.py tests/test_orchestrator_context_detection.py
+      tests/test_env_contract.py
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164521/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164521/summary.json
+    junit: specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164521/junit.xml
+  - phase: full
+    status: passed
+    command: >-
+      python -m pytest -q tests/
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164545/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164545/summary.json
+    junit: specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164545/junit.xml
+final-status: passed

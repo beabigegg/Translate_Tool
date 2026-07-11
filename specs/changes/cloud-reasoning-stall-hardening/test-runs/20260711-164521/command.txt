@@ -1,0 +1,1 @@
+python -m pytest -q tests/test_context_prefix_bleed.py tests/test_orchestrator_context_detection.py tests/test_env_contract.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164521/junit.xml' --maxfail=1 --tb=short -ra

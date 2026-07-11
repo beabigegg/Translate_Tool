@@ -1,0 +1,37 @@
+........................................................................ [ 43%]
+........................................................................ [ 86%]
+......................                                                   [100%]
+=============================== warnings summary ===============================
+../../miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/PyPDF2/__init__.py:21: DeprecationWarning: PyPDF2 is deprecated. Please move to the pypdf library instead.
+    warnings.warn(
+
+tests/test_fewshot_glossary.py::TestCritiqueLoop::test_critique_loop_runs_at_least_once_per_request
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/torchmetrics/utilities/imports.py:23: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+    from pkg_resources import DistributionNotFound, get_distribution
+
+tests/test_fewshot_glossary.py::TestCritiqueLoop::test_critique_loop_runs_at_least_once_per_request
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+tests/test_fewshot_glossary.py::TestCritiqueLoop::test_critique_loop_runs_at_least_once_per_request
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+tests/test_fewshot_glossary.py::TestCritiqueLoop::test_critique_loop_runs_at_least_once_per_request
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/pytorch_lightning/core/saving.py:197: Found keys that are not in the model state dict but in the checkpoint: ['encoder.model.embeddings.position_ids']
+
+tests/test_fewshot_glossary.py::TestCritiqueLoop::test_critique_loop_runs_at_least_once_per_request
+tests/test_fewshot_glossary.py::TestCritiqueLoop::test_critique_loop_runs_at_least_once_per_request
+tests/test_fewshot_glossary.py::TestCritiqueLoopBounds::test_loop_stops_at_critique_max_iterations
+tests/test_fewshot_glossary.py::TestCritiqueLoopBounds::test_loop_stops_at_critique_max_iterations
+tests/test_fewshot_glossary.py::TestCritiqueLoopBounds::test_loop_stops_at_critique_max_iterations
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/pytorch_lightning/trainer/setup.py:175: GPU available but not used. You can set it by doing `Trainer(accelerator='gpu')`.
+
+tests/test_fewshot_glossary.py::TestCritiqueLoop::test_critique_loop_runs_at_least_once_per_request
+tests/test_fewshot_glossary.py::TestCritiqueLoop::test_critique_loop_runs_at_least_once_per_request
+tests/test_fewshot_glossary.py::TestCritiqueLoopBounds::test_loop_stops_at_critique_max_iterations
+tests/test_fewshot_glossary.py::TestCritiqueLoopBounds::test_loop_stops_at_critique_max_iterations
+tests/test_fewshot_glossary.py::TestCritiqueLoopBounds::test_loop_stops_at_critique_max_iterations
+  /home/egg/miniforge3/envs/translate-tool/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+166 passed, 15 warnings in 15.20s

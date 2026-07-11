@@ -40,6 +40,12 @@ _STATIC_MODEL_LIST: List[str] = [
     "deepseek-v4-flash",
 ]
 
+# Sentinel distinguishing "caller omitted the reasoning arg" (source the level
+# from config.OPENAI_TRANSLATION_REASONING, read at call time) from "caller
+# explicitly passed reasoning=None" (complete()'s outline exemption, BR-118) —
+# a plain `= None` default cannot tell these two cases apart.
+_REASONING_UNSET = object()
+
 
 class OpenAICompatibleClient:
     """LLMClient Protocol implementation for OpenAI-compatible endpoints.
@@ -177,7 +183,11 @@ class OpenAICompatibleClient:
         return outcome["resp"]
 
     def _post_completion(
-        self, user_content: str, cancel_event=None, system_context: Optional[str] = None
+        self,
+        user_content: str,
+        cancel_event=None,
+        system_context: Optional[str] = None,
+        reasoning: Optional[str] = _REASONING_UNSET,
     ) -> Tuple[bool, str]:
         """POST to /v1/chat/completions and return (ok, text).
 
@@ -187,7 +197,28 @@ class OpenAICompatibleClient:
 
         system_context (optional, BR-78): forwarded to `_build_messages` as a
         leading `role:"system"` message; never merged into `user_content`.
+
+        reasoning (optional): gpt-oss/harmony reasoning-effort control. The
+        PANJIT endpoint ignores the OpenAI `reasoning_effort` API param; the only
+        honored lever is a harmony `Reasoning: <level>` directive in the system
+        message. When omitted (the default for every translation call site —
+        `translate_once`/`translate_json`), the level is sourced at call time
+        from `config.OPENAI_TRANSLATION_REASONING` (BR-118) and prepended to
+        `system_context` so translation calls cap runaway hidden reasoning —
+        the cause of empty-content `finish_reason='stop'` truncation and
+        wall-clock-ceiling stalls on gpt-oss:120b. `complete()` passes an
+        explicit `reasoning=None` to preserve full reasoning for the one-shot
+        document-outline summary (BR-109); that explicit None is distinct from
+        omission and is never overridden by the config default.
         """
+        if reasoning is _REASONING_UNSET:
+            from app.backend.config import OPENAI_TRANSLATION_REASONING
+            reasoning = OPENAI_TRANSLATION_REASONING
+        if reasoning:
+            _directive = f"Reasoning: {reasoning}"
+            system_context = (
+                f"{_directive}\n\n{system_context}" if system_context else _directive
+            )
         payload = {
             "model": self.model,
             "messages": self._build_messages(user_content, system_context),
@@ -251,13 +282,22 @@ class OpenAICompatibleClient:
         if not texts:
             return []
         payload = {"model": model_name, "input": texts}
-        try:
-            resp = self._session.post(
+
+        def _do_post():
+            return self._session.post(
                 self._embeddings_url(),
                 json=payload,
                 headers=self._auth_headers,
                 timeout=self._timeout,
             )
+
+        try:
+            # BR-100: bound embed() by the same wall-clock ceiling as
+            # completions so a Cloudflare-dribbled stall on the embedding
+            # path cannot hang indefinitely; on ceiling expiry
+            # _run_bounded_post raises requests.Timeout, caught below and
+            # degraded to [] by the existing non-fatal except path.
+            resp = self._run_bounded_post(_do_post, cancel_event=None)
             resp.raise_for_status()
             data = resp.json()
             # Parse data[i].embedding for each item, preserving input order.
@@ -378,8 +418,12 @@ class OpenAICompatibleClient:
         the document instead of translating the instruction. Wraps
         `_post_completion`, which is already `requests.RequestException`-safe
         and bounded by `OPENAI_TOTAL_TIMEOUT_SECONDS` (BR-100).
+
+        reasoning is left ON (reasoning=None) here: this is the sole
+        outline/summary seam, which the user wants to keep reasoning-capable;
+        only the downstream translation calls suppress it.
         """
-        return self._post_completion(prompt)
+        return self._post_completion(prompt, reasoning=None)
 
     def translate_batch(
         self, texts: List[str], tgt: str, src_lang: Optional[str]

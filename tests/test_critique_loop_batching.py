@@ -496,3 +496,125 @@ def test_critique_loop_invocation_and_iteration_counters_match_baseline():
 
     mock_invocation.assert_called_once()
     mock_iteration.assert_called_once_with(3)
+
+
+# ---------------------------------------------------------------------------
+# BR-119 (cloud-reasoning-stall-hardening, AC-5): default-off critique-loop
+# skip of Phase-1 base-cache-HIT segments, gated by
+# config.CRITIQUE_SKIP_CACHED_SEGMENTS. Assertions target the SELECTION of
+# which keys enter the round's score_blocks() batch (not merely a count), and
+# that an excluded segment's Phase-1 draft is never dropped from tmap.
+# ---------------------------------------------------------------------------
+
+def _make_cache_with_phase1_hit(phase1_hits: dict):
+    """A fake cache whose Phase-1 (non-":c") get_batch call returns
+    `phase1_hits` for any requested text present in the dict, and whose
+    critique (":c"-suffixed model key) get_batch call always misses — so the
+    only source of "already handled" segments in these tests is the Phase-1
+    cache, isolating the BR-119 pre-filter clause from the pre-existing
+    ":c" critique-cache clause."""
+    cache = MagicMock()
+
+    def _get_batch_side_effect(texts, tgt, src_lang, model_key):
+        if model_key.endswith(":c"):
+            return {}
+        return {t: v for t, v in phase1_hits.items() if t in texts}
+
+    cache.get_batch.side_effect = _get_batch_side_effect
+    return cache
+
+
+def _run_skip_cached_scenario(skip_flag: bool):
+    """Seg A is a Phase-1 cache HIT ("Cached Draft A"); Seg B is uncached and
+    goes through live translate_blocks_batch. Both are eligible for critique
+    revision via client.translate_once."""
+    from app.backend.services.translation_service import translate_texts
+
+    client = _make_client()
+
+    def _translate_once_side_effect(prompt, tgt, src_lang):
+        if "Source: Seg A" in prompt:
+            return (True, "Revised A")
+        if "Source: Seg B" in prompt:
+            return (True, "Revised B")
+        raise AssertionError(f"Unexpected critique prompt: {prompt!r}")
+
+    client.translate_once.side_effect = _translate_once_side_effect
+    cache = _make_cache_with_phase1_hit({"Seg A": "Cached Draft A"})
+
+    with patch(
+        "app.backend.services.translation_service.translate_blocks_batch",
+        return_value=[(True, "Draft B")],  # only Seg B is uncached -> live translate
+    ), patch(
+        "app.backend.services.translation_service.get_cache", return_value=cache,
+    ), patch(
+        "app.backend.services.translation_service.CRITIQUE_LOOP_ENABLED", True,
+    ), patch(
+        "app.backend.services.translation_service.CRITIQUE_MAX_ITERATIONS", 1,
+    ), patch(
+        "app.backend.config.CRITIQUE_SKIP_CACHED_SEGMENTS", skip_flag,
+    ), patch.object(
+        _qe_mod, "load_model", return_value=MagicMock(),
+    ), patch.object(
+        _qe_mod, "score_blocks", return_value=[0.1, 0.9, 0.1, 0.9],
+    ) as mock_sb:
+        tmap, _done, fail_cnt, stopped = translate_texts(
+            texts=["Seg A", "Seg B"],
+            targets=["fr"],
+            src_lang="en",
+            client=client,
+        )
+    return tmap, mock_sb, fail_cnt, stopped
+
+
+def test_critique_skip_cached_segments_default_false_every_segment_still_enters_pending_keys():
+    """AC-5 (default-off parity): with CRITIQUE_SKIP_CACHED_SEGMENTS left at
+    its default (false), the Phase-1 cache-HIT segment (Seg A) still enters
+    the critique round's batch exactly like the non-cached segment (Seg B) —
+    byte-identical to pre-BR-119 behavior. SELECTION assertion (which keys
+    entered), not a count."""
+    tmap, mock_sb, fail_cnt, stopped = _run_skip_cached_scenario(skip_flag=False)
+
+    assert not stopped
+    assert fail_cnt == 0
+    assert mock_sb.call_count == 1
+    blocks = mock_sb.call_args[0][1]
+    block_keys = {src for src, _draft_or_revised in blocks}
+    assert block_keys == {"Seg A", "Seg B"}, (
+        f"default-off: BOTH the Phase-1 cache-HIT segment and the live-"
+        f"translated segment must enter the critique batch, got {block_keys!r}"
+    )
+    assert tmap[("fr", "Seg A")] == "Revised A"
+    assert tmap[("fr", "Seg B")] == "Revised B"
+
+
+def test_critique_skip_cached_segments_true_excludes_phase1_cache_hit_keys_from_pending_keys():
+    """AC-5 (opt-in selection): with CRITIQUE_SKIP_CACHED_SEGMENTS=true, the
+    Phase-1 cache-HIT segment (Seg A) must be EXCLUDED from the round's
+    score_blocks() batch while the non-cached segment (Seg B) still enters —
+    a SET-membership assertion, not a count (a count alone would not prove
+    WHICH key was excluded)."""
+    tmap, mock_sb, fail_cnt, stopped = _run_skip_cached_scenario(skip_flag=True)
+
+    assert not stopped
+    assert fail_cnt == 0
+    assert mock_sb.call_count == 1
+    blocks = mock_sb.call_args[0][1]
+    block_keys = {src for src, _draft_or_revised in blocks}
+    assert block_keys == {"Seg B"}, (
+        f"opt-in: the Phase-1 cache-HIT segment must be excluded from the "
+        f"critique batch, got {block_keys!r}"
+    )
+    assert tmap[("fr", "Seg B")] == "Revised B"
+
+
+def test_critique_skip_cached_segments_true_keeps_excluded_segments_draft_present_in_tmap():
+    """AC-5 (no-drop): the excluded Phase-1 cache-HIT segment's draft stays
+    present and untouched in tmap — the flag skips CRITIQUE for it, it does
+    not remove or blank its translation."""
+    tmap, _mock_sb, _fail_cnt, _stopped = _run_skip_cached_scenario(skip_flag=True)
+
+    assert tmap[("fr", "Seg A")] == "Cached Draft A", (
+        "an excluded cache-HIT segment's Phase-1 draft must remain present "
+        "in tmap, unmodified by the critique loop"
+    )

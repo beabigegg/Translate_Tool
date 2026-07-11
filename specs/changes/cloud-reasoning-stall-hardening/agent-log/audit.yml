@@ -1,0 +1,19 @@
+- type: tier-floor-override
+  change-id: cloud-reasoning-stall-hardening
+  timestamp: '2026-07-11T08:53:15.518Z'
+  declared-tier: 1
+  floor-tier: 0
+  label: critical surface (auth / payments / data migration / concurrency / secrets)
+  matched:
+    - authorized
+    - cache
+    - endpoint
+    - route
+    - session
+    - worker
+  reason: >-
+    Vocab false-positive (authorized/cache/endpoint/route/session/worker): no auth, payments, data
+    migration, secrets, or new concurrency here. 'cache'=translation cache read,
+    'session'=requests.Session, 'worker'=the pre-existing _run_bounded_post daemon thread
+    (unchanged), 'endpoint'=the LLM completion URL, 'route/authorized'=prose. Classifier correctly
+    assigned Tier 1; QA approved.

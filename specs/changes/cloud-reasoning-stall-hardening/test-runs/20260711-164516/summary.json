@@ -1,0 +1,16 @@
+{
+  "change_id": "cloud-reasoning-stall-hardening",
+  "phase": "changed-area",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest -q tests/test_openai_compatible_client.py tests/test_cloud_total_timeout.py tests/test_critique_loop_batching.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164516/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 4147,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164516/summary.json",
+    "stdout": "specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164516/stdout.log",
+    "stderr": "specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164516/stderr.log",
+    "junit": "specs/changes/cloud-reasoning-stall-hardening/test-runs/20260711-164516/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

@@ -88,15 +88,28 @@ DEFAULT_READ_TIMEOUT_S = 360.0
 OPENAI_COMPLETION_MAX_TOKENS: int = int(os.environ.get("OPENAI_COMPLETION_MAX_TOKENS", "4096"))
 
 # OPENAI_TOTAL_TIMEOUT_SECONDS: wall-clock total-duration ceiling on every
-# OpenAICompatibleClient completion (qa-judge-hang-recovery, BR-100). Additive on
-# top of the per-chunk (connect, read) timeout tuple — the read timeout only
-# bounds the inter-chunk gap, so a provider that dribbles keep-alive bytes can
-# otherwise hang forever. On expiry the call degrades (does not crash), matching
-# CRITIQUE_TIMEOUT_SECONDS. Positive float seconds; default 480 is a generous
-# placeholder above the ~420s worst case of a healthy (120 connect + 300 read)
-# call — calibrate for the longest legitimate cloud generation. Set very high to
-# effectively disable the ceiling (rollback).
-OPENAI_TOTAL_TIMEOUT_SECONDS: float = float(os.environ.get("OPENAI_TOTAL_TIMEOUT_SECONDS", "480"))
+# OpenAICompatibleClient completion AND its embed() call (qa-judge-hang-recovery,
+# cloud-reasoning-stall-hardening, BR-100). Additive on top of the per-chunk
+# (connect, read) timeout tuple — the read timeout only bounds the inter-chunk
+# gap, so a provider that dribbles keep-alive bytes (each gap < read timeout,
+# e.g. a Cloudflare half-close) can otherwise hang for the full 8-27 minute
+# worst case. On expiry the call degrades (does not crash), matching
+# CRITIQUE_TIMEOUT_SECONDS. Positive float seconds; default 120 aborts a
+# Cloudflare-cut stall in ~2 min instead of ~8; probed legitimate cloud calls
+# complete in 3-16s, leaving ample headroom. Set very high to effectively
+# disable the ceiling (rollback).
+OPENAI_TOTAL_TIMEOUT_SECONDS: float = float(os.environ.get("OPENAI_TOTAL_TIMEOUT_SECONDS", "120"))
+
+# OPENAI_TRANSLATION_REASONING: harmony `Reasoning: <level>` directive level
+# prepended to the system message on every cloud TRANSLATION call
+# (cloud-reasoning-stall-hardening, BR-118) to suppress runaway hidden
+# reasoning on PANJIT's gpt-oss:120b — the empirically confirmed cause of
+# empty-content finish_reason='stop' truncation and wall-clock-ceiling
+# stalls. Hardcoded constant, NOT an env var (mirrors CONTEXT_DETECTION_ENABLED
+# above and MAX_TABLE_NESTING_DEPTH/BR-113; env-contract.md forbids an env row
+# for this value). The outline/document-context summary seam (`complete()`) is
+# EXEMPT and keeps full reasoning (BR-109).
+OPENAI_TRANSLATION_REASONING: str = "low"
 
 API_ATTEMPTS = 3
 API_BACKOFF_BASE = 1.6
@@ -168,6 +181,15 @@ QE_DEVICE: str = os.environ.get("QE_DEVICE", "cpu")
 CRITIQUE_LOOP_ENABLED: bool = os.environ.get("CRITIQUE_LOOP_ENABLED", "1").lower() in ("1", "true", "yes")
 CRITIQUE_MAX_ITERATIONS: int = int(os.environ.get("CRITIQUE_MAX_ITERATIONS", "3"))
 CRITIQUE_TIMEOUT_SECONDS: float = float(os.environ.get("CRITIQUE_TIMEOUT_SECONDS", "60"))
+# CRITIQUE_SKIP_CACHED_SEGMENTS: default-off cost lever (cloud-reasoning-stall-
+# hardening, BR-119). When true, the critique-loop pre-filter additionally
+# excludes segments whose base translation was a Phase-1 translation-cache HIT
+# from entering the critique loop — that segment's Phase-1 draft is kept as-is
+# with no live critique call issued. Default false: current behavior is
+# byte-identical (every segment, cached or not, still enters the loop).
+CRITIQUE_SKIP_CACHED_SEGMENTS: bool = os.environ.get(
+    "CRITIQUE_SKIP_CACHED_SEGMENTS", "0"
+).lower() in ("1", "true", "yes")
 
 # JSON-structured translation I/O (json-structured-translation-io, BR-79..BR-83,
 # BR-111, BR-112). Kill switch: when false, both the table and body paths use the

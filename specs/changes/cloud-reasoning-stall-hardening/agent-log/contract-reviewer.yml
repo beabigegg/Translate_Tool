@@ -1,0 +1,16 @@
+change-id: cloud-reasoning-stall-hardening
+agent: contract-reviewer
+status: done
+summary: >
+  Proposed + (main Claude) applied: BR-100 amend (ceiling 480→120, embed under
+  bound), BR-109 composition sentence, new BR-118 (reasoning suppression) and
+  BR-119 (CRITIQUE_SKIP_CACHED_SEGMENTS flag); business-rules 0.34.0→0.35.0.
+  env-contract OPENAI_TOTAL_TIMEOUT_SECONDS 480→120 + new flag row; 0.19.0→0.20.0.
+  .env.example.template synced. CHANGELOG entries added. Flagged breaking
+  default-value change (480→120) and the stale-480-literal test hazard at
+  test_openai_compatible_client.py:791.
+artifacts:
+  - { type: contract, pointer: "contracts/business/business-rules.md" }
+  - { type: contract, pointer: "contracts/env/env-contract.md" }
+  - { type: breaking-change, pointer: "OPENAI_TOTAL_TIMEOUT_SECONDS default 480->120 (documented, intentional)" }
+next-action: test-strategist maps ACs; backend-engineer must fix stale 480.0 literals in tests/test_openai_compatible_client.py and source OPENAI_TRANSLATION_REASONING from config

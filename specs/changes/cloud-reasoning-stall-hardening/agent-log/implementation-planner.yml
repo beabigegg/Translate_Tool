@@ -1,0 +1,6 @@
+agent: implementation-planner
+change-id: cloud-reasoning-stall-hardening
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/cloud-reasoning-stall-hardening/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer (IP-1..IP-6), e2e-resilience-engineer (IP-7)" }
+  - { type: scope-summary, pointer: "3 files in scope (config.py, openai_compatible_client.py, translation_service.py) + test updates/adds; contracts/CI out of scope" }
