@@ -56,3 +56,4 @@
 | docx-nested-table-collection | 2026 | 2026-07-11 | specs/archive/2026/docx-nested-table-collection/ |
 | docx-header-footer-collection | 2026 | 2026-07-11 | specs/archive/2026/docx-header-footer-collection/ |
 | pptx-group-shape-collection | 2026 | 2026-07-11 | specs/archive/2026/pptx-group-shape-collection/ |
+| docx-body-textbox-dedup | 2026 | 2026-07-11 | specs/archive/2026/docx-body-textbox-dedup/ |
