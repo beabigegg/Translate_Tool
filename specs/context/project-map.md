@@ -4,7 +4,7 @@ generated-by: cdd-kit context-scan
 schema-version: 1
 root: Translate_Tool
 visible-dirs: 59
-visible-files: 242
+visible-files: 244
 omitted-dirs: 12
 truncated-dirs: 1
 inputs-digest: 58ec80699f498bf40074f81de6138b321f2d3ecc03137b33052a2dd7345722a2
@@ -123,6 +123,7 @@ Translate_Tool/
 |   |   |   |-- exceptions.py
 |   |   |   |-- font_utils.py
 |   |   |   |-- json_translation.py
+|   |   |   |-- length_guard.py
 |   |   |   |-- logging_utils.py
 |   |   |   |-- resource_utils.py
 |   |   |   |-- table_serializer.py
@@ -208,7 +209,8 @@ Translate_Tool/
 |   |   |-- 0016-context-out-of-band-system-channel.md
 |   |   |-- 0017-json-structured-translation-seam.md
 |   |   |-- 0018-nested-table-frame-routing.md
-|   |   \-- 0019-native-header-footer-com-shape-boundary.md
+|   |   |-- 0019-native-header-footer-com-shape-boundary.md
+|   |   \-- 0020-truncation-length-guard.md
 |   |-- TEST_DOC/
 |   |   |-- CS2408-0021 信和達(歐朗) P6SMBJ18CA  本體破损 -onepage.pdf
 |   |   |-- EN-P-QC1102-D7 量测系统分析(MSA)程序.docx
@@ -327,6 +329,7 @@ Translate_Tool/
 |   |-- test_layout_detector.py
 |   |-- test_layout_metrics.py
 |   |-- test_layout_qa.py
+|   |-- test_length_guard.py
 |   |-- test_libreoffice_helpers.py
 |   |-- test_llm_client_protocol.py
 |   |-- test_metrics_counters.py
@@ -337,8 +340,7 @@ Translate_Tool/
 |   |-- test_ollama_client_dynamic_strategy.py
 |   |-- test_openai_compatible_client.py
 |   |-- test_orchestrator_context_detection.py
-|   |-- test_orchestrator_judge.py
-|   \-- ... (39 more entries truncated; cap=50)
+|   \-- ... (40 more entries truncated; cap=50)
 |-- .env
 |-- .gitignore
 |-- AGENTS.md
