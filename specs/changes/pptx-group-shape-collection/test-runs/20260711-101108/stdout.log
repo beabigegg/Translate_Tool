@@ -1,0 +1,11 @@
+F
+=================================== FAILURES ===================================
+_ TestGroupTextCollection.test_grouped_textbox_reaches_translate_texts_payload _
+tests/test_pptx_group_shapes.py:143: in test_grouped_textbox_reaches_translate_texts_payload
+    assert "Grouped alpha text" in uniq, f"grouped text missing from outgoing payload: {uniq}"
+E   AssertionError: grouped text missing from outgoing payload: ['Flat sibling text']
+E   assert 'Grouped alpha text' in ['Flat sibling text']
+=========================== short test summary info ============================
+FAILED tests/test_pptx_group_shapes.py::TestGroupTextCollection::test_grouped_textbox_reaches_translate_texts_payload
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 0.24s

@@ -1,0 +1,5 @@
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/pptx-group-shape-collection/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_pptx_group_shapes.py (NEW) → app/backend/processors/pptx_processor.py (collection loop L214-239)" }
+  - { type: coverage-tiers, pointer: "data-boundary, resilience, unit (all tier 0)" }
+  - { type: mapping-completeness, pointer: "AC-1..AC-7 all mapped to a named test; RED repro named (AC-1 test); existing tests/ swept for id(shape)/SEGMENT_* fakes — none found" }

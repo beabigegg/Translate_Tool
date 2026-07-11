@@ -1,6 +1,6 @@
-# generated: 2026-07-11T01:34:13Z by cdd-kit 3.6.0
-# files: 217, src-lines: 64293, map-lines: 5788, compression: 11.1x
-# sources-digest: 37d4febbdda826f392b32ff3be0a77867523b50d2a9cffb2eff5110d97e26064
+# generated: 2026-07-11T02:39:49Z by cdd-kit 3.6.0
+# files: 212, src-lines: 64640, map-lines: 5797, compression: 11.2x
+# sources-digest: 945defb905a3e5c4ecc1139d849f2ffc160d0aff17f0de1242c5e8ca9128610d
 app/__init__.py:  # 0 lines
 
 app/backend/__init__.py:  # 0 lines
@@ -266,7 +266,7 @@ app/backend/clients/openai_compatible_client.py:  # 508 lines
         - { name: set_runtime_options_override, lines: 503-504 }
         - { name: set_cache_variant, lines: 506-508 }
 
-app/backend/config.py:  # 595 lines
+app/backend/config.py:  # 600 lines
   imports:
     - { module: __future__, items: [annotations], line: 5 }
     - { module: logging, items: [], line: 7 }
@@ -310,91 +310,92 @@ app/backend/config.py:  # 595 lines
     - { name: CONTEXT_DETECTION_ENABLED, line: 128 }
     - { name: CONTEXT_SAMPLE_CHARS, line: 129 }
     - { name: MAX_TABLE_NESTING_DEPTH, line: 134 }
-    - { name: CHUNK_OVERLAP_TOKENS, line: 140 }
-    - { name: QE_ENABLED, line: 146 }
-    - { name: QE_MODEL_NAME, line: 147 }
-    - { name: QE_DEVICE, line: 148 }
-    - { name: CRITIQUE_LOOP_ENABLED, line: 151 }
-    - { name: CRITIQUE_MAX_ITERATIONS, line: 152 }
-    - { name: CRITIQUE_TIMEOUT_SECONDS, line: 153 }
-    - { name: JSON_STRUCTURED_TRANSLATION_ENABLED, line: 162 }
-    - { name: FEWSHOT_INJECTION_ENABLED, line: 169 }
-    - { name: DYNAMIC_SCENARIO_STRATEGY_ENABLED, line: 175 }
-    - { name: QWEN_CONTEXT_FLOW_ENABLED, line: 176 }
-    - { name: SCENARIO_CACHE_VARIANT_ENABLED, line: 177 }
-    - { name: EXCEL_FORMULA_MODE, line: 179 }
-    - { name: MAX_SHAPE_CHARS, line: 180 }
-    - { name: PDF_PARSER_ENGINE, line: 183 }
-    - { name: PDF_SKIP_HEADER_FOOTER, line: 184 }
-    - { name: PDF_HEADER_FOOTER_MARGIN_PT, line: 185 }
-    - { name: LAYOUT_DETECTOR_MODEL_PATH, line: 190 }
-    - { name: LAYOUT_DETECTOR_ENABLED, line: 192 }
-    - { name: LAYOUT_QA_ENABLED, line: 199 }
-    - { name: LAYOUT_QA_MAX_BOXES_PER_PAGE, line: 205 }
-    - { name: PDF_RENDER_DPI, line: 210 }
-    - { name: OCR_ENABLED, line: 215 }
-    - { name: PDF_TABLE_ROW_GROWTH_ENABLED, line: 224 }
-    - { name: TABLE_RECOGNITION_MODEL_PATH, line: 229 }
-    - { name: TABLE_RECOGNITION_ENABLED, line: 232 }
-    - { name: JUDGE_ENABLED, line: 237 }
-    - { name: JUDGE_PROVIDER, line: 242 }
-    - { name: JUDGE_MODEL, line: 246 }
-    - { name: JUDGE_LAYOUT_MODEL, line: 249 }
-    - { name: JUDGE_CLOUD_PROVIDER_ID, line: 252 }
-    - { name: JUDGE_MAX_ITERATIONS, line: 254 }
-    - { name: LAYOUT_PRESERVATION_MODE, line: 257 }
-    - { name: DEFAULT_FONT_FAMILY, line: 258 }
-    - { name: MIN_READABLE_FONT_PT, line: 259 }
-    - { name: MIN_FONT_SIZE_PT, line: 260 }
-    - { name: MAX_FONT_SIZE_PT, line: 261 }
-    - { name: FONT_SIZE_SHRINK_FACTOR, line: 262 }
-    - { name: PDF_DRAW_MASK, line: 263 }
-    - { name: PDF_MASK_MARGIN_PT, line: 264 }
-    - { name: PDF_SHOW_MISSING_PLACEHOLDER, line: 265 }
-    - { name: FONT_SIZE_CONFIG, line: 269 }
-    - { name: MAX_SEGMENTS, line: 282 }
-    - { name: MAX_TEXT_LENGTH, line: 283 }
-    - { name: MAX_JOBS_IN_MEMORY, line: 286 }
-    - { name: JOB_TTL_HOURS, line: 287 }
-    - { name: CLEANUP_INTERVAL_MINUTES, line: 288 }
-    - { name: HTTP_POOL_CONNECTIONS, line: 291 }
-    - { name: HTTP_POOL_MAXSIZE, line: 292 }
-    - { name: ENV_CONNECT_TIMEOUT, line: 294 }
-    - { name: ENV_READ_TIMEOUT, line: 295 }
-    - { name: LIBREOFFICE_PATH, line: 298 }
-    - { name: LIBREOFFICE_TIMEOUT, line: 299 }
-    - { name: VERIFY_MAX_RETRIES, line: 301 }
-    - { name: TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED, line: 304 }
-    - { name: TERM_INJECT_CONF_THRESHOLD, line: 305 }
-    - { name: TERM_EMBEDDING_MODEL, line: 308 }
-    - { name: TERM_EMBEDDING_THRESHOLD, line: 309 }
-    - { name: TERM_EXTRACTION_MODEL, line: 310 }
-    - { name: SUPPORTED_EXTENSIONS, line: 312 }
-    - { name: LANG_CODE_MAP, line: 314 }
-    - { name: DATA_DIR, line: 386 }
-    - { name: JOBS_DIR, line: 387 }
-    - { name: LOG_DIR, line: 388 }
-    - { name: TRANSLATION_CACHE_ENABLED, line: 389 }
-    - { name: CACHE_DIR, line: 390 }
-    - { name: DEFAULT_HOST, line: 392 }
-    - { name: DEFAULT_PORT, line: 393 }
-    - { name: ALLOWED_ORIGINS, line: 395 }
+    - { name: MAX_GROUP_NESTING_DEPTH, line: 139 }
+    - { name: CHUNK_OVERLAP_TOKENS, line: 145 }
+    - { name: QE_ENABLED, line: 151 }
+    - { name: QE_MODEL_NAME, line: 152 }
+    - { name: QE_DEVICE, line: 153 }
+    - { name: CRITIQUE_LOOP_ENABLED, line: 156 }
+    - { name: CRITIQUE_MAX_ITERATIONS, line: 157 }
+    - { name: CRITIQUE_TIMEOUT_SECONDS, line: 158 }
+    - { name: JSON_STRUCTURED_TRANSLATION_ENABLED, line: 167 }
+    - { name: FEWSHOT_INJECTION_ENABLED, line: 174 }
+    - { name: DYNAMIC_SCENARIO_STRATEGY_ENABLED, line: 180 }
+    - { name: QWEN_CONTEXT_FLOW_ENABLED, line: 181 }
+    - { name: SCENARIO_CACHE_VARIANT_ENABLED, line: 182 }
+    - { name: EXCEL_FORMULA_MODE, line: 184 }
+    - { name: MAX_SHAPE_CHARS, line: 185 }
+    - { name: PDF_PARSER_ENGINE, line: 188 }
+    - { name: PDF_SKIP_HEADER_FOOTER, line: 189 }
+    - { name: PDF_HEADER_FOOTER_MARGIN_PT, line: 190 }
+    - { name: LAYOUT_DETECTOR_MODEL_PATH, line: 195 }
+    - { name: LAYOUT_DETECTOR_ENABLED, line: 197 }
+    - { name: LAYOUT_QA_ENABLED, line: 204 }
+    - { name: LAYOUT_QA_MAX_BOXES_PER_PAGE, line: 210 }
+    - { name: PDF_RENDER_DPI, line: 215 }
+    - { name: OCR_ENABLED, line: 220 }
+    - { name: PDF_TABLE_ROW_GROWTH_ENABLED, line: 229 }
+    - { name: TABLE_RECOGNITION_MODEL_PATH, line: 234 }
+    - { name: TABLE_RECOGNITION_ENABLED, line: 237 }
+    - { name: JUDGE_ENABLED, line: 242 }
+    - { name: JUDGE_PROVIDER, line: 247 }
+    - { name: JUDGE_MODEL, line: 251 }
+    - { name: JUDGE_LAYOUT_MODEL, line: 254 }
+    - { name: JUDGE_CLOUD_PROVIDER_ID, line: 257 }
+    - { name: JUDGE_MAX_ITERATIONS, line: 259 }
+    - { name: LAYOUT_PRESERVATION_MODE, line: 262 }
+    - { name: DEFAULT_FONT_FAMILY, line: 263 }
+    - { name: MIN_READABLE_FONT_PT, line: 264 }
+    - { name: MIN_FONT_SIZE_PT, line: 265 }
+    - { name: MAX_FONT_SIZE_PT, line: 266 }
+    - { name: FONT_SIZE_SHRINK_FACTOR, line: 267 }
+    - { name: PDF_DRAW_MASK, line: 268 }
+    - { name: PDF_MASK_MARGIN_PT, line: 269 }
+    - { name: PDF_SHOW_MISSING_PLACEHOLDER, line: 270 }
+    - { name: FONT_SIZE_CONFIG, line: 274 }
+    - { name: MAX_SEGMENTS, line: 287 }
+    - { name: MAX_TEXT_LENGTH, line: 288 }
+    - { name: MAX_JOBS_IN_MEMORY, line: 291 }
+    - { name: JOB_TTL_HOURS, line: 292 }
+    - { name: CLEANUP_INTERVAL_MINUTES, line: 293 }
+    - { name: HTTP_POOL_CONNECTIONS, line: 296 }
+    - { name: HTTP_POOL_MAXSIZE, line: 297 }
+    - { name: ENV_CONNECT_TIMEOUT, line: 299 }
+    - { name: ENV_READ_TIMEOUT, line: 300 }
+    - { name: LIBREOFFICE_PATH, line: 303 }
+    - { name: LIBREOFFICE_TIMEOUT, line: 304 }
+    - { name: VERIFY_MAX_RETRIES, line: 306 }
+    - { name: TERM_INJECT_HIGH_CONFIDENCE_UNVERIFIED, line: 309 }
+    - { name: TERM_INJECT_CONF_THRESHOLD, line: 310 }
+    - { name: TERM_EMBEDDING_MODEL, line: 313 }
+    - { name: TERM_EMBEDDING_THRESHOLD, line: 314 }
+    - { name: TERM_EXTRACTION_MODEL, line: 315 }
+    - { name: SUPPORTED_EXTENSIONS, line: 317 }
+    - { name: LANG_CODE_MAP, line: 319 }
+    - { name: DATA_DIR, line: 391 }
+    - { name: JOBS_DIR, line: 392 }
+    - { name: LOG_DIR, line: 393 }
+    - { name: TRANSLATION_CACHE_ENABLED, line: 394 }
+    - { name: CACHE_DIR, line: 395 }
+    - { name: DEFAULT_HOST, line: 397 }
+    - { name: DEFAULT_PORT, line: 398 }
+    - { name: ALLOWED_ORIGINS, line: 400 }
   classes:
     - name: ModelType
       lines: 18-22
     - name: TimeoutConfig
-      lines: 402-455
+      lines: 407-460
       methods:
-        - { name: set_from_config, lines: 410-412 }
-        - { name: set_timeouts, lines: 414-416 }
-        - { name: clear_runtime_overrides, lines: 418-420 }
-        - { name: connect_timeout, lines: 423-436 }
-        - { name: read_timeout, lines: 439-452 }
-        - { name: get_timeout_tuple, lines: 454-455 }
+        - { name: set_from_config, lines: 415-417 }
+        - { name: set_timeouts, lines: 419-421 }
+        - { name: clear_runtime_overrides, lines: 423-425 }
+        - { name: connect_timeout, lines: 428-441 }
+        - { name: read_timeout, lines: 444-457 }
+        - { name: get_timeout_tuple, lines: 459-460 }
   functions:
-    - { name: _expand_env_vars, lines: 469-496 }
-    - { name: _expand_node, lines: 499-526 }
-    - { name: load_providers_config, lines: 529-595 }
+    - { name: _expand_env_vars, lines: 474-501 }
+    - { name: _expand_node, lines: 504-531 }
+    - { name: load_providers_config, lines: 534-600 }
 
 app/backend/main.py:  # 64 lines
   imports:
@@ -836,7 +837,7 @@ app/backend/processors/pdf_processor.py:  # 1278 lines
     - { name: _emit_truncation_disclosure_warning, lines: 1227-1249 }
     - { name: parse_pdf_to_document, lines: 1252-1278 }
 
-app/backend/processors/pptx_processor.py:  # 531 lines
+app/backend/processors/pptx_processor.py:  # 582 lines
   imports:
     - { module: __future__, items: [annotations], line: 3 }
     - { module: os, items: [], line: 5 }
@@ -846,30 +847,32 @@ app/backend/processors/pptx_processor.py:  # 531 lines
     - { module: typing, items: [Any, Callable, Dict, List, Optional, Tuple, Union], line: 9 }
     - { module: xml.etree, items: [ET], line: 10 }
     - { module: pptx, items: [], line: 12 }
-    - { module: pptx.table, items: [_Cell], line: 13 }
-    - { module: pptx.util, items: [PPTPt], line: 14 }
-    - { module: app.backend, items: [config], line: 16 }
-    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 17 }
-    - { module: app.backend.config, items: [DEFAULT_MAX_BATCH_CHARS, MAX_SEGMENTS, MAX_TEXT_LENGTH], line: 18 }
-    - { module: app.backend.services.translation_service, items: [translate_texts], line: 19 }
-    - { module: app.backend.utils, items: [json_translation], line: 20 }
-    - { module: app.backend.utils.exceptions, items: [check_document_size_limits], line: 21 }
-    - { module: app.backend.utils.text_utils, items: [is_numeric_cell, normalize_text, should_translate], line: 22 }
+    - { module: pptx.enum.shapes, items: [MSO_SHAPE_TYPE], line: 13 }
+    - { module: pptx.table, items: [_Cell], line: 14 }
+    - { module: pptx.util, items: [PPTPt], line: 15 }
+    - { module: app.backend, items: [config], line: 17 }
+    - { module: app.backend.clients.ollama_client, items: [OllamaClient], line: 18 }
+    - { module: app.backend.config, items: [DEFAULT_MAX_BATCH_CHARS, MAX_SEGMENTS, MAX_TEXT_LENGTH], line: 19 }
+    - { module: app.backend.services.translation_service, items: [translate_texts], line: 20 }
+    - { module: app.backend.utils, items: [json_translation], line: 21 }
+    - { module: app.backend.utils.exceptions, items: [check_document_size_limits], line: 22 }
+    - { module: app.backend.utils.logging_utils, items: [_group_depth_log], line: 23 }
+    - { module: app.backend.utils.text_utils, items: [is_numeric_cell, normalize_text, should_translate], line: 24 }
   constants:
-    - { name: SEGMENT_TEXT_FRAME, line: 26 }
-    - { name: SEGMENT_TABLE_CELL, line: 27 }
-    - { name: SEGMENT_SMARTART, line: 28 }
-    - { name: SMARTART_NS, line: 31 }
+    - { name: SEGMENT_TEXT_FRAME, line: 28 }
+    - { name: SEGMENT_TABLE_CELL, line: 29 }
+    - { name: SEGMENT_SMARTART, line: 30 }
+    - { name: SMARTART_NS, line: 33 }
   functions:
-    - { name: _ppt_text_of_tf, lines: 37-38 }
-    - { name: _ppt_tail_equals, lines: 41-50 }
-    - { name: _ppt_append, lines: 53-58 }
-    - { name: _cell_text, lines: 61-63 }
-    - { name: _cell_tail_equals, lines: 66-77 }
-    - { name: _cell_append, lines: 80-87 }
-    - { name: _extract_smartart_texts, lines: 90-120 }
-    - { name: _update_smartart_texts, lines: 123-187 }
-    - { name: translate_pptx, lines: 190-531 }
+    - { name: _ppt_text_of_tf, lines: 39-40 }
+    - { name: _ppt_tail_equals, lines: 43-52 }
+    - { name: _ppt_append, lines: 55-60 }
+    - { name: _cell_text, lines: 63-65 }
+    - { name: _cell_tail_equals, lines: 68-79 }
+    - { name: _cell_append, lines: 82-89 }
+    - { name: _extract_smartart_texts, lines: 92-122 }
+    - { name: _update_smartart_texts, lines: 125-189 }
+    - { name: translate_pptx, lines: 192-582 }
 
 app/backend/processors/xlsx_processor.py:  # 394 lines
   imports:
@@ -2257,47 +2260,6 @@ scripts/e2e_smoke.py:  # 154 lines
     - { name: FAIL, line: 53 }
   functions:
     - { name: section, lines: 55-56 }
-
-specs/changes/docx-header-footer-collection/evidence/probe_body_txbx_preexisting_dup.py:  # 17 lines
-  imports:
-    - { module: sys, items: [], line: 1 }
-    - { module: docx, items: [], line: 2 }
-    - { module: lxml, items: [etree], line: 3 }
-    - { module: app.backend.processors.docx_processor, items: [_collect_docx_segments, _txbx_iter_texts], line: 4 }
-
-specs/changes/docx-header-footer-collection/evidence/probe_hf_coverage.py:  # 27 lines
-  imports:
-    - { module: sys, items: [], line: 1 }
-    - { module: re, items: [], line: 1 }
-    - { module: glob, items: [], line: 1 }
-    - { module: docx, items: [], line: 2 }
-    - { module: app.backend.processors.docx_processor, items: [_collect_docx_segments], line: 3 }
-
-specs/changes/docx-header-footer-collection/evidence/probe_r1_slots_and_linking.py:  # 16 lines
-  imports:
-    - { module: sys, items: [], line: 1 }
-    - { module: docx, items: [], line: 2 }
-    - { module: docx.enum.section, items: [WD_SECTION], line: 12 }
-
-specs/changes/docx-header-footer-collection/evidence/probe_real_header_shape.py:  # 22 lines
-  imports:
-    - { module: sys, items: [], line: 1 }
-    - { module: docx, items: [], line: 2 }
-    - { module: glob, items: [], line: 2 }
-
-specs/changes/docx-header-footer-collection/evidence/probe_txbx_overlap.py:  # 15 lines
-  imports:
-    - { module: sys, items: [], line: 1 }
-    - { module: docx, items: [], line: 2 }
-    - { module: lxml, items: [etree], line: 3 }
-    - { module: app.backend.processors.docx_processor, items: [_p_text_with_breaks], line: 4 }
-
-specs/changes/docx-header-footer-collection/evidence/probe_writeback_feasibility.py:  # 24 lines
-  imports:
-    - { module: sys, items: [], line: 1 }
-    - { module: docx, items: [], line: 2 }
-    - { module: tempfile, items: [], line: 20 }
-    - { module: os, items: [], line: 20 }
 
 tests/__init__.py:  # 1 lines
 
@@ -4619,6 +4581,53 @@ tests/test_pdf_stage_snapshot.py:  # 290 lines
     - { name: test_translate_pdf_signature_accepts_status_callback, lines: 95-152 }
     - { name: test_pymupdf_path_on_segment_done_emits_translate_stage_snapshot, lines: 160-204 }
     - { name: test_pypdf2_and_to_pdf_paths_on_segment_done_emit_translate_stage_snapshot, lines: 212-290 }
+
+tests/test_pptx_group_shapes.py:  # 412 lines
+  imports:
+    - { module: __future__, items: [annotations], line: 18 }
+    - { module: gc, items: [], line: 20 }
+    - { module: logging, items: [], line: 21 }
+    - { module: typing, items: [Dict, List], line: 22 }
+    - { module: unittest.mock, items: [MagicMock, patch], line: 23 }
+    - { module: pptx, items: [Presentation], line: 25 }
+    - { module: pptx.enum.shapes, items: [MSO_SHAPE_TYPE], line: 26 }
+    - { module: pptx.util, items: [Inches], line: 27 }
+    - { module: app.backend, items: [config], line: 29 }
+    - { module: app.backend.processors.pptx_processor, items: [translate_pptx], line: 30 }
+  classes:
+    - name: TestGroupTextCollection
+      lines: 120-171
+      methods:
+        - { name: test_grouped_textbox_reaches_translate_texts_payload, lines: 121-146 }
+        - { name: test_nested_group_text_reaches_translate_texts_payload, lines: 148-171 }
+    - name: TestGroupedTableCoordinates
+      lines: 178-206
+      methods:
+        - { name: test_grouped_table_cells_map_to_correct_row_col, lines: 179-206 }
+    - name: TestTableIdCounterNoCollision
+      lines: 213-274
+      methods:
+        - { name: test_many_grouped_tables_no_shared_key_under_forced_gc, lines: 214-274 }
+    - name: TestFlatShapeRegression
+      lines: 281-311
+      methods:
+        - { name: test_flat_textbox_and_table_output_unchanged, lines: 282-311 }
+    - name: TestGroupNestingDepthGuard
+      lines: 318-377
+      methods:
+        - { name: test_over_limit_group_still_collected_with_one_warning, lines: 319-352 }
+        - { name: test_depth_within_limit_no_warning, lines: 354-377 }
+    - name: TestSmartArtUntouched
+      lines: 384-412
+      methods:
+        - { name: test_smartart_path_not_invoked_for_group_collection, lines: 385-412 }
+  functions:
+    - { name: _add_textbox, lines: 37-40 }
+    - { name: _add_table, lines: 43-47 }
+    - { name: _capturing_translate_texts, lines: 50-64 }
+    - { name: _mock_client_for_table_translation, lines: 67-73 }
+    - { name: _all_text_frame_texts, lines: 76-94 }
+    - { name: _grouped_table_cell, lines: 97-113 }
 
 tests/test_pptx_parser.py:  # 255 lines
   imports:

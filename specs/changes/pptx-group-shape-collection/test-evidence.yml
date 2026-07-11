@@ -1,0 +1,44 @@
+change-id: pptx-group-shape-collection
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+runs:
+  - phase: targeted
+    status: passed
+    command: >-
+      python -m pytest tests/test_pptx_group_shapes.py -q --maxfail=1 --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/pptx-group-shape-collection/test-runs/20260711-103126/junit.xml'
+    summary: specs/changes/pptx-group-shape-collection/test-runs/20260711-103126/summary.json
+    junit: specs/changes/pptx-group-shape-collection/test-runs/20260711-103126/junit.xml
+  - phase: collect
+    status: passed
+    command: >-
+      python -m pytest tests/test_pptx_group_shapes.py --collect-only -q
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/pptx-group-shape-collection/test-runs/20260711-103124/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/pptx-group-shape-collection/test-runs/20260711-103124/summary.json
+    junit: specs/changes/pptx-group-shape-collection/test-runs/20260711-103124/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      python -m pytest tests/test_pptx_group_shapes.py tests/test_pptx_parser.py -q --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/pptx-group-shape-collection/test-runs/20260711-103128/junit.xml'
+      --maxfail=1
+    summary: specs/changes/pptx-group-shape-collection/test-runs/20260711-103128/summary.json
+    junit: specs/changes/pptx-group-shape-collection/test-runs/20260711-103128/junit.xml
+  - phase: contract
+    status: passed
+    command: cdd-kit validate --contracts --env --ci
+    summary: specs/changes/pptx-group-shape-collection/test-runs/20260711-103131/summary.json
+  - phase: full
+    status: passed
+    command: >-
+      python -m pytest -q --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/pptx-group-shape-collection/test-runs/20260711-103148/junit.xml'
+      --maxfail=1
+    summary: specs/changes/pptx-group-shape-collection/test-runs/20260711-103148/summary.json
+    junit: specs/changes/pptx-group-shape-collection/test-runs/20260711-103148/junit.xml
+final-status: passed

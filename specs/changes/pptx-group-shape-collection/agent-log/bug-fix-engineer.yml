@@ -1,0 +1,66 @@
+change-id: pptx-group-shape-collection
+timestamp: 2026-07-11T10:23:42Z
+agent: bug-fix-engineer
+status: complete
+files-read:
+  - specs/changes/pptx-group-shape-collection/implementation-plan.md
+  - specs/changes/pptx-group-shape-collection/test-plan.md
+  - specs/changes/pptx-group-shape-collection/context-manifest.md
+  - contracts/business/business-rules.md
+  - app/backend/processors/pptx_processor.py
+  - app/backend/config.py
+  - app/backend/processors/docx_processor.py
+  - app/backend/utils/table_serializer.py
+  - app/backend/utils/logging_utils.py
+  - tests/test_pptx_parser.py
+  - tests/test_output_mode_processors.py
+  - specs/archive/2026/docx-nested-table-collection/evidence/id-key-hazard.md
+artifacts:
+  - { type: root-cause, pointer: "app/backend/processors/pptx_processor.py:214-239 (pre-fix): flat `for shape in slide.shapes` loop never checked shape_type == GROUP, so a GroupShape (has_table=False, has_text_frame=False) was silently skipped; L220 also keyed table groups on `id(shape)`, an ephemeral proxy address" }
+  - { type: files-changed, pointer: "app/backend/config.py (MAX_GROUP_NESTING_DEPTH), app/backend/processors/pptx_processor.py (GroupShape recursion + document-order counter), tests/test_pptx_group_shapes.py (new)" }
+  - { type: regression-evidence, pointer: "specs/changes/pptx-group-shape-collection/test-runs/20260711-102818/summary.json (targeted, 8/8 passed post-fix); specs/changes/pptx-group-shape-collection/test-runs/20260711-102342/summary.json (full suite, passed)" }
+  - { type: residual-risk, pointer: "BR-116's 'measured: 30 distinct table shapes collapsed to 2 keys under a forced GC' claim could not be reproduced against the actual retained-segment collection loop during sabotage-verification (see bug-fix block notes below) — recommend a contract-reviewer follow-up to correct BR-116's wording, mirroring the earlier BR-81/BR-113 correction for the DOCX sibling. The fix (document-order counter) is still correct and required regardless." }
+bug-fix:
+  schema-version: 0.1.0
+  symptom: "PowerPoint text and tables nested inside a GroupShape are silently skipped: never collected, translated, or written back."
+  expected_behavior: "Every text frame and table nested inside a PPTX group (at any depth up to a bounded limit) is collected, translated, and written back, matching the already-shipped DOCX nested-table behavior (BR-113)."
+  actual_behavior: "GroupShape reports has_table=False and has_text_frame=False, so the flat `for shape in slide.shapes` loop skipped it entirely; grouped text never reached the outgoing translate_texts batch."
+  observed_surface: "PPTX translation pipeline (app/backend/processors/pptx_processor.py::translate_pptx)"
+  reproduction:
+    status: test-reproduced
+    command: "python -m pytest tests/test_pptx_group_shapes.py::TestGroupTextCollection::test_grouped_textbox_reaches_translate_texts_payload -q --maxfail=1 --tb=short -ra"
+    failing_before_fix: true
+    summary: "specs/changes/pptx-group-shape-collection/test-runs/20260711-101108/summary.json"
+  hypotheses:
+    - { id: H1, candidate: "pptx_processor.py::translate_pptx flat collection loop (no GroupShape branch)", reason: "BR-116 + implementation-plan.md name this exact loop (L214-239) as the seam; MSO_SHAPE_TYPE not imported confirms no group-aware branch exists", result: confirmed }
+    - { id: H2, candidate: "restore/write-back loop (L451-500) dropping grouped obj_ref writes", reason: "write-back might not reach a cell/text-frame nested in a group even if collected", result: rejected }
+    - { id: H3, candidate: "shape_id = id(shape) (L220) causing table-cell cross-contamination", reason: "BR-116/BR-81 flag id() as an ephemeral-proxy hazard requiring a document-order counter", result: confirmed }
+  root_cause:
+    pointer: "app/backend/processors/pptx_processor.py:214-239"
+    summary: "Pre-fix line numbers (post-fix the walk is a set of nested closures at pptx_processor.py:214-292). The collection walk never recursed into GroupShape.shapes, so grouped text frames/tables were invisible to has_table/has_text_frame checks; separately, the table-cell grouping key used id(shape), an ephemeral python-pptx proxy address instead of a stable per-presentation counter."
+  fix:
+    files_changed:
+      - app/backend/config.py
+      - app/backend/processors/pptx_processor.py
+      - tests/test_pptx_group_shapes.py
+    summary: "Added MAX_GROUP_NESTING_DEPTH=3 (config.py, mirrors MAX_TABLE_NESTING_DEPTH). Imported MSO_SHAPE_TYPE and replaced the flat collection loop with nested closures (_emit_table/_emit_text_frame/_emit_leaf/_flat_collect/_collect) that recurse into GroupShape.shapes up to the depth bound, emitting the same SEGMENT_TEXT_FRAME/SEGMENT_TABLE_CELL tuples for grouped content; at the bound, contents are still flat-collected (never dropped) with exactly one WARNING via the TranslateTool logger. Replaced `shape_id = id(shape)` with a per-presentation monotonic `next_table_id` counter (mirrors DOCX's next_table_id, BR-113/BR-81), applied to top-level and grouped tables alike."
+  regression:
+    status: passed
+    command: "python -m pytest tests/test_pptx_group_shapes.py -q --maxfail=1 --tb=short -ra"
+    summary: "specs/changes/pptx-group-shape-collection/test-runs/20260711-102818/summary.json"
+  residual_risk: >-
+    BR-116's specific "measured: 30 tables -> 2 keys" collision claim did not
+    reproduce under snapshot-sabotage (id(shape) reverted) against the real
+    collection loop: every populated table's cell segment transitively
+    retains its parent shape (_Cell._parent -> Table._graphic_frame), keeping
+    the proxy address alive for the whole run and making a same-address
+    collision between two simultaneously-live tables impossible in CPython —
+    the same "masked in the main loop" finding BR-81/BR-113 documented for
+    DOCX's analogous id() key (specs/archive/2026/docx-nested-table-collection/
+    evidence/id-key-hazard.md). AC-1/AC-2 (GroupShape recursion) and AC-6
+    (depth-bound + single warning) DID reproduce RED under sabotage as
+    expected. The counter fix remains correct (removes reliance on an
+    unstated, untested retention invariant per BR-116's own stated
+    rationale); recommend contract-reviewer correct BR-116's wording in a
+    follow-up, not blocking this change.
+next-action: "qa-reviewer release-readiness review"

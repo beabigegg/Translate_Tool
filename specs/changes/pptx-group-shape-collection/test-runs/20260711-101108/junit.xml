@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.238" timestamp="2026-07-11T10:11:09.071376+08:00" hostname="EGG"><testcase classname="tests.test_pptx_group_shapes.TestGroupTextCollection" name="test_grouped_textbox_reaches_translate_texts_payload" time="0.027"><failure message="AssertionError: grouped text missing from outgoing payload: ['Flat sibling text']&#10;assert 'Grouped alpha text' in ['Flat sibling text']">tests/test_pptx_group_shapes.py:143: in test_grouped_textbox_reaches_translate_texts_payload
+    assert "Grouped alpha text" in uniq, f"grouped text missing from outgoing payload: {uniq}"
+E   AssertionError: grouped text missing from outgoing payload: ['Flat sibling text']
+E   assert 'Grouped alpha text' in ['Flat sibling text']</failure></testcase></testsuite></testsuites>

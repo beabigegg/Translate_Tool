@@ -1,0 +1,22 @@
+agent: qa-reviewer
+status: approved
+summary: >
+  Release-ready. Bug-fix RED is a genuine behavioral assertion failure (grouped text
+  absent). All 7 ACs at real boundaries. QA independently re-verified by sabotage that
+  reverting the counter to id(shape) leaves AC-4 green — the id() hazard is masked in the
+  live loop, so BR-116/CHANGELOG were rightly reworded off the "30->2" overclaim. No id()
+  key remains; flat PPTX unchanged.
+artifacts:
+  - { type: gate-results, pointer: "non-strict gate passes; --strict pending-tasks-only (5.4 QA, 6.1-6.4)" }
+  - { type: evidence-quality, pointer: "repro — bug-fix RED run 20260711-101108 + own snapshot-sabotage AC-4, restored byte-identical" }
+  - { type: bugfix-red, pointer: "specs/changes/pptx-group-shape-collection/test-runs/20260711-101108/summary.json" }
+  - { type: decision, pointer: "approved" }
+  - { type: failure-routing, pointer: "none" }
+notes: |
+  Full junit 20260711-103148: 1401 tests, 0 failures, 0 errors, 8 group-shape testcases.
+  Evidence mtime postdates all covered files. AC-3 asserts which cell text at which
+  (row,col) from saved output; AC-4 asserts on written-back per-table translations
+  (own-vs-other), not counter-increment; depth test filters record.name=="TranslateTool".
+  Sabotage: tid=next_table_id -> id(shape) left AC-4 green (masked); restored sha256
+  7c984845...; agrees the counter is justified by invariant-fragility + added group
+  recursion, not a live collision. BR-116 correction verified honest.
