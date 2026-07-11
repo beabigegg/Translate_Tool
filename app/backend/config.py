@@ -133,6 +133,11 @@ CONTEXT_SAMPLE_CHARS = 500  # Max chars to sample from file for context detectio
 # env-contract.md forbids an env row for this value).
 MAX_TABLE_NESTING_DEPTH = 3
 
+# PPTX group-shape recursion bound (pptx-group-shape-collection, BR-116).
+# Hardcoded constant, NOT an env var (mirrors MAX_TABLE_NESTING_DEPTH above;
+# env-contract.md forbids an env row for this value).
+MAX_GROUP_NESTING_DEPTH = 3
+
 # Long-document chunking overlap (p2-long-doc-chunking, BR-47, BR-49)
 # Number of tokens of overlap shared between adjacent chunks.
 # Must be a positive integer and must be < num_ctx (enforced at chunker init).

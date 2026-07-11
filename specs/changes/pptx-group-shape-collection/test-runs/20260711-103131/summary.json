@@ -1,0 +1,15 @@
+{
+  "change_id": "pptx-group-shape-collection",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "cdd-kit validate --contracts --env --ci",
+  "duration_ms": 467,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/pptx-group-shape-collection/test-runs/20260711-103131/summary.json",
+    "stdout": "specs/changes/pptx-group-shape-collection/test-runs/20260711-103131/stdout.log",
+    "stderr": "specs/changes/pptx-group-shape-collection/test-runs/20260711-103131/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

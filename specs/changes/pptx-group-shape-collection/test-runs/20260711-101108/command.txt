@@ -1,0 +1,1 @@
+python -m pytest tests/test_pptx_group_shapes.py::TestGroupTextCollection::test_grouped_textbox_reaches_translate_texts_payload -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/pptx-group-shape-collection/test-runs/20260711-101108/junit.xml'

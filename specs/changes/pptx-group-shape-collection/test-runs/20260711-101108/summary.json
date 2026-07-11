@@ -1,0 +1,20 @@
+{
+  "change_id": "pptx-group-shape-collection",
+  "phase": "targeted",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "python -m pytest tests/test_pptx_group_shapes.py::TestGroupTextCollection::test_grouped_textbox_reaches_translate_texts_payload -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/pptx-group-shape-collection/test-runs/20260711-101108/junit.xml'",
+  "duration_ms": 489,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests.test_pptx_group_shapes.TestGroupTextCollection::test_grouped_textbox_reaches_translate_texts_payload",
+    "message": "AssertionError: grouped text missing from outgoing payload: ['Flat sibling text']\nassert 'Grouped alpha text' in ['Flat sibling text']"
+  },
+  "artifacts": {
+    "summary": "specs/changes/pptx-group-shape-collection/test-runs/20260711-101108/summary.json",
+    "stdout": "specs/changes/pptx-group-shape-collection/test-runs/20260711-101108/stdout.log",
+    "stderr": "specs/changes/pptx-group-shape-collection/test-runs/20260711-101108/stderr.log",
+    "junit": "specs/changes/pptx-group-shape-collection/test-runs/20260711-101108/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

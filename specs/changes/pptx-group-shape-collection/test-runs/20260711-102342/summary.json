@@ -1,0 +1,16 @@
+{
+  "change_id": "pptx-group-shape-collection",
+  "phase": "full",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/pptx-group-shape-collection/test-runs/20260711-102342/junit.xml'",
+  "duration_ms": 145085,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/pptx-group-shape-collection/test-runs/20260711-102342/summary.json",
+    "stdout": "specs/changes/pptx-group-shape-collection/test-runs/20260711-102342/stdout.log",
+    "stderr": "specs/changes/pptx-group-shape-collection/test-runs/20260711-102342/stderr.log",
+    "junit": "specs/changes/pptx-group-shape-collection/test-runs/20260711-102342/junit.xml"
+  },
+  "next_action": "all phases green"
+}

@@ -1,0 +1,1 @@
+python -m pytest --collect-only -q tests/test_pptx_group_shapes.py --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/pptx-group-shape-collection/test-runs/20260711-102312/junit.xml' --maxfail=1 --tb=short -ra

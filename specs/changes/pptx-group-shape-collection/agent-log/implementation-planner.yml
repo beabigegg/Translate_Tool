@@ -1,0 +1,13 @@
+agent: implementation-planner
+change-id: pptx-group-shape-collection
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/pptx-group-shape-collection/implementation-plan.md" }
+  - { type: owner-map, pointer: "bug-fix-engineer (IP-1..IP-6)" }
+  - { type: scope-summary, pointer: "In: GroupShape.shapes recursion + doc-order counter + MAX_GROUP_NESTING_DEPTH + new test file. Out: SmartArt, restore loop, other processors, env/data-shape/CI." }
+notes:
+  - All seams verified against live source; every task-brief claim confirmed.
+  - Correction to add during impl (not a plan blocker) — MSO_SHAPE_TYPE is NOT imported in pptx_processor.py; fix must add `from pptx.enum.shapes import MSO_SHAPE_TYPE` (parser uses bare magic number 6; do not copy that style).
+  - shape_id=id(shape) at L220 verified as consumed only as defaultdict grouping key (L339) and log display (L378-394); safe to swap to a monotonic counter.
+  - Restore loop L451-500 writes purely via obj_ref; grouped shapes need no restore change (re-confirmed).
+  - BR-116 depth-limit wording nuance flagged in plan: implement the never-drop reading (flat extraction reaches every leaf, one WARNING per over-limit group, TranslateTool logger). No contract correction needed.
+  - Chosen mechanism: nested-closure walker inside translate_pptx with nonlocal next_table_id (mirrors DOCX _collect_docx_segments).

@@ -1,0 +1,9 @@
+agent: ci-cd-gatekeeper
+status: pass
+summary: >
+  No workflow edit, no CI/CD contract change. New test file covered by the blanket
+  pytest sweep and full-regression; AC-5 covered by existing PPTX tests. Fresh drift
+  check clean — no stale targeted steps, no cdd-kit gate <id> lines, no PPTX-specific job.
+artifacts:
+  - { type: ci-gates, pointer: "specs/changes/pptx-group-shape-collection/ci-gates.md" }
+  - { type: workflow-diff, pointer: "none — contract-driven-gates.yml unchanged" }

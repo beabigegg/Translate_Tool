@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from xml.etree import ElementTree as ET
 
 import pptx
+from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.table import _Cell
 from pptx.util import Pt as PPTPt
 
@@ -19,6 +20,7 @@ from app.backend.config import DEFAULT_MAX_BATCH_CHARS, MAX_SEGMENTS, MAX_TEXT_L
 from app.backend.services.translation_service import translate_texts
 from app.backend.utils import json_translation
 from app.backend.utils.exceptions import check_document_size_limits
+from app.backend.utils.logging_utils import logger as _group_depth_log
 from app.backend.utils.text_utils import is_numeric_cell, normalize_text, should_translate
 
 
@@ -211,32 +213,81 @@ def translate_pptx(
     segs: List[Tuple[str, Any, str, Optional[int], Optional[int], Optional[int]]] = []
     total_text_length = 0
 
-    for slide in prs.slides:
-        for shape in slide.shapes:
-            # Handle tables - use has_table property instead of hasattr
-            if getattr(shape, "has_table", False):
-                try:
-                    table = shape.table
-                    shape_id = id(shape)  # unique per-table identifier (IP-4)
-                    for r_idx, row in enumerate(table.rows):
-                        for c_idx, cell in enumerate(row.cells):
-                            txt = _cell_text(cell)
-                            if txt:
-                                segs.append((SEGMENT_TABLE_CELL, cell, txt, r_idx, c_idx, shape_id))
-                                total_text_length += len(txt)
-                    continue
-                except Exception:
-                    # Shape reports has_table but doesn't contain one
-                    pass
+    # pptx-group-shape-collection (BR-116): recurse into GroupShape.shapes so
+    # text frames/tables nested inside a group are collected exactly like
+    # flat siblings. next_table_id replaces the old id(shape) key (IP-4) with
+    # a per-presentation, monotonically increasing document-order counter
+    # (mirrors DOCX's next_table_id, BR-113/BR-81) — top-level and grouped
+    # tables alike, so distinct tables never collide under GC.
+    next_table_id = 0
 
-            # Handle text frames
-            if not getattr(shape, "has_text_frame", False):
-                continue
-            tf = shape.text_frame
-            txt = _ppt_text_of_tf(tf)
-            if txt.strip():
-                segs.append((SEGMENT_TEXT_FRAME, tf, txt, None, None, None))
-                total_text_length += len(txt)
+    def _emit_table(shape) -> None:
+        nonlocal next_table_id, total_text_length
+        table = shape.table
+        next_table_id += 1
+        tid = next_table_id
+        for r_idx, row in enumerate(table.rows):
+            for c_idx, cell in enumerate(row.cells):
+                txt = _cell_text(cell)
+                if txt:
+                    segs.append((SEGMENT_TABLE_CELL, cell, txt, r_idx, c_idx, tid))
+                    total_text_length += len(txt)
+
+    def _emit_text_frame(shape) -> None:
+        nonlocal total_text_length
+        if not getattr(shape, "has_text_frame", False):
+            return
+        tf = shape.text_frame
+        txt = _ppt_text_of_tf(tf)
+        if txt.strip():
+            segs.append((SEGMENT_TEXT_FRAME, tf, txt, None, None, None))
+            total_text_length += len(txt)
+
+    def _emit_leaf(shape) -> None:
+        # Same branch order/semantics as the pre-fix flat loop: has_table is
+        # tried first (with the same has_table-but-empty swallow), then
+        # has_text_frame.
+        if getattr(shape, "has_table", False):
+            try:
+                _emit_table(shape)
+                return
+            except Exception:
+                # Shape reports has_table but doesn't contain one.
+                pass
+        _emit_text_frame(shape)
+
+    def _flat_collect(shapes) -> None:
+        # Depth-limit flat extraction: reach every leaf tf/table WITHOUT the
+        # bound and WITHOUT further warnings (BR-116 never-drop clause).
+        # Mirrors DOCX's _flatten_nested_table_text (unbounded recursion at
+        # the limit so deeper content is never silently dropped).
+        for shape in shapes:
+            if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+                _flat_collect(shape.shapes)
+            else:
+                _emit_leaf(shape)
+
+    def _collect(shapes, depth: int) -> None:
+        # depth = group-nesting depth; 0 = top-level slide.shapes (not inside
+        # a group). A group at depth d recurses to d+1 iff d < MAX_GROUP_
+        # NESTING_DEPTH; at the bound its contents are flat-extracted
+        # (never dropped) with exactly one WARNING.
+        for shape in shapes:
+            if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+                if depth < config.MAX_GROUP_NESTING_DEPTH:
+                    _collect(shape.shapes, depth + 1)
+                else:
+                    _group_depth_log.warning(
+                        "[PPTX] Group nesting exceeds MAX_GROUP_NESTING_DEPTH=%d; "
+                        "flattening its contents instead of recursing further",
+                        config.MAX_GROUP_NESTING_DEPTH,
+                    )
+                    _flat_collect(shape.shapes)
+            else:
+                _emit_leaf(shape)
+
+    for slide in prs.slides:
+        _collect(slide.shapes, 0)
 
     # Extract SmartArt texts
     smartart_texts = _extract_smartart_texts(in_path)
