@@ -1,0 +1,53 @@
+agent: monkey-test-engineer
+change-id: truncation-length-guard
+status: complete
+summary: >
+  Probed the FALSE-POSITIVE boundary of is_suspiciously_short() with 26
+  named adversarial scenarios (realistic legit-short, exact-boundary,
+  fail-safe adversarial, degenerate, Unicode/composition, injection-like
+  strings, seeded property fuzz). Extended tests/test_length_guard.py
+  (already in Allowed Paths) rather than creating a new file. Found ONE
+  genuine false positive: an extreme-compression "long CJK phrase -> bare
+  Latin acronym" translation (e.g. "ISO 9001" for a 21-char descriptive CJK
+  source) IS flagged (ratio 0.109, well below k=0.3), even though it reads
+  as a complete correct translation. Verified this is a structural property
+  (translated_len must be roughly >= source CJK char count to escape the
+  flag), not a one-off. Confirmed it lies outside the 233-pair calibration
+  corpus's observed range (0% FP at k up to 0.5 implies every real pair had
+  ratio >= 0.5), so not a proven production defect, but a real,
+  previously-undocumented residual risk for bare-acronym/code-only cells.
+  Tracked via xfail(strict=True) so the gate stays green and the finding
+  cannot be silently lost; documented as a BLOCKING-severity finding in
+  monkey-test-report.md with reproduction, mechanism, and containment
+  analysis (keep-longest/never-source/bounded-1-attempt recovery bounds the
+  worst-case damage). All other 25 scenarios passed: realistic legit-short
+  (30-46% of E) not flagged; exact strict-< boundary correct; all 3
+  fail-safes independently confirmed at their exact boundaries (source
+  14-vs-15 chars, E==0 x4 variants, uncalibrated-target x6 variants); target
+  key normalization (case/whitespace) does NOT go silently inert; degenerate
+  inputs (empty/whitespace/None/single-char) behave correctly, including the
+  true-positive empty-translation-of-long-source case; Unicode composition
+  (full-width digits, CJK punctuation, combining marks, RTL Arabic, ZWJ,
+  surrogate-pair emoji, BOM) never miscounts or crashes; SQL/script-like
+  strings handled as plain text with no crash. Seeded fuzz (3 seeds
+  recorded) confirms fail-safe/no-crash/mathematically-bounded-safe
+  invariants across randomized content.
+artifacts:
+  - { type: test-files, pointer: "tests/test_length_guard.py (extended, +26 tests across 9 new classes)" }
+  - { type: failure-modes-mapped, pointer: "realistic legit-short (30-46% of E) -> not flagged (PASS)" }
+  - { type: failure-modes-mapped, pointer: "extreme bare-acronym compression (~11% of E) -> flagged; GENUINE FALSE POSITIVE; xfail(strict=True), reported BLOCKING in monkey-test-report.md" }
+  - { type: failure-modes-mapped, pointer: "exact strict-< boundary (floor(k*E) vs floor(k*E)+1) -> correct split" }
+  - { type: failure-modes-mapped, pointer: "source-length floor (MIN_SOURCE_CHARS-1 vs exact) -> no-flag/genuine-flag split correct" }
+  - { type: failure-modes-mapped, pointer: "E==0 (digits/punctuation/fullwidth-space sources) -> never flagged regardless of translation length" }
+  - { type: failure-modes-mapped, pointer: "uncalibrated target (6 forms incl. None, vi-VN, Klingon) -> never flags a real 4827-char truncation case" }
+  - { type: failure-modes-mapped, pointer: "target key case/whitespace variants -> guard stays ACTIVE (does not go silently inert)" }
+  - { type: failure-modes-mapped, pointer: "empty translation of long source -> flags (true positive, the bug shape itself)" }
+  - { type: failure-modes-mapped, pointer: "Unicode edge cases (fullwidth digits, CJK punctuation, combining marks, RTL+ZWJ+emoji, BOM) -> no miscount, no crash, proportional translations not flagged" }
+  - { type: seeds-recorded, pointer: "uncalibrated-target-never-flags fuzz: seed 20260711, n=200" }
+  - { type: seeds-recorded, pointer: "never-raises-always-bool fuzz: seed 20260712, n=300" }
+  - { type: seeds-recorded, pointer: "mathematically-bounded-safe-length fuzz: seed 20260713, n=200" }
+  - { type: test-output, pointer: "tests/test_length_guard.py: 56 passed, 1 xfailed (conda run -n translate-tool pytest tests/test_length_guard.py -q)" }
+  - { type: test-output, pointer: "full suite: 1466 passed, 4 skipped, 1 xfailed, 0 failed, 141.69s (conda run -n translate-tool pytest tests/ -q)" }
+known-risks:
+  - "Bare-acronym/code-only cell content (extreme compression, ratio well below 0.3) is a genuine gap outside the 233-pair calibration corpus's observed range; contained (not fixed) by keep-longest/never-source/bounded-1-attempt recovery. Recommend a design.md Open Risks addendum or a tracked follow-up before extending this coefficient model to a new target or to non-prose cell content generally."
+next-reviewer: qa-reviewer (regression-report.md; decide whether the xfail finding needs a separate tracked follow-up change or a design.md addendum before sign-off)

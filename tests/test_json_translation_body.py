@@ -313,3 +313,36 @@ class TestFlagOffLegacyPath:
         assert client.json_calls == [], "flag OFF must never call translate_json"
         assert client.once_calls == [GENUINE_SEGMENT]
         assert results == [(True, "FALLBACK_RESULT")]
+
+
+# ---------------------------------------------------------------------------
+# truncation-length-guard (BR-117, ADR-0020): AC-7 out-of-scope confirmation
+# (D1 — the guard is DOCX table-cell-acceptance-seam ONLY; the body/segment
+# path is not wired to it).
+# ---------------------------------------------------------------------------
+
+class TestLengthGuardOutOfScope:
+    def test_body_path_unaffected_by_length_guard(self, monkeypatch):
+        """A reply that WOULD be flagged by the length guard's own
+        composition model (the recorded 4827->370 bug ratio) must be
+        accepted UNCHANGED on the body path — no fallback/recovery call
+        fires. This confirms the guard is not wired here (D1 scope), not
+        merely that no import of it exists in this module."""
+        monkeypatch.setattr(config, "JSON_STRUCTURED_TRANSLATION_ENABLED", True)
+        long_cjk_source = "測" * 4827
+        suspiciously_short_reply = "字" * 370
+
+        from app.backend.utils.length_guard import is_suspiciously_short
+        assert is_suspiciously_short(long_cjk_source, suspiciously_short_reply, "Vietnamese") is True, (
+            "sanity check: this reply WOULD be flagged if the guard applied here"
+        )
+
+        client = _JsonBodyClient(json_reply=json.dumps({"translation": suspiciously_short_reply}))
+
+        results = translate_merged_paragraphs([long_cjk_source], "Vietnamese", "zh", client)
+
+        assert client.once_calls == [], "no fallback/recovery call must fire on the body path"
+        assert results == [(True, suspiciously_short_reply)], (
+            "body path must accept the suspiciously-short reply unchanged "
+            "(guard is DOCX table-cell-acceptance-seam only, D1)"
+        )

@@ -1,0 +1,7 @@
+agent: ci-cd-gatekeeper
+change-id: truncation-length-guard
+artifacts:
+  - { type: tiers-modified, pointer: "n/a (no tier changed — existing Tier 1/2 gates absorb this change)" }
+  - { type: gate-promotions, pointer: "none" }
+  - { type: workflow-files-changed, pointer: "n/a (no .github/workflows/*.yml edit — change-classification.md marks CI/CD contract: none, tasks 2.6/4.4 skipped)" }
+  - { type: required-status-checks, pointer: "contract-and-fast-tests (unchanged), full-regression (unchanged), golden-sample-regression (unchanged)" }

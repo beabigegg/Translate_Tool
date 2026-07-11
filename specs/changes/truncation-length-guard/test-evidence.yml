@@ -1,0 +1,48 @@
+change-id: truncation-length-guard
+schema-version: 0.1.0
+generated-by: cdd-kit test run
+required-phases:
+  - collect
+  - targeted
+  - changed-area
+  - contract
+  - full
+runs:
+  - phase: collect
+    status: passed
+    command: >-
+      python -m pytest tests/test_length_guard.py --collect-only -q
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/truncation-length-guard/test-runs/20260711-133354/junit.xml'
+      --maxfail=1 --tb=short -ra
+    summary: specs/changes/truncation-length-guard/test-runs/20260711-133354/summary.json
+    junit: specs/changes/truncation-length-guard/test-runs/20260711-133354/junit.xml
+  - phase: targeted
+    status: passed
+    command: >-
+      python -m pytest tests/test_length_guard.py -q --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/truncation-length-guard/test-runs/20260711-133356/junit.xml'
+      --maxfail=1
+    summary: specs/changes/truncation-length-guard/test-runs/20260711-133356/summary.json
+    junit: specs/changes/truncation-length-guard/test-runs/20260711-133356/junit.xml
+  - phase: changed-area
+    status: passed
+    command: >-
+      python -m pytest tests/test_length_guard.py tests/test_docx_nested_tables.py tests/test_json_translation_body.py
+      tests/test_table_context_translation.py tests/test_table_serialization.py -q --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/truncation-length-guard/test-runs/20260711-133358/junit.xml'
+      --maxfail=1
+    summary: specs/changes/truncation-length-guard/test-runs/20260711-133358/summary.json
+    junit: specs/changes/truncation-length-guard/test-runs/20260711-133358/junit.xml
+  - phase: contract
+    status: passed
+    command: cdd-kit validate --contracts --env --ci
+    summary: specs/changes/truncation-length-guard/test-runs/20260711-133402/summary.json
+  - phase: full
+    status: passed
+    command: >-
+      python -m pytest -q --tb=short -ra
+      --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/truncation-length-guard/test-runs/20260711-133436/junit.xml'
+      --maxfail=1
+    summary: specs/changes/truncation-length-guard/test-runs/20260711-133436/summary.json
+    junit: specs/changes/truncation-length-guard/test-runs/20260711-133436/junit.xml
+final-status: passed

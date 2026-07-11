@@ -1,0 +1,15 @@
+{
+  "change_id": "truncation-length-guard",
+  "phase": "contract",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "cdd-kit validate --contracts --env --ci",
+  "duration_ms": 509,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/truncation-length-guard/test-runs/20260711-125041/summary.json",
+    "stdout": "specs/changes/truncation-length-guard/test-runs/20260711-125041/stdout.log",
+    "stderr": "specs/changes/truncation-length-guard/test-runs/20260711-125041/stderr.log"
+  },
+  "next_action": "proceed to the next phase"
+}

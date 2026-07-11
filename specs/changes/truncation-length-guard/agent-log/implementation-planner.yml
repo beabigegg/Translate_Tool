@@ -1,0 +1,24 @@
+agent: implementation-planner
+status: complete
+summary: >
+  Wrote implementation-plan.md (IP-1..IP-8). Verified every seam against LIVE source.
+  Key correction (NOT a blocker): the truncation acceptance point is
+  docx_processor.py:1054-1058 (whole-table JSON happy-path AND legacy pipe-grid), NOT
+  the ~L1088-1132 cited by BR-117/design (that block is the BR-82 recovery machinery,
+  reached only when translated_by_pos is None). Source (s.text) + translation
+  (translated_by_pos[(r,c)]) ARE co-located at 1054-1058, so no design gap.
+artifacts:
+  - { type: plan-written, pointer: "specs/changes/truncation-length-guard/implementation-plan.md" }
+  - { type: owner-map, pointer: "backend-engineer, monkey-test-engineer, qa-reviewer" }
+  - { type: scope-summary, pointer: "6 in scope (config const, count_composition, length_guard.py, _recover helper, seam wiring, tests); 6 out of scope (body path, pptx/xlsx, BR-82 else-branch, IR field, render_truncated, env/CI)" }
+notes: |
+  Verified seams: length_guard.py absent (new module confirmed); no is_suspiciously_short
+  / count_composition exists in app/backend (grep). Guard home = new length_guard.py
+  (pure, no I/O); reuse text_utils.has_cjk CJK predicate + normalize_text; add
+  count_composition to text_utils.py. config constants beside MAX_GROUP_NESTING_DEPTH
+  (config.py:139). BR-82 block (L1101-1119) reusable non-re-entrantly via a NEW
+  _recover_truncated_cell helper (do NOT refactor the existing else-branch — AC-7).
+  max_batch_chars / client / src_lang / stop_flag / log all in-scope at the seam.
+  Flagged to contract-reviewer: BR-117 "acceptance seam ~L1088-1132" wording should
+  read L1054-1058. Flagged to backend-engineer: coefficient-table key must match the
+  live tgt string ("vietnamese" vs "vi"/"vi-VN") or the guard silently fail-safes inert.

@@ -26,6 +26,7 @@ from app.backend.processors.com_helpers import is_win32com_available, postproces
 from app.backend.services.translation_service import translate_texts
 from app.backend.utils import json_translation
 from app.backend.utils.exceptions import ApiError, check_document_size_limits
+from app.backend.utils.length_guard import is_suspiciously_short
 from app.backend.utils.logging_utils import logger
 from app.backend.utils.text_utils import has_cjk, is_numeric_cell, normalize_text, should_translate
 
@@ -837,6 +838,43 @@ def _translate_docx_via_doc2doc(
     return tmap, len(texts) - fail_cnt, fail_cnt, False
 
 
+def _recover_truncated_cell(
+    cell_text: str,
+    tgt: str,
+    src_lang: Optional[str],
+    client: OllamaClient,
+    max_batch_chars: int,
+    stop_flag: Optional[threading.Event],
+    log: Callable[[str], None],
+) -> str:
+    """Recover ONE flagged (suspiciously-short) table cell (truncation-length-
+    guard, BR-117, ADR-0020 decision 3).
+
+    Mirrors the BR-82 split-and-retranslate pattern (~L1101-1132) for a
+    single cell: split on "\n", re-translate each unique non-empty line via
+    `translate_texts`, reassemble. Bounded to ONE attempt and NON-RE-ENTRANT
+    — this helper never calls `is_suspiciously_short` on its own output, so
+    it cannot loop (ADR-0020 reversal-guarded invariant 2).
+
+    Missing lines (not returned by `translate_texts`) fall back to their
+    original line text within the reassembly, matching the existing BR-82
+    partial-recovery behavior — this is not a whole-source substitution.
+    """
+    src_for_prompt = src_lang or "auto"
+    lines = cell_text.split("\n")
+    uniq_lines = list(dict.fromkeys(
+        line for line in lines if line.strip() and should_translate(line, src_for_prompt)
+    ))
+    fallback_tmap: Dict = {}
+    if uniq_lines:
+        fallback_tmap, _, _, _ = translate_texts(
+            uniq_lines, [tgt], src_lang, client,
+            max_batch_chars=max_batch_chars,
+            stop_flag=stop_flag, log=log,
+        )
+    return "\n".join(fallback_tmap.get((tgt, line), line) for line in lines)
+
+
 def translate_docx(
     in_path: str,
     out_path: str,
@@ -1052,10 +1090,33 @@ def translate_docx(
                         }
 
                 if translated_by_pos is not None:
+                    # truncation-length-guard (BR-117): a well-formed, shape-valid
+                    # reply can still be suspiciously short (recorded 4827->370
+                    # bug). Flag per accepted cell, recover ONCE (non-re-entrant,
+                    # never re-checked), keep the longest of {accepted, recovered}.
+                    # Recovered values are cached by source text so a cell text
+                    # repeated across columns is recovered once and logs once.
+                    _recovered_cells: Dict[str, str] = {}
                     for s in t_segs:
                         r, c = s.row, s.col
                         if s.text.strip() and (r, c) in translated_by_pos:
-                            final_tmap[(tgt, s.text, c)] = translated_by_pos[(r, c)]
+                            accepted = translated_by_pos[(r, c)]
+                            if is_suspiciously_short(s.text, accepted, tgt):
+                                if s.text not in _recovered_cells:
+                                    recovered = _recover_truncated_cell(
+                                        s.text, tgt, src_lang, client,
+                                        max_batch_chars, stop_flag, log,
+                                    )
+                                    kept = accepted if len(accepted) >= len(recovered) else recovered
+                                    logger.warning(
+                                        "[DOCX] Table group %s: truncation-guard flagged cell "
+                                        "(target=%s) accepted_len=%d recovered_len=%d kept_len=%d",
+                                        table_id, tgt, len(accepted), len(recovered), len(kept),
+                                    )
+                                    _recovered_cells[s.text] = kept
+                                final_tmap[(tgt, s.text, c)] = _recovered_cells[s.text]
+                            else:
+                                final_tmap[(tgt, s.text, c)] = accepted
                 else:
                     if stop_flag and stop_flag.is_set():
                         # Table groups processed after the stop signal fires never reach

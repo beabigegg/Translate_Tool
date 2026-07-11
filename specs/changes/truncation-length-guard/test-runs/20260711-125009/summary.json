@@ -1,0 +1,19 @@
+{
+  "change_id": "truncation-length-guard",
+  "phase": "collect",
+  "status": "failed",
+  "exit_code": 4,
+  "command": "python -m pytest --collect-only -q tests/test_length_guard.py tests/test_docx_nested_tables.py::test_layout_cell_truncated_reply_flagged_and_recovered tests/test_json_translation_body.py::test_body_path_unaffected_by_length_guard --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/truncation-length-guard/test-runs/20260711-125009/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 384,
+  "first_failure": {
+    "kind": "runner-error",
+    "message": "pytest usage error"
+  },
+  "artifacts": {
+    "summary": "specs/changes/truncation-length-guard/test-runs/20260711-125009/summary.json",
+    "stdout": "specs/changes/truncation-length-guard/test-runs/20260711-125009/stdout.log",
+    "stderr": "specs/changes/truncation-length-guard/test-runs/20260711-125009/stderr.log",
+    "junit": "specs/changes/truncation-length-guard/test-runs/20260711-125009/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

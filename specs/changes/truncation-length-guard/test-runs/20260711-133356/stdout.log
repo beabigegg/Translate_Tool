@@ -1,0 +1,4 @@
+..................x......................................                [100%]
+=========================== short test summary info ============================
+XFAIL tests/test_length_guard.py::TestFPBoundaryExtremeCompression::test_extreme_acronym_shrink_currently_flagged_tracked_gap - genuine FP-boundary gap: bare-acronym compression below ~15% of E is flagged even though it is a complete, correct translation; tracked in monkey-test-report.md as a BLOCKING finding, contained (not fixed) by keep-longest/never-source/bounded-1-attempt recovery
+56 passed, 1 xfailed in 0.60s

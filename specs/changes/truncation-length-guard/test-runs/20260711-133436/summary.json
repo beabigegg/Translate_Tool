@@ -1,0 +1,16 @@
+{
+  "change_id": "truncation-length-guard",
+  "phase": "full",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest -q --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/truncation-length-guard/test-runs/20260711-133436/junit.xml' --maxfail=1",
+  "duration_ms": 139476,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/truncation-length-guard/test-runs/20260711-133436/summary.json",
+    "stdout": "specs/changes/truncation-length-guard/test-runs/20260711-133436/stdout.log",
+    "stderr": "specs/changes/truncation-length-guard/test-runs/20260711-133436/stderr.log",
+    "junit": "specs/changes/truncation-length-guard/test-runs/20260711-133436/junit.xml"
+  },
+  "next_action": "all phases green"
+}

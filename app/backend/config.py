@@ -138,6 +138,18 @@ MAX_TABLE_NESTING_DEPTH = 3
 # env-contract.md forbids an env row for this value).
 MAX_GROUP_NESTING_DEPTH = 3
 
+# DOCX table-cell truncation-length-guard (truncation-length-guard, BR-117).
+# Hardcoded constants, NOT env vars (mirror MAX_TABLE_NESTING_DEPTH /
+# MAX_GROUP_NESTING_DEPTH above; env-contract.md forbids an env row for these
+# values). Coefficient table is keyed by the normalized (stripped, lowercased)
+# target language string, e.g. "vietnamese" for the live "Vietnamese" target.
+TRUNCATION_GUARD_K = 0.3
+TRUNCATION_GUARD_COEFFICIENTS = {
+    "vietnamese": (3.51, 0.75),  # (a_cjk, b_latin_alpha)
+}
+TRUNCATION_GUARD_MIN_SOURCE_CHARS = 15
+TRUNCATION_GUARD_MAX_RECOVERY_ATTEMPTS = 1
+
 # Long-document chunking overlap (p2-long-doc-chunking, BR-47, BR-49)
 # Number of tokens of overlap shared between adjacent chunks.
 # Must be a positive integer and must be < num_ctx (enforced at chunker init).
