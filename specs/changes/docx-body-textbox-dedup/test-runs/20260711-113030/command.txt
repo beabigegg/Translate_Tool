@@ -1,0 +1,1 @@
+python -m pytest --collect-only -q tests/test_docx_body_textbox_dedup.py tests/test_docx_header_footer.py::TestTxbxContentStrippedFromHeader::test_body_paragraph_textbox_fold_in_unchanged --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-body-textbox-dedup/test-runs/20260711-113030/junit.xml' --maxfail=1 --tb=short -ra

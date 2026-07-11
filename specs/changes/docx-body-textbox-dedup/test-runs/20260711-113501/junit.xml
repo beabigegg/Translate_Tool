@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.241" timestamp="2026-07-11T11:35:01.399042+08:00" hostname="EGG"><testcase classname="tests.test_docx_body_textbox_dedup.TestBodyTextboxCollectedOnce" name="test_body_paragraph_excludes_textbox_text" time="0.023"><failure message="AssertionError: assert 'BODY_PLAINTB_TEXT' == 'BODY_PLAIN'&#10;  &#10;  - BODY_PLAIN&#10;  + BODY_PLAINTB_TEXT">tests/test_docx_body_textbox_dedup.py:127: in test_body_paragraph_excludes_textbox_text
+    assert body_seg.text == "BODY_PLAIN"
+E   AssertionError: assert 'BODY_PLAINTB_TEXT' == 'BODY_PLAIN'
+E     
+E     - BODY_PLAIN
+E     + BODY_PLAINTB_TEXT</failure></testcase></testsuite></testsuites>

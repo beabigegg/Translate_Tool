@@ -1,0 +1,6 @@
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/docx-body-textbox-dedup/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_docx_body_textbox_dedup.py (new) → app/backend/processors/docx_processor.py L427/L550/L596/L664" }
+  - { type: tdd-pairs, pointer: "tests/test_docx_header_footer.py::TestTxbxContentStrippedFromHeader::test_body_paragraph_textbox_fold_in_unchanged (update) → app/backend/processors/docx_processor.py L427" }
+  - { type: coverage-tiers, pointer: "unit (tier 0), integration (tier 1); no contract/e2e/data-boundary/resilience/monkey/stress/soak surface" }
+  - { type: mapping-completeness, pointer: "AC-1..AC-7 all mapped; RED repro named (test_body_paragraph_excludes_textbox_text); pinned-bug test flagged for repurposing" }

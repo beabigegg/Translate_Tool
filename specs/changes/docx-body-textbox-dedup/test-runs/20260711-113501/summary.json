@@ -1,0 +1,20 @@
+{
+  "change_id": "docx-body-textbox-dedup",
+  "phase": "targeted",
+  "status": "failed",
+  "exit_code": 1,
+  "command": "python -m pytest tests/test_docx_body_textbox_dedup.py::TestBodyTextboxCollectedOnce::test_body_paragraph_excludes_textbox_text -q --maxfail=1 --tb=short -ra --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-body-textbox-dedup/test-runs/20260711-113501/junit.xml'",
+  "duration_ms": 511,
+  "first_failure": {
+    "kind": "assertion-failure",
+    "nodeid": "tests.test_docx_body_textbox_dedup.TestBodyTextboxCollectedOnce::test_body_paragraph_excludes_textbox_text",
+    "message": "AssertionError: assert 'BODY_PLAINTB_TEXT' == 'BODY_PLAIN'\n  \n  - BODY_PLAIN\n  + BODY_PLAINTB_TEXT"
+  },
+  "artifacts": {
+    "summary": "specs/changes/docx-body-textbox-dedup/test-runs/20260711-113501/summary.json",
+    "stdout": "specs/changes/docx-body-textbox-dedup/test-runs/20260711-113501/stdout.log",
+    "stderr": "specs/changes/docx-body-textbox-dedup/test-runs/20260711-113501/stderr.log",
+    "junit": "specs/changes/docx-body-textbox-dedup/test-runs/20260711-113501/junit.xml"
+  },
+  "next_action": "fix the first failure before running broader phases; do not waive it"
+}

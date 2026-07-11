@@ -179,16 +179,20 @@ class TestTxbxContentStrippedFromHeader:
         assert "TB_TEXT" not in hdr_seg.text
 
     def test_body_paragraph_textbox_fold_in_unchanged(self):
-        """Guards AC-6: the BODY path must keep its existing (pre-existing,
-        out-of-scope) fold-in behavior — proves `_p_text_with_breaks` itself
-        was not globally changed."""
+        """Under amended BR-115 (docx-body-textbox-dedup), the BODY path ALSO
+        strips `<w:txbxContent>` text from its `para` segment, exactly like
+        the header/footer path above — the textbox text is collected exactly
+        once via the dedicated `txbx` segment instead of being folded into
+        the paragraph. `_p_text_with_breaks` itself remains unchanged; the
+        body walk now threads `_p_text_no_txbx` instead."""
         doc = docx.Document()
         bp = doc.add_paragraph("BODY_PLAIN")
         _add_textbox_to_paragraph(bp)
 
         segs = _docx_proc._collect_docx_segments(doc)
         body_seg = next(s for s in segs if s.ctx == "Body" and s.kind == "para")
-        assert body_seg.text == "BODY_PLAINTB_TEXT"
+        assert body_seg.text == "BODY_PLAIN"
+        assert "TB_TEXT" not in body_seg.text
 
 
 class TestComCallSiteUnchanged:

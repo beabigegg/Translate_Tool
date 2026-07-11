@@ -1,0 +1,20 @@
+agent: qa-reviewer
+status: approved
+summary: >
+  Release-ready. Bug-fix RED is a genuine behavioral failure (BODY_PLAINTB_TEXT==BODY_PLAIN).
+  L429 threads _p_text_no_txbx (correctness); 3 restore sites also swapped (inert hygiene,
+  framed honestly). Pinning test flipped. QA independently re-ran the probe (textbox-free
+  0-delta, textbox-doc -53) and falsifiability sabotage (revert L429 -> AC-1/2/3 RED),
+  restored byte-identical.
+artifacts:
+  - { type: gate-results, pointer: "non-strict gate passes; --strict pending-tasks-only (5.4/6.x/7.x)" }
+  - { type: evidence-quality, pointer: "repro — re-ran probe_paracell_delta.py + snapshot-sabotage, sha 4da6dc3f byte-identical" }
+  - { type: bugfix-red, pointer: "specs/changes/docx-body-textbox-dedup/test-runs/20260711-113501/summary.json" }
+  - { type: decision, pointer: "approved" }
+  - { type: failure-routing, pointer: "none" }
+notes: |
+  Full junit 20260711-114144: 1411 tests, 0 fail, 4 skips; contains the 10 new tests + the
+  flipped header-footer test. AC-4 test spies extractor invocation (wraps=, call_count>=1),
+  not a tmap-miss. AC-5 probe: EN-P-QC1102-D7 10177->10124, W-RM0901-G6 0-delta. Falsifiability:
+  reverting L429 turned AC-1/2/3 + AC-4-body-spy RED (5 failed), hygiene spies + AC-5/6 stayed
+  green. _txbx_iter_texts unchanged (AC-6). Residual: Linux header textboxes pre-existing, not widened.
