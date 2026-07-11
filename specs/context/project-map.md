@@ -304,6 +304,7 @@ Translate_Tool/
 |   |-- test_critique_loop_batching.py
 |   |-- test_dead_references.py
 |   |-- test_doc_chunker.py
+|   |-- test_docx_body_textbox_dedup.py
 |   |-- test_docx_header_footer.py
 |   |-- test_docx_nested_tables.py
 |   |-- test_docx_parser.py
@@ -337,8 +338,7 @@ Translate_Tool/
 |   |-- test_openai_compatible_client.py
 |   |-- test_orchestrator_context_detection.py
 |   |-- test_orchestrator_judge.py
-|   |-- test_orchestrator_phase0.py
-|   \-- ... (38 more entries truncated; cap=50)
+|   \-- ... (39 more entries truncated; cap=50)
 |-- .env
 |-- .gitignore
 |-- AGENTS.md
