@@ -1,0 +1,16 @@
+{
+  "change_id": "docx-header-footer-collection",
+  "phase": "collect",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "python -m pytest tests/test_docx_header_footer.py --collect-only -q --junitxml='/home/egg/Projects/Translate_Tool/specs/changes/docx-header-footer-collection/test-runs/20260711-092330/junit.xml' --maxfail=1 --tb=short -ra",
+  "duration_ms": 436,
+  "first_failure": null,
+  "artifacts": {
+    "summary": "specs/changes/docx-header-footer-collection/test-runs/20260711-092330/summary.json",
+    "stdout": "specs/changes/docx-header-footer-collection/test-runs/20260711-092330/stdout.log",
+    "stderr": "specs/changes/docx-header-footer-collection/test-runs/20260711-092330/stderr.log",
+    "junit": "specs/changes/docx-header-footer-collection/test-runs/20260711-092330/junit.xml"
+  },
+  "next_action": "proceed to the next phase"
+}

@@ -1,0 +1,52 @@
+agent: backend-engineer
+change-id: docx-header-footer-collection
+status: done
+summary: >-
+  Implemented BR-115 native DOCX header/footer paragraph+table collection.
+  Added module-level _p_text_no_txbx (txbxContent-stripped variant of
+  _p_text_with_breaks), threaded an optional text_extractor param through
+  _add_paragraph/_cell_direct_text/_flatten_nested_table_text/_process_table/
+  _process_container_content, and appended a six-slot per-section
+  <w:hdr>/<w:ftr> collection block AFTER the body walk, deduped by element
+  identity (seen_parts holds elements, never id()). Body call at L~427 and
+  the COM call site (include_headers=True) are byte-for-byte unchanged.
+  Wrote tests/test_docx_header_footer.py (14 tests) covering AC-1..AC-7.
+  Verified 3 required falsifiability hazards by snapshot-sabotage-restore:
+  txbx-strip revert, dedup-guard removal, and pre-body-walk reordering all
+  produced the expected RED before restore.
+artifacts:
+  - { type: files-changed, pointer: "app/backend/processors/docx_processor.py:51-71 (_p_text_no_txbx)" }
+  - { type: files-changed, pointer: "app/backend/processors/docx_processor.py:258-449 (text_extractor threading through collection closures)" }
+  - { type: files-changed, pointer: "app/backend/processors/docx_processor.py:434-459 (six-slot header/footer collection block, after body walk)" }
+  - { type: tests-added, pointer: "tests/test_docx_header_footer.py::TestNativeCollectionLeavesNoSourceText (AC-1)" }
+  - { type: tests-added, pointer: "tests/test_docx_header_footer.py::TestHeaderTableAndNestedTableCollected (AC-2)" }
+  - { type: tests-added, pointer: "tests/test_docx_header_footer.py::TestTxbxContentStrippedFromHeader (AC-3)" }
+  - { type: tests-added, pointer: "tests/test_docx_header_footer.py::TestComCallSiteUnchanged (AC-3)" }
+  - { type: tests-added, pointer: "tests/test_docx_header_footer.py::TestLinkedPartCollectedOnce (AC-4, incl. header-table fixture that actually falls through paragraph-level seen_par_keys masking)" }
+  - { type: tests-added, pointer: "tests/test_docx_header_footer.py::TestAllSixSlotsTraversed (AC-5)" }
+  - { type: tests-added, pointer: "tests/test_docx_header_footer.py::TestBodyIndicesUnaffectedByHeaderCollection (AC-6, incl. absolute-index and post_translate_hook block-id guards)" }
+  - { type: tests-added, pointer: "tests/test_docx_header_footer.py::TestWriteBackPersistsAcrossSave (AC-7)" }
+  - { type: test-output, pointer: "14 passed in 0.39s (tests/test_docx_header_footer.py); full suite: exit 0, 170513 ms (specs/changes/docx-header-footer-collection/test-runs/20260711-091540/summary.json)" }
+  - { type: contracts-touched, pointer: "none (BR-115 already LIVE before this session; business-rules.md/design.md/ADR-0019 not edited by backend-engineer)" }
+falsifiability-evidence:
+  - hazard: txbx-strip (AC-3)
+    method: "snapshot docx_processor.py, reverted header/footer call's text_extractor=_p_text_no_txbx back to _p_text_with_breaks, restored from snapshot after"
+    red-result: "TestTxbxContentStrippedFromHeader::test_header_paragraph_excludes_textbox_text FAILED — assert 'HDR_PLAINTB_TEXT' == 'HDR_PLAIN'"
+  - hazard: element-identity dedup (AC-4)
+    method: "snapshot, removed the is_linked_to_previous short-circuit AND the seen_parts set entirely, restored after"
+    red-result: "TestLinkedPartCollectedOnce::test_linked_header_table_cell_collected_exactly_once FAILED — assert 2 == 1 (note: the two plain-paragraph AC-4 tests stayed green under this sabotage because a separate pre-existing paragraph-level seen_par_keys dedup masks it for paragraphs; the header-TABLE-cell fixture is the one that genuinely exercises the slot-level seen_parts guard, since _process_table's seen_tc is a fresh local set per call with no cross-slot dedup)"
+  - hazard: after-body ordering (AC-6)
+    method: "snapshot, moved the six-slot header/footer collection block to run BEFORE _process_container_content(doc._body, ...), restored after"
+    red-result: "TestBodyIndicesUnaffectedByHeaderCollection::test_absolute_segment_zero_is_first_body_paragraph_not_header and ::test_post_translate_hook_block_ids_index_body_paragraphs_only both FAILED — assert 'HEADER_MARKER' == 'Body para 0' (note: the ctx-filtered order test alone stayed green under this sabotage, which is why the two absolute-index/hook-id tests were added as the real falsifiability guard)"
+commands-run:
+  - "conda run -n translate-tool python <probe scripts, scratchpad> — R-1 confirmed already CLOSED in plan; live-verified the _p_text_no_txbx xpath predicate and all six-slot accessors before wiring (IP-1/IP-4)"
+  - "conda run -n translate-tool cdd-kit test select docx-header-footer-collection --json"
+  - "conda run -n translate-tool cdd-kit test run docx-header-footer-collection --phase collect --command \"python -m pytest --collect-only -q tests/test_docx_header_footer.py\" --required-phases collect,targeted,changed-area,contract,full"
+  - "conda run -n translate-tool cdd-kit test run docx-header-footer-collection --phase targeted --command \"python -m pytest tests/test_docx_header_footer.py -q --maxfail=1 --tb=short -ra\""
+  - "conda run -n translate-tool cdd-kit test run docx-header-footer-collection --phase changed-area --command \"python -m pytest tests/test_docx_header_footer.py tests/test_docx_nested_tables.py tests/test_docx_parser.py -q --maxfail=1 --tb=short -ra\""
+  - "conda run -n translate-tool cdd-kit test run docx-header-footer-collection --phase contract --command \"cdd-kit validate --contracts --env --ci\""
+  - "conda run -n translate-tool cdd-kit test run docx-header-footer-collection --phase full --command \"python -m pytest -q --maxfail=1 --tb=short -ra\""
+known-risks:
+  - "Header-anchored textboxes on Linux remain unhandled (pre-existing textbox-scope gap; out of scope per plan)."
+  - "The body's pre-existing textbox double-count (_p_text_with_breaks + _txbx_iter_texts overlap) was NOT touched, per plan Out of Scope."
+next-reviewer: qa-engineer

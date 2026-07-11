@@ -1,0 +1,5 @@
+artifacts:
+  - { type: test-plan-path, pointer: "specs/changes/docx-header-footer-collection/test-plan.md" }
+  - { type: tdd-pairs, pointer: "tests/test_docx_header_footer.py (new) → app/backend/processors/docx_processor.py (_collect_docx_segments, _insert_docx_translations, translate_docx)" }
+  - { type: coverage-tiers, pointer: "unit (tier 0), integration (tier 1); no contract/e2e/data-boundary/resilience/monkey/stress/soak — no API/UI/env/load surface" }
+  - { type: mapping-completeness, pointer: "AC-1..AC-7 all mapped; BR-115 is sole contract anchor" }

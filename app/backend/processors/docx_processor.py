@@ -48,6 +48,29 @@ def _p_text_with_breaks(p: Paragraph) -> str:
     return "".join(parts).strip()
 
 
+def _p_text_no_txbx(p: Paragraph) -> str:
+    """Same as `_p_text_with_breaks` but excludes text under `<w:txbxContent>`
+    (BR-115 Option C). Used ONLY for header/footer paragraph/cell extraction so
+    a header-anchored textbox stays exclusively owned by the Windows COM shapes
+    pass (`postprocess_docx_shapes_with_word`) instead of being folded into the
+    native paragraph segment and translated twice. Must NOT be used for the
+    body walk (AC-6) — `_p_text_with_breaks` stays byte-for-byte unchanged.
+    """
+    parts = []
+    for node in p._p.xpath(
+        ".//*[(local-name()='t' or local-name()='br' or local-name()='tab') "
+        "and not(ancestor::*[local-name()='txbxContent'])]"
+    ):
+        tag = node.tag.split("}", 1)[-1]
+        if tag == "t":
+            parts.append(node.text or "")
+        elif tag == "br":
+            parts.append("\n")
+        else:
+            parts.append(" ")
+    return "".join(parts).strip()
+
+
 def _append_after(p: Paragraph, text_block: str, italic: bool = True, font_size_pt: int = INSERT_FONT_SIZE_PT) -> Paragraph:
     new_p = OxmlElement("w:p")
     p._p.addnext(new_p)
@@ -232,13 +255,13 @@ def _collect_docx_segments(
     next_table_id = 0
     depth_limit_warned = False
 
-    def _add_paragraph(p: Paragraph, ctx: str) -> None:
+    def _add_paragraph(p: Paragraph, ctx: str, text_extractor: Callable[[Paragraph], str] = _p_text_with_breaks) -> None:
         nonlocal total_text_length
         try:
             p_key = p._p  # element identity dedup (BR-81 amended: never id())
             if p_key in seen_par_keys:
                 return
-            txt = _p_text_with_breaks(p)
+            txt = text_extractor(p)
             if txt.strip() and not _is_our_insert_block(p):
                 segs.append(Segment("para", p, ctx, txt))
                 seen_par_keys.add(p_key)
@@ -246,19 +269,19 @@ def _collect_docx_segments(
         except Exception as exc:
             logger.warning("Paragraph processing error: %s", exc)
 
-    def _cell_direct_text(cell: _Cell) -> str:
+    def _cell_direct_text(cell: _Cell, text_extractor: Callable[[Paragraph], str] = _p_text_with_breaks) -> str:
         """Aggregate a cell's DIRECT paragraph text only (not nested tables)."""
         parts = []
         for p in cell.paragraphs:
             try:
-                txt = _p_text_with_breaks(p)
+                txt = text_extractor(p)
                 if txt.strip() and not _is_our_insert_block(p):
                     parts.append(txt)
             except Exception:
                 pass
         return "\n".join(parts)
 
-    def _flatten_nested_table_text(table: Table) -> str:
+    def _flatten_nested_table_text(table: Table, text_extractor: Callable[[Paragraph], str] = _p_text_with_breaks) -> str:
         """Aggregate ALL text within `table`, recursing into further nested
         tables without bound. Used only at the MAX_TABLE_NESTING_DEPTH limit
         (BR-113 flatten-and-warn) to fold over-deep content into the parent
@@ -272,16 +295,16 @@ def _collect_docx_segments(
                 if cell._tc in seen_tc_local:
                     continue
                 seen_tc_local.add(cell._tc)
-                direct_text = _cell_direct_text(cell)
+                direct_text = _cell_direct_text(cell, text_extractor)
                 if direct_text:
                     parts.append(direct_text)
                 for nested in cell.tables:
-                    nested_text = _flatten_nested_table_text(nested)
+                    nested_text = _flatten_nested_table_text(nested, text_extractor)
                     if nested_text:
                         parts.append(nested_text)
         return "\n".join(parts)
 
-    def _process_table(table: Table, ctx: str, depth: int) -> None:
+    def _process_table(table: Table, ctx: str, depth: int, text_extractor: Callable[[Paragraph], str] = _p_text_with_breaks) -> None:
         """Collect one `<w:tbl>` as its own group (own counter-assigned
         table_id, own private 0-based (row, col) space; BR-113). Handles the
         BR-81 merged-cell dedup, the BR-114 frame-reroute gate, and bounded
@@ -310,7 +333,7 @@ def _collect_docx_segments(
                 if flatten_needed:
                     flat_parts = []
                     for nested in cell.tables:
-                        nested_text = _flatten_nested_table_text(nested)
+                        nested_text = _flatten_nested_table_text(nested, text_extractor)
                         if nested_text:
                             flat_parts.append(nested_text)
                     flatten_extra = "\n".join(flat_parts)
@@ -331,7 +354,7 @@ def _collect_docx_segments(
 
                 if reroute:
                     for p in cell.paragraphs:
-                        _add_paragraph(p, cell_ctx)
+                        _add_paragraph(p, cell_ctx, text_extractor)
                     # Empty-text placeholder keeps the legacy pipe-grid's
                     # positional (row, col) slot filled (BR-114 flag-off
                     # clause); fold in any depth-limit flatten text so nothing
@@ -343,7 +366,7 @@ def _collect_docx_segments(
                     ))
                     total_text_length += len(placeholder_text)
                 else:
-                    cell_text = _cell_direct_text(cell)
+                    cell_text = _cell_direct_text(cell, text_extractor)
                     if flatten_extra:
                         cell_text = "\n".join(
                             part for part in (cell_text, flatten_extra) if part
@@ -360,19 +383,19 @@ def _collect_docx_segments(
                     # first (already emitted above), then nested tables in
                     # document order (design.md "Recursion / reading order").
                     for nested in cell.tables:
-                        _process_table(nested, f"{cell_ctx} > Nested", depth + 1)
+                        _process_table(nested, f"{cell_ctx} > Nested", depth + 1, text_extractor)
 
-    def _process_container_content(container, ctx: str, depth: int = 1) -> None:
+    def _process_container_content(container, ctx: str, depth: int = 1, text_extractor: Callable[[Paragraph], str] = _p_text_with_breaks) -> None:
         if container._element is None:
             return
         for child_element in container._element:
             qname = child_element.tag
             if qname.endswith("}p"):
                 p = Paragraph(child_element, container)
-                _add_paragraph(p, ctx)
+                _add_paragraph(p, ctx, text_extractor)
             elif qname.endswith("}tbl"):
                 table = Table(child_element, container)
-                _process_table(table, ctx, depth)
+                _process_table(table, ctx, depth, text_extractor)
             elif qname.endswith("}sdt"):
                 sdt_ctx = f"{ctx} > SDT"
                 ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
@@ -399,7 +422,7 @@ def _collect_docx_segments(
                             self._element = element
                             self._parent = parent
                     sdt_content_wrapper = SdtContentWrapper(sdt_content_element, container)
-                    _process_container_content(sdt_content_wrapper, sdt_ctx, depth)
+                    _process_container_content(sdt_content_wrapper, sdt_ctx, depth, text_extractor)
 
     _process_container_content(doc._body, "Body", 1)
 
@@ -407,6 +430,33 @@ def _collect_docx_segments(
         if s.strip() and (has_cjk(s) or should_translate(s, "auto")):
             segs.append(Segment("txbx", tx, "TextBox", s))
             total_text_length += len(s)
+
+    # BR-115: native header/footer collection, appended AFTER the body walk so
+    # body segment indices 0..N-1 and docx:{stem}:{idx} hook numbering stay
+    # unaffected (AC-6). Dedup by <w:hdr>/<w:ftr> ELEMENT identity (never
+    # id() — BR-81/BR-113/BR-115); a linked slot shares the same element with
+    # a prior section, so holding the element in a set collects/writes it
+    # exactly once (AC-4). Header/footer paragraph+cell extraction uses
+    # _p_text_no_txbx so header-anchored textboxes stay exclusively COM-owned
+    # (AC-3; design.md Option C).
+    seen_parts: set = set()
+    _HF_SLOTS = (
+        "header", "footer", "first_page_header",
+        "first_page_footer", "even_page_header", "even_page_footer",
+    )
+    for s_idx, section in enumerate(doc.sections):
+        for slot_name in _HF_SLOTS:
+            slot = getattr(section, slot_name)
+            if slot.is_linked_to_previous:  # optimization only, NOT the guarantee
+                continue
+            root_el = slot._element  # <w:hdr>/<w:ftr> root (R-1 confirmed)
+            if root_el is None or root_el in seen_parts:
+                continue  # element-identity dedup = the guarantee
+            seen_parts.add(root_el)
+            _process_container_content(
+                slot, f"HdrFtr[s{s_idx}:{slot_name}]", 1,
+                text_extractor=_p_text_no_txbx,
+            )
 
     check_document_size_limits(
         segment_count=len(segs),

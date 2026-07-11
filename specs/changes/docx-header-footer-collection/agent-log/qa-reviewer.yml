@@ -1,0 +1,27 @@
+agent: qa-reviewer
+status: approved
+summary: >
+  Release-ready. All 7 ACs map to real assertions at real boundaries; evidence
+  postdates every covered file; body path byte-for-byte unchanged (only _p_text_no_txbx
+  added); COM call site untouched; no id()-keyed collection; real docs 0 missing.
+  One non-blocking doc-accuracy nit in regression-report §3, corrected by main Claude.
+artifacts:
+  - { type: gate-results, pointer: "non-strict gate passes; --strict pending-tasks-only (5.4 QA, 6.1-6.4 verification)" }
+  - { type: evidence-freshness, pointer: "specs/changes/docx-header-footer-collection/test-evidence.yml" }
+  - { type: evidence-quality, pointer: "repro — re-ran probe_hf_coverage.py + 3 snapshot-restore sabotage cycles, sha byte-identical after restore" }
+  - { type: decision, pointer: "approved" }
+  - { type: failure-routing, pointer: "none" }
+notes: |
+  Verified by command, not claim: full junit (20260711-092348) carries all 14 new tests,
+  1393 total, 0 fail, 4 pre-existing skips. Body path unchanged by git diff (only
+  _p_text_no_txbx added; body walk keeps default extractor; _p_text_no_txbx referenced
+  only at the header/footer walk). All 4 id( occurrences are comments; seen_parts holds
+  slot._element. COM call site include_headers=True absent from diff. Re-ran
+  probe_hf_coverage.py: 0 missing on both real docs.
+
+  Non-blocking finding (corrected by main Claude in regression-report §3 before commit):
+  the linked-part dedup is protected by TWO independently-sufficient guards
+  (is_linked_to_previous short-circuit L450 AND seen_parts element set L453). Removing
+  either alone leaves the test green; only removing both yields 2==1. §3 originally
+  attributed the RED to seen_parts alone; reworded to state the both-guards RED
+  condition precisely and to identify seen_parts as the general guarantee.
