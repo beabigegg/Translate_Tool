@@ -1,11 +1,12 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Languages, BookOpen, History, Settings } from 'lucide-react';
+import { Languages, BookOpen, History, Settings, Mic } from 'lucide-react';
 import { useHealthCheck } from '../../hooks/useHealthCheck.js';
 
 const NAV_ITEMS = [
   { path: '/', icon: Languages, label: '翻譯' },
   { path: '/terms', icon: BookOpen, label: '術語庫' },
+  { path: '/media', icon: Mic, label: '影音翻譯' },
   { path: '/history', icon: History, label: '歷史紀錄' },
   { path: '/settings', icon: Settings, label: '設定' },
 ];

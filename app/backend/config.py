@@ -337,6 +337,58 @@ ENV_READ_TIMEOUT = "TRANSLATE_READ_TIMEOUT"
 LIBREOFFICE_PATH = os.environ.get("LIBREOFFICE_PATH", "")  # Empty = auto-detect
 LIBREOFFICE_TIMEOUT = int(os.environ.get("LIBREOFFICE_TIMEOUT", "120"))
 
+# Media STT pipeline configuration (audio/video → VAD → STT → translate)
+# STT_ENABLED: set to "false"/"0" to disable the media STT pipeline entirely.
+STT_ENABLED: bool = os.environ.get("STT_ENABLED", "true").lower() in ("1", "true", "yes")
+# STT_ENGINE: "qwen3-asr" (default) or "faster-whisper" — dispatches stt_engine.transcribe().
+STT_ENGINE: str = os.environ.get("STT_ENGINE", "qwen3-asr").strip().lower()
+# STT_MODEL_NAME: model identifier for the selected engine — a Qwen3-ASR HF repo id
+# by default, or a faster-whisper size string (e.g. "large-v3") when STT_ENGINE is
+# switched to "faster-whisper".
+# STT_MODEL_NAME/STT_DEVICE were verified on the target machine's 8GB card:
+# Qwen3-ASR-1.7B fp16 on CUDA peaks at ~4.7GB VRAM (~1GB more when DeepFilterNet3's
+# denoise model is also resident — both fit comfortably). "cuda" is the default
+# because autoregressive generate() on this CPU (WSL2/20 vCPU) only ever
+# saturates ~1 core regardless of core count — token-by-token decoding is
+# inherently sequential and doesn't scale across CPU cores — so a real 64-minute
+# recording drove RSS to ~11.8GB and pushed ~3.8GB into swap while transcribing.
+STT_MODEL_NAME: str = os.environ.get("STT_MODEL_NAME", "Qwen/Qwen3-ASR-1.7B")
+STT_DEVICE: str = os.environ.get("STT_DEVICE", "cuda")
+# STT_COMPUTE_TYPE: faster-whisper CTranslate2 compute type ("int8" on CPU,
+# "float16" recommended on GPU). Ignored by the qwen3-asr engine.
+STT_COMPUTE_TYPE: str = os.environ.get("STT_COMPUTE_TYPE", "int8")
+# VAD_MIN_SILENCE_MS: Silero VAD minimum silence window (ms) used to split
+# speech segments in vad_segmenter.segment_by_voice_activity().
+VAD_MIN_SILENCE_MS: int = int(os.environ.get("VAD_MIN_SILENCE_MS", "500"))
+
+# ffmpeg binary for media audio extraction (media_preprocess.py), mirrors LIBREOFFICE_PATH.
+FFMPEG_PATH = os.environ.get("FFMPEG_PATH", "")  # Empty = auto-detect
+
+# DENOISE_CHUNK_SECONDS: upper bound on how much audio media_preprocess feeds
+# DeepFilterNet3's enhance() in a single call — DeepFilterNet3 holds STFT
+# features + model activations for every timestep of its input in memory at
+# once, so an unbounded call on a long enough span reliably exhausts GPU
+# memory (observed: CUDA OOM on an 8GB card denoising a 64-minute recording
+# in one call). Denoising is chunked primarily by VAD speech-span boundaries
+# (media_preprocess._enhance_speech_spans, so chunk cuts land on
+# silence/pauses instead of mid-word); this value is the backstop split
+# within a single VAD span for the rare case of one uninterrupted span (e.g.
+# a long monologue) longer than this many seconds.
+DENOISE_CHUNK_SECONDS: float = float(os.environ.get("DENOISE_CHUNK_SECONDS", "30"))
+
+# MEDIA_DENOISE_DEFAULT: default value of POST /api/media/jobs's `denoise`
+# form field when the caller omits it (consumed by media_routes.py's
+# Form(MEDIA_DENOISE_DEFAULT) default — the frontend always sends an explicit
+# value from its own checkbox state, so this backend default mainly matters
+# for direct API callers).
+MEDIA_DENOISE_DEFAULT: bool = os.environ.get("MEDIA_DENOISE_DEFAULT", "true").lower() in ("1", "true", "yes")
+# MEDIA_MAX_UPLOAD_MB: max accepted media upload size, in megabytes.
+MEDIA_MAX_UPLOAD_MB: int = int(os.environ.get("MEDIA_MAX_UPLOAD_MB", "2048"))
+# MEDIA_JOB_TTL_HOURS / MEDIA_MAX_JOBS_IN_MEMORY: mirror JOB_TTL_HOURS /
+# MAX_JOBS_IN_MEMORY for the media job store (media_job_manager.py).
+MEDIA_JOB_TTL_HOURS: int = int(os.environ.get("MEDIA_JOB_TTL_HOURS", "24"))
+MEDIA_MAX_JOBS_IN_MEMORY: int = int(os.environ.get("MEDIA_MAX_JOBS_IN_MEMORY", "100"))
+
 VERIFY_MAX_RETRIES = 2  # Retries per failed segment during post-translation verification
 
 # Term injection gate: optional loose mode

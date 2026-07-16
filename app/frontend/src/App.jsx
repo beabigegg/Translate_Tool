@@ -9,6 +9,7 @@ const TermsPage = React.lazy(() => import('./pages/TermsPage.jsx'));
 const TermsReviewPage = React.lazy(() => import('./pages/TermsReviewPage.jsx'));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage.jsx'));
 const HistoryPage = React.lazy(() => import('./pages/HistoryPage.jsx'));
+const MediaTranslatePage = React.lazy(() => import('./pages/MediaTranslatePage.jsx'));
 
 function LazyPage({ children }) {
   return (
@@ -29,6 +30,7 @@ export default function App() {
             <Route path="/terms/review" element={<LazyPage><TermsReviewPage /></LazyPage>} />
             <Route path="/settings" element={<LazyPage><SettingsPage /></LazyPage>} />
             <Route path="/history" element={<LazyPage><HistoryPage /></LazyPage>} />
+            <Route path="/media" element={<LazyPage><MediaTranslatePage /></LazyPage>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

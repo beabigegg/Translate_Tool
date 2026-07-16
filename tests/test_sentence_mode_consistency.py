@@ -262,11 +262,16 @@ def test_verify_and_fill_detects_sentence_mode_failures():
 def test_translate_texts_signature_unchanged():
     """translate_texts must have exactly these parameters in this order:
     texts, targets, src_lang, client, max_batch_chars, stop_flag, log, terms,
-    status_callback, chunk_context.
+    status_callback, chunk_context, use_json_body, critique_enabled.
     The ``terms`` parameter (p2-prompt-fewshot-glossary, BR-41/BR-44) is an
     optional keyword argument with a default of None.
     The ``chunk_context`` parameter (quality-metrics-gating AC-11, BR-93) carries
     the 50-token overlap from the previous chunk for context threading.
+    The ``use_json_body``/``critique_enabled`` parameters (media/STT
+    single-pass translation) are optional per-call overrides, default None
+    (defers to config.JSON_STRUCTURED_TRANSLATION_ENABLED /
+    config.CRITIQUE_LOOP_ENABLED respectively) — see
+    media_translation.translate_transcript.
     """
     from app.backend.services.translation_service import translate_texts
 
@@ -275,7 +280,7 @@ def test_translate_texts_signature_unchanged():
 
     expected = ["texts", "targets", "src_lang", "client",
                 "max_batch_chars", "stop_flag", "log", "terms", "status_callback",
-                "chunk_context"]
+                "chunk_context", "use_json_body", "critique_enabled"]
     assert params == expected, (
         f"Signature mismatch.\nExpected: {expected}\nActual:   {params}"
     )

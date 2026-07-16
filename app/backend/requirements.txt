@@ -30,6 +30,20 @@ sentencepiece>=0.2.1       # fixes GHSA-38vq-g6vr-w8wf (heap overflow)
 protobuf>=4.25.8,<5.0.0    # fixes GHSA-8qvm-5x2c-j2w7 (DoS); stays within unbabel-comet bound
 jsonschema>=4.0.0           # required by cdd-kit validate --contracts response-shape validator
 
+# Media STT pipeline (audio/video -> VAD -> STT -> translate; lazy-loaded only
+# when the media pipeline is actually invoked, mirrors the COMET section above).
+# qwen-asr is the default STT engine (config.STT_ENGINE="qwen3-asr"); torch is
+# already a transitive dependency via unbabel-comet above, not repeated here.
+# LICENSE: QwenLM/Qwen3-ASR is Apache-2.0 (commercial use permitted) — verified,
+# unlike the unbabel-comet default model above which is non-commercial.
+qwen-asr
+silero-vad
+deepfilternet
+soundfile
+# faster-whisper: OPTIONAL fallback STT engine. Only needed when
+# config.STT_ENGINE is switched to "faster-whisper".
+faster-whisper
+
 # Testing
 pytest>=8.0.0
 json-repair>=0.30

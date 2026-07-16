@@ -311,6 +311,77 @@ def test_batched_adopt_empty_pairs_returns_empty_list_without_calling_score_bloc
 # strict-greater-than adoption gate for segments that DO enter the loop.
 # ---------------------------------------------------------------------------
 
+def test_critique_enabled_false_override_skips_loop_even_when_global_flag_true():
+    """critique_enabled=False (media/STT single-pass override) must skip the
+    revision loop entirely, even though config.CRITIQUE_LOOP_ENABLED is True
+    — exactly one translation call per segment, the draft from
+    translate_blocks_batch is the final, unrevised result."""
+    from unittest.mock import MagicMock, patch
+    from app.backend.services.translation_service import translate_texts
+
+    client = MagicMock()
+    client.cache_model_key = "test-model"
+
+    cache = MagicMock()
+    cache.get_batch.return_value = {}
+
+    with patch(
+        "app.backend.services.translation_service.translate_blocks_batch",
+        return_value=[(True, "Draft Only")],
+    ), patch(
+        "app.backend.services.translation_service.get_cache", return_value=cache,
+    ), patch(
+        "app.backend.services.translation_service.CRITIQUE_LOOP_ENABLED", True,
+    ):
+        tmap, _done, fail_cnt, stopped = translate_texts(
+            texts=["Some Segment"],
+            targets=["fr"],
+            src_lang="en",
+            client=client,
+            critique_enabled=False,
+        )
+
+    assert not stopped
+    assert fail_cnt == 0
+    assert tmap[("fr", "Some Segment")] == "Draft Only"
+    client.translate_once.assert_not_called()
+
+
+def test_critique_enabled_none_defers_to_global_flag():
+    """Default (None) must preserve existing behavior: with
+    config.CRITIQUE_LOOP_ENABLED=False and no override, the loop is skipped
+    — same outcome as critique_enabled=False, confirming None doesn't force
+    the loop on."""
+    from unittest.mock import MagicMock, patch
+    from app.backend.services.translation_service import translate_texts
+
+    client = MagicMock()
+    client.cache_model_key = "test-model"
+
+    cache = MagicMock()
+    cache.get_batch.return_value = {}
+
+    with patch(
+        "app.backend.services.translation_service.translate_blocks_batch",
+        return_value=[(True, "Draft Only")],
+    ), patch(
+        "app.backend.services.translation_service.get_cache", return_value=cache,
+    ), patch(
+        "app.backend.services.translation_service.CRITIQUE_LOOP_ENABLED", False,
+    ):
+        tmap, _done, fail_cnt, stopped = translate_texts(
+            texts=["Some Segment"],
+            targets=["fr"],
+            src_lang="en",
+            client=client,
+        )
+
+    assert not stopped
+    assert fail_cnt == 0
+    assert tmap[("fr", "Some Segment")] == "Draft Only"
+    client.translate_once.assert_not_called()
+
+
 def test_critique_skip_cached_flag_does_not_alter_max_iterations_timeout_or_gate_for_segments_still_in_loop():
     """With CRITIQUE_SKIP_CACHED_SEGMENTS=true and one Phase-1 cache-HIT
     segment excluded ("Cached Seg"), the two segments that DO enter the loop

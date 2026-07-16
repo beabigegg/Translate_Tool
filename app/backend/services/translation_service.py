@@ -245,6 +245,8 @@ def translate_texts(
     terms: "Optional[List[Term]]" = None,
     status_callback: Optional[Callable[[Optional[str], Optional[Any]], None]] = None,
     chunk_context: str = "",
+    use_json_body: Optional[bool] = None,
+    critique_enabled: Optional[bool] = None,
 ) -> Tuple[Dict[Tuple[str, str], str], int, int, bool]:
     """Translate texts for all targets with character-based batching.
 
@@ -272,6 +274,18 @@ def translate_texts(
                        IP-9).  When non-empty, used as context prefix for
                        translations in this chunk so overlap is no longer
                        dedup-only.
+        use_json_body: Overrides config.JSON_STRUCTURED_TRANSLATION_ENABLED for
+               this call when not None — forwarded to translate_blocks_batch.
+               False makes every segment a single plain-text translate_once
+               call, with no BR-111/BR-112 JSON-envelope/echoed-source-retry
+               round trip (see translate_merged_paragraphs docstring).
+        critique_enabled: Overrides config.CRITIQUE_LOOP_ENABLED for this call
+               when not None. False skips the critique/revision loop below
+               entirely, so each segment gets exactly one translation call.
+               Both overrides exist for callers where "one call per segment,
+               source-equals-translation is a valid outcome" is the desired
+               behavior (media/STT transcripts) — see
+               media_translation.translate_transcript.
 
     Returns:
         (tmap, done_count, fail_count, stopped)
@@ -364,6 +378,7 @@ def translate_texts(
                 log=log,
                 on_segment_done=_on_segment_done,
                 stop_flag=stop_flag,
+                use_json_body=use_json_body,
             )
             _batch_elapsed_ms = (time.monotonic() - _batch_t0) * 1000.0
             # Flush remaining cache entries
@@ -438,7 +453,8 @@ def translate_texts(
     # _batched_critique_adopt) instead of one call per (segment, iteration).
     # ---------------------------------------------------------------------------
     _active_terms = terms or []
-    if CRITIQUE_LOOP_ENABLED and tmap and not stopped:
+    _critique_enabled = CRITIQUE_LOOP_ENABLED if critique_enabled is None else critique_enabled
+    if _critique_enabled and tmap and not stopped:
         try:
             record_critique_loop_invocation()
         except Exception:

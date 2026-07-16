@@ -10,8 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.backend.api.media_routes import router as media_router
 from app.backend.api.routes import router
-from app.backend.config import ALLOWED_ORIGINS, DEFAULT_HOST, DEFAULT_PORT, LOG_DIR
+from app.backend.config import ALLOWED_ORIGINS, DEFAULT_HOST, DEFAULT_PORT, LOG_DIR, STT_ENABLED
 from app.backend.utils.font_utils import get_font_check_message
 from app.backend.utils.logging_utils import setup_logging
 
@@ -35,6 +36,10 @@ app.add_middleware(
 )
 
 app.include_router(router, prefix="/api")
+if STT_ENABLED:
+    app.include_router(media_router)
+else:
+    logger.info("STT_ENABLED=false — /api/media/* routes are not registered")
 
 # Serve frontend build if present (SPA mode: index.html for all non-API routes)
 frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"

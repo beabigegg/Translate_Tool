@@ -176,6 +176,7 @@ def translate_merged_paragraphs(
     progress_log: Optional[Callable[[int], None]] = None,
     log: Optional[Callable[[str], None]] = None,
     on_segment_done: Optional[Callable[[str, str], None]] = None,
+    use_json_body: Optional[bool] = None,
 ) -> List[Tuple[bool, str]]:
     """Translate multiple texts individually (one segment per LLM call).
 
@@ -192,12 +193,22 @@ def translate_merged_paragraphs(
         progress_log: Optional callback called with count of segments completed so far.
         log: Optional logging callback.
         on_segment_done: Optional callback called with (source, translation) per segment.
+        use_json_body: Overrides config.JSON_STRUCTURED_TRANSLATION_ENABLED for
+            this call when not None. False forces the plain-text
+            `client.translate_once` single-call path (BR-111/BR-112's JSON
+            envelope + echoed-source retry never runs), for callers where a
+            same-language, source-equals-translation reply is an expected,
+            valid outcome rather than a failure signal (e.g. media/STT
+            transcripts covering multi-language content) — see
+            media_translation.translate_transcript.
 
     Returns:
         List of (success, translated_text) tuples.
     """
     if not texts:
         return []
+
+    use_json = config.JSON_STRUCTURED_TRANSLATION_ENABLED if use_json_body is None else use_json_body
 
     results: List[Tuple[bool, str]] = [(False, "")] * len(texts)
     completed = 0
@@ -225,7 +236,7 @@ def translate_merged_paragraphs(
         # concatenated onto `text` — the translatable payload for segment i is
         # always exactly `text`, never `text` glued with a neighbor's content.
         system_ctx = ctx if (ctx and len(text.strip()) > 4) else None
-        if config.JSON_STRUCTURED_TRANSLATION_ENABLED:
+        if use_json:
             ok, translated = _translate_body_json(text, tgt, src_lang, client, system_ctx, log)
         else:
             ok, translated = client.translate_once(text, tgt, src_lang, system_context=system_ctx)
@@ -438,6 +449,7 @@ def translate_blocks_batch(
     log: Optional[Callable[[str], None]] = None,
     on_segment_done: Optional[Callable[[str, str], None]] = None,
     stop_flag=None,
+    use_json_body: Optional[bool] = None,
 ) -> List[Tuple[bool, str]]:
     """Batch translate multiple text blocks.
 
@@ -452,6 +464,8 @@ def translate_blocks_batch(
         use_merged_context: If True, merge multiple paragraphs for context-aware
                            translation (within MAX_PARAGRAPH_CHARS limit).
         progress_log: Optional callback called with count of segments completed so far.
+        use_json_body: Forwarded to translate_merged_paragraphs (paragraph
+            granularity only) — see its docstring.
 
     Returns:
         List of (success, translated_text) tuples.
@@ -481,6 +495,7 @@ def translate_blocks_batch(
         return translate_merged_paragraphs(
             texts, tgt, src_lang, client, MAX_PARAGRAPH_CHARS,
             progress_log=_tr_progress_log, log=log, on_segment_done=on_segment_done,
+            use_json_body=use_json_body,
         )
 
     # Legacy sentence-level batch translation

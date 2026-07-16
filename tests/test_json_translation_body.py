@@ -316,6 +316,72 @@ class TestFlagOffLegacyPath:
 
 
 # ---------------------------------------------------------------------------
+# use_json_body per-call override (media/STT single-pass translation): a
+# caller-supplied override takes precedence over config.JSON_STRUCTURED_
+# TRANSLATION_ENABLED, and False both skips the JSON envelope AND accepts a
+# translate_once reply equal to the source (no echo-equality check exists on
+# that path — legitimate for a multi-language transcript segment already in
+# the target language).
+# ---------------------------------------------------------------------------
+
+class TestUseJsonBodyOverride:
+    def test_override_false_skips_json_call_even_when_config_flag_true(self, monkeypatch):
+        monkeypatch.setattr(config, "JSON_STRUCTURED_TRANSLATION_ENABLED", True)
+        client = _JsonBodyClient(
+            json_reply=json.dumps({"translation": "should not be used"}),
+            fallback_reply="PLAIN_TEXT_RESULT",
+        )
+
+        results = translate_merged_paragraphs(
+            [GENUINE_SEGMENT], "zh", "en", client, use_json_body=False,
+        )
+
+        assert client.json_calls == [], "use_json_body=False must skip translate_json entirely"
+        assert client.once_calls == [GENUINE_SEGMENT], "exactly one plain-text call, no retry"
+        assert results == [(True, "PLAIN_TEXT_RESULT")]
+
+    def test_override_true_forces_json_call_even_when_config_flag_false(self, monkeypatch):
+        monkeypatch.setattr(config, "JSON_STRUCTURED_TRANSLATION_ENABLED", False)
+        client = _JsonBodyClient(json_reply=json.dumps({"translation": "翻譯結果"}))
+
+        results = translate_merged_paragraphs(
+            [GENUINE_SEGMENT], "zh", "en", client, use_json_body=True,
+        )
+
+        assert len(client.json_calls) == 1, "use_json_body=True must call translate_json"
+        assert results == [(True, "翻譯結果")]
+
+    def test_override_none_defers_to_config_flag(self, monkeypatch):
+        monkeypatch.setattr(config, "JSON_STRUCTURED_TRANSLATION_ENABLED", False)
+        client = _JsonBodyClient(json_reply=json.dumps({"translation": "should not be used"}))
+
+        results = translate_merged_paragraphs(
+            [GENUINE_SEGMENT], "zh", "en", client, use_json_body=None,
+        )
+
+        assert client.json_calls == [], "default (None) must fall through to the config flag"
+        assert results == [(True, "FALLBACK_RESULT")]
+
+    def test_override_false_accepts_source_equal_reply_with_a_single_call(self, monkeypatch):
+        """The whole point of the override: a segment already in the target
+        language legitimately produces translation == source. use_json_body=
+        False must accept it as a real result, with exactly one LLM call —
+        never the JSON-envelope echo-reject + plain-text retry pattern."""
+        monkeypatch.setattr(config, "JSON_STRUCTURED_TRANSLATION_ENABLED", True)
+        client = _JsonBodyClient(json_reply="UNUSED", fallback_reply=GENUINE_SEGMENT)
+
+        results = translate_merged_paragraphs(
+            [GENUINE_SEGMENT], "zh", "en", client, use_json_body=False,
+        )
+
+        assert client.json_calls == []
+        assert len(client.once_calls) == 1, "exactly one call total, no second/confirmation call"
+        assert results == [(True, GENUINE_SEGMENT)], (
+            "a same-text reply must be accepted, not treated as a failure"
+        )
+
+
+# ---------------------------------------------------------------------------
 # truncation-length-guard (BR-117, ADR-0020): AC-7 out-of-scope confirmation
 # (D1 — the guard is DOCX table-cell-acceptance-seam ONLY; the body/segment
 # path is not wired to it).

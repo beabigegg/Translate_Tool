@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { fetchJobStatus } from '../api/jobs.js';
 
-export function useJobPolling(jobId, onUpdate, onJobLost, intervalMs = 2000) {
+export function useJobPolling(jobId, onUpdate, onJobLost, intervalMs = 2000, fetchFn = fetchJobStatus) {
   const timer = useRef(null);
 
   const stop = useCallback(() => {
@@ -12,7 +12,7 @@ export function useJobPolling(jobId, onUpdate, onJobLost, intervalMs = 2000) {
     if (!jobId) return;
     async function poll() {
       try {
-        const data = await fetchJobStatus(jobId);
+        const data = await fetchFn(jobId);
         onUpdate(data);
         if (['completed', 'failed', 'cancelled'].includes(data.status)) stop();
       } catch (err) {
